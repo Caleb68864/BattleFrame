@@ -113,6 +113,47 @@ export function applyHighlights(options: ApplyHighlightsOptions): void {
   }
 }
 
+export interface HighlightController {
+  /** Re-applies highlights for `selectedDieId`. Force-clears instead if the round has completed underneath it. */
+  update(selectedDieId: string | undefined): void;
+  /** Clears any active highlight. Call this on die deselection, round end, and panel close alike. */
+  close(): void;
+}
+
+export interface CreateHighlightControllerOptions {
+  session: RoundSession;
+  knights: readonly HighlightKnight[];
+  tintApi: TintApiLike | undefined;
+  log?: (message: string) => void;
+}
+
+/**
+ * Binds `applyHighlights`/`clearHighlights` to one call site's lifecycle, so
+ * every place highlighting needs to go away -- die deselection (pass
+ * `undefined`), round end (`isComplete()` short-circuits to a clear even if
+ * the caller hasn't noticed the selection is now stale), and panel close
+ * (`close()`) -- goes through the same two functions instead of three
+ * separately-maintained call sites.
+ */
+export function createHighlightController(options: CreateHighlightControllerOptions): HighlightController {
+  const { session, knights, tintApi, log } = options;
+
+  return {
+    update(selectedDieId) {
+      if (session.isComplete()) {
+        clearHighlights(knights, tintApi);
+
+        return;
+      }
+
+      applyHighlights({ session, knights, selectedDieId, tintApi, log });
+    },
+    close() {
+      clearHighlights(knights, tintApi);
+    },
+  };
+}
+
 /* ------------------------------------------------------------------------ *
  * Foundry glue
  * ------------------------------------------------------------------------ */
