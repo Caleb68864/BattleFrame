@@ -357,3 +357,30 @@ reader would otherwise re-derive or re-break.
   example is not evidence.** That restraint is the entire point of Approach C, and this is the
   first real test of it.
 - Commit: this commit.
+
+## 2026-07-17 — Run a grep-based criterion against the current tree BEFORE trusting it
+- Symptom: SS-05's headline criterion — the one whose only job is to prove round-robin is
+  dead — grepped for **`assignDiceRoundRobin`**, a function that **does not exist**. The real
+  one is `assignDiceToKnights` (`round-control.ts:248`, called at `:495`). A grep for a
+  nonexistent name matches nothing, so the check **passed today, with round-robin fully
+  wired.** Caught by a prep agent, not by me.
+- Fix: corrected the identifier, then ran **every** grep-based criterion in the new spec
+  against the current tree and confirmed each **fails**: round-robin-dead fails, player-layer-
+  in-bundle fails, notifyUser-bound fails. The core-ignorance guard passes, correctly — it
+  protects an invariant that already holds.
+- Surfaces: `docs/specs/2026-07-17-greathelm-player-layer.md` SS-05.
+- Watch: **This is the FOURTH check in this project that measured nothing** — after nine
+  inverted negative greps (`grep -c X returns 0` exits 1 when it matches nothing, failing
+  exactly when satisfied), a literal `<placeholder>` a gate executed verbatim, and acceptance
+  criteria that dead code fully satisfied. Every one was in the *checks*, never the
+  implementation.
+  **The rule that would have caught all four, in thirty seconds each:** before trusting a
+  grep-based criterion, **run it against the tree as it is now and confirm it FAILS.** A check
+  that passes before the work is done is not a check — it is a decoration that will be
+  reported as a pass. Same principle as the mutation testing the fix agents have been doing:
+  a test that passes both before and after is a passenger.
+  Also fixed from the same review: a `[STRUCTURAL]` criterion describing runtime lifecycle
+  (retagged `[BEHAVIORAL]` — a static tag invites a fake grep), and SS-04 shipping against
+  `DialogV2` (zero vault notes at any confidence) with no `[HUMAN REVIEW]`. **A feature-detect
+  that has never been watched succeed is a hypothesis, not a fallback.**
+- Commit: this commit.

@@ -232,8 +232,10 @@ dispatch: factory
     exits 0.
   - `[BEHAVIORAL]` If the tinting API is unavailable, highlighting is skipped, a single debug
     line is logged, and **the round remains fully playable**. No throw.
-  - `[STRUCTURAL]` Highlighting is cleared when the die is deselected, when the round ends,
-    and when the panel closes — no leaked tints.
+  - `[BEHAVIORAL]` Highlighting is cleared when the die is deselected, when the round ends,
+    and when the panel closes — no leaked tints. *(Retagged during prep: this describes
+    runtime lifecycle, not a static property, so `[STRUCTURAL]` was wrong — it has no
+    meaningful grep and would have invited a fake one.)*
   - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- highlight` passes,
     including the API-absent path.
   - `[HUMAN REVIEW]` On a live v14 canvas, selecting a die visibly highlights the right
@@ -281,6 +283,12 @@ dispatch: factory
   - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- choice-prompts`
     passes, covering: prompt shown, prompt disabled → default, `forced-first` → no prompt,
     single enemy → no prompt, dialog API absent → default + log.
+  - `[HUMAN REVIEW]` **Both prompts actually appear in a live v14 world**, and each toggle
+    silences its own. **Then record `DialogV2`'s real shape in `vault/foundry-systems/`** —
+    `grep -rni "DialogV2" vault/` currently returns **nothing**, so this ships against an API
+    with no note at any confidence. *(Added during prep: SS-03 and SS-05 had live checks and
+    this did not, despite carrying the same class of unverified-API risk. A feature-detect
+    that has never been watched succeed is a hypothesis, not a fallback.)*
 - **Decisions (SS-04):** Settings keys live in `constants.ts` (they are module configuration,
   not GREATHELM rules) but their **defaults are not rules either** — comment them as engine
   behaviour. Do not file `"first"` beside `SPRINT_MOVE_INCHES`.
@@ -302,8 +310,18 @@ dispatch: factory
   - `packages/battleframe-greathelm/src/main.ts`
 - **Acceptance criteria:**
   - `[MECHANICAL]` **Round-robin is dead.**
-    `[ -z "$(grep -rn "assignDiceRoundRobin" packages/battleframe-greathelm/src --include=*.ts | grep -v "export function\|^.*tests")" ]`
+    `[ -z "$(grep -rn "assignDiceToKnights" packages/battleframe-greathelm/src --include=*.ts | grep -v "export function")" ]`
     exits 0 — no production caller remains.
+
+    **Corrected during prep — this criterion was broken and would have passed vacuously.**
+    It originally grepped for `assignDiceRoundRobin`, **which does not exist**; the real
+    function is `assignDiceToKnights` (`round-control.ts:248`, called at `:495`). A grep for
+    a nonexistent name matches nothing, so the check that exists solely to prove round-robin
+    is dead **passed today, with round-robin fully wired.** That is the fourth check in this
+    project to measure nothing — after nine inverted greps, a literal `<placeholder>`, and
+    ACs that dead code satisfied. **Before trusting any grep-based criterion, run it against
+    the CURRENT tree and confirm it FAILS.** A check that passes before the work is done is
+    not a check.
   - `[MECHANICAL]` **The player layer is in the shipped bundle** (reachability, not existence —
     the whole round loop was tree-shaken out last time and every AC still passed):
     `[ -n "$(grep -oE 'createRoundSession|pool-panel|PoolPanel' packages/battleframe-greathelm/dist/greathelm.js)" ]`
