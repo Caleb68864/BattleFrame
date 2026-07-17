@@ -644,3 +644,25 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   meant to accrue and the reset must own the whole fresh-knight state, not the
   subset that happens to be wired now.
 - Commit: feat(greathelm): New Battle control — reset every knight for a fresh game
+
+## 2026-07-17 — The New Battle reset shipped with no test on its safety ordering
+- Symptom: `resetBattleFromControl` is destructive — it clears every knight's
+  wounds, momentum and flight — and landed with only its pieces tested
+  (`resetKnight`, `promptResetConfirmation`), never the orchestrator that decides
+  *whether* to reset. A reorder that confirmed after resetting, or dropped the
+  GM gate, would have passed the whole suite.
+- Fix: added a `resetBattleFromControl` block that stubs the world (game/canvas/
+  ui/foundry) and pins the ordering: non-GM is refused, an empty canvas never
+  opens the dialog, and a cancelled *or* absent confirmation resets nothing —
+  absence is not consent. Also asserts both scene-control tools register in either
+  payload shape. The reset payload itself stays tested in `removal.test.ts`.
+- Surfaces: `packages/battleframe-greathelm/tests/round-control.test.ts` only;
+  no production change.
+- Watch: the two "resets nothing" tests were mutation-verified — replacing the
+  `if (!(await promptResetConfirmation())) return 0;` guard with a bare
+  `await promptResetConfirmation();` failed exactly those two and nothing else, so
+  they guard the real property and are not passengers. The orchestrator still is
+  not exercised against a live canvas; these stubs prove the control flow, not
+  that Foundry's `getSceneControlButtons` calls the click handler — that remains
+  the live HUMAN REVIEW item.
+- Commit: test(greathelm): cover the New Battle control's destructive-action safety
