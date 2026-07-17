@@ -110,6 +110,33 @@ describe("createRoundSession", () => {
     expect(session.remainingDice()).toEqual([]);
   });
 
+  it("carries alternation across a step boundary -- a new step does not restart with the winner", async () => {
+    // The QSR is ambiguous here: "starting with whoever goes first, players
+    // alternate ... working through the current step before the next". This
+    // pins the *continuous* reading the session implements: alternation runs
+    // unbroken across the whole phase, it is NOT reset to the initiative winner
+    // at each step. a wins initiative and holds two 6s to b's one, so after the
+    // three 6s alternate a, b, a, the pointer sits on b -- and b, the loser,
+    // opens the 5s. (An earlier, deleted implementation restarted each step
+    // with the winner; this test is what would catch a silent revert to that.)
+    const knights = [knight("a1", "a"), knight("b1", "b")];
+    const pools = new Map([
+      ["a", pool(6, 6, 5)],
+      ["b", pool(6, 5)],
+    ]);
+    const session = createRoundSession(baseOptions(knights, pools, "a"));
+
+    expect(session.activePlayerId()).toBe("a");
+    await session.spendDie("a-d1", "a1"); // face 6
+    expect(session.activePlayerId()).toBe("b");
+    await session.spendDie("b-d1", "b1"); // face 6
+    expect(session.activePlayerId()).toBe("a");
+    await session.spendDie("a-d2", "a1"); // face 6, last of the step
+
+    // Step drops to 5. Continuous alternation => b (the initiative loser) is up.
+    expect(session.activePlayerId()).toBe("b");
+  });
+
   it("throws on an illegal (die, knight) pair instead of silently no-opping", async () => {
     const knights = [knight("a1", "a"), knight("a2", "a"), knight("b1", "b")];
     const pools = new Map([
