@@ -1,0 +1,34 @@
+{
+  "id": "bf-ruleset-test-2",
+  "title": "BF Spike Ruleset B",
+  "description": "Throwaway spike module. Declares an Actor subtype with the SAME short name ('squad') as Ruleset A, to test that package-id namespacing makes collisions structurally impossible. Delete after use.",
+  "version": "0.0.1",
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "authors": [
+    {
+      "name": "Caleb",
+      "email": "caleb-dev@logicnebraska.com"
+    }
+  ],
+  "esmodules": ["scripts/main.js"],
+  "documentTypes": {
+    "Actor": {
+      "squad": {}
+    }
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "bf-test",
+        "type": "system",
+        "compatibility": {
+          "minimum": "0.0.1",
+          "verified": "0.0.1"
+        }
+      }
+    ]
+  }
+}

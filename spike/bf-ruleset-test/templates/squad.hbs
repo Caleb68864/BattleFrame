@@ -1,0 +1,30 @@
+{{!-- BF SPIKE — throwaway. Proves a module-provided sheet renders module-provided derived data. --}}
+<form class="bf-spike-squad">
+  <p><strong>Provider:</strong> {{system.provider}}</p>
+  <p><em>If you can read this, a module-supplied sheet rendered for a module-supplied type.</em></p>
+
+  <div class="form-group">
+    <label>Quality</label>
+    <input type="number" name="system.quality" value="{{system.quality}}" min="2" max="6" step="1">
+  </div>
+
+  <div class="form-group">
+    <label>Defense</label>
+    <input type="number" name="system.defense" value="{{system.defense}}" min="2" max="6" step="1">
+  </div>
+
+  <div class="form-group">
+    <label>Models</label>
+    <input type="number" name="system.models" value="{{system.models}}" min="1" step="1">
+  </div>
+
+  <hr>
+  <p>
+    <strong>Derived (prepareDerivedData):</strong>
+    {{#if qualityTarget}}
+      <code>{{qualityTarget}}</code> — derived data RAN for a module-provided model.
+    {{else}}
+      <code>MISSING</code> — derived data did NOT run. That is a finding; write it down.
+    {{/if}}
+  </p>
+</form>

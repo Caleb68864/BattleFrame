@@ -1,0 +1,34 @@
+{
+  "id": "bf-ruleset-test",
+  "title": "BF Spike Ruleset A",
+  "description": "Throwaway spike module. Pretends to be a Battleframe ruleset: declares its own Actor subtype and registers a data model + sheet into the bf-test system. Delete after use.",
+  "version": "0.0.1",
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "authors": [
+    {
+      "name": "Caleb",
+      "email": "caleb-dev@logicnebraska.com"
+    }
+  ],
+  "esmodules": ["scripts/main.js"],
+  "documentTypes": {
+    "Actor": {
+      "squad": {}
+    }
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "bf-test",
+        "type": "system",
+        "compatibility": {
+          "minimum": "0.0.1",
+          "verified": "0.0.1"
+        }
+      }
+    ]
+  }
+}
