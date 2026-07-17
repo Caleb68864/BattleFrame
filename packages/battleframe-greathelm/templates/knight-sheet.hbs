@@ -1,0 +1,19 @@
+{{!-- GREATHELM's knight sheet. Knights have no stat line (see
+     vault/greathelm/knights-have-no-stat-line.md) -- momentum and damage
+     markers, both capped at 3, are the only per-knight numbers the QSR
+     evidences (see src/data/knight.ts). --}}
+<form class="battleframe-greathelm knight-sheet">
+  <header class="knight-sheet__header">
+    <h1 class="knight-sheet__name">{{actor.name}}</h1>
+  </header>
+
+  <div class="form-group">
+    <label>{{localize "battleframe-greathelm.fields.momentum"}}</label>
+    <input type="number" name="system.momentum" value="{{system.momentum}}" min="0" max="3" step="1">
+  </div>
+
+  <div class="form-group">
+    <label>{{localize "battleframe-greathelm.fields.damage"}}</label>
+    <input type="number" name="system.damage" value="{{system.damage}}" min="0" max="3" step="1">
+  </div>
+</form>
