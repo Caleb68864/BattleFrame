@@ -27,8 +27,8 @@ export class SceneMismatchError extends Error {
  * 2. Scene ids, when both are present. This is the authoritative check: two
  *    *different* scenes can share identical grid settings, and the id is the
  *    only thing that tells them apart. Equal ids are the same space even if
- *    the grid objects are separate instances (the greathelm round hands each
- *    token its own reshaped double); differing ids are a mismatch even if the
+ *    the grid objects are separate instances (a ruleset may hand each token
+ *    its own reshaped double); differing ids are a mismatch even if the
  *    grids are byte-identical.
  * 3. Grid parameters, when either id is absent. A fallback for plain-object
  *    callers and tests: they are exactly what the pxPerUnit conversion and the
