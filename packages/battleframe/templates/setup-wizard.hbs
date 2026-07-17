@@ -1,0 +1,52 @@
+<section class="battleframe-setup-wizard">
+  {{#if (eq wizardState.state "empty")}}
+    <div class="wizard-empty">
+      <p>{{localize "battleframe.setupWizard.emptyTitle"}}</p>
+      <p>{{localize "battleframe.setupWizard.emptyBody"}}</p>
+    </div>
+  {{else if (eq wizardState.state "conflict")}}
+    <div class="wizard-conflict">
+      <p>{{localize "battleframe.setupWizard.conflictWarning"}}</p>
+      <ul class="wizard-conflict-list">
+        {{#each wizardState.conflictingIds}}
+          <li>{{this}}</li>
+        {{/each}}
+      </ul>
+      <p>{{localize "battleframe.setupWizard.conflictInstructions"}}</p>
+      <ul class="wizard-ruleset-list">
+        {{#each wizardState.rulesets}}
+          <li>
+            <span class="ruleset-title">{{title}}</span>
+            <span class="ruleset-version">{{version}}</span>
+            <span class="ruleset-compat">{{compatibility}}</span>
+            {{#if primary}}
+              <button type="button" class="disable-ruleset" data-action="disable-ruleset" data-ruleset-id="{{id}}">
+                {{localize "battleframe.setupWizard.disable"}}
+              </button>
+            {{/if}}
+          </li>
+        {{/each}}
+      </ul>
+    </div>
+  {{else}}
+    <div class="wizard-ready">
+      <p>{{localize "battleframe.setupWizard.readyBody"}}</p>
+      <ul class="wizard-ruleset-list">
+        {{#each wizardState.rulesets}}
+          <li>
+            <span class="ruleset-title">{{title}}</span>
+            <span class="ruleset-version">{{version}}</span>
+            <span class="ruleset-compat">{{compatibility}}</span>
+            <button type="button" class="select-primary" data-action="select-primary" data-ruleset-id="{{id}}" {{#if (eq id ../activeRulesetId)}}disabled{{/if}}>
+              {{#if (eq id ../activeRulesetId)}}
+                {{localize "battleframe.setupWizard.active"}}
+              {{else}}
+                {{localize "battleframe.setupWizard.selectPrimary"}}
+              {{/if}}
+            </button>
+          </li>
+        {{/each}}
+      </ul>
+    </div>
+  {{/if}}
+</section>
