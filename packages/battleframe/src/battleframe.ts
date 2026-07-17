@@ -1,6 +1,7 @@
 import { bindBattleframeNamespace, installBattleframeApi } from "./api/index";
 import { createBattleframeCombatClass } from "./combat/battleframe-combat";
 import { SYSTEM_ID } from "./constants";
+import { installAreaApi } from "./areas/area";
 import { installDiceApi } from "./dice/dice";
 import { installMeasurementApi } from "./measurement/measure";
 import { registerBattleframeSettings } from "./settings";
@@ -40,6 +41,7 @@ import "./applications/setup-wizard";
 installBattleframeApi();
 installMeasurementApi();
 installDiceApi();
+installAreaApi();
 
 function hooksAvailable(): boolean {
   return typeof Hooks !== "undefined";
