@@ -692,7 +692,7 @@ dispatch: factory
 ---
 sub_spec_id: SS-11
 phase: run
-depends_on: ['SS-03', 'SS-04', 'SS-10']
+depends_on: ['SS-04', 'SS-10']
 dispatch: factory
 ---
 
@@ -925,7 +925,7 @@ dispatch: factory
 
 ### Escalation triggers
 
-- SS-01 incomplete → proceed anyway; it is verification only, not a blocker.
+- The SS-01 measurement gate fails → **stop and re-scope with a human.**
 - Core needs game-specific knowledge to make GREATHELM work → **stop.** The design is
   breaking.
 - A ruleset requires a core change → **stop and record it.** The neutrality claim is failing.
