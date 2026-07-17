@@ -934,3 +934,26 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   rule this enforces: a key the code can name literally must exist in the language
   file, checked at build time, not discovered in a live world.
 - Commit: test(greathelm): assert en.json carries every i18n key the code references
+
+## 2026-07-17 — No test drove a whole round; the pieces were proven, the composition was not
+- Symptom: dice pool, clash, damage, removal, courage and victory each had unit
+  tests, but nothing exercised them end to end. Every "correct pieces, broken
+  whole" defect this project has hit — courage difficulty seeded at 0, victory
+  handed knights with no `isRemoved`, the tree-shaken round loop — lived precisely
+  in the gap between green units and a played round.
+- Fix: `tests/round-integration.test.ts` drives a real session: spend the
+  descending initiative steps in order, resolve a Heavy clash that wounds a knight
+  past the removal cap, let the session complete into the courage phase, then read
+  the result through `toVictoryKnights`/`checkVictory` — the full wiring, clash →
+  persisted damage → `isKnightRemoved` → victory. A second case leaves both sides
+  alive and asserts the game continues.
+- Surfaces: `packages/battleframe-greathelm/tests/round-integration.test.ts` (new);
+  no source change.
+- Watch: this is the in-test form of "play one round", which is where this project
+  has repeatedly found what tests missed — it is not a substitute for a live world
+  (the pool panel, canvas, scene controls and Dice So Nice are all still
+  HUMAN-REVIEW), but it does hold the pure composition together against a
+  piece-level change that silently breaks the whole. It exercises the 6->1 global
+  order (b's higher face acts before a's, even though a won initiative), so it also
+  guards the alternation and offerability rules the two prior passes pinned.
+- Commit: test(greathelm): end-to-end round -- clash, removal, courage, victory compose
