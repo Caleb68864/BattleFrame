@@ -11,6 +11,14 @@
       "minDicePoolFloorEnabled": {
         "name": "Minimum Dice Pool of 3",
         "hint": "Kickstarter-only house rule, not in the QSR v0.4 rulebook: floors each player's initiative dice pool at 3, even at 0-1 knights remaining. Off by default."
+      },
+      "promptFirstOrSecond": {
+        "name": "Prompt: First or Second",
+        "hint": "Ask the initiative winner whether to go first or second (does not apply when a player is forced first with no choice). On by default. Off: the round always defaults to \"first\"."
+      },
+      "promptAttackTarget": {
+        "name": "Prompt: Attack Target",
+        "hint": "Ask which touching enemy to attack when 2 or more are in base contact. On by default. Off: the round always defaults to the first enemy found in base contact."
       }
     },
     "controls": {
@@ -21,6 +29,18 @@
         "gmOnly": "Only the GM can run a GREATHELM round.",
         "noApi": "BattleFrame's dice and measurement services are unavailable, so a round cannot be run.",
         "noCombat": "Start a combat encounter before running a GREATHELM round."
+      }
+    },
+    "prompts": {
+      "firstOrSecond": {
+        "title": "Go first or second?",
+        "body": "You won initiative. Go first or second?",
+        "first": "First",
+        "second": "Second"
+      },
+      "attackTarget": {
+        "title": "Which enemy?",
+        "body": "Multiple enemies are in base contact. Which one is this attack against?"
       }
     },
     "actions": {
