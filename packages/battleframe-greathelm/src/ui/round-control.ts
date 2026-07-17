@@ -5,23 +5,26 @@ import {
   type ActionId,
   type DieFace,
 } from "../constants";
-import { describeAction, requiresClashTest } from "../round/actions";
+import { actionForFace, describeAction, requiresClashTest } from "../round/actions";
 import {
   computeDicePoolSize,
   determineInitiative,
   type InitiativeOutcome,
   type RolledDie,
 } from "../round/dice-pool";
+import { type ActorLike, type CombatLike, type ResolvedDie, type RoundDie } from "../round/loop";
 import {
-  resolveDieAction,
-  runRound,
-  type ActorLike,
-  type ClashParticipantRef,
-  type CombatLike,
-  type ResolvedDie,
-  type RoundDie,
-} from "../round/loop";
-import type { CourageKnight, CourageTestOutcome } from "../round/courage";
+  createRoundSession,
+  type PoolDie,
+  type RoundSession,
+  type RoundSessionKnight,
+} from "../round/session";
+import { promptFirstOrSecond, type WorldSettingsLike } from "./choice-prompts";
+import {
+  openPoolPanel,
+  type PoolPanelInstance,
+  type PoolPanelKnight,
+} from "./pool-panel";
 import { isBaseContactDistance, type DiceApiLike, type MeasureApiLike } from "../combat/clash";
 
 /**
@@ -349,10 +352,6 @@ export function planMovement(
   };
 }
 
-function toParticipant(knight: RoundKnight): ClashParticipantRef {
-  return { id: knight.id, name: knight.name, token: knight.token, actor: knight.actor };
-}
-
 /**
  * The defender for a clash die: an enemy already in base contact -- GREATHELM
  * has no separate engagement range, see
@@ -383,21 +382,24 @@ export function findDefenderInBaseContact(
 }
 
 /**
- * Whether a knight is touching ANY enemy -- the courage phase's input (QSR p2:
- * a knight in base contact tests courage differently to one standing alone).
- *
- * Same tolerance as `findDefenderInBaseContact`, via the same predicate, for
- * the same reason: a `=== 0` here would report every knight on the board as
- * disengaged even mid-melee, quietly feeding the courage phase a false board.
+ * Damage limit at which a knight is immediately removed from play (QSR p2,
+ * see vault/greathelm/damage-and-removal.md and data/knight.ts's schema
+ * cap). The session (round/session.ts) needs a live `isRemoved` predicate
+ * per knight; this is where a canvas-gathered RoundKnight is translated into
+ * one, re-read on every call so a knight downed mid-round drops out
+ * immediately rather than on a cached flag.
  */
-function isInBaseContactWithAnyEnemy(
-  knight: RoundKnight,
-  knights: readonly RoundKnight[],
-  measure: MeasureApiLike
-): boolean {
-  const enemy = nearestEnemy(knight, knights, measure);
+const DAMAGE_LIMIT = 3;
 
-  return enemy !== undefined && isBaseContactDistance(enemy.distance, knight.token);
+function toSessionKnight(knight: RoundKnight): RoundSessionKnight {
+  return {
+    id: knight.id,
+    playerId: knight.playerId,
+    name: knight.name,
+    actor: knight.actor,
+    token: knight.token,
+    isRemoved: () => (knight.actor.system?.damage ?? 0) >= DAMAGE_LIMIT,
+  };
 }
 
 /**
@@ -420,7 +422,7 @@ export function formatInches(inches: number): string {
   return `${Number((Math.round(inches * factor) / factor).toFixed(DISPLAY_DECIMAL_PLACES))}`;
 }
 
-export interface RunRoundFromControlOptions {
+export interface BeginRoundFromControlOptions {
   knights: readonly RoundKnight[];
   combat: CombatDocumentLike;
   dice: DiceApiLike;
@@ -428,25 +430,37 @@ export interface RunRoundFromControlOptions {
   /** Kickstarter-only floor; off unless the world setting says otherwise. */
   minDicePoolFloorEnabled?: boolean;
   /** Seam for the initiative winner's first-or-second choice. See resolveFirstPlayer. */
-  chooseOrder?: (winnerId: string) => "first" | "second";
+  chooseOrder?: (outcome: InitiativeOutcome) => "first" | "second" | Promise<"first" | "second">;
   notify?: (message: string) => void;
 }
 
-export interface RoundControlResult {
+export interface BeginRoundFromControlResult {
+  /**
+   * The suspendable round -- one die at a time, driven by the pool panel.
+   * Wraps round/session.ts's pure `createRoundSession`: same legality rules,
+   * with the Foundry side effects a headless session must not know about
+   * (movement notifications, and persisting the spend order to the Combat
+   * document once the round completes) layered on top here instead.
+   */
+  session: RoundSession;
   firstPlayerId: string;
   tieRerolls: number;
   poolSizes: Map<string, number>;
-  order: ResolvedDie[];
-  movements: MovementPlan[];
-  courageOutcomes: Map<string, CourageTestOutcome>;
-  /** The knight order actually written to the Combat document. */
-  persistedOrder: string[];
 }
 
 /**
- * Runs one full GREATHELM round: gather -> roll pools (knights + 1) ->
- * determine initiative on most 6s (re-rolling an exact tie) -> battle phase
- * 6->1 -> courage phase -> persist the order.
+ * Sets up one GREATHELM round and hands back a session the pool panel pulls
+ * from: gather -> roll pools (knights + 1) -> determine initiative on most 6s
+ * (re-rolling an exact tie) -> the initiative winner's first-or-second choice
+ * -> a live session for the battle and courage phases.
+ *
+ * This is deliberately NOT `runRoundFromControl` any more. That function
+ * resolved every die itself via the round-robin die-to-knight assigner
+ * (defined but unused below) and `runRound` in one atomic call -- the
+ * auto-battler this sub-spec kills. The battle phase now belongs to whoever
+ * plays the returned session's dice one at a time (see
+ * `onRoundControlActivated` below, which hands it to the pool panel);
+ * round-control.ts no longer decides which knight spends which die.
  *
  * Note what is NOT here: the QSR's optional "re-roll any dice that are not
  * 6's, once" (vault/greathelm/initiative-phase.md) is a per-die player
@@ -454,9 +468,9 @@ export interface RoundControlResult {
  * option, whereas guessing at it would spend their dice for them. Left out
  * deliberately; it needs the same picker UI as the seams above.
  */
-export async function runRoundFromControl(
-  options: RunRoundFromControlOptions
-): Promise<RoundControlResult> {
+export async function beginRoundFromControl(
+  options: BeginRoundFromControlOptions
+): Promise<BeginRoundFromControlResult> {
   const { knights, combat, dice, measure } = options;
   const sides = sideIds(knights);
 
@@ -483,129 +497,91 @@ export async function runRoundFromControl(
     poolSizes.get(playerBId) ?? 0
   );
 
-  const winnerId =
-    initiative.outcome.result === "tie" ? playerAId : initiative.outcome.playerId;
-  const firstPlayerId = resolveFirstPlayer(
-    initiative.outcome,
-    sides,
-    options.chooseOrder ? options.chooseOrder(winnerId) : "first"
-  );
+  const choice = options.chooseOrder ? await options.chooseOrder(initiative.outcome) : "first";
+  const firstPlayerId = resolveFirstPlayer(initiative.outcome, sides, choice);
 
-  const roundDice: RoundDie[] = sides.flatMap((playerId) =>
-    assignDiceToKnights(
+  const pools = new Map<string, readonly PoolDie[]>(
+    sides.map((playerId) => [
       playerId,
-      initiative.pools.get(playerId) ?? [],
-      knightsOfSide(knights, playerId)
-    )
-  );
-
-  const byId = new Map(knights.map((knight) => [knight.id, knight]));
-
-  // The courage phase reads these objects AFTER the battle phase (runRound
-  // calls runCouragePhase last), so they are kept live: each clash below
-  // syncs the view from the Actor the wound was just written to. Snapshotting
-  // damage here instead would test courage against pre-battle wounds.
-  const courageViews = new Map<string, CourageKnight>(
-    knights.map((knight) => [
-      knight.id,
-      {
-        id: knight.id,
-        ownerId: knight.playerId,
-        damage: knight.actor.system?.damage ?? 0,
-        inBaseContactWithEnemy: isInBaseContactWithAnyEnemy(knight, knights, measure),
-      },
+      (initiative.pools.get(playerId) ?? []).map(
+        (rolled): PoolDie => ({ face: rolled.face as DieFace })
+      ),
     ])
   );
 
-  const syncCourageView = (knight: RoundKnight): void => {
-    const view = courageViews.get(knight.id);
+  const baseSession = createRoundSession({
+    knights: knights.map(toSessionKnight),
+    pools,
+    firstPlayerId,
+    dice,
+    measure,
+  });
 
-    if (!view) {
+  const emit = options.notify ?? ((): void => undefined);
+  const byId = new Map(knights.map((knight) => [knight.id, knight]));
+  const persistedOrder: string[] = [];
+  let persisted = false;
+
+  // loop.ts's writeRoundOrderToCombatFlags (unused here now) assigns to a
+  // plain `flags` object; on a real Combat document that write does not
+  // reach the database. Persisting via the document's own setFlag, once the
+  // session reports complete, is the fix that stays inside this sub-spec's
+  // pathspec -- loop.ts is not ours to edit.
+  async function maybeFinish(): Promise<void> {
+    if (persisted || !baseSession.isComplete()) {
       return;
     }
 
-    view.damage = knight.actor.system?.damage ?? view.damage;
-    view.inBaseContactWithEnemy = isInBaseContactWithAnyEnemy(knight, knights, measure);
-  };
+    persisted = true;
+    await combat.setFlag("battleframe", "order", persistedOrder);
+    emit(
+      `${localize("battleframe-greathelm.controls.round.complete")} ` +
+        `(${persistedOrder.length} dice, first: ${firstPlayerId}` +
+        `${initiative.rerolls > 0 ? `, tie re-rolls: ${initiative.rerolls}` : ""})`
+    );
+  }
 
-  const warbandsKnights = new Map<string, CourageKnight[]>(
-    sides.map((playerId) => [
-      playerId,
-      knightsOfSide(knights, playerId)
-        .map((knight) => courageViews.get(knight.id))
-        .filter((view): view is CourageKnight => view !== undefined),
-    ])
-  );
+  const session: RoundSession = {
+    remainingDice: () => baseSession.remainingDice(),
+    legalTargetsFor: (dieId) => baseSession.legalTargetsFor(dieId),
+    async spendDie(dieId, knightId, choices) {
+      // Movement (Sprint/Encircle/Shift) is reported here, never applied to
+      // the token -- see planMovement's own comment: auto-sliding a model
+      // could silently violate the "cannot move through models/terrain/
+      // narrower gaps" rule the vault confirms and this codebase has no
+      // collision for. The session itself never measures movement; that
+      // stays Foundry-glue, same as every other notification.
+      const die = baseSession.remainingDice().find((candidate) => candidate.id === dieId);
+      const mover = byId.get(knightId);
+      const action = die ? actionForFace(die.face) : undefined;
 
-  const movements: MovementPlan[] = [];
-
-  const result = await runRound({
-    dice: roundDice,
-    firstPlayerId,
-    playerIds: sides,
-    // A plain object: runRound's writeRoundOrderToCombatFlags mutates it
-    // in-memory. See the setFlag call below for why that is not the end of it.
-    combat: {},
-    onActivate: async (die) => {
-      const actor = byId.get(die.knightId);
-
-      if (!actor) {
-        return;
-      }
-
-      const movement = planMovement(die, actor, knights, measure);
-
-      if (movement) {
-        movements.push(movement);
-        options.notify?.(
-          `${actor.name ?? actor.id}: ${die.action} up to ${formatInches(movement.moveInches)}"`
+      if (die && mover && action && !requiresClashTest(action)) {
+        const plan = planMovement(
+          { id: die.id, playerId: die.playerId, knightId, face: die.face, action },
+          mover,
+          knights,
+          measure
         );
 
-        return;
+        if (plan) {
+          emit(`${mover.name ?? mover.id}: ${action} up to ${formatInches(plan.moveInches)}"`);
+        }
       }
 
-      const defender = findDefenderInBaseContact(actor, knights, measure);
-
-      if (!defender) {
-        // Bash/Light/Heavy require base contact (QSR p1). No contact, no legal
-        // spend -- skipped rather than resolved at range, which would be wrong.
-        options.notify?.(
-          `${actor.name ?? actor.id}: ${die.action} has no enemy in base contact -- die not spent`
-        );
-
-        return;
-      }
-
-      await resolveDieAction(die, toParticipant(actor), {
-        measure,
-        dice,
-        defender: toParticipant(defender),
-      });
-
-      syncCourageView(actor);
-      syncCourageView(defender);
+      await baseSession.spendDie(dieId, knightId, choices);
+      persistedOrder.push(knightId);
+      await maybeFinish();
     },
-    courage: { dice, warbandsKnights },
-  });
-
-  // loop.ts's writeRoundOrderToCombatFlags assigns to a plain `flags` object;
-  // on a real Combat document that write does not reach the database, so
-  // nothing would survive a reload. Persisting here, at the call site, via the
-  // document's own setFlag is the fix that stays inside this sub-spec's
-  // pathspec -- loop.ts is not ours to edit. If that function is ever fixed in
-  // place, this call becomes redundant, not wrong (same scope, key, value).
-  const persistedOrder = result.order.map((die) => die.knightId);
-  await combat.setFlag("battleframe", "order", persistedOrder);
-
-  return {
-    firstPlayerId,
-    tieRerolls: initiative.rerolls,
-    poolSizes,
-    order: result.order,
-    movements,
-    courageOutcomes: result.courageOutcomes,
-    persistedOrder,
+    async discardDie(dieId, reason) {
+      await baseSession.discardDie(dieId, reason);
+      await maybeFinish();
+    },
+    isComplete: () => baseSession.isComplete(),
+    activePlayerId: () => baseSession.activePlayerId(),
+    courageOutcomes: () => baseSession.courageOutcomes(),
   };
+
+  return { session, firstPlayerId, tieRerolls: initiative.rerolls, poolSizes };
 }
 
 /* ------------------------------------------------------------------------ *
@@ -734,10 +710,15 @@ function notifyUser(message: string, level: "info" | "warn" | "error" = "info"):
   const globalScope = globalThis as unknown as {
     ui?: { notifications?: Record<string, ((message: string) => void) | undefined> };
   };
-  const notify = globalScope.ui?.notifications?.[level];
+  const notifications = globalScope.ui?.notifications;
 
-  if (notify) {
-    notify(message);
+  // Called AS `notifications[level](message)`, not destructured into a bare
+  // reference first: Foundry's own `error()`/`warn()`/`info()` read `this`
+  // internally, and a detached reference throws the moment the reporter
+  // tries to report -- which happened live, and masked whatever the round
+  // actually failed on. Keeping the call on `notifications` preserves `this`.
+  if (typeof notifications?.[level] === "function") {
+    notifications[level]?.(message);
 
     return;
   }
@@ -750,14 +731,22 @@ function minDicePoolFloorEnabled(): boolean {
 }
 
 /**
- * The scene control's click handler: runs one full round for the GM.
+ * The scene control's click handler: sets up one round and opens the pool
+ * panel for the GM to play it, die by die.
  *
  * GM-only, and checked here rather than only on the button's visibility. A
- * round rolls dice, writes wounds to Actors, and writes turn order to the
- * Combat document -- all shared state a player must not be able to mutate,
- * and a hidden button is not an access control.
+ * round rolls dice and, once opened, the panel writes wounds to Actors and
+ * turn order to the Combat document -- all shared state a player must not be
+ * able to mutate, and a hidden button is not an access control.
+ *
+ * This function no longer resolves the round itself -- that was the
+ * round-robin auto-battler this sub-spec kills. It rolls initiative, asks
+ * the winner first-or-second
+ * (`promptFirstOrSecond`, honouring `forced-first` as a rule with no prompt),
+ * builds the session, and hands it to `openPoolPanel` -- the panel resolves
+ * every die from there, one GM click at a time.
  */
-export async function onRoundControlActivated(): Promise<RoundControlResult | undefined> {
+export async function onRoundControlActivated(): Promise<PoolPanelInstance | undefined> {
   if (!isGM()) {
     notifyUser(localize("battleframe-greathelm.controls.round.gmOnly"), "warn");
 
@@ -782,24 +771,26 @@ export async function onRoundControlActivated(): Promise<RoundControlResult | un
   }
 
   const knights = gatherKnightsFromCanvas();
+  const settings = game?.settings as WorldSettingsLike | undefined;
 
   try {
-    const result = await runRoundFromControl({
+    const { session } = await beginRoundFromControl({
       knights,
       combat,
       dice,
       measure,
       minDicePoolFloorEnabled: minDicePoolFloorEnabled(),
       notify: (message) => notifyUser(message),
+      chooseOrder: (outcome) => promptFirstOrSecond({ outcome, settings }),
     });
 
-    notifyUser(
-      `${localize("battleframe-greathelm.controls.round.complete")} ` +
-        `(${result.order.length} dice, first: ${result.firstPlayerId}` +
-        `${result.tieRerolls > 0 ? `, tie re-rolls: ${result.tieRerolls}` : ""})`
-    );
+    const panelKnights: PoolPanelKnight[] = knights.map((knight) => ({
+      id: knight.id,
+      playerId: knight.playerId,
+      name: knight.name ?? knight.id,
+    }));
 
-    return result;
+    return openPoolPanel(session, panelKnights);
   } catch (error) {
     // Contained: a ruleset throwing in its own loop must surface the ruleset
     // id and leave the world usable (see the Edge Cases table).

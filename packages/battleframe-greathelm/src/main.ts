@@ -155,7 +155,9 @@ Hooks.once("init", () => {
   registerKnightSheet();
   registerGreathelmSettings();
   // The round trigger: a scene control button, registered through Foundry's
-  // own getSceneControlButtons hook. This is what makes the round loop
+  // own getSceneControlButtons hook. Clicking it rolls initiative and opens
+  // the pool panel for the GM to play the round die by die -- it no longer
+  // resolves the round itself. This is what makes the player-driven round
   // reachable by a user -- and it needs nothing from packages/battleframe,
   // which is the point (see ./ui/round-control.ts).
   registerRoundControl();
