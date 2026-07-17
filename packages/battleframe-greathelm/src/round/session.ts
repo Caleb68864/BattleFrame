@@ -315,7 +315,21 @@ export function createRoundSession(options: CreateRoundSessionOptions): RoundSes
       ])
     );
 
-    outcomes = await runCouragePhase(dice, warbandsKnights);
+    // QSR p2 (confirmed): courage difficulty adds +1 per allied knight removed
+    // from play. Those already off the board when the phase begins -- killed by
+    // damage this round, or fled in an earlier one -- count too, not only the
+    // knights that flee mid-phase (runCouragePhase's own cascade handles those).
+    // Seed the count of currently-removed allies per side; without it the
+    // difficulty starts at 0 and the death-spiral the rule is built around never
+    // gathers, because the losses that should compound it are invisible.
+    const initialAlliedRemoved = new Map<string, number>(
+      playerIds.map((playerId) => [
+        playerId,
+        knights.filter((knight) => knight.playerId === playerId && isRemoved(knight)).length,
+      ])
+    );
+
+    outcomes = await runCouragePhase(dice, warbandsKnights, initialAlliedRemoved);
     await persistCourageFlight(outcomes);
     complete = true;
   }

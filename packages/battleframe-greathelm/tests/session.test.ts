@@ -224,4 +224,35 @@ describe("createRoundSession", () => {
     expect(outcomes?.get("b1")?.passed).toBe(true);
     expect(courageRollCount).toBeGreaterThan(0);
   });
+
+  it("counts allies already removed from play in courage difficulty, not just this-phase flights", async () => {
+    // QSR p2 (confirmed): difficulty = (allied knights removed from play) +
+    // (damage on the testing knight). b2 is already off the board when the
+    // courage phase begins, so b1's test must feel that loss: difficulty is
+    // 1 (removed ally) + 1 (own damage) = 2, not 0 + 1. Seeding only the
+    // this-phase cascade -- as the caller did before -- undercounts the
+    // death-spiral the rule is built around.
+    const b1Actor = makeActor(1); // damaged and in contact -> tests
+    const knights = [
+      knight("a1", "a"),
+      knight("b1", "b", { actor: b1Actor }),
+      knight("b2", "b", { isRemoved: () => true }), // already removed from play
+    ];
+    const pools = new Map([
+      ["a", pool(6)],
+      ["b", pool(5)],
+    ]);
+    const measure = makeMeasure([["a1", "b1"]]);
+    const dice: DiceApiLike = {
+      async roll() {
+        return { total: 6 }; // always passes; difficulty is recorded regardless
+      },
+    };
+    const session = createRoundSession(baseOptions(knights, pools, "a", dice, measure));
+
+    await session.spendDie("a-d1", "a1");
+    await session.spendDie("b-d1", "b1"); // last die -> triggers courage phase
+
+    expect(session.courageOutcomes()?.get("b1")?.difficulty).toBe(2);
+  });
 });

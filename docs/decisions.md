@@ -721,3 +721,35 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   6→1 alternating order; that rule now lives only in `session.ts`, whose own tests
   cover it — one encoding, not two that can drift.
 - Commit: refactor(greathelm): delete the dead round loop superseded by session.ts
+
+## 2026-07-17 — Courage difficulty ignored allies already removed; the death-spiral never gathered
+- Symptom: QSR p2 (`courage-test.md`, `confidence: confirmed`): difficulty =
+  (allied knights removed from play) + (damage on the testing knight). `courage.ts`
+  models this exactly, and `runCouragePhase` takes an `initialAlliedRemoved` seed
+  for the allies already off the board — but the live caller, `session.ts`'s
+  `maybeCompleteRound`, invoked `runCouragePhase(dice, warbandsKnights)` with **no
+  seed**. So difficulty started at 0 and counted only knights that fled *during*
+  the phase (the cascade). A warband that had already lost knights to damage this
+  round, or to flight in an earlier round, faced tests as easy as if it were at
+  full strength. The vault calls the cascade "the game's real losing condition";
+  the missing seed removed its main input, so warbands almost never collapsed.
+- Fix: seed `initialAlliedRemoved` per side with the count of currently-removed
+  allies — `knights.filter(k => k.playerId === p && isRemoved(k)).length` — and pass
+  it. No double-count with the cascade: the seed is phase-start state, and knights
+  that flee mid-phase are persisted (`persistCourageFlight`) only *after*
+  `runCouragePhase`, so they are invisible to `isRemoved` at seed time and are
+  accounted for solely by the cascade's `removed += 1`.
+- Surfaces: `packages/battleframe-greathelm/src/round/session.ts`
+  (`maybeCompleteRound`), `tests/session.test.ts` (a removed ally raises a
+  tester's difficulty to 2, not 1).
+- Watch: the fifth instance of this project's endemic species — a correct pure
+  function handed the wrong (or no) input by its live caller, passing every
+  unit test while the rule goes missing (see: momentum, courage *outcomes*,
+  victory `isRemoved`, and the round loop). The tell each time is a parameter or
+  return value that only tests supply or read. `initialAlliedRemoved` existed and
+  was defaulted; nothing live populated it. The new test failed against the old
+  caller (difficulty 1) and passes now (2) — the seed is load-bearing, not a
+  passenger. The intra-phase cascade itself remains `confidence: partial` in the
+  vault (no source states a mid-phase flee raises later difficulty); this fix does
+  not touch that — it wires only the confirmed phase-start count.
+- Commit: fix(greathelm): courage difficulty counts allies already removed, not just this-phase flights
