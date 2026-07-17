@@ -4,7 +4,7 @@ master_spec: "docs/specs/2026-07-17-greathelm-player-layer.md"
 sub_spec_number: 4
 title: "The other two player choices, and the toggles"
 date: 2026-07-17
-depends_on: ["SS-01"]
+depends_on: ["SS-01", "SS-02"]
 ---
 
 # Sub-Spec 4: The other two player choices, and the toggles

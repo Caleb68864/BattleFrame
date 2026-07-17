@@ -103,8 +103,7 @@ example is not evidence — that is the whole point of Approach C.
 ## Requirements
 
 1. A GM plays a full round choosing every die→knight assignment from the UI, no console.
-2. **`assignDiceToKnights` has zero production callers.** *(Corrected — this said
-   `assignDiceRoundRobin`, which does not exist. See SS-05's criterion.)*
+2. `assignDiceRoundRobin` has **zero production callers**.
 3. Selecting a die highlights legal knights; illegal knights show **why** they are illegal.
 4. The initiative winner is prompted first-or-second; the prompt can be disabled.
 5. An attacker with 2+ enemies in base contact is prompted for a target; can be disabled.
@@ -202,8 +201,7 @@ dispatch: factory
     broken rather than sequenced.
   - `[BEHAVIORAL]` Clicking a die selects it; clicking it again deselects.
   - `[BEHAVIORAL]` With a die selected, the panel shows each legal knight and, for illegal
-    ones, **the session's reason** rendered as human text.  - `[STRUCTURAL]` **The panel is GM-only.** `PoolPanel.canUserAccess()` returns `true` only if
-    `game.user?.isGM === true`. Non-GMs see a "Read-only" notice and cannot click a die.
+    ones, **the session's reason** rendered as human text.
   - `[BEHAVIORAL]` Clicking a knight spends the die and the panel re-renders from session
     state — **legality is re-derived on every render, never cached**.
   - `[STRUCTURAL]` **Every string is an i18n key present in `lang/en.json`.** Verified:
@@ -263,17 +261,11 @@ dispatch: factory
 ---
 sub_spec_id: SS-04
 phase: run
-depends_on: ['SS-01', 'SS-02']
+depends_on: ['SS-01']
 dispatch: factory
 ---
 
 ### 4. The other two player choices, and the toggles
-
-> **Depends on SS-02 for a file, not for code.** The factory's file-conflict gate correctly
-> refused to dispatch these in parallel: both modify `lang/en.json`, and both depended only on
-> SS-01, so they would have raced on the same file. The dependency is declared rather than
-> worked around — serialising costs one wave and is honest; splitting the lang file to dodge
-> it would be a build artefact shaped by a scheduler.
 
 - **Scope:** The initiative winner's **first-or-second** choice, and **which** touching enemy
   to attack when several qualify. Both are QSR-confirmed player choices that SS-13 defaulted

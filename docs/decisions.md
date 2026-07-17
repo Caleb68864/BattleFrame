@@ -408,3 +408,22 @@ reader would otherwise re-derive or re-break.
   Both prep agents independently caught the `assignDiceRoundRobin` error. Independent
   corroboration is worth more than a second opinion from the same context.
 - Commit: this commit.
+
+## 2026-07-17 — The factory refused to dispatch: two parallel sub-specs shared a file
+- Symptom: the factory ran and completed **0/15** sub-specs. Exit 0 from the shell wrapper
+  masked an internal exit 2 (`deferred_manual`). Nothing was dispatched.
+- Fix: `gate=file-conflict reason=packages/battleframe-greathelm/lang/en.json
+  sub_spec_a=SS-02 sub_spec_b=SS-04`. Both modify `lang/en.json`; both depended only on
+  SS-01, so they sat in the same wave and would have **raced on the same file**. Declared the
+  dependency instead of dodging it: SS-04 now `depends_on: ['SS-01','SS-02']` — it needs SS-02
+  for a *file*, not for code. Splitting the lang file to regain the parallelism would be a
+  build artefact shaped by a scheduler. Costs one wave; honest.
+- Surfaces: master spec SS-04 frontmatter + Requirement 2; phase spec SS-04 frontmatter.
+- Watch: **the gate did its job and I should have caught this while writing the spec.** Any two
+  sub-specs in the same wave that touch the same file will race — check `Files (modify)`
+  across a wave before declaring the DAG done. Also: the factory's coherence pass
+  independently flagged `assignDiceRoundRobin`, and was right that I had only fixed the
+  *criterion* — **Requirement 2 still named the nonexistent function.** Fixing a claim in one
+  place and not the other is how the vault ended up with a `confirmed` note saying measurement
+  was "EXACT" while the code returned 0. When a fact is wrong, grep for every copy of it.
+- Commit: this commit.
