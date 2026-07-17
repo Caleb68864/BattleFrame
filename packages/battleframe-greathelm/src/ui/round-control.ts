@@ -94,6 +94,13 @@ export interface RoundKnight {
   actor: ActorLike;
   /** Opaque here -- only ever handed to `measure.between` (as in loop.ts/clash.ts). */
   token?: unknown;
+  /**
+   * The real canvas Token placeable, for rendering only (tinting reads
+   * `.mesh`). Deliberately NOT `token` above: that is a reshaped double
+   * carrying only what `measure.between` reads, and it has no `.mesh` -- tint
+   * it and nothing happens, silently. Keep the two apart.
+   */
+  placeable?: unknown;
 }
 
 /**
@@ -657,6 +664,7 @@ export function gatherKnightsFromCanvas(): RoundKnight[] {
         playerId: sideFromDisposition(placeable.document?.disposition),
         name: actor.name ?? placeable.name,
         actor,
+        placeable,
         token: {
           flags: placeable.document?.flags,
           width: placeable.document?.width,
@@ -759,6 +767,7 @@ export async function onRoundControlActivated(): Promise<PoolPanelInstance | und
       id: knight.id,
       playerId: knight.playerId,
       name: knight.name ?? knight.id,
+      token: knight.placeable,
     }));
 
     return openPoolPanel(session, panelKnights);

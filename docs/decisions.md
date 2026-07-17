@@ -427,3 +427,23 @@ reader would otherwise re-derive or re-break.
   place and not the other is how the vault ended up with a `confirmed` note saying measurement
   was "EXACT" while the code returned 0. When a fact is wrong, grep for every copy of it.
 - Commit: this commit.
+
+## 2026-07-17 — Highlighting: tint the mesh, never refresh it; keep the render handle apart from the measurement double
+
+**Decision.** `resolveTintApi().setTint` writes `token.mesh.tint` and returns. It does NOT call
+`placeable.refresh()`. `RoundKnight` gains a `placeable` field (the real canvas Token, for
+rendering) kept deliberately separate from `token` (a reshaped double carrying only what
+`measure.between` reads).
+
+**Why.** Measured live on v14.363, controlled experiment: write-alone holds indefinitely;
+write-then-`refresh()` reads back `#ffffff` after ~800ms. `refresh()` recomputes `mesh.tint`
+from `document.texture.tint`, which is white because highlighting deliberately never writes the
+document. The helper destroyed its own write on its last line. The two knight shapes stay apart
+because the measurement double has no `.mesh` — tint it and nothing happens, silently.
+
+**Scope.** Stays in the module for now. `resolveTintApi` is pure Foundry-version plumbing with
+zero GREATHELM semantics and is a strong candidate for core (same category as `measure` and
+`base-model`) — deferred until a second ruleset needs it, per the standing rule that anything
+generalised from one ruleset will be that ruleset's shape.
+
+Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refresh.md`.

@@ -1,6 +1,12 @@
 import { MODULE_ID, type ActionId, type DieFace } from "../constants";
 import { actionForFace } from "../round/actions";
 import type { IllegalTargetReason, RoundSession } from "../round/session";
+import {
+  createHighlightController,
+  resolveTintApi,
+  type HighlightController,
+  type TintApiLike,
+} from "./highlight";
 import { isGM } from "./round-control";
 
 /**
@@ -12,6 +18,11 @@ export interface PoolPanelKnight {
   id: string;
   playerId: string;
   name: string;
+  /**
+   * The real canvas Token placeable, passed straight through to the highlight
+   * controller's tint API. `unknown` because this module never reads it.
+   */
+  token?: unknown;
 }
 
 export interface DieViewModel {
@@ -156,6 +167,10 @@ function resolveFoundryApplications(): {
 export interface PoolPanelConstructorOptions {
   session: RoundSession;
   knights: readonly PoolPanelKnight[];
+  /** Injectable for tests; production resolves its own from the live canvas. */
+  highlights?: HighlightController;
+  /** Injectable for tests; production feature-detects via `resolveTintApi()`. */
+  tintApi?: TintApiLike;
   [key: string]: unknown;
 }
 
@@ -211,12 +226,20 @@ export function createPoolPanelClass(
     session: RoundSession;
     knights: readonly PoolPanelKnight[];
     selectedDieId: string | undefined;
+    highlights: HighlightController;
 
     constructor(options: PoolPanelConstructorOptions) {
       super(options);
       this.session = options.session;
       this.knights = options.knights;
       this.selectedDieId = undefined;
+      this.highlights =
+        options.highlights ??
+        createHighlightController({
+          session: options.session,
+          knights: options.knights.map((knight) => ({ id: knight.id, token: knight.token })),
+          tintApi: options.tintApi ?? resolveTintApi(),
+        });
     }
 
     /** GM-only: a hidden panel is not access control, so every entry point checks this too. */
@@ -226,6 +249,7 @@ export function createPoolPanelClass(
 
     selectDie(dieId: string): void {
       this.selectedDieId = this.selectedDieId === dieId ? undefined : dieId;
+      this.highlights.update(this.selectedDieId);
       void (this as unknown as { render: (force?: boolean) => unknown }).render(true);
     }
 
@@ -237,7 +261,19 @@ export function createPoolPanelClass(
       const dieId = this.selectedDieId;
       this.selectedDieId = undefined;
       await this.session.spendDie(dieId, knightId);
+      // After the spend, not before: `update` short-circuits to a clear once
+      // the session completes, so the last die of a round leaves no tint behind.
+      this.highlights.update(this.selectedDieId);
       void (this as unknown as { render: (force?: boolean) => unknown }).render(true);
+    }
+
+    /** Tints are client-render state, not document state -- nothing else will clean them up. */
+    async _onClose(options: unknown): Promise<void> {
+      this.highlights.close();
+
+      if (typeof super._onClose === "function") {
+        await super._onClose(options);
+      }
     }
 
     async _onRender(context: unknown, options: unknown): Promise<void> {

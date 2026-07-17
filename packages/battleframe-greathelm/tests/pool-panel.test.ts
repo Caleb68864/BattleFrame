@@ -319,3 +319,58 @@ describe("createPoolPanelClass", () => {
     expect(spendDie).not.toHaveBeenCalled();
   });
 });
+
+describe("pool panel drives token highlighting", () => {
+  // Regression guard for the defect that shipped SS-03 dead: highlight.ts was
+  // imported by nothing but its own tests, so `applyHighlights` was
+  // tree-shaken out of the bundle entirely and clicking a die tinted nothing.
+  // Every assertion here is about the panel *calling* the controller -- the
+  // controller's own behaviour is highlight.test.ts's job.
+  function panelWith(highlights: { update: any; close: any }) {
+    vi.stubGlobal("game", { user: { isGM: true } });
+
+    const PanelClass = createPoolPanelClass(
+      FakeApplicationV2Base as unknown as new (...args: any[]) => any,
+      fakeMixin as unknown as (base: any) => any
+    ) as unknown as new (options: unknown) => any;
+
+    return new PanelClass({
+      session: fakeSession({
+        remainingDice: () => [{ id: "a-d1", playerId: "a", face: 6 }],
+        activePlayerId: () => "a",
+        legalTargetsFor: () => [{ knightId: "k1", legal: true }],
+        spendDie: vi.fn(async () => undefined),
+      }),
+      knights: [{ id: "k1", playerId: "a", name: "Knight", token: { mesh: {} } }],
+      highlights,
+    });
+  }
+
+  it("selecting a die updates highlights with that die; re-selecting it clears them", () => {
+    const update = vi.fn();
+    const panel = panelWith({ update, close: vi.fn() });
+
+    panel.selectDie("a-d1");
+    expect(update).toHaveBeenLastCalledWith("a-d1");
+
+    panel.selectDie("a-d1"); // toggle off
+    expect(update).toHaveBeenLastCalledWith(undefined);
+  });
+
+  it("closing the panel clears highlights -- tints are render state nothing else cleans up", async () => {
+    const close = vi.fn();
+    const panel = panelWith({ update: vi.fn(), close });
+
+    await panel._onClose({});
+    expect(close).toHaveBeenCalledOnce();
+  });
+
+  it("spending a die clears highlights after the spend, not before", async () => {
+    const update = vi.fn();
+    const panel = panelWith({ update, close: vi.fn() });
+
+    panel.selectDie("a-d1");
+    await panel.spendOnKnight("k1");
+    expect(update).toHaveBeenLastCalledWith(undefined);
+  });
+});

@@ -199,15 +199,22 @@ export function resolveTintApi(): TintApiLike | undefined {
           return;
         }
 
-        if (placeable.mesh && "tint" in placeable.mesh) {
-          placeable.mesh.tint = color ?? 0xffffff;
-        } else if ("tint" in placeable) {
-          placeable.tint = color ?? 0xffffff;
-        } else {
+        if (!placeable.mesh || !("tint" in placeable.mesh)) {
           return;
         }
 
-        placeable.refresh?.();
+        // Write and stop. Do NOT call `placeable.refresh()` here: refresh
+        // recomputes mesh.tint from `document.texture.tint` (#ffffff, since we
+        // deliberately never write the document), so refreshing destroys the
+        // tint we just set. Measured live on v14.363: write-then-refresh reads
+        // back #ffffff after ~800ms, while write-alone holds indefinitely. The
+        // clobber is batched through RenderFlags on a later tick, so a probe
+        // that re-reads too soon (<300ms) sees the tint survive and concludes
+        // the opposite -- see the vault note.
+        //
+        // PIXI samples mesh.tint every frame, so the write alone is visible
+        // immediately and no refresh is needed to show it.
+        placeable.mesh.tint = color ?? 0xffffff;
       },
     };
   } catch {
