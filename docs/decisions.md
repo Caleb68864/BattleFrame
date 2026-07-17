@@ -205,3 +205,34 @@ reader would otherwise re-derive or re-break.
   testing *reachability*, not *existence*. Every future sub-spec that produces runtime
   behaviour needs one.
 - Commit: this commit.
+
+## 2026-07-17 — Live v14: every open question answered; the spike was obsolete
+- Symptom: a dozen turns of this project were gated on questions nobody had checked against a
+  real Foundry — init ordering, the v14 tracker base class, `getSceneControlButtons`,
+  ApplicationV2 availability, and whether base-to-base measurement was even reachable.
+- Fix: deployed the **real packages** (not the throwaway `spike/`) into the live v14.363
+  container via Portainer's Docker archive API, created a world, enabled the module, and
+  probed running code with Playwright. **The spike was obsolete the moment real packages
+  existed** — it would have tested code we are deleting. Results are recorded as `confirmed`
+  in `vault/foundry-systems/spike-results-live-v14.md`.
+- Surfaces: everything. Headlines: **init ordering HOLDS** (GREATHELM registered; the silent
+  `if (!api) return` never fired); **a module contributed an Actor subtype to a system at
+  runtime** — the architecture's entire premise, confirmed; measurement returned
+  `1.7401574803149606` against an expected `1.7401574803149606`, **exact to the last bit**,
+  with touching bases at exactly `0` and `between(a,b) === between(b,a)` strictly true.
+- Watch: **live running found five bugs no test could.** (1) A new system does not appear
+  until Foundry restarts — it scans `Data/systems` only at startup; this affects every
+  install path. (2) Three GREATHELM i18n keys resolved to raw keys — every unit test passed
+  without them. (3) A crash dump had landed inside the system package and would have shipped
+  verbatim. (4) `system.json` had no `styles` entry, so the CSS shipped and never loaded.
+  (5) The wizard told users distances measure in "millimetres" — they measure in inches; mm
+  is the *base size* unit. That is the same in/ft/mm confusion that produced the 12× bug,
+  resurfacing in user-facing prose.
+  **The deeper lesson: 186 green tests, a clean typecheck, and two real bundles still did not
+  tell us the product worked. Twenty minutes in a live world did.**
+- Caveat: ordering held for ONE configuration on ONE version. Foundry publishes no ordering
+  contract, and `settings-and-api-namespace-conventions.md` (`confirmed`) still says
+  top-level assignment is what makes load order irrelevant. **Adopt it anyway** — one line,
+  and it removes the dependency on this observation. The silent `return` in `main.ts` remains
+  a trade-off #2 violation regardless.
+- Commit: this commit.
