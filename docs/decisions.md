@@ -804,3 +804,26 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   in-session comment tripped it is the point — neutrality erodes through prose long
   before it erodes through imports.
 - Commit: test(core): assert core speaks no ruleset vocabulary, and fix two comment leaks
+
+## 2026-07-17 — The public API surface was asserted for three of four services; areas was reachable-in-code, tested-nowhere
+- Symptom: `game.battleframe` is the whole contract a ruleset module builds
+  against — `{api, measure, dice, areas}`. The entry-point test pinned `api`,
+  `measure` and `dice`, but **`areas`** — the AoE primitive — was installed
+  (`installAreaApi()` at the entry point) yet asserted nowhere. Dropping that one
+  line would vanish `game.battleframe.areas` with a green suite: the same
+  reachability failure that once shipped a 7-line bundle, in miniature.
+- Fix: one test that pins the entire surface — all five `api` methods
+  (`register/activate/getActive/get/list`), `measure.between`, `dice.roll`, and
+  all five `areas` methods (`circle/rectangle/contains/tokensInside/toRegionShapes`)
+  — asserting each is a function at the namespace a module actually reads, with a
+  message that names which service/method is missing.
+- Surfaces: `packages/battleframe/src/battleframe.test.ts` (one new case); no
+  production change.
+- Watch: mutation-verified — commenting out `installAreaApi()` fails with
+  "game.battleframe.areas is missing", and nothing else. This is the standing rule
+  from the dead-bundle entry applied to the last service that lacked it: **every
+  public service must be asserted at the entry point, not only in its own unit
+  test**, because unit tests import the service directly and cannot see it fall out
+  of the shipped namespace. The surface list is now the single place that has to be
+  updated when core gains a fifth primitive — which is the point.
+- Commit: test(core): pin the complete game.battleframe public API surface
