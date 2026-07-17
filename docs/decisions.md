@@ -333,3 +333,27 @@ reader would otherwise re-derive or re-break.
   currently failing"; playing one round made it current. **When a predicate is duplicated,
   fixing one copy is worse than fixing none.**
 - Commit: this commit.
+
+## 2026-07-17 — The rules were right; the game was missing
+- Symptom: a full round plays correctly in a live world — pool sizing, 6→1, contact, opposed
+  clashes, damage, courage — and **the player makes zero decisions**. Dice are assigned
+  round-robin.
+- Fix: specced the player layer (`docs/specs/2026-07-17-greathelm-player-layer.md`).
+  `vault/greathelm/action-economy-per-die-not-per-model.md` (`confirmed`) is unambiguous: the
+  pool is a **player-level** resource, any die may activate any knight, there is no activation
+  limit, one knight may take every action. **Choosing which knight spends which die IS
+  GREATHELM.** Round-robin does not approximate that choice — it deletes it, leaving an
+  auto-battler that happens to obey the rules. SS-13's own code said so: *"it is not an AI and
+  does not claim to be a good one. A real per-die knight picker is the obvious next
+  increment."*
+- Surfaces: new design + spec; 5 sub-specs; core untouched.
+- Watch: **the architectural consequence is a prediction coming true.** Player agency forces
+  `runRound` from a pure function into a **suspendable session** — which is exactly what the
+  original design predicted from INX (reactions interrupt an activation) and Classic
+  BattleTech (*"the target chooses"* before the attacker rolls): *"attack resolution cannot be
+  a pure function; it must suspend and prompt another player."* That was filed as the
+  toolkit's Resolution Stack, Phase 5, gated on three rulesets. It arrived early from a fourth
+  direction — the player's own turn. **Do NOT generalise it into core or a toolkit now: one
+  example is not evidence.** That restraint is the entire point of Approach C, and this is the
+  first real test of it.
+- Commit: this commit.
