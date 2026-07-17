@@ -706,12 +706,24 @@ function format(key: string, data: Record<string, string | number>): string {
 }
 
 /**
- * A human label for a side. Disposition ids ("friendly"/"hostile") are engine
- * vocabulary, not something to show a player who has never read the rules, so
- * prefer a knight's own name's owner where we have one.
+ * A human label for a side.
+ *
+ * A side is not a knight. This once returned a single knight's `name`, so the
+ * win banner announced "Sir Bedwyr wins" for a whole warband -- confidently
+ * naming one model as if it were the army. The intent was right (a raw
+ * disposition id like "hostile" is engine vocabulary, not player prose); the
+ * fix was to name the wrong thing. The side ids are localized instead, so the
+ * banner reads "The hostile warband wins".
+ *
+ * Falls back to the id itself for an unmapped disposition rather than a raw
+ * i18n key -- `sideFromDisposition` only ever yields `friendly`/`hostile`,
+ * both mapped, but "hostile" is still readable if that ever changes.
  */
-function sideLabel(playerId: string, knight: RoundKnight | undefined): string {
-  return knight?.name ?? playerId;
+export function sideLabel(playerId: string): string {
+  const key = `${MODULE_ID}.side.${playerId}`;
+  const label = localize(key);
+
+  return label === key ? playerId : label;
 }
 
 function localize(key: string): string {
@@ -777,10 +789,9 @@ async function resolveRoundEnd(
   const outcome = checkVictory(toVictoryKnights(knights));
 
   if (outcome.result === "winner") {
-    const knight = knights.find((candidate) => candidate.playerId === outcome.playerId);
     notifyUser(
       format("battleframe-greathelm.victory.winner", {
-        player: sideLabel(outcome.playerId, knight),
+        player: sideLabel(outcome.playerId),
       })
     );
 

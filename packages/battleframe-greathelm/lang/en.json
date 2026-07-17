@@ -71,6 +71,10 @@
       "light": "Clash test. On a win, deals {damage} damage.",
       "heavy": "Clash test. On a win, deals {damage} damage."
     },
+    "side": {
+      "friendly": "The friendly warband",
+      "hostile": "The hostile warband"
+    },
     "victory": {
       "winner": "{player} wins — only their knights remain in the play area.",
       "continue": "Round {round} over. Both sides still have knights: starting a new round.",
