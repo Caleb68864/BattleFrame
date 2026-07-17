@@ -5,7 +5,7 @@
 
   "battleframe.setupWizard.title": "BattleFrame Setup",
   "battleframe.setupWizard.emptyTitle": "No ruleset installed. That is a working BattleFrame.",
-  "battleframe.setupWizard.emptyBody": "BattleFrame with no ruleset is a table and a ruler: scenes render, tokens move, and distance measures base-to-base in millimetres. What it has no opinion about is rules — turns, actions, and dice belong to a ruleset module, because no two games agree on them. Install a ruleset module and enable it, and it will appear here for you to choose. Until then, nothing is broken and nothing is missing.",
+  "battleframe.setupWizard.emptyBody": "BattleFrame with no ruleset is a table and a ruler: scenes render, tokens move, and distance measures base-to-base — edge of one miniature's base to the edge of another's, the way the rules of a tabletop game actually measure. What it has no opinion about is rules — turns, actions, and dice belong to a ruleset module, because no two games agree on them. Install a ruleset module and enable it, and it will appear here for you to choose. Until then, nothing is broken and nothing is missing.",
   "battleframe.setupWizard.readyBody": "Choose the ruleset that governs this world. Exactly one is primary; you can change it later from Settings.",
   "battleframe.setupWizard.selectPrimary": "Make Primary",
   "battleframe.setupWizard.active": "Active",

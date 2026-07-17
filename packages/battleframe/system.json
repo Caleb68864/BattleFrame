@@ -8,6 +8,7 @@
     "verified": "14"
   },
   "esmodules": ["dist/battleframe.js"],
+  "styles": ["styles/battleframe.css"],
   "languages": [
     {
       "lang": "en",

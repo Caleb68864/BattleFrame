@@ -1,5 +1,12 @@
 {
   "battleframe-greathelm": {
+    "sheets": {
+      "knight": "Knight"
+    },
+    "fields": {
+      "damage": "Damage",
+      "momentum": "Momentum"
+    },
     "settings": {
       "minDicePoolFloorEnabled": {
         "name": "Minimum Dice Pool of 3",

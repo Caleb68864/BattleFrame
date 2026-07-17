@@ -7,6 +7,12 @@ const REPO_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 
 const EXCLUDE = new Set(["node_modules", "src", "tests", "vite.config.ts", "package.json"]);
 
+// An allow-list would be safer than a deny-list, but the package shape is still
+// moving. Until then: never ship crash dumps, logs, or editor droppings. Caught
+// during the first real deploy -- a bash.exe.stackdump had landed inside the
+// system package and would have been copied into Foundry verbatim.
+const EXCLUDE_PATTERNS = [/\.stackdump$/i, /\.log$/i, /^\.DS_Store$/, /^Thumbs\.db$/];
+
 function parseArgs(argv) {
   const args = {};
   for (let i = 0; i < argv.length; i += 1) {
@@ -35,8 +41,9 @@ function copyPackage(packageDirName, destParent) {
   cpSync(source, destination, {
     recursive: true,
     filter: (src) => {
-      const base = src.split(/[\\/]/).pop();
-      return !EXCLUDE.has(base ?? "");
+      const base = src.split(/[\\/]/).pop() ?? "";
+      if (EXCLUDE.has(base)) return false;
+      return !EXCLUDE_PATTERNS.some((p) => p.test(base));
     },
   });
 
