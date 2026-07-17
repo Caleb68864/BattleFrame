@@ -153,8 +153,15 @@ dispatch: factory
     be loud.
   - `[BEHAVIORAL]` When the last die is spent, `isComplete()` is true and the courage phase
     runs via the existing `runCouragePhase` — **courage is not a player choice**.
+  - `[STRUCTURAL]` `discardDie(dieId, reason)` exists and spends a die **without** activating a
+    knight. *(Added during prep.)* Without it, the criterion below is **unsatisfiable**: a side
+    whose knights are all gone still holds dice with no legal target, so the round
+    **deadlocks** — never illegal, never spendable, never complete. This is the explicit form
+    of what `round-control.ts:570` already does implicitly (notify + skip a clash die with no
+    defender).
   - `[BEHAVIORAL]` A knight removed mid-round (reduced to 0) does not break the session;
-    legality is re-derived, never cached.
+    legality is re-derived, never cached. A side with **no** legal target for a held die can
+    discard it and the round still reaches `isComplete()` — **it must never deadlock.**
   - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- session` passes,
     covering: 6→1 enforcement, alternation, a side running out, an illegal spend throwing, a
     vanished knight, and completion triggering courage.
@@ -187,8 +194,11 @@ dispatch: factory
 - **Acceptance criteria:**
   - `[STRUCTURAL]` Uses ApplicationV2 via `foundry.applications.api.ApplicationV2` +
     `HandlebarsApplicationMixin`, per `vault/foundry-systems/applicationv2-sheet-structure.md`.
-  - `[BEHAVIORAL]` Shows each unspent die with its face and action name. Dice the session will
-    not currently offer (a higher face is unspent) are visibly unavailable.
+  - `[BEHAVIORAL]` Shows **every unspent die, both sides**, with its face and action name;
+    only currently-offerable dice are selectable. *(Clarified during prep.)* **6→1 is a global
+    rule** — a die is unavailable because *the opponent* holds a higher face. An
+    active-side-only panel cannot explain why your 4 is greyed out, which makes the game look
+    broken rather than sequenced.
   - `[BEHAVIORAL]` Clicking a die selects it; clicking it again deselects.
   - `[BEHAVIORAL]` With a die selected, the panel shows each legal knight and, for illegal
     ones, **the session's reason** rendered as human text.
@@ -197,6 +207,11 @@ dispatch: factory
   - `[STRUCTURAL]` **Every string is an i18n key present in `lang/en.json`.** Verified:
     every `battleframe-greathelm.*` key referenced by this sub-spec's files exists in the lang
     file. (Three keys shipped missing last time and rendered as raw keys on the knight sheet.)
+  - `[STRUCTURAL]` **i18n keys are literal, never runtime-assembled.** *(Added during prep.)*
+    A key built as `` `battleframe-greathelm.reasons.${reason}` `` is **invisible to the check
+    above** — which is precisely how three keys shipped missing while every test passed. Map
+    the `IllegalReason` union to keys with an exhaustive `Record`, so a new reason **breaks the
+    build** rather than rendering a raw key at the table.
   - `[BEHAVIORAL]` The panel states plainly that a reload loses a half-played round.
   - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- pool-panel` passes.
   - `[STRUCTURAL]` The panel contains **no rules logic** — verified by
