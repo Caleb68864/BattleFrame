@@ -909,3 +909,28 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   helpers, so the *rule* — what the current face and active player are — is single-
   sourced, which is the part that was actually spread across files.
 - Commit: refactor(greathelm): session owns die offerability; the panel asks instead of re-deriving
+
+## 2026-07-17 — Nothing asserted the language file carried the keys the code references
+- Symptom: missing i18n keys have shipped here more than once (three resolved to
+  raw strings live while every test passed). The exhaustive `Record<union, key>`
+  objects guarantee a key *string* exists for each case, and one hand-written list
+  in `pool-panel.test.ts` checked a dozen keys — but nothing asserted the *language
+  file itself* carried every key the code references, and the computed families
+  (`actions.<id>`, `actionHint.<id>`, `side.<...>`) were unchecked against en.json
+  entirely. A grep confirmed all 38 literal keys and all 12 action-family keys
+  currently resolve, so this closes a latent gap, not an active bug.
+- Fix: `tests/i18n.test.ts` flattens en.json to dotted keys (Foundry resolves keys
+  against the nested object; the flatten matches), scans `src` for every literal
+  `"battleframe-greathelm.*"` reference, and asserts each resolves — plus the
+  action name/hint families for all six faces from `DIE_FACE_TO_ACTION`. Guards
+  itself with a floor (`referenced.size > 20`) so a broken regex can't pass
+  vacuously.
+- Surfaces: `packages/battleframe-greathelm/tests/i18n.test.ts` (new); no source
+  change.
+- Watch: mutation-verified — deleting `actions.bash` from en.json fails the test
+  naming the missing key. Still blind to keys built from *runtime* strings the
+  scan can't see as literals (e.g. a `reasons.${reason}` interpolation) — those
+  stay covered by their exhaustive `Record`s, which is why those Records exist. The
+  rule this enforces: a key the code can name literally must exist in the language
+  file, checked at build time, not discovered in a live world.
+- Commit: test(greathelm): assert en.json carries every i18n key the code references
