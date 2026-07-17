@@ -192,7 +192,7 @@ dispatch: manual
 ---
 sub_spec_id: SS-02
 phase: run
-depends_on: ['SS-01']
+depends_on: []
 dispatch: factory
 ---
 
@@ -240,12 +240,18 @@ dispatch: factory
     `git ls-files vault/ | grep -c '\.md$'` returns > 200. Factory workers spawn a worktree
     from HEAD; if the notes are absent, SS-04 and SS-10 have no rulebook and no precedent to
     read, and will fall back to web sources that are known to be **wrong** (see Context).
-- **Decisions (SS-02):** Run `git init` and make the first commit as part of this sub-spec —
-  the repo is not yet under version control. `.gitignore` ignores `vault/**/*.pdf` (and
-  other source-document formats) but **tracks `vault/**/*.md`**. This is deliberate and was
-  changed during red-team: the notes are our own writing and workers need them; only the
-  proprietary source documents stay local.
-- **Dependencies:** SS-01
+- **Decisions (SS-02):** `git init` and the initial commit are **already done** (commit
+  `85c9e78`) — the factory needs a HEAD to spawn a worktree from, so this could not wait for
+  a sub-spec that runs inside one. `.gitignore` ignores `vault/**/*.pdf` (and other
+  source-document formats) but **tracks `vault/**/*.md`** — deliberate, changed during
+  red-team: the notes are our own writing and workers need them; only proprietary source
+  documents stay local.
+
+  **`depends_on` changed from `['SS-01']` to `[]`.** The scaffold does not need measurement
+  facts. The SS-01 gate belongs on **SS-04**, which is the only sub-spec that actually
+  consumes the spike results. This unblocks 7 sub-specs that were queued behind a manual
+  gate for no reason.
+- **Dependencies:** none
 
 ---
 sub_spec_id: SS-03
@@ -283,7 +289,7 @@ dispatch: factory
 ---
 sub_spec_id: SS-04
 phase: run
-depends_on: ['SS-03']
+depends_on: ['SS-01', 'SS-03']
 dispatch: factory
 ---
 
@@ -300,6 +306,13 @@ dispatch: factory
   `dispatch: manual` and requires a human with a licensed Foundry; its absence means the gate
   has not been run, not that it passed. Guessing here produces silently wrong ranges in every
   game Battleframe will ever host — the single worst failure mode in this project.
+
+  **The Foundry documentation cannot answer this.** `vault/foundry-systems/` *is* the docs,
+  read carefully — 38 notes, 33 `confirmed`. Core issue
+  [#11428](https://github.com/foundryvtt/foundryvtt/issues/11428) is **open, unmilestoned,
+  and has no staff response**; the requester's own workaround was to maintain custom
+  measurement in their module. Further reading will not close this. **Do not attempt to
+  resolve it by re-reading the API docs.**
 - **Files (new):**
   - `packages/battleframe/src/measurement/measure.ts`
   - `packages/battleframe/src/measurement/types.ts`
