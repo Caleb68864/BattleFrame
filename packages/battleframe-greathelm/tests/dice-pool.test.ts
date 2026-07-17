@@ -108,6 +108,19 @@ describe("determineInitiative", () => {
     expect(outcome).toEqual({ result: "choose", playerId: "a" });
   });
 
+  it("descends past equal nonzero 6s and decides on the next differing face", () => {
+    // Both hold two 6s -- equal at the top face, so it settles nothing and the
+    // choice falls to the 5s, where a leads. Both holding 6s also makes this a
+    // choice, never a forced-first: that needs the loser to have zero 6s.
+    const outcome = determineInitiative(
+      "a",
+      dice([6, 6, 5]),
+      "b",
+      dice([6, 6, 4])
+    );
+    expect(outcome).toEqual({ result: "choose", playerId: "a" });
+  });
+
   it("reports a tie when both pools match at every face", () => {
     const outcome = determineInitiative(
       "a",

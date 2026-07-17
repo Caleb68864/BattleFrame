@@ -75,12 +75,10 @@ export function determineInitiative(
     const a = countsA[face];
     const b = countsB[face];
 
+    // Equal counts at this face -- whether both zero or both the same nonzero
+    // number -- decide nothing; descend to the next face. A full tie (equal at
+    // every face, all the way down) falls out of the loop to `{ result: "tie" }`.
     if (a === b) {
-      if (a > 0) {
-        // Both players hold the same nonzero count at this face; keep
-        // descending unless we're already comparing 6s and it's a full tie.
-        continue;
-      }
       continue;
     }
 
