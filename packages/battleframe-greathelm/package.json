@@ -2,6 +2,8 @@
   "name": "battleframe-greathelm",
   "private": true,
   "version": "0.1.0",
+  "description": "GREATHELM ruleset module for the BattleFrame system. Mechanics only -- ships no rules text, stat blocks, or artwork. Requires the official GREATHELM rulebook, obtained separately.",
+  "license": "MIT",
   "type": "module",
   "scripts": {
     "build": "vite build"
