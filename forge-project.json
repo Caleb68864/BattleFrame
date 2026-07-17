@@ -1,0 +1,38 @@
+{
+  "project_name": "BattleFrame",
+  "name": "BattleFrame",
+  "repo_root": ".",
+  "project_vault": "docs",
+  "build_command": null,
+  "test_command": null,
+  "frontend_build": null,
+  "frontend_test": null,
+  "start_command": null,
+  "dev_server": null,
+  "migrate_command": null,
+  "spec_output_dir": "docs/specs",
+  "notes_dir": "docs/notes",
+  "factory_aware_config": {
+    "frontend_test_runner": null,
+    "frontend_build_tool": null,
+    "ts_strict_flags": [],
+    "tailwind_major": null,
+    "is_esm_package": false,
+    "dotnet_test_framework": null,
+    "csharp_nullable_enabled": false,
+    "python_runtime": null,
+    "has_conda_env": false,
+    "notes": []
+  },
+  "runtime_paths": [
+    "C:/Program Files/dotnet",
+    "C:/Program Files/nodejs",
+    "C:/Users/CalebBennett/AppData/Roaming/npm",
+    "C:/Users/CalebBennett/.dotnet/tools"
+  ],
+  "reference_sources": {},
+  "dev_env_prerequisites": [],
+  "well_known_blockers": [],
+  "auto_seeded": true,
+  "auto_seeded_at": "2026-07-17T00:08:50.063Z"
+}
