@@ -6,6 +6,7 @@ import {
   addRoundSceneControl,
   determineInitiativeWithRerolls,
   findDefenderInBaseContact,
+  formatInches,
   onRoundControlActivated,
   planMovement,
   resolveFirstPlayer,
@@ -175,6 +176,45 @@ describe("resolveFirstPlayer", () => {
     expect(() => resolveFirstPlayer({ result: "tie" }, ["a", "b"])).toThrow(
       InitiativeTieUnresolvedError
     );
+  });
+});
+
+describe("formatInches -- presentation only", () => {
+  it("rounds the float that reached the live notification bar", () => {
+    // Verbatim from a live round: `sprint up to 0.0001574803149606563"`. That
+    // is the base-to-base gap of two TOUCHING knights (see
+    // tests/base-contact.test.ts) -- unreadable, and now shown as 0".
+    expect(formatInches(0.0001574803149606563)).toBe("0");
+  });
+
+  it("leaves whole GREATHELM distances alone", () => {
+    expect(formatInches(5)).toBe("5");
+    expect(formatInches(SPRINT_MOVE_INCHES)).toBe("5");
+    expect(formatInches(2.5)).toBe("2.5");
+  });
+
+  it("keeps two places -- finer than a GM can place a model", () => {
+    expect(formatInches(3.14159)).toBe("3.14");
+    expect(formatInches(1.006)).toBe("1.01");
+    expect(formatInches(4.999)).toBe("5");
+    // No half-up guarantee is claimed at the 3rd decimal: 1.005 is really
+    // 1.00499...  in binary and formats as "1". Irrelevant at this scale --
+    // this is a label, and the rules never read it back.
+  });
+
+  it("does not round the maths behind it", () => {
+    // planMovement still reports the full-precision number; only the string
+    // the player sees is rounded.
+    const measure = lineMeasure();
+    const mover = knight("kA", "a", 0);
+    const plan = planMovement(
+      { id: "d1", playerId: "a", knightId: "kA", face: 6, action: "sprint" },
+      mover,
+      [mover, knight("kB", "b", 0.0001574803149606563)],
+      measure
+    );
+
+    expect(plan?.moveInches).toBe(0.0001574803149606563);
   });
 });
 
