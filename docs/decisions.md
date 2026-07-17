@@ -384,3 +384,27 @@ reader would otherwise re-derive or re-break.
   `DialogV2` (zero vault notes at any confidence) with no `[HUMAN REVIEW]`. **A feature-detect
   that has never been watched succeed is a hypothesis, not a fallback.**
 - Commit: this commit.
+
+## 2026-07-17 — Prep caught a deadlock the spec made unsatisfiable
+- Symptom: SS-01 required "a knight removed mid-round does not break the session", but the
+  session surface had no way to spend a die **without** activating a knight. A prep agent
+  showed the criterion was therefore **unsatisfiable**: a side whose knights are all gone
+  still holds dice with no legal target — never illegal, never spendable, never complete. The
+  round **deadlocks below `isComplete()`**.
+- Fix: added `discardDie(dieId, reason)` to SS-01, and strengthened the criterion to say the
+  round must reach completion — **it must never deadlock**. This is the explicit form of what
+  `round-control.ts:570` already does implicitly (notify + skip a clash die with no defender).
+  Also clarified SS-02: the panel shows **every unspent die, both sides** — 6→1 is a **global**
+  rule, so a die is unavailable because the *opponent* holds a higher face, and an
+  active-side-only panel cannot explain why your 4 is greyed out.
+- Surfaces: `docs/specs/2026-07-17-greathelm-player-layer.md` SS-01, SS-02.
+- Watch: **the i18n gate has a blind spot, and it is the one that already bit us.** A key built
+  as `` `battleframe-greathelm.reasons.${reason}` `` is invisible to a grep for literal keys —
+  which is exactly how three keys shipped missing while every test passed. SS-02 now requires
+  keys to be a literal exhaustive `Record` over the reason union, so adding a reason **breaks
+  the build** instead of rendering a raw key at the table. **A gate you can route around is
+  not a gate** — the same lesson as the four checks that measured nothing, wearing different
+  clothes.
+  Both prep agents independently caught the `assignDiceRoundRobin` error. Independent
+  corroboration is worth more than a second opinion from the same context.
+- Commit: this commit.
