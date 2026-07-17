@@ -456,12 +456,13 @@ export interface BeginRoundFromControlResult {
  * -> a live session for the battle and courage phases.
  *
  * This is deliberately NOT `runRoundFromControl` any more. That function
- * resolved every die itself via the round-robin die-to-knight assigner
- * (defined but unused below) and `runRound` in one atomic call -- the
- * auto-battler this sub-spec kills. The battle phase now belongs to whoever
- * plays the returned session's dice one at a time (see
- * `onRoundControlActivated` below, which hands it to the pool panel);
- * round-control.ts no longer decides which knight spends which die.
+ * resolved every die itself via a round-robin die-to-knight assigner and a
+ * single atomic `runRound` -- the auto-battler the player layer kills. Both
+ * are now gone (the assigner deleted with the player layer, `runRound` and
+ * its battle-phase helpers deleted from loop.ts as dead code). The battle
+ * phase now belongs to whoever plays the returned session's dice one at a
+ * time (see `onRoundControlActivated` below, which hands it to the pool
+ * panel); round-control.ts no longer decides which knight spends which die.
  *
  * Note what is NOT here: the QSR's optional "re-roll any dice that are not
  * 6's, once" (vault/greathelm/initiative-phase.md) is a per-die player
@@ -523,11 +524,11 @@ export async function beginRoundFromControl(
   const persistedOrder: string[] = [];
   let persisted = false;
 
-  // loop.ts's writeRoundOrderToCombatFlags (unused here now) assigns to a
-  // plain `flags` object; on a real Combat document that write does not
-  // reach the database. Persisting via the document's own setFlag, once the
-  // session reports complete, is the fix that stays inside this sub-spec's
-  // pathspec -- loop.ts is not ours to edit.
+  // Turn order is persisted via the document's own setFlag, once the session
+  // reports complete. An earlier loop.ts helper assigned to a plain `flags`
+  // object instead, which on a real Combat document never reaches the
+  // database; it has since been deleted as dead code, and this setFlag is the
+  // only writer of round order now.
   async function maybeFinish(): Promise<void> {
     if (persisted || !baseSession.isComplete()) {
       return;

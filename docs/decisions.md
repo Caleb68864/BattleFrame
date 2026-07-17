@@ -688,3 +688,36 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   mock-based payload test is strong evidence the message *carries* dice, and no
   evidence at all that a specific module *renders* them.
 - Commit: docs(core): the dice rolls field name is doc-confirmed, not unverified
+
+## 2026-07-17 — Deleted the superseded round loop; the live game runs through session.ts
+- Symptom: `loop.ts` still held `runRound`, `resolveBattlePhaseOrder` and
+  `writeRoundOrderToCombatFlags` — the whole atomic auto-battler the player layer
+  replaced. They had zero production callers (`runRound` called the other two;
+  nothing called `runRound`); the live round runs gather → session → pool-panel →
+  `resolveDieAction`. This is the third time this project has been bitten by a
+  dead round loop — two prior entries (the tree-shaken 146-line bundle, and "the
+  round loop was never in the product"). Worse, `writeRoundOrderToCombatFlags` was
+  a documented *trap*: it assigns to a plain `flags` object that "does not reach
+  the database" on a real Combat document, and `round-control.ts` had already
+  reimplemented persistence correctly via `combat.setFlag`. Two encodings of turn
+  order, one of them broken, kept alive only by its own tests.
+- Fix: removed the three functions plus their only-local helpers (`rotateToFirst`,
+  `RunRoundOptions`, `RoundResult`) and the now-unused `actionForFace`/courage
+  imports. Deleted `loop.test.ts`, which tested only those three. Kept everything
+  live: `resolveDieAction`, `applyClashDamage`, and the shared types `RoundDie`/
+  `ResolvedDie`/`ActorLike`/`ClashParticipantRef`. Kept `CombatLike`/
+  `BattleframeCombatFlags` too — `round-control.ts`'s `CombatDocumentLike extends
+  CombatLike`, so they are load-bearing despite the writer being gone. Updated the
+  two round-control comments that pointed at the deleted code (one also named a
+  round-robin assigner already removed with the player layer).
+- Surfaces: `packages/battleframe-greathelm/src/round/loop.ts` (223 → 96 lines),
+  `tests/loop.test.ts` (deleted), `src/ui/round-control.ts` (two comments).
+- Watch: the bundle was byte-for-byte unchanged (47.59 kB) — these functions were
+  already tree-shaken out, so this is source hygiene, not a shipped-code fix. That
+  is exactly why it mattered: dead-but-present code with green tests is what caused
+  the two prior round-loop incidents. Verified live functions still pass (322
+  tests, was 325 — the drop is the three deleted dead-function suites) and the dead
+  symbols are absent from the built bundle. `resolveBattlePhaseOrder` encoded the
+  6→1 alternating order; that rule now lives only in `session.ts`, whose own tests
+  cover it — one encoding, not two that can drift.
+- Commit: refactor(greathelm): delete the dead round loop superseded by session.ts
