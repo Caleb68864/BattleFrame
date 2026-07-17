@@ -753,3 +753,27 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   vault (no source states a mid-phase flee raises later difficulty); this fix does
   not touch that — it wires only the confirmed phase-start count.
 - Commit: fix(greathelm): courage difficulty counts allies already removed, not just this-phase flights
+
+## 2026-07-17 — Initiative had a dead conditional; the equal-nonzero-face path was untested
+- Symptom: `determineInitiative` matched equal counts at a face with
+  `if (a === b) { if (a > 0) { continue; } continue; }` — both branches identical,
+  and a comment ("keep descending unless we're already comparing 6s and it's a
+  full tie") describing conditional behaviour the code did not have. Separately,
+  the one initiative path the comment gestured at — both players holding *equal
+  nonzero* 6s, decided at a lower face — had no test; only the both-*zero* descent
+  and the full-tie cases were covered.
+- Fix: collapsed the branch to `if (a === b) continue;` with a comment that matches
+  what it does. Verified behaviour-preserving (the two branches were provably
+  identical) and added the missing test: `[6,6,5]` vs `[6,6,4]` descends past the
+  tied 6s and yields `{ choose, a }` — a *choice*, not `forced-first`, since both
+  hold 6s.
+- Surfaces: `packages/battleframe-greathelm/src/round/dice-pool.ts`
+  (`determineInitiative`), `tests/dice-pool.test.ts` (new descent case).
+- Watch: this is cleanup, not a fix — the old code produced the right answer, it
+  just said it did so conditionally when it didn't. The value is the closed
+  coverage gap: nothing had pinned that equal nonzero 6s descends rather than
+  forcing first, which is exactly the boundary between the `forced-first` and
+  `choose` outcomes. `forced-first` requires the *loser* to hold zero 6s; a future
+  edit that widened it to any 6s advantage would now break a test instead of
+  silently changing turn order.
+- Commit: refactor(greathelm): collapse initiative's dead branch, cover equal-nonzero descent
