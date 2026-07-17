@@ -496,3 +496,39 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   it; only the live Dice So Nice HUMAN REVIEW item can. More generally: a card that
   renders the right numbers is not evidence the message carries dice.
 - Commit: fix(core): attach the Roll to its chat message so dice can animate
+
+## 2026-07-17 — Victory was unreachable: a rule routed through an optional member
+- Symptom: `resolveRoundEnd` called `checkVictory(knights)` with `RoundKnight[]`.
+  `RoundKnight` has **no `isRemoved`** — only `toSessionKnight` ever added one —
+  and `CheckVictoryKnight.isRemoved` is **optional**, defaulting to "in play".
+  So it typechecked, every knight read as alive, and the check returned
+  `continue` forever: a round loop with no end, behind a green suite and 12
+  passing `checkVictory` tests. The pure function was correct the whole time;
+  nothing correct was ever handed to it. Underneath sat the other half: QSR p2
+  removes a knight by damage **or** by fleeing, `victory.ts` asserted in a doc
+  comment that `isRemoved` "treats both identically", and the only `isRemoved`
+  checked damage. `runCouragePhase` computed outcomes, `courageOutcomes()`
+  exposed them, and **nothing consumed them** — a fled knight blocked its
+  player's defeat and was re-gathered next round as if it had never run.
+- Fix: `round/removal.ts` holds both routes out of play, read live from the Actor
+  (never snapshotted — a knight routed mid-round must drop out on the next call).
+  `session.ts` persists courage failures via `actor.update`, a namespaced flag
+  rather than a schema field: fleeing is scenario state, not a stat, and a flag
+  needs no migration for knights that predate the check. `toVictoryKnights`
+  makes the RoundKnight→CheckVictoryKnight translation **explicit and tested**.
+  `victory.ts`'s comment now points at the shared rule instead of asserting a
+  guarantee it could not make.
+- Surfaces: `packages/battleframe-greathelm/src/round/removal.ts` (new),
+  `round/session.ts` (`persistCourageFlight`), `round/loop.ts` (`ActorLike.flags`),
+  `ui/round-control.ts` (`toVictoryKnights`, `toSessionKnight`), `round/victory.ts`.
+- Watch: **An optional interface member is not a seam to route a rule through.**
+  `isRemoved?` made "the caller forgot the rule" and "nobody has been removed"
+  the same program — indistinguishable to the compiler and to every test. That is
+  how a rule went missing while its own unit tests stayed green. Where a default
+  must exist for ergonomics, make the *translation* an explicit exported function
+  and test that, rather than letting each call site hand-roll the predicate. Note
+  the family resemblance to the tree-shaken bundle: both are **reachability**
+  failures — correct code nothing reaches — and both passed every existence check.
+  Also: the `fled` flag persists on the Actor with no reset path, exactly as
+  `system.damage` already does. Consistent, but a fresh battle needs both cleared.
+- Commit: feat(greathelm): end the game — victory check, action hints, and both routes out of play

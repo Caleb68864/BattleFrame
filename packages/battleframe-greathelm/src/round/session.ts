@@ -7,6 +7,7 @@ import {
 } from "../combat/clash";
 import { resolveDieAction, type ActorLike, type ClashParticipantRef, type ResolvedDie } from "./loop";
 import { runCouragePhase, type CourageKnight, type CourageTestOutcome } from "./courage";
+import { markFled } from "./removal";
 
 /**
  * A knight as the session sees it. Deliberately narrower than round-control's
@@ -315,7 +316,34 @@ export function createRoundSession(options: CreateRoundSessionOptions): RoundSes
     );
 
     outcomes = await runCouragePhase(dice, warbandsKnights);
+    await persistCourageFlight(outcomes);
     complete = true;
+  }
+
+  /**
+   * Writes the courage phase's failures to the Actors that suffered them.
+   *
+   * `runCouragePhase` is pure -- it returns outcomes and touches no document,
+   * which is what makes it testable. Something has to land them, though, and
+   * nothing did: the outcomes were computed, exposed via `courageOutcomes()`,
+   * and dropped. A knight that failed its test was "removed from play" in the
+   * rules and in the returned map, and nowhere else -- so it kept blocking its
+   * player's defeat and came back next round as if it had never run.
+   */
+  async function persistCourageFlight(
+    results: ReadonlyMap<string, CourageTestOutcome>
+  ): Promise<void> {
+    for (const [knightId, outcome] of results) {
+      if (outcome.passed) {
+        continue;
+      }
+
+      const knight = knights.find((candidate) => candidate.id === knightId);
+
+      if (knight) {
+        await markFled(knight.actor);
+      }
+    }
   }
 
   async function spendDie(dieId: string, knightId: string, choices?: SpendChoices): Promise<void> {

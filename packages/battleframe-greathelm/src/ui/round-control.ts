@@ -19,6 +19,9 @@ import {
   type RoundSession,
   type RoundSessionKnight,
 } from "../round/session";
+import { checkVictory } from "../round/victory";
+import type { CheckVictoryKnight } from "../round/victory-types";
+import { isKnightRemoved } from "../round/removal";
 import { promptFirstOrSecond, type WorldSettingsLike } from "./choice-prompts";
 import {
   openPoolPanel,
@@ -360,15 +363,12 @@ export function findDefenderInBaseContact(
 }
 
 /**
- * Damage limit at which a knight is immediately removed from play (QSR p2,
- * see vault/greathelm/damage-and-removal.md and data/knight.ts's schema
- * cap). The session (round/session.ts) needs a live `isRemoved` predicate
- * per knight; this is where a canvas-gathered RoundKnight is translated into
- * one, re-read on every call so a knight downed mid-round drops out
- * immediately rather than on a cached flag.
+ * The session (round/session.ts) needs a live `isRemoved` predicate per
+ * knight; this is where a canvas-gathered RoundKnight is translated into one.
+ * The rule itself lives in round/removal.ts -- both routes out of play, in one
+ * place -- and is re-read on every call so a knight downed or routed mid-round
+ * drops out immediately rather than on a cached flag.
  */
-const DAMAGE_LIMIT = 3;
-
 function toSessionKnight(knight: RoundKnight): RoundSessionKnight {
   return {
     id: knight.id,
@@ -376,8 +376,27 @@ function toSessionKnight(knight: RoundKnight): RoundSessionKnight {
     name: knight.name,
     actor: knight.actor,
     token: knight.token,
-    isRemoved: () => (knight.actor.system?.damage ?? 0) >= DAMAGE_LIMIT,
+    isRemoved: () => isKnightRemoved(knight.actor),
   };
+}
+
+/**
+ * A canvas knight as the game-end check needs it.
+ *
+ * This exists because `RoundKnight` has no `isRemoved` and
+ * `CheckVictoryKnight.isRemoved` is optional, so handing the raw list to
+ * `checkVictory` typechecked cleanly and read every knight as in play --
+ * making victory unreachable from *any* cause, damage included. An optional
+ * member is not a seam to route a rule through; the translation is explicit
+ * and tested instead.
+ */
+export function toVictoryKnights(
+  knights: readonly RoundKnight[]
+): CheckVictoryKnight[] {
+  return knights.map((knight) => ({
+    playerId: knight.playerId,
+    isRemoved: () => isKnightRemoved(knight.actor),
+  }));
 }
 
 /**
@@ -677,6 +696,24 @@ export function gatherKnightsFromCanvas(): RoundKnight[] {
   });
 }
 
+/** i18n with interpolation; falls back to the bare key like `localize`. */
+function format(key: string, data: Record<string, string | number>): string {
+  const globalScope = globalThis as unknown as {
+    game?: { i18n?: { format?: (key: string, data: Record<string, string | number>) => string } };
+  };
+
+  return globalScope.game?.i18n?.format?.(key, data) ?? key;
+}
+
+/**
+ * A human label for a side. Disposition ids ("friendly"/"hostile") are engine
+ * vocabulary, not something to show a player who has never read the rules, so
+ * prefer a knight's own name's owner where we have one.
+ */
+function sideLabel(playerId: string, knight: RoundKnight | undefined): string {
+  return knight?.name ?? playerId;
+}
+
 function localize(key: string): string {
   const globalScope = globalThis as unknown as {
     game?: { i18n?: { localize?: (key: string) => string } };
@@ -725,7 +762,50 @@ function minDicePoolFloorEnabled(): boolean {
  * builds the session, and hands it to `openPoolPanel` -- the panel resolves
  * every die from there, one GM click at a time.
  */
-export async function onRoundControlActivated(): Promise<PoolPanelInstance | undefined> {
+/**
+ * The QSR p2 game-end check, applied after the courage phase, plus the loop it
+ * mandates in the same sentence: "If only one player has knights remaining in
+ * the play area, they win! If not, start a new round from the initiative
+ * phase."
+ *
+ * The unresolved case is announced, never guessed at -- see `round/victory.ts`.
+ */
+async function resolveRoundEnd(
+  knights: readonly RoundKnight[],
+  roundNumber: number
+): Promise<void> {
+  const outcome = checkVictory(toVictoryKnights(knights));
+
+  if (outcome.result === "winner") {
+    const knight = knights.find((candidate) => candidate.playerId === outcome.playerId);
+    notifyUser(
+      format("battleframe-greathelm.victory.winner", {
+        player: sideLabel(outcome.playerId, knight),
+      })
+    );
+
+    return;
+  }
+
+  if (outcome.result === "mutual-elimination-unresolved") {
+    // Deliberately not a draw: QSR v0.4 says "only one player has knights
+    // remaining", and does not address nobody having any. Telling the players
+    // the rulebook is silent is honest; inventing a draw and presenting it as
+    // GREATHELM is not.
+    notifyUser(localize("battleframe-greathelm.victory.mutualElimination"), "warn");
+
+    return;
+  }
+
+  notifyUser(
+    format("battleframe-greathelm.victory.continue", { round: roundNumber })
+  );
+  await onRoundControlActivated(roundNumber + 1);
+}
+
+export async function onRoundControlActivated(
+  roundNumber = 1
+): Promise<PoolPanelInstance | undefined> {
   if (!isGM()) {
     notifyUser(localize("battleframe-greathelm.controls.round.gmOnly"), "warn");
 
@@ -770,7 +850,9 @@ export async function onRoundControlActivated(): Promise<PoolPanelInstance | und
       token: knight.placeable,
     }));
 
-    return openPoolPanel(session, panelKnights);
+    return openPoolPanel(session, panelKnights, () =>
+      resolveRoundEnd(knights, roundNumber)
+    );
   } catch (error) {
     // Contained: a ruleset throwing in its own loop must surface the ruleset
     // id and leave the world usable (see the Edge Cases table).

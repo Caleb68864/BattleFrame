@@ -59,7 +59,22 @@
       "reasons": {
         "knightRemoved": "This knight has been removed from play.",
         "noEnemyInContact": "No enemy is close enough for this knight to activate with this die."
-      }
+      },
+      "clashHint": "Needs an enemy in base contact.",
+      "moveHint": "Any of your knights still in play may spend this."
+    },
+    "actionHint": {
+      "sprint": "Move up to {move}\". Gains {momentum} momentum. No clash test — always succeeds.",
+      "encircle": "Move up to {move}\". Gains {momentum} momentum. No clash test — always succeeds.",
+      "bash": "Clash test. On a win, shove the defender {move}\" away. Deals no damage.",
+      "shift": "Move up to {move}\". No momentum, no clash test — always succeeds.",
+      "light": "Clash test. On a win, deals {damage} damage.",
+      "heavy": "Clash test. On a win, deals {damage} damage."
+    },
+    "victory": {
+      "winner": "{player} wins — only their knights remain in the play area.",
+      "continue": "Round {round} over. Both sides still have knights: starting a new round.",
+      "mutualElimination": "No knights remain on either side. The quickstart rules do not cover a mutual wipe-out (they say \"only one player has knights remaining\"), so GREATHELM does not define a winner here. Agree the result between you."
     }
   }
 }

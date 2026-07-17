@@ -1,5 +1,6 @@
 import { MODULE_ID, type ActionId, type DieFace } from "../constants";
 import { actionForFace } from "../round/actions";
+import { actionHint } from "../round/action-hints";
 import type { IllegalTargetReason, RoundSession } from "../round/session";
 import {
   createHighlightController,
@@ -31,6 +32,12 @@ export interface DieViewModel {
   face: DieFace;
   /** Literal i18n key, resolved by ACTION_NAME_KEYS below -- never assembled at render time. */
   actionKey: string;
+  /**
+   * One line saying what this die actually does, with its rules numbers filled
+   * in from constants.ts. This is the difference between a panel a rules-naive
+   * player can use and one that shows them "3 Shift" and nothing else.
+   */
+  hint: string;
   /** Whether this specific die may legally be played right now, per the session's turn/order state. */
   offerable: boolean;
   selected: boolean;
@@ -97,6 +104,7 @@ export function buildDieViewModels(
     playerId: die.playerId,
     face: die.face,
     actionKey: ACTION_NAME_KEYS[actionForFace(die.face)],
+    hint: actionHint(actionForFace(die.face)),
     offerable: die.playerId === activePlayerId && die.face === highestUnspentFace,
     selected: die.id === selectedDieId,
   }));
@@ -171,6 +179,8 @@ export interface PoolPanelConstructorOptions {
   highlights?: HighlightController;
   /** Injectable for tests; production feature-detects via `resolveTintApi()`. */
   tintApi?: TintApiLike;
+  /** Called once the round completes (last die spent + courage resolved). */
+  onRoundComplete?: () => void | Promise<void>;
   [key: string]: unknown;
 }
 
@@ -182,6 +192,7 @@ export interface PoolPanelInstance {
   element?: unknown;
   selectDie: (dieId: string) => void;
   spendOnKnight: (knightId: string) => Promise<void>;
+  onRoundComplete?: () => void | Promise<void>;
   _prepareContext: (options: unknown) => Promise<Record<string, unknown>>;
   _onRender?: (context: unknown, options: unknown) => Promise<void>;
 }
@@ -227,12 +238,14 @@ export function createPoolPanelClass(
     knights: readonly PoolPanelKnight[];
     selectedDieId: string | undefined;
     highlights: HighlightController;
+    onRoundComplete: (() => void | Promise<void>) | undefined;
 
     constructor(options: PoolPanelConstructorOptions) {
       super(options);
       this.session = options.session;
       this.knights = options.knights;
       this.selectedDieId = undefined;
+      this.onRoundComplete = options.onRoundComplete;
       this.highlights =
         options.highlights ??
         createHighlightController({
@@ -265,6 +278,14 @@ export function createPoolPanelClass(
       // the session completes, so the last die of a round leaves no tint behind.
       this.highlights.update(this.selectedDieId);
       void (this as unknown as { render: (force?: boolean) => unknown }).render(true);
+
+      // The round is over the moment the last die is spent and the courage
+      // phase has run. The panel reports that and holds no opinion about what
+      // happens next -- whether the game has been won, and whether a new round
+      // starts, is GREATHELM's rule, resolved by the caller.
+      if (this.session.isComplete()) {
+        await this.onRoundComplete?.();
+      }
     }
 
     /** Tints are client-render state, not document state -- nothing else will clean them up. */
@@ -334,7 +355,8 @@ export function createPoolPanelClass(
 /** Opens the panel for the current user, refusing (with a notice) if they are not the GM. */
 export function openPoolPanel(
   session: RoundSession,
-  knights: readonly PoolPanelKnight[]
+  knights: readonly PoolPanelKnight[],
+  onRoundComplete?: () => void | Promise<void>
 ): PoolPanelInstance | undefined {
   const PanelClass = createPoolPanelClass();
 
@@ -344,7 +366,7 @@ export function openPoolPanel(
 
   const panel = new (PanelClass as unknown as new (
     options: PoolPanelConstructorOptions
-  ) => PoolPanelInstance)({ session, knights });
+  ) => PoolPanelInstance)({ session, knights, onRoundComplete });
 
   void (panel as unknown as { render: (force?: boolean) => unknown }).render(true);
 

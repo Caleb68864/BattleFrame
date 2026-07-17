@@ -1,0 +1,133 @@
+/*
+ * Pool panel styling.
+ *
+ * The panel already emitted `--offerable` and `--selected` class names with no
+ * stylesheet behind them and no `styles` entry in module.json, so a die you
+ * could not play looked exactly like one you could, and a selected die looked
+ * exactly like an unselected one. For a player who has never read the rules,
+ * that is the difference between a usable panel and a list of numbers.
+ *
+ * Colours are stated twice on purpose: hue AND a non-colour cue (opacity,
+ * border weight, a leading marker). Roughly 1 in 12 men cannot separate the
+ * red/green pair this panel leans on, and "which of these is legal" is not a
+ * thing to encode in hue alone.
+ */
+
+.pool-panel__reload-warning {
+  margin: 0 0 0.5rem;
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.pool-panel__dice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pool-panel__die {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  grid-template-areas:
+    "face action"
+    "face hint";
+  gap: 0 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-border-light-tertiary, #7a7971);
+  border-radius: 4px;
+  /* Not playable yet: dimmed AND unclickable, so the cursor says so too. */
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pool-panel__die--offerable {
+  opacity: 1;
+  cursor: pointer;
+  border-color: var(--color-border-highlight, #ff6400);
+}
+
+.pool-panel__die--offerable:hover {
+  background: rgba(255, 100, 0, 0.08);
+}
+
+.pool-panel__die--selected {
+  /* Three cues, not one: weight, fill, and a leading caret in ::before. */
+  border-width: 2px;
+  border-color: #33cc66;
+  background: rgba(51, 204, 102, 0.12);
+}
+
+.pool-panel__die--selected .pool-panel__die-face::before {
+  content: "\25B8"; /* caret: survives greyscale and colour-blindness */
+  margin-right: 0.15rem;
+}
+
+.pool-panel__die-face {
+  grid-area: face;
+  align-self: center;
+  font-size: 1.4em;
+  font-weight: bold;
+  text-align: center;
+}
+
+.pool-panel__die-action {
+  grid-area: action;
+  font-weight: 600;
+}
+
+.pool-panel__die-hint {
+  grid-area: hint;
+  font-size: 0.78em;
+  opacity: 0.75;
+  line-height: 1.25;
+}
+
+.pool-panel__knights {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pool-panel__knight {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 3px;
+  border-left: 3px solid transparent;
+}
+
+.pool-panel__knight--legal {
+  border-left-color: #33cc66;
+  background: rgba(51, 204, 102, 0.1);
+  cursor: pointer;
+}
+
+.pool-panel__knight--legal:hover {
+  background: rgba(51, 204, 102, 0.2);
+}
+
+.pool-panel__knight--illegal {
+  border-left-color: #999;
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pool-panel__knight-reason {
+  font-size: 0.78em;
+  font-style: italic;
+  text-align: right;
+}
+
+.pool-panel__no-selection,
+.pool-panel__read-only-notice {
+  margin: 0.6rem 0 0;
+  font-size: 0.85em;
+  opacity: 0.8;
+}

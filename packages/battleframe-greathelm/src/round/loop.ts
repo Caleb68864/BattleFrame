@@ -115,6 +115,8 @@ export function writeRoundOrderToCombatFlags(
 
 export interface ActorLike {
   system?: { damage?: number };
+  /** Foundry's per-document flag bag, namespaced by package id. Read via round/removal.ts, never directly. */
+  flags?: Record<string, Record<string, unknown> | undefined>;
   update: (data: Record<string, unknown>) => Promise<unknown>;
 }
 
