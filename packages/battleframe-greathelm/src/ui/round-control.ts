@@ -22,7 +22,7 @@ import {
   type RoundDie,
 } from "../round/loop";
 import type { CourageKnight, CourageTestOutcome } from "../round/courage";
-import type { DiceApiLike, MeasureApiLike } from "../combat/clash";
+import { isBaseContactDistance, type DiceApiLike, type MeasureApiLike } from "../combat/clash";
 
 /**
  * The affordance that starts a round. Everything below the Foundry glue at
@@ -354,15 +354,21 @@ function toParticipant(knight: RoundKnight): ClashParticipantRef {
 }
 
 /**
- * The defender for a clash die: an enemy already in base contact
- * (`measure.between(...) === 0` -- GREATHELM has no separate engagement
- * range, see vault/greathelm/base-contact-and-engagement.md).
+ * The defender for a clash die: an enemy already in base contact -- GREATHELM
+ * has no separate engagement range, see
+ * vault/greathelm/base-contact-and-engagement.md.
+ *
+ * Contact is decided by combat/clash.ts `isBaseContactDistance`, never by a
+ * local `=== 0` here: an exact-zero test cannot fire on integer pixel
+ * coordinates and made every clash die a no-op (see
+ * BASE_CONTACT_TOLERANCE_PX). The measured distance is reused rather than
+ * re-measured -- `nearestEnemy` has already paid for it.
  *
  * ENGINE DEFAULT on the choice, not on the rule: Bash/Light/Heavy legally
  * REQUIRE base contact, so an enemy out of contact is never a legal target
  * and a die with no contact simply cannot be spent this way. Which of several
- * touching enemies to hit is the attacker's choice; the nearest (first at
- * distance 0) stands in for a target picker.
+ * touching enemies to hit is the attacker's choice; the nearest (the first one
+ * inside the contact tolerance) stands in for a target picker.
  */
 export function findDefenderInBaseContact(
   attacker: RoundKnight,
@@ -371,7 +377,47 @@ export function findDefenderInBaseContact(
 ): RoundKnight | undefined {
   const enemy = nearestEnemy(attacker, knights, measure);
 
-  return enemy && enemy.distance === 0 ? enemy.knight : undefined;
+  return enemy && isBaseContactDistance(enemy.distance, attacker.token)
+    ? enemy.knight
+    : undefined;
+}
+
+/**
+ * Whether a knight is touching ANY enemy -- the courage phase's input (QSR p2:
+ * a knight in base contact tests courage differently to one standing alone).
+ *
+ * Same tolerance as `findDefenderInBaseContact`, via the same predicate, for
+ * the same reason: a `=== 0` here would report every knight on the board as
+ * disengaged even mid-melee, quietly feeding the courage phase a false board.
+ */
+function isInBaseContactWithAnyEnemy(
+  knight: RoundKnight,
+  knights: readonly RoundKnight[],
+  measure: MeasureApiLike
+): boolean {
+  const enemy = nearestEnemy(knight, knights, measure);
+
+  return enemy !== undefined && isBaseContactDistance(enemy.distance, knight.token);
+}
+
+/**
+ * Decimal places for distances shown to a player.
+ *
+ * PRESENTATION ONLY -- the maths is never rounded. The measured board is full
+ * of irrational-in-pixels quantities (see clash.ts BASE_CONTACT_TOLERANCE_PX),
+ * so a raw float reached the notification bar as `sprint up to
+ * 0.0001574803149606563"`, which is not a number a human reads. Two places is
+ * finer than any GREATHELM distance is written in (5"/3"/1") and finer than a
+ * GM can place a model by hand.
+ */
+const DISPLAY_DECIMAL_PLACES = 2;
+
+/** A measured distance as a player should see it. Never feed this back into the rules. */
+export function formatInches(inches: number): string {
+  const factor = 10 ** DISPLAY_DECIMAL_PLACES;
+
+  // Number() drops trailing zeros, so 5 stays `5"` rather than becoming `5.00"`.
+  return `${Number((Math.round(inches * factor) / factor).toFixed(DISPLAY_DECIMAL_PLACES))}`;
 }
 
 export interface RunRoundFromControlOptions {
@@ -466,7 +512,7 @@ export async function runRoundFromControl(
         id: knight.id,
         ownerId: knight.playerId,
         damage: knight.actor.system?.damage ?? 0,
-        inBaseContactWithEnemy: nearestEnemy(knight, knights, measure)?.distance === 0,
+        inBaseContactWithEnemy: isInBaseContactWithAnyEnemy(knight, knights, measure),
       },
     ])
   );
@@ -479,7 +525,7 @@ export async function runRoundFromControl(
     }
 
     view.damage = knight.actor.system?.damage ?? view.damage;
-    view.inBaseContactWithEnemy = nearestEnemy(knight, knights, measure)?.distance === 0;
+    view.inBaseContactWithEnemy = isInBaseContactWithAnyEnemy(knight, knights, measure);
   };
 
   const warbandsKnights = new Map<string, CourageKnight[]>(
@@ -512,7 +558,7 @@ export async function runRoundFromControl(
       if (movement) {
         movements.push(movement);
         options.notify?.(
-          `${actor.name ?? actor.id}: ${die.action} up to ${movement.moveInches}"`
+          `${actor.name ?? actor.id}: ${die.action} up to ${formatInches(movement.moveInches)}"`
         );
 
         return;

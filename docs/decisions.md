@@ -306,3 +306,30 @@ reader would otherwise re-derive or re-break.
   top-level `width: 9, height: 32` — omitting them wouldn't catch this, because `undefined`
   fails loudly while `32` produces a plausible silent error.
 - Commit: this commit.
+
+## 2026-07-17 — Base contact could never fire; `=== 0` is measure-zero in a VTT
+- Symptom: a real round on a real board spent 14 dice and produced **zero damage and zero
+  courage tests**. `Blue Knight 1: bash has no enemy in base contact -- die not spent`, for
+  two knights placed deliberately touching.
+- Fix: **Foundry stores token x/y as integers.** Two 32mm bases cannot sit at exactly
+  125.98425196850394px apart — Foundry rounded to 337 and 463, a 126px gap, so base-to-base
+  was **0.0001574803149606563"**, not `0`. `isInBaseContact` tested `distance === 0`. In a
+  pixel-coordinate VTT, exact contact is **measure-zero — it essentially never occurs**, and
+  base contact is GREATHELM's *only* spatial relation (`base-contact-and-engagement.md`,
+  `confirmed`: no zone of control, no engagement range). So the game could not work.
+  Tolerance is **2 pixels, converted per-scene** — the error source is integer rounding of
+  positions, so the bound is in *pixels*, not inches: two tokens compound to ≈1.414px, 2px
+  clears it and nothing more, and stays under Foundry's token outline so knights can never
+  appear to fight across a visible gap. It lives in GREATHELM, not core — core reports a
+  distance; "what counts as touching" is a ruleset judgement. Not in `constants.ts`: that
+  file's contract is "GREATHELM numbers from the QSR", and this is a VTT artefact, not a rule.
+- Surfaces: `packages/battleframe-greathelm/src/combat/clash.ts`, `src/ui/round-control.ts`,
+  new `tests/base-contact.test.ts`. 204 → 218 tests.
+- Watch: **There were THREE `=== 0` checks, not one.** Beyond `findDefenderInBaseContact`,
+  both courage views computed `inBaseContactWithEnemy` independently. Fixing only the obvious
+  one would have produced clashes that damage knights, then a courage phase that thinks
+  everyone is disengaged mid-melee — a *worse* bug, because it would look like it worked. A
+  converge scan predicted this exact failure hours earlier and called it "latent, not
+  currently failing"; playing one round made it current. **When a predicate is duplicated,
+  fixing one copy is worse than fixing none.**
+- Commit: this commit.
