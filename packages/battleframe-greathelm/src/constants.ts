@@ -75,3 +75,33 @@ export const ENCIRCLE_MOMENTUM_GAIN = 1;
 /** Damage dealt by successful melee clash tests. */
 export const LIGHT_ATTACK_DAMAGE = 1;
 export const HEAVY_ATTACK_DAMAGE = 2;
+
+/*
+ * ---------------------------------------------------------------------------
+ * Module settings -- NOT GREATHELM rules.
+ *
+ * The two keys below configure this module's UI (whether it interrupts the
+ * round to ask a player something QSR p1 says is theirs to decide). Their
+ * *defaults* are not rulebook numbers either -- they are this engine's
+ * documented fallback when a prompt is switched off, recorded here only so
+ * ui/choice-prompts.ts and lang/en.json have one shared source instead of a
+ * magic "first" typed in three places. Keep them out of the section above:
+ * that section's contract is QSR-sourced numbers only.
+ * ---------------------------------------------------------------------------
+ */
+
+/** World setting: prompt the initiative winner first-or-second (QSR p1 "choose"). Default ON. */
+export const SETTING_PROMPT_FIRST_OR_SECOND = "promptFirstOrSecond";
+
+/** World setting: prompt the attacker which touching enemy to hit when 2+ qualify. Default ON. */
+export const SETTING_PROMPT_ATTACK_TARGET = "promptAttackTarget";
+
+/** Engine fallback for `SETTING_PROMPT_FIRST_OR_SECOND` when that prompt is disabled. */
+export const DEFAULT_FIRST_OR_SECOND_CHOICE = "first";
+
+/**
+ * Engine fallback for `SETTING_PROMPT_ATTACK_TARGET` when that prompt is
+ * disabled: the first touching enemy offered to the prompt, i.e. whichever
+ * candidate the caller (round-control.ts nearestEnemy) found first.
+ */
+export const DEFAULT_ATTACK_TARGET_CHOICE = "first";

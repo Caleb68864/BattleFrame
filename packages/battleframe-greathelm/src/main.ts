@@ -1,4 +1,9 @@
-import { MODULE_ID, SETTING_MIN_DICE_POOL_FLOOR_ENABLED } from "./constants";
+import {
+  MODULE_ID,
+  SETTING_MIN_DICE_POOL_FLOOR_ENABLED,
+  SETTING_PROMPT_ATTACK_TARGET,
+  SETTING_PROMPT_FIRST_OR_SECOND,
+} from "./constants";
 import { registerKnightDataModel } from "./data/knight";
 import { registerKnightSheet } from "./sheets/knight-sheet";
 import { registerRoundControl } from "./ui/round-control";
@@ -84,6 +89,28 @@ function registerGreathelmSettings(): void {
     config: true,
     type: Boolean,
     default: false,
+  });
+
+  // Both prompts below default ON: asking is the point (QSR p1 gives both
+  // choices to a player, not to the engine). See ui/choice-prompts.ts for
+  // what happens with each toggle off -- a documented ENGINE DEFAULT, not a
+  // rule, and stated in the hint text below so it's a choice, not a surprise.
+  settings.register(MODULE_ID, SETTING_PROMPT_FIRST_OR_SECOND, {
+    name: "battleframe-greathelm.settings.promptFirstOrSecond.name",
+    hint: "battleframe-greathelm.settings.promptFirstOrSecond.hint",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true,
+  });
+
+  settings.register(MODULE_ID, SETTING_PROMPT_ATTACK_TARGET, {
+    name: "battleframe-greathelm.settings.promptAttackTarget.name",
+    hint: "battleframe-greathelm.settings.promptAttackTarget.hint",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: true,
   });
 }
 
