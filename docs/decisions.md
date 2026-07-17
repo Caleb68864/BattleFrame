@@ -827,3 +827,27 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   of the shipped namespace. The surface list is now the single place that has to be
   updated when core gains a fifth primitive — which is the point.
 - Commit: test(core): pin the complete game.battleframe public API surface
+
+## 2026-07-17 — The areas primitive accepted degenerate dimensions silently; base-model already didn't
+- Symptom: `circle()` and `rectangle()` built an area from whatever radius/width/
+  height they were handed. A zero or negative extent produced a silently
+  meaningless containment result — a blast that catches everything or nothing —
+  with no error. `base-model` already refuses this for a base (`InvalidBaseSizeError`),
+  but its sibling geometry primitive, the one a ruleset will call to build blast
+  markers, did not.
+- Fix: added `InvalidAreaError` and validate in the two factories, the documented
+  `game.battleframe.areas` construction path. The guard is `!(value > 0)` rather
+  than `value <= 0` so `NaN` is rejected too — a ruleset computing a radius from a
+  weapon profile that divides by zero should fail loud here, not produce an area
+  that quietly matches nothing.
+- Surfaces: `packages/battleframe/src/areas/area.ts` (`InvalidAreaError`,
+  `assertPositive`, both factories), `tests/areas.test.ts`.
+- Watch: this hardens an existing shipped primitive to match a sibling's contract;
+  it is not a new feature and adds no capability — consistent with the standing
+  rule not to build ahead of a ruleset, since the areas service already exists and
+  is public. Validation lives in the factories, not in `contains`, so a caller who
+  hand-builds a `CircleArea` object literal bypasses it; that mirrors how a module
+  is expected to construct areas (through the API) and keeps the hot containment
+  path check-free. If a future ruleset is found building area literals directly,
+  move the assert into `contains`/`tokensInside` instead.
+- Commit: harden(core): areas reject non-positive dimensions, like base-model already does
