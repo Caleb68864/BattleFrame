@@ -95,3 +95,66 @@ reader would otherwise re-derive or re-break.
   linter wanted "fixed" in a way that would have broken the workspaces build, (3) this
   placeholder. The workers have been right every time a gate said they were wrong.
 - Commit: this commit.
+
+## 2026-07-16 — The shipped system was dead code; the neutrality test passed vacuously
+- Symptom: converge pass 1 (4 independent scans) found `packages/battleframe/src/battleframe.ts`
+  was still the SS-02 nine-line skeleton — importing `./constants` and logging twice. It is
+  Vite's sole lib entry, so `dist/battleframe.js` shipped **7 lines**. 11/12 sub-specs read
+  "complete" and 119 tests passed while the built artifact did nothing. Every unit test passed
+  because tests import services directly; nothing imported them into the bundle. As a scan
+  agent put it: **"The neutrality proof passes trivially in part because core imports nothing
+  at all."** The single most load-bearing check in the project was a vacuous pass, and it was
+  reported as the architecture being validated.
+- Fix: wired the entry point — `installBattleframeApi()` first (so `game.battleframe.api`
+  exists before ruleset `init` calls `registerRuleset`), then measurement, dice, settings
+  (passing the wizard class through), and `CONFIG.Combat.documentClass`, which **was assigned
+  nowhere in the repo**. Plus side-effect imports for the six self-registering modules.
+  Bundle 7 → 803 lines; wiring greps 0 → 17; tests 119 → 133.
+- Surfaces: `packages/battleframe/src/battleframe.ts`, `src/battleframe.test.ts`.
+- Watch: **A green suite is not evidence the product runs.** The root cause was SS-12
+  deferring on a `<placeholder>` defect of mine, its artifacts then being committed without
+  anyone checking that the wiring — SS-12's actual job — had happened. The entry-point test
+  now mutation-tests itself: reverting `battleframe.ts` to the skeleton fails 8 of 10. Any
+  future service MUST be asserted at the entry point, not only in its own unit test.
+  Corollary: a hypothesis is not a finding — I warned about tree-shaking dropping
+  side-effect imports; the agent checked and found Rollup preserves them
+  (`moduleSideEffects: true`). The bundle was empty because the file imported nothing. Acting
+  on my guess would have double-registered against each module's own `Hooks.once`.
+- Commit: this commit.
+
+## 2026-07-16 — base-to-base was not float-commutative; the property test hid it
+- Symptom: `between(a,b) === between(b,a)` is a spec criterion. `centre - rA - rB` is
+  `(centre - rA) - rB`, which IEEE-754 does not equate to `(centre - rB) - rA`. Probed over
+  200k random triples: **47,838 (23.9%) fail strict equality**. The "property test" was a
+  `for` loop over 4 hand-picked fixtures asserting `toBeCloseTo(…, 10)` rather than `===`.
+- Fix: subtract the **sum** — `centre - (rA + rB)`. Float **addition is commutative**, and
+  `hypot` is symmetric, so the expression is now exactly commutative: **0/200,000 failures**.
+  The parenthesisation is load-bearing and carries a comment saying so. Replaced the test with
+  a real property test: 20k seeded-PRNG pairs, strict `toBe`, with bucket assertions so it
+  cannot pass vacuously by generating only one regime.
+- Surfaces: `packages/battleframe/src/measurement/measure.ts`,
+  `tests/measure.test.ts`, `tests/fixtures/known-distances.ts`.
+- Watch: **The `max(0, …)` clamp masked two-thirds of the failures** — overlapping pairs both
+  clamp to 0 and compare equal. So the old fixtures hid the defect twice: exact-binary radii
+  AND the clamp. When a property test only exercises hand-picked fixtures, it is not a
+  property test. Also open: `SceneMismatchError` compares grid parameters, not scene identity
+  — `SceneLike` has no `id`, so two different scenes with identical grid settings still
+  produce a meaningless number. Closing that needs `id?: string` on `SceneLike`.
+- Commit: this commit.
+
+## 2026-07-16 — GREATHELM courage order counted the wrong knights
+- Symptom: `runCouragePhase` passed the **pre-filtered testers** into
+  `summarizeWarbandDamage`, so `totalDamage` silently dropped damage on knights not in base
+  contact and `knightsRemaining` counted testers rather than survivors. It contradicted the
+  vault (`courage-phase.md`, `confidence: confirmed`, QSR p2 verbatim) **and the function's
+  own doc comment**. It also destroyed the deliberate brutality the vault notes: both
+  tiebreaks are meant to force the *losing* player to test first.
+- Fix: `summarizeWarbandDamage(playerId, knights)` — the whole warband. The tester filter
+  stays where it belongs, deciding who *rolls*, not who *counts*.
+- Surfaces: `packages/battleframe-greathelm/src/round/courage.ts:116-122`.
+- Watch: **The unit test asserted the correct behaviour against `summarizeWarbandDamage` in
+  isolation, so the caller's bug flowed through uncaught.** Testing a helper with correct
+  inputs proves nothing about the caller that feeds it wrong ones. The two new regression
+  tests drive the real ordering path and were verified to FAIL against the old code — a test
+  that passes before and after is a passenger.
+- Commit: this commit.

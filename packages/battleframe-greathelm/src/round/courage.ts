@@ -113,8 +113,12 @@ export async function runCouragePhase(
   warbandsKnights: ReadonlyMap<string, readonly CourageKnight[]>,
   initialAlliedRemoved: ReadonlyMap<string, number> = new Map()
 ): Promise<Map<string, CourageTestOutcome>> {
+  // Test order is computed from the *whole* warband -- QSR p2 counts total
+  // damage markers on all of a player's knights and, on a tie, all of their
+  // remaining knights. Filtering to testers here would hide damage on knights
+  // that are out of base contact. Only the tests themselves are filtered.
   const warbands = [...warbandsKnights.entries()].map(([playerId, knights]) =>
-    summarizeWarbandDamage(playerId, knightsRequiringCourageTest(knights))
+    summarizeWarbandDamage(playerId, knights)
   );
   const order = determineCourageTestOrder(warbands);
   const outcomes = new Map<string, CourageTestOutcome>();
