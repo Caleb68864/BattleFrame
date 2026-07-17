@@ -1,0 +1,10 @@
+{
+  "battleframe-greathelm": {
+    "settings": {
+      "minDicePoolFloorEnabled": {
+        "name": "Minimum Dice Pool of 3",
+        "hint": "Kickstarter-only house rule, not in the QSR v0.4 rulebook: floors each player's initiative dice pool at 3, even at 0-1 knights remaining. Off by default."
+      }
+    }
+  }
+}
