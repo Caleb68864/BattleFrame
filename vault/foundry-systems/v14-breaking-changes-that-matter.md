@@ -8,7 +8,15 @@ confidence: confirmed
 
 For a system started now on [[foundry-v14-is-current-as-of-july-2026|v14]].
 
-## MeasuredTemplate Documents are GONE
+## MeasuredTemplate Documents are DEPRECATED (not gone until v16)
+
+> [!warning] This section originally read "**are GONE**" and overstated it. Corrected
+> 2026-07-17 against live v14.363: `MeasuredTemplateDocument`, `TemplateLayer` and
+> `canvas.scene.templates` **all still exist and still work**, emitting
+> *"deprecated because it has been merged into the functionality of the Region document …
+> Backwards-compatible support will be removed in **Version 16**."*
+> Build on Regions — the direction below is right — but this is a two-major-version runway,
+> not a removal. See [[spike-results-regions]].
 
 The big one, and it lands squarely on wargames. From the release notes:
 

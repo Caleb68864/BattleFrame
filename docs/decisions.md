@@ -447,3 +447,24 @@ zero GREATHELM semantics and is a strong candidate for core (same category as `m
 generalised from one ruleset will be that ruleset's shape.
 
 Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refresh.md`.
+
+## 2026-07-17 — Area service: exact base-aware containment, not Region#testPoint
+- Symptom: The backlog demanded "read spike-results-regions.md before designing anything here."
+  That file never existed — the prerequisite was never run — and its committed default
+  (`preview(shape) -> {commit, cancel}`) was built around a persistence problem nobody had
+  measured. The vault also claimed MeasuredTemplates were deleted in v14.
+- Fix: Ran the spike live on v14.363. An UNSAVED Region computes polygons/area/bounds/testPoint
+  with zero persistence and zero server round-trip, so commit/cancel is dropped and two of four
+  ACs (no orphan on cancel, none on disconnect) are vacuously true — nothing is ever created.
+  Containment does not use testPoint: it tests a point while models are discs, and a Region
+  circle is a 63-vertex inscribed polygon, 0.165% under-area, biased toward excluding. Exact
+  arithmetic on the base model instead, consistent with measure.between. MeasuredTemplates are
+  deprecated in v14, removed in v16 — vault corrected.
+- Surfaces: `game.battleframe.areas` — circle, rectangle, contains, tokensInside, toRegionShapes.
+  Containment mode (`base-overlap` | `centre`) is the ruleset's choice; core does not pick,
+  because the researched games disagree and that makes it a rule.
+- Watch: There is no decidable "exactly touching" — (3+r)*20 and 3*20+r*20 differ by 1.42e-14,
+  so `contains` promises only correct resolution either side of the boundary. A ruleset needing
+  exact touch must define a tolerance in rules units, as greathelm's clash does. Cones and lines
+  are unbuilt: both need a base-overlap-against-arc/capsule decision no ruleset has asked for.
+- Commit: feat(core): area service — exact base-aware containment on gridless boards
