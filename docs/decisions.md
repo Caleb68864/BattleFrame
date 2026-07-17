@@ -57,3 +57,25 @@ reader would otherwise re-derive or re-break.
   a copyrighted document has entered git history and removing it needs a history
   rewrite, not a `git rm`.
 - Commit: 240937d.
+
+## 2026-07-16 — The measurement "gate" was overstated; SS-04 unblocked
+- Symptom: SS-04 carried a hard blocker on SS-01 (a manual, human-only spike) on the claim
+  that base-to-base measurement might be unreachable in Foundry. The whole build queued
+  behind it for hours. The user pushed back: "Foundry has systems in place... what
+  measurement are they so concerned about?" They were right.
+- Fix: The claim rested on core issue #11428 — but that issue is *"allow overriding the
+  **diagonal rule** for `measurePath()`"*, and **diagonal rules only exist on square grids**.
+  The MVP is **gridless** (GREATHELM is played on a sheet of paper), so #11428 does not
+  apply at all. For a gridless scene base-to-base is
+  `max(0, hypot(dx,dy)/pxPerUnit - rA - rB)` — arithmetic on the SS-03 base model, needing
+  no Foundry API and no extension seam. The source note says the override seam is *thin*,
+  which means "do the maths yourself", not "it cannot be done". The gate was inflated from a
+  headline. Removed: SS-04 `depends_on` drops SS-01; SS-01 is downgraded to verification.
+- Surfaces: SS-01 scope, SS-04 scope/criteria/decisions, Intent decision boundaries,
+  `docs/specs/battleframe-core-mvp/index.md`.
+- Watch: **Base-to-base only changes *contact* and *range*, never movement** — movement is a
+  rigid translation, so 5" is 5" measured from centres or edges. The one real open question
+  is whether Foundry's **ruler** can display base-to-base so the player and the engine agree;
+  if not, that is a follow-up, not a rewrite. Square/hex measurement is genuinely deferred
+  (BattleTech's problem, a late stress test) — do not let it creep into SS-04.
+- Commit: this commit.

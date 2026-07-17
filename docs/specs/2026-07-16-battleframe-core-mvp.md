@@ -72,7 +72,6 @@ game.**
 
 **Decision boundaries — stop and ask when:**
 
-- The SS-01 measurement gate fails → **stop**. Re-scope with a human.
 - Core needs game-specific knowledge to make GREATHELM work → **stop**. That is the design
   breaking, not a detail.
 - A ruleset requires a core change → **stop and record it**. That is the neutrality claim
@@ -170,9 +169,15 @@ dispatch: manual
   a licensed Foundry, a live world, and eyes on a console. It cannot be automated and is
   marked `dispatch: manual` accordingly.
 
-  **This is a gate.** If probe 2 shows base-to-base is unreachable via `measurePath`'s
-  `cost` callback, **stop and re-scope with a human** — core must then own measurement
-  outright and replace the ruler, roughly doubling SS-04. Do not proceed on assumption.
+  **This is verification, not a gate — downgraded after review.** It was previously written
+  as a hard blocker on SS-04, on the claim that base-to-base might be unreachable. That claim
+  was wrong: for a gridless scene, base-to-base is arithmetic on the base model and needs no
+  Foundry API (see SS-04). The blocker was removed and SS-04 now builds independently.
+
+  **What this still usefully answers:** whether the on-screen **ruler** can be made to show
+  base-to-base so player and engine agree; what units a gridless scene actually reports; and
+  whether Regions can preview without persisting (relevant to the backlogged area service).
+  All worth knowing. None of it blocks the build.
 
 - **Files (new):**
   - `vault/foundry-systems/spike-results-measurement.md`
@@ -309,7 +314,7 @@ dispatch: factory
 ---
 sub_spec_id: SS-04
 phase: run
-depends_on: ['SS-01', 'SS-03']
+depends_on: ['SS-03']
 dispatch: factory
 ---
 
@@ -318,21 +323,35 @@ dispatch: factory
 - **Scope:** The engine's reason to exist. Base-to-base distance for gridless, square and
   hex scenes, with fixtures that prove it.
 
-  **Read `vault/foundry-systems/spike-results-measurement.md` (produced by SS-01) before
-  writing any code** — it determines whether `measurePath`'s `cost` callback suffices or
-  whether core must measure directly.
+  **Gridless only.** GREATHELM is played on a sheet of paper. Square and hex measurement are
+  **out of scope** and backlogged — they matter for BattleTech, which is a deliberate late
+  stress test.
 
-  **If that file does not exist, STOP and escalate. Do not proceed.** SS-01 is
-  `dispatch: manual` and requires a human with a licensed Foundry; its absence means the gate
-  has not been run, not that it passed. Guessing here produces silently wrong ranges in every
-  game Battleframe will ever host — the single worst failure mode in this project.
+  **Do not use `canvas.grid.measurePath`.** For a gridless scene, base-to-base is plain
+  arithmetic on the base model from SS-03:
 
-  **The Foundry documentation cannot answer this.** `vault/foundry-systems/` *is* the docs,
-  read carefully — 38 notes, 33 `confirmed`. Core issue
-  [#11428](https://github.com/foundryvtt/foundryvtt/issues/11428) is **open, unmilestoned,
-  and has no staff response**; the requester's own workaround was to maintain custom
-  measurement in their module. Further reading will not close this. **Do not attempt to
-  resolve it by re-reading the API docs.**
+  ```
+  centre  = hypot(bx - ax, by - ay) / pxPerUnit
+  b2b     = max(0, centre - radiusA - radiusB)
+  ```
+
+  That is the whole algorithm. It needs no Foundry API and no extension seam.
+
+  **Correction, recorded honestly:** this sub-spec previously carried a hard gate on SS-01
+  and claimed measurement might be unreachable, citing core issue
+  [#11428](https://github.com/foundryvtt/foundryvtt/issues/11428). **That was wrong.** #11428
+  is *"allow overriding the diagonal rule for `measurePath()`"* — **diagonal rules only exist
+  on square grids**, and the MVP is gridless. The research note it came from
+  (`custom-distance-measurement-has-no-clean-override-seam.md`) says the seam is thin, which
+  means *do the maths yourself* — not *it cannot be done*. The gate was inflated; it is
+  removed. SS-01 is now **verification, not a blocker**.
+
+  **What SS-01 still answers** (worth knowing, does not block this): whether Foundry's
+  on-screen **ruler** can be made to display base-to-base, so the player and the engine agree.
+  Note this mostly does not bite — **movement is a rigid translation**, so 5" is 5" whether
+  measured centre-to-centre or edge-to-edge. Base-to-base only changes *contact* and *range*,
+  which players do not drag-measure. If the ruler cannot be made to agree, that is a
+  follow-up, not a rewrite.
 - **Files (new):**
   - `packages/battleframe/src/measurement/measure.ts`
   - `packages/battleframe/src/measurement/types.ts`
@@ -342,8 +361,9 @@ dispatch: factory
   - `[STRUCTURAL]` `game.battleframe.measure.between(tokenA, tokenB)` returns
     `{distance: number, units: string, mode: "base-to-base"}` and takes **Tokens, not
     points**.
-  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- measure` passes against known-distance fixtures covering:
-    gridless, square, and hex; equal and unequal base sizes.
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- measure` passes
+    against known-distance fixtures covering **gridless** scenes with equal and unequal base
+    sizes. Square and hex are **out of scope** — backlogged with BattleTech.
   - `[BEHAVIORAL]` Two tokens whose bases touch return **exactly 0**, not a small positive
     number.
   - `[BEHAVIORAL]` Two tokens whose bases **overlap** return 0 — never negative.
@@ -359,9 +379,9 @@ dispatch: factory
     records centre-to-centre, both base radii, and the resulting base-to-base value. A wrong
     distance is otherwise undebuggable: there is no error, just a number that is quietly
     incorrect.
-- **Decisions (SS-04):** If the SS-01 gate showed `cost` cannot express base-to-base,
-  implement measurement directly on `canvas.dimensions` + the base model and **stop before
-  replacing the ruler** — that is a separate, larger piece of work needing a human decision.
+- **Decisions (SS-04):** Implement measurement directly on `canvas.dimensions` + the base
+  model. **Do not replace the ruler** — that is separate, larger, and needs a human decision.
+  **Do not build square or hex measurement** — gridless only; the rest is backlogged.
 - **Dependencies:** SS-03
 
 ---
