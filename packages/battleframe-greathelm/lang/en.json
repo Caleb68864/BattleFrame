@@ -29,6 +29,11 @@
         "gmOnly": "Only the GM can run a GREATHELM round.",
         "noApi": "BattleFrame's dice and measurement services are unavailable, so a round cannot be run.",
         "noCombat": "Start a combat encounter before running a GREATHELM round."
+      },
+      "newBattle": {
+        "tool": "New Battle",
+        "noKnights": "No knights on the canvas to reset.",
+        "done": "New battle: reset {count} knight(s) to full strength."
       }
     },
     "prompts": {
@@ -41,6 +46,12 @@
       "attackTarget": {
         "title": "Which enemy?",
         "body": "Multiple enemies are in base contact. Which one is this attack against?"
+      },
+      "resetBattle": {
+        "title": "Start a new battle?",
+        "body": "This clears every knight's wounds, momentum and flight. This cannot be undone.",
+        "confirm": "New Battle",
+        "cancel": "Cancel"
       }
     },
     "actions": {

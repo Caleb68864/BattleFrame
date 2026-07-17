@@ -2,9 +2,11 @@ import { describe, expect, it, vi } from "vitest";
 import { MODULE_ID } from "../src/constants";
 import {
   DAMAGE_LIMIT,
+  FLED_FLAG,
   hasFled,
   isKnightRemoved,
   markFled,
+  resetKnight,
 } from "../src/round/removal";
 import { checkVictory } from "../src/round/victory";
 import { toVictoryKnights } from "../src/ui/round-control";
@@ -68,6 +70,49 @@ describe("hasFled", () => {
   it("is false by default and true once flagged", () => {
     expect(hasFled(actor())).toBe(false);
     expect(hasFled(actor({ flags: { [MODULE_ID]: { fled: true } } }))).toBe(true);
+  });
+});
+
+/**
+ * The inverse of the two removal routes. `system.damage` persists on the
+ * document, `fled` persists as a flag, and momentum accumulates across a
+ * battle -- none had a reset path, so a second battle began with every knight
+ * carrying the first battle's wounds and flight. A fresh battle clears all
+ * three back to their schema initial (0 / 0 / unset).
+ */
+describe("resetKnight", () => {
+  it("clears damage, momentum, and the fled flag in one update", async () => {
+    const knight = actor({
+      system: { damage: DAMAGE_LIMIT },
+      flags: { [MODULE_ID]: { fled: true } },
+    });
+
+    await resetKnight(knight);
+
+    expect(knight.update).toHaveBeenCalledWith({
+      "system.damage": 0,
+      "system.momentum": 0,
+      [`flags.${MODULE_ID}.-=${FLED_FLAG}`]: null,
+    });
+  });
+
+  it("leaves the knight in play afterwards", async () => {
+    const knight = actor({
+      system: { damage: DAMAGE_LIMIT },
+      flags: { [MODULE_ID]: { fled: true } },
+    });
+
+    // The update mock does not mutate the actor, so simulate Foundry applying
+    // the reset payload the same way a real document would.
+    knight.update = vi.fn(async () => {
+      knight.system = { damage: 0 };
+      knight.flags = {};
+      return undefined;
+    });
+
+    await resetKnight(knight);
+
+    expect(isKnightRemoved(knight)).toBe(false);
   });
 });
 

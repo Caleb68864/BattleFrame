@@ -177,6 +177,61 @@ export async function promptFirstOrSecond(
   }
 }
 
+export interface PromptResetConfirmationOptions {
+  /** Override dialog resolution for tests; omit to use `resolveDialogChooser`. */
+  dialog?: DialogChooserLike | null;
+}
+
+/**
+ * Confirms the destructive "New Battle" reset, which clears every knight's
+ * wounds, momentum and flight. Returns `true` only on an explicit confirm.
+ *
+ * The no-dialog and error paths differ deliberately from the other prompts:
+ * theirs fall back to a safe *game* default, but there is no safe default for a
+ * reset -- a missing or broken confirmation must never be read as consent. So
+ * both return `false` (do nothing) and log, and the reset simply does not run.
+ */
+export async function promptResetConfirmation(
+  options: PromptResetConfirmationOptions = {}
+): Promise<boolean> {
+  const dialog = options.dialog === undefined ? resolveDialogChooser() : options.dialog;
+
+  if (!dialog) {
+    log("no dialog API available for the new-battle confirmation; not resetting");
+
+    return false;
+  }
+
+  try {
+    const chosen = await dialog.choose({
+      title: localize("battleframe-greathelm.prompts.resetBattle.title", "Start a new battle?"),
+      content: `<p>${localize(
+        "battleframe-greathelm.prompts.resetBattle.body",
+        "This clears every knight's wounds, momentum and flight. This cannot be undone."
+      )}</p>`,
+      buttons: [
+        {
+          id: "confirm",
+          label: localize("battleframe-greathelm.prompts.resetBattle.confirm", "New Battle"),
+        },
+        {
+          id: "cancel",
+          label: localize("battleframe-greathelm.prompts.resetBattle.cancel", "Cancel"),
+        },
+      ],
+    });
+
+    return chosen === "confirm";
+  } catch (error) {
+    log(
+      "the new-battle confirmation dialog failed; not resetting " +
+        `(${error instanceof Error ? error.message : String(error)})`
+    );
+
+    return false;
+  }
+}
+
 export interface PromptAttackTargetOptions<T extends AttackTargetCandidate> {
   /** Every enemy the attacker is in base contact with. GREATHELM has no separate engagement range. */
   candidates: readonly T[];

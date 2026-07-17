@@ -58,3 +58,27 @@ export async function markFled(actor: ActorLike): Promise<void> {
 
   await actor.update({ [`flags.${MODULE_ID}.${FLED_FLAG}`]: true });
 }
+
+/**
+ * Returns a knight to pristine, fresh-battle state: no wounds, no momentum, not
+ * fled. The inverse of the two removal routes plus the momentum a battle
+ * accrues.
+ *
+ * `system.damage` persists on the document (`applyClashDamage` writes it),
+ * `fled` persists as a flag (`markFled`), and momentum is a per-battle stat --
+ * none of them reset on their own, so without this a second battle began with
+ * every knight still carrying the first battle's wounds and flight, and the
+ * victory check would fire before a die was thrown. All three are cleared in a
+ * single `actor.update` so the document takes one write, not three.
+ *
+ * The flag is *deleted* (`-=` is Foundry's key-removal idiom in update data),
+ * the exact inverse of `markFled` setting it, rather than left as `false`
+ * cruft in the flag bag.
+ */
+export async function resetKnight(actor: ActorLike): Promise<void> {
+  await actor.update({
+    "system.damage": 0,
+    "system.momentum": 0,
+    [`flags.${MODULE_ID}.-=${FLED_FLAG}`]: null,
+  });
+}

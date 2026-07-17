@@ -21,8 +21,12 @@ import {
 } from "../round/session";
 import { checkVictory } from "../round/victory";
 import type { CheckVictoryKnight } from "../round/victory-types";
-import { isKnightRemoved } from "../round/removal";
-import { promptFirstOrSecond, type WorldSettingsLike } from "./choice-prompts";
+import { isKnightRemoved, resetKnight } from "../round/removal";
+import {
+  promptFirstOrSecond,
+  promptResetConfirmation,
+  type WorldSettingsLike,
+} from "./choice-prompts";
 import {
   openPoolPanel,
   type PoolPanelInstance,
@@ -876,6 +880,49 @@ export async function onRoundControlActivated(
 }
 
 /**
+ * The "New Battle" scene control: returns every knight on the canvas to
+ * pristine state so a second battle can be played without hand-editing each
+ * Actor. Damage, momentum and the fled flag all persist on the document (see
+ * `round/removal.ts`), so without this the victory check fires before the first
+ * die of battle two is thrown.
+ *
+ * GM-only for the same reason as the round: it writes to shared Actor state.
+ * Destructive, so it confirms first through `promptResetConfirmation`, whose
+ * no-dialog default is *not* to reset -- an absent confirmation is never
+ * consent. Returns the number of knights reset (0 if cancelled or none found),
+ * which is what the tests assert against.
+ */
+export async function resetBattleFromControl(): Promise<number> {
+  if (!isGM()) {
+    notifyUser(localize("battleframe-greathelm.controls.round.gmOnly"), "warn");
+
+    return 0;
+  }
+
+  const knights = gatherKnightsFromCanvas();
+
+  if (knights.length === 0) {
+    notifyUser(localize("battleframe-greathelm.controls.newBattle.noKnights"), "warn");
+
+    return 0;
+  }
+
+  if (!(await promptResetConfirmation())) {
+    return 0;
+  }
+
+  for (const knight of knights) {
+    await resetKnight(knight.actor);
+  }
+
+  notifyUser(
+    format("battleframe-greathelm.controls.newBattle.done", { count: knights.length })
+  );
+
+  return knights.length;
+}
+
+/**
  * The scene control entry itself.
  *
  * >>> UNVERIFIED against Foundry v14. <<< This is not modesty, it is the
@@ -911,6 +958,25 @@ export function addRoundSceneControl(controls: unknown): void {
     },
   };
 
+  // "New Battle": the same button shape as the round tool (which is
+  // live-verified on v14.363), so it accommodates both payload idioms without
+  // asserting either. A separate tool rather than a mode of the round tool --
+  // resetting is a distinct, destructive action, not a way to start a round.
+  const newBattleTool = {
+    name: "greathelm-new-battle",
+    title: "battleframe-greathelm.controls.newBattle.tool",
+    icon: "fas fa-flag",
+    button: true,
+    visible: isGM(),
+    order: 1,
+    onClick: () => {
+      void resetBattleFromControl();
+    },
+    onChange: () => {
+      void resetBattleFromControl();
+    },
+  };
+
   const control = {
     name: MODULE_ID,
     title: "battleframe-greathelm.controls.round.title",
@@ -923,14 +989,14 @@ export function addRoundSceneControl(controls: unknown): void {
   };
 
   if (Array.isArray(controls)) {
-    control.tools = [tool];
+    control.tools = [tool, newBattleTool];
     controls.push(control);
 
     return;
   }
 
   if (controls && typeof controls === "object") {
-    control.tools = { [tool.name]: tool };
+    control.tools = { [tool.name]: tool, [newBattleTool.name]: newBattleTool };
     (controls as Record<string, unknown>)[MODULE_ID] = control;
   }
 }
