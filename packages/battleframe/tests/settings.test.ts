@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { mmPerGridDistanceUnit } from "../src/base/base-model";
 import { SYSTEM_ID } from "../src/constants";
 import { rulesetRegistry } from "../src/rulesets/registry";
 import type { RulesetDefinition } from "../src/rulesets/types";
@@ -16,7 +17,11 @@ import {
 } from "../src/settings";
 import {
   activatePrimarySelection,
+  clearSetAsidePrimaryClaims,
   evaluateWizardState,
+  isPrimaryClaimSetAside,
+  restorePrimaryClaim,
+  setAsidePrimaryClaim,
   shouldAutoOpenWizard,
 } from "../src/applications/setup-wizard";
 
@@ -115,8 +120,24 @@ describe("battleframe settings", () => {
     expect(getDefaultGridUnit()).toBe("m");
   });
 
-  it("defaults defaultGridUnit to ft when unset", () => {
-    expect(getDefaultGridUnit()).toBe("ft");
+  it("defaults defaultGridUnit to in when unset, matching system.json's grid.units", () => {
+    expect(getDefaultGridUnit()).toBe("in");
+  });
+
+  it("registers defaultGridUnit with a default the base model can convert", () => {
+    registerBattleframeSettings();
+
+    const gridUnitSetting = fakeSettings.registered.get(
+      `${SYSTEM_ID}.${SETTING_DEFAULT_GRID_UNIT}`
+    );
+
+    // The registered default and the shipped arithmetic must agree. They
+    // previously disagreed by 12x ("ft" here, inches hardcoded in radiusPx),
+    // with no error to notice it by.
+    expect(gridUnitSetting?.default).toBe("in");
+    expect(mmPerGridDistanceUnit(gridUnitSetting?.default as string)).toBe(
+      25.4
+    );
   });
 });
 
@@ -210,5 +231,84 @@ describe("activatePrimarySelection ordering", () => {
     expect(result.ok).toBe(false);
     expect(fakeSettings.set).not.toHaveBeenCalled();
     expect(getActiveRulesetId()).toBeNull();
+  });
+});
+
+describe("two-primary conflict resolution", () => {
+  let fakeSettings: ReturnType<typeof makeFakeSettings>;
+
+  beforeEach(() => {
+    fakeSettings = makeFakeSettings();
+    (globalThis as unknown as { game?: unknown }).game = { settings: fakeSettings };
+    registerBattleframeSettings();
+    rulesetRegistry.registerRuleset(makeDefinition({ id: "alpha", primary: true }));
+    rulesetRegistry.registerRuleset(makeDefinition({ id: "beta", primary: true }));
+  });
+
+  afterEach(() => {
+    delete (globalThis as unknown as { game?: unknown }).game;
+    clearSetAsidePrimaryClaims();
+    (rulesetRegistry as unknown as { rulesets: Map<string, unknown> }).rulesets.clear();
+    (rulesetRegistry as unknown as { activeId: string | null }).activeId = null;
+  });
+
+  it("refuses to activate either ruleset while both claim primary", async () => {
+    const result = await activatePrimarySelection("alpha");
+
+    expect(result.ok).toBe(false);
+    expect(result.errors?.[0]).toContain("alpha");
+    expect(result.errors?.[0]).toContain("beta");
+    expect(fakeSettings.set).not.toHaveBeenCalled();
+    expect(getActiveRulesetId()).toBeNull();
+  });
+
+  it("refuses the other one too -- the refusal is not per-button", async () => {
+    const result = await activatePrimarySelection("beta");
+
+    expect(result.ok).toBe(false);
+    expect(getActiveRulesetId()).toBeNull();
+  });
+
+  it("setting aside one claim resolves the conflict and allows the other to activate", async () => {
+    setAsidePrimaryClaim("beta");
+
+    expect(isPrimaryClaimSetAside("beta")).toBe(true);
+    expect(evaluateWizardState(rulesetRegistry.listRulesets()).state).toBe("ready");
+
+    const result = await activatePrimarySelection("alpha");
+
+    expect(result.ok).toBe(true);
+    expect(getActiveRulesetId()).toBe("alpha");
+  });
+
+  it("refuses to activate the ruleset whose own claim was set aside", async () => {
+    setAsidePrimaryClaim("beta");
+
+    const result = await activatePrimarySelection("beta");
+
+    expect(result.ok).toBe(false);
+    expect(result.errors?.[0]).toContain("set aside");
+    expect(getActiveRulesetId()).toBeNull();
+  });
+
+  it("marks the set-aside ruleset in the summary so the wizard can offer a restore", () => {
+    setAsidePrimaryClaim("beta");
+
+    const state = evaluateWizardState(rulesetRegistry.listRulesets());
+
+    expect(state.state).toBe("ready");
+    if (state.state === "ready") {
+      const beta = state.rulesets.find((r) => r.id === "beta");
+      expect(beta?.setAside).toBe(true);
+      expect(state.rulesets.find((r) => r.id === "alpha")?.setAside).toBe(false);
+    }
+  });
+
+  it("restoring the claim brings the conflict back", async () => {
+    setAsidePrimaryClaim("beta");
+    restorePrimaryClaim("beta");
+
+    expect(evaluateWizardState(rulesetRegistry.listRulesets()).state).toBe("conflict");
+    expect((await activatePrimarySelection("alpha")).ok).toBe(false);
   });
 });

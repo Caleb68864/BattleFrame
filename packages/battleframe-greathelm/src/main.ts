@@ -1,6 +1,7 @@
 import { MODULE_ID, SETTING_MIN_DICE_POOL_FLOOR_ENABLED } from "./constants";
 import { registerKnightDataModel } from "./data/knight";
 import { registerKnightSheet } from "./sheets/knight-sheet";
+import { registerRoundControl } from "./ui/round-control";
 
 interface FoundrySettingsApi {
   register: (namespace: string, key: string, data: Record<string, unknown>) => void;
@@ -49,10 +50,24 @@ function registerGreathelmSettings(): void {
 
 /**
  * Registers GREATHELM as the primary ruleset via the battleframe system's
- * public API. `game.battleframe.api` is installed by the system's own
- * `init` hook, which -- since battleframe is the system and this is a
- * module -- always runs before this module's `init` hook fires, so the
- * API is guaranteed present here.
+ * public API.
+ *
+ * The `if (!api)` guard is load-bearing and NOT belt-and-braces. An earlier
+ * version of this comment claimed the API "is guaranteed present here"
+ * because a system's `init` always precedes a module's. The vault records the
+ * opposite: whether "load order guarantees the system's `init` runs before
+ * the ruleset module's `init`" is listed, verbatim, as an unsettled question
+ * in vault/foundry-systems/the-experiment-that-would-settle-the-critical-question.md
+ * -- and core currently installs the API *inside* its own `init` hook
+ * (packages/battleframe/src/hooks/index.ts), rather than at module top level,
+ * so it does not use the dnd5e load-order trick that would actually make the
+ * guarantee true (see settings-and-api-namespace-conventions.md, "The
+ * load-order trick is the point"). Nothing has confirmed the ordering in a
+ * live world.
+ *
+ * Known consequence, out of scope for SS-13 and reported rather than fixed
+ * here: if the ordering ever does not hold, this returns silently and
+ * GREATHELM simply never registers.
  */
 function registerGreathelmRuleset(): void {
   const api = resolveGame()?.battleframe?.api;
@@ -76,4 +91,9 @@ Hooks.once("init", () => {
   registerKnightSheet();
   registerGreathelmSettings();
   registerGreathelmRuleset();
+  // The round trigger: a scene control button, registered through Foundry's
+  // own getSceneControlButtons hook. This is what makes the round loop
+  // reachable by a user -- and it needs nothing from packages/battleframe,
+  // which is the point (see ./ui/round-control.ts).
+  registerRoundControl();
 });

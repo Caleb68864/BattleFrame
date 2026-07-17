@@ -158,3 +158,50 @@ reader would otherwise re-derive or re-break.
   tests drive the real ordering path and were verified to FAIL against the old code — a test
   that passes before and after is a passenger.
 - Commit: this commit.
+
+## 2026-07-16 — "npm run build exits 0" was never evidence of anything
+- Symptom: three separate agents reported `npm run build` exit 0 in good faith while
+  `tsc --noEmit` exited 2. All were right; none of it meant the code typechecked. Root
+  `package.json` had **no typecheck script at all** — only `build` (which strips types via
+  vite/rollup without checking them) and `test`. Worse, `build` was
+  `--workspace packages/battleframe` only, so **`battleframe-greathelm` was never built by
+  the normal workflow**; its `dist/` was a stale factory artifact.
+- Fix: added `"typecheck": "tsc --noEmit"` and made `build` run it first, then
+  `--workspaces --if-present` so both packages build. Verified the gate is real by
+  deliberately introducing a type error (build exit 2, `error TS2322`) and restoring it
+  (exit 0) — a gate nobody has watched fail is not a gate.
+- Surfaces: root `package.json`; `packages/battleframe/src/documents/actor.ts:117` (the one
+  real error it caught — `Hooks.on`'s listener is `(...args: unknown[]) => void`, so the
+  narrow parameter must be asserted at the boundary).
+- Watch: **This is the third "green means nothing" trap in this project**, after
+  `--passWithNoTests` (every filtered check passes vacuously) and acceptance criteria that
+  dead code satisfies. The pattern is identical each time: a signal everyone reads as
+  success that is not wired to the thing it claims to measure. The stale-bundle case is the
+  sharpest — SS-13's `[MECHANICAL]` criterion greps `dist/greathelm.js`, and before this fix
+  it would have passed against a 146-line artifact from a previous run. **A check that reads
+  a build output must be preceded by a build that actually produces it.**
+- Commit: this commit.
+
+## 2026-07-16 — The round loop was never in the product; the spec never said what starts one
+- Symptom: converge pass 2 proved from build output, not by reading, that
+  `dist/greathelm.js` was **146 lines** — the knight data model, the sheet, and registration.
+  `grep -c "runRound|determineInitiative"` → **0**. Rollup tree-shook `loop.ts`,
+  `dice-pool.ts`, `courage.ts`, `clash.ts` and `actions.ts` out entirely, because nothing
+  reachable from `main.ts` imported them. `runRound`, `determineInitiative` and
+  `resolveDieAction` had zero production callers. The courage-order bug fixed earlier in the
+  same session was fixed in code that does not ship.
+- Fix: SS-13 — a scene control registered through Foundry's own `getSceneControlButtons`.
+  **Core required zero changes**, which is the point: a seam on core's combat tracker was
+  considered and rejected because core would have to learn that a ruleset may start a round,
+  brushing against trade-off #1. Bundle 146 → 771 lines; the grep 0 → 9; tests 133 → 186.
+- Surfaces: `packages/battleframe-greathelm/src/ui/round-control.ts`, `main.ts`,
+  `lang/en.json`; new SS-13 in the master spec.
+- Watch: **The root cause was mine, and it is the most reusable lesson here.** SS-10 and
+  SS-11 specified pure functions and unit tests. Both were satisfied — literally, correctly,
+  by the factory — with code no user could reach. No AC anywhere named a button, macro,
+  hook, tracker control, or exported API. **I wrote acceptance criteria that dead code
+  satisfies.** SS-13 now carries the antidote:
+  `[ -n "$(grep -oE 'runRound|determineInitiative' dist/greathelm.js)" ]` — a criterion
+  testing *reachability*, not *existence*. Every future sub-spec that produces runtime
+  behaviour needs one.
+- Commit: this commit.

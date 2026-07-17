@@ -20,8 +20,8 @@
             <span class="ruleset-version">{{version}}</span>
             <span class="ruleset-compat">{{compatibility}}</span>
             {{#if primary}}
-              <button type="button" class="disable-ruleset" data-action="disable-ruleset" data-ruleset-id="{{id}}">
-                {{localize "battleframe.setupWizard.disable"}}
+              <button type="button" class="set-aside-primary" data-action="set-aside-primary" data-ruleset-id="{{id}}">
+                {{localize "battleframe.setupWizard.setAsidePrimary"}}
               </button>
             {{/if}}
           </li>
@@ -37,13 +37,20 @@
             <span class="ruleset-title">{{title}}</span>
             <span class="ruleset-version">{{version}}</span>
             <span class="ruleset-compat">{{compatibility}}</span>
-            <button type="button" class="select-primary" data-action="select-primary" data-ruleset-id="{{id}}" {{#if (eq id ../activeRulesetId)}}disabled{{/if}}>
-              {{#if (eq id ../activeRulesetId)}}
-                {{localize "battleframe.setupWizard.active"}}
-              {{else}}
-                {{localize "battleframe.setupWizard.selectPrimary"}}
-              {{/if}}
-            </button>
+            {{#if setAside}}
+              <span class="ruleset-set-aside">{{localize "battleframe.setupWizard.setAsideNotice"}}</span>
+              <button type="button" class="restore-primary" data-action="restore-primary" data-ruleset-id="{{id}}">
+                {{localize "battleframe.setupWizard.restorePrimary"}}
+              </button>
+            {{else}}
+              <button type="button" class="select-primary" data-action="select-primary" data-ruleset-id="{{id}}" {{#if (eq id ../activeRulesetId)}}disabled{{/if}}>
+                {{#if (eq id ../activeRulesetId)}}
+                  {{localize "battleframe.setupWizard.active"}}
+                {{else}}
+                  {{localize "battleframe.setupWizard.selectPrimary"}}
+                {{/if}}
+              </button>
+            {{/if}}
           </li>
         {{/each}}
       </ul>

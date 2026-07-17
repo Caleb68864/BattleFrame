@@ -1,3 +1,34 @@
 {
-  "BATTLEFRAME.SystemName": "BattleFrame"
+  "BATTLEFRAME.SystemName": "BattleFrame",
+
+  "TYPES.Actor.generic": "Generic",
+
+  "battleframe.setupWizard.title": "BattleFrame Setup",
+  "battleframe.setupWizard.emptyTitle": "No ruleset installed. That is a working BattleFrame.",
+  "battleframe.setupWizard.emptyBody": "BattleFrame with no ruleset is a table and a ruler: scenes render, tokens move, and distance measures base-to-base in millimetres. What it has no opinion about is rules — turns, actions, and dice belong to a ruleset module, because no two games agree on them. Install a ruleset module and enable it, and it will appear here for you to choose. Until then, nothing is broken and nothing is missing.",
+  "battleframe.setupWizard.readyBody": "Choose the ruleset that governs this world. Exactly one is primary; you can change it later from Settings.",
+  "battleframe.setupWizard.selectPrimary": "Make Primary",
+  "battleframe.setupWizard.active": "Active",
+  "battleframe.setupWizard.conflictWarning": "Two ruleset modules both claim to be the primary ruleset for this world. BattleFrame will not activate either until you say which one governs — guessing would silently give you the wrong game.",
+  "battleframe.setupWizard.conflictInstructions": "Set aside one ruleset's primary claim to resolve this now and pick the other. That lasts until the world reloads; to fix it for good, disable one of the modules in Manage Modules.",
+  "battleframe.setupWizard.setAsidePrimary": "Set Aside Primary Claim",
+  "battleframe.setupWizard.setAsideNotice": "Primary claim set aside",
+  "battleframe.setupWizard.restorePrimary": "Restore Primary Claim",
+
+  "battleframe.settings.activeRulesetId.name": "Active Ruleset",
+  "battleframe.settings.activeRulesetId.hint": "The id of the ruleset module currently governing this world. Written by the setup wizard once a ruleset activates successfully.",
+  "battleframe.settings.setupCompleted.name": "Setup Completed",
+  "battleframe.settings.setupCompleted.hint": "Whether the setup wizard has been completed for this world. While false, the wizard opens automatically for the GM.",
+  "battleframe.settings.defaultGridUnit.name": "Default Grid Unit",
+  "battleframe.settings.defaultGridUnit.hint": "The unit label applied to new scenes. BattleFrame measures base-to-base regardless of this label; it only affects how distances are displayed.",
+  "battleframe.settings.setupWizardMenu.name": "Setup Wizard",
+  "battleframe.settings.setupWizardMenu.label": "Open Setup Wizard",
+  "battleframe.settings.setupWizardMenu.hint": "Reopen the BattleFrame setup wizard to review installed rulesets or change which one is primary.",
+
+  "battleframe.fields.notes": "Notes",
+  "battleframe.fields.biography": "Biography",
+
+  "battleframe.sheets.generic-actor": "BattleFrame Generic Actor",
+
+  "battleframe.orphans.convertTitle": "Convert Orphaned Actors"
 }

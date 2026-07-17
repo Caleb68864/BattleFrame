@@ -1,14 +1,21 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildOrphanConversionUpdate,
   convertOrphanToGeneric,
   extractPackageId,
   findOrphanedActors,
+  offerOrphanConversion,
+  registerOrphanCheck,
   warnAboutOrphans,
   type ActorLike,
   type ModuleLike,
 } from "../src/rulesets/orphan-check";
-import { getSchemaVersion, setSchemaVersion } from "../src/documents/actor";
+import {
+  CORE_SCHEMA_VERSION,
+  getSchemaVersion,
+  setSchemaVersion,
+  stampCoreSchemaVersionOnCreate,
+} from "../src/documents/actor";
 
 function actor(overrides: Partial<ActorLike> = {}): ActorLike {
   return {
@@ -142,6 +149,7 @@ describe("buildOrphanConversionUpdate / convertOrphanToGeneric", () => {
     expect(update.type).toBe("generic");
     expect(update.flags).toEqual({
       battleframe: {
+        schemaVersion: CORE_SCHEMA_VERSION,
         orphanedFrom: {
           packageId: "ruleset-a",
           type: "ruleset-a.trooper",
@@ -169,6 +177,153 @@ describe("buildOrphanConversionUpdate / convertOrphanToGeneric", () => {
     expect(update).toHaveBeenCalledWith(
       expect.objectContaining({ type: "generic" })
     );
+  });
+});
+
+describe("offerOrphanConversion", () => {
+  function orphanWithUpdate(id: string, type: string) {
+    const update = vi.fn().mockResolvedValue(undefined);
+    const orphans = findOrphanedActors(
+      [{ ...actor({ id, type }), update } as ActorLike],
+      [module({ id: type.split(".")[0], active: false })]
+    );
+    return { orphan: orphans[0], update };
+  }
+
+  it("converts a group only after the GM confirms", async () => {
+    const { orphan, update } = orphanWithUpdate("a1", "ruleset-a.trooper");
+    const confirm = vi.fn().mockResolvedValue(true);
+
+    const converted = await offerOrphanConversion([orphan], { confirm });
+
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(converted).toBe(1);
+    expect(update).toHaveBeenCalledWith(expect.objectContaining({ type: "generic" }));
+  });
+
+  it("converts nothing when the GM declines", async () => {
+    const { orphan, update } = orphanWithUpdate("a1", "ruleset-a.trooper");
+    const confirm = vi.fn().mockResolvedValue(false);
+
+    const converted = await offerOrphanConversion([orphan], { confirm });
+
+    expect(confirm).toHaveBeenCalledTimes(1);
+    expect(converted).toBe(0);
+    expect(update).not.toHaveBeenCalled();
+  });
+
+  it("asks once per disabled module, naming it, and converts only accepted groups", async () => {
+    const a = orphanWithUpdate("a1", "ruleset-a.trooper");
+    const b = orphanWithUpdate("b1", "ruleset-b.squad");
+
+    const confirm = vi.fn(async (message: string) => message.includes("ruleset-a"));
+
+    const converted = await offerOrphanConversion([a.orphan, b.orphan], { confirm });
+
+    expect(confirm).toHaveBeenCalledTimes(2);
+    expect(converted).toBe(1);
+    expect(a.update).toHaveBeenCalledTimes(1);
+    expect(b.update).not.toHaveBeenCalled();
+  });
+
+  it("degrades to converting nothing when no dialog API is available", async () => {
+    const { orphan, update } = orphanWithUpdate("a1", "ruleset-a.trooper");
+
+    const converted = await offerOrphanConversion([orphan], null);
+
+    expect(converted).toBe(0);
+    expect(update).not.toHaveBeenCalled();
+  });
+});
+
+describe("registerOrphanCheck GM gate", () => {
+  afterEach(() => {
+    delete (globalThis as unknown as { game?: unknown }).game;
+    delete (globalThis as unknown as { ui?: unknown }).ui;
+  });
+
+  function installWorld(isGM: boolean) {
+    const warn = vi.fn();
+    (globalThis as unknown as { ui?: unknown }).ui = { notifications: { warn } };
+    (globalThis as unknown as { game?: unknown }).game = {
+      user: { isGM },
+      actors: { contents: [actor({ id: "a1", type: "ruleset-a.trooper" })] },
+      modules: [module({ id: "ruleset-a", active: false })],
+    };
+    return warn;
+  }
+
+  it("warns the GM when an orphan exists", async () => {
+    const warn = installWorld(true);
+
+    await registerOrphanCheck();
+
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String(warn.mock.calls[0][0])).toContain("ruleset-a");
+  });
+
+  it("never warns a player about an orphan", async () => {
+    const warn = installWorld(false);
+
+    await registerOrphanCheck();
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+
+  it("does not warn a GM when there are no orphans", async () => {
+    const warn = vi.fn();
+    (globalThis as unknown as { ui?: unknown }).ui = { notifications: { warn } };
+    (globalThis as unknown as { game?: unknown }).game = {
+      user: { isGM: true },
+      actors: { contents: [actor({ id: "a1", type: "generic" })] },
+      modules: [module({ id: "ruleset-a", active: true })],
+    };
+
+    await registerOrphanCheck();
+
+    expect(warn).not.toHaveBeenCalled();
+  });
+});
+
+describe("stampCoreSchemaVersionOnCreate", () => {
+  it("stamps core's version on a generic Actor via updateSource", () => {
+    const updateSource = vi.fn();
+    const doc = { type: "generic", updateSource };
+
+    expect(stampCoreSchemaVersionOnCreate(doc)).toBe(true);
+    expect(updateSource).toHaveBeenCalledWith({
+      "flags.battleframe.schemaVersion": CORE_SCHEMA_VERSION,
+    });
+  });
+
+  it("never stamps a ruleset's Actor -- core does not stamp on its behalf", () => {
+    const updateSource = vi.fn();
+    const doc = { type: "ruleset-a.trooper", updateSource };
+
+    expect(stampCoreSchemaVersionOnCreate(doc)).toBe(false);
+    expect(updateSource).not.toHaveBeenCalled();
+  });
+
+  it("leaves an already-stamped document alone", () => {
+    const updateSource = vi.fn();
+    const doc = {
+      type: "generic",
+      updateSource,
+      flags: { battleframe: { schemaVersion: 0 } },
+    };
+
+    expect(stampCoreSchemaVersionOnCreate(doc)).toBe(false);
+    expect(updateSource).not.toHaveBeenCalled();
+    expect(getSchemaVersion(doc)).toBe(0);
+  });
+
+  it("falls back to flags when updateSource is unavailable", () => {
+    const doc: { type: string; flags?: Record<string, Record<string, unknown> | undefined> } = {
+      type: "generic",
+    };
+
+    expect(stampCoreSchemaVersionOnCreate(doc)).toBe(true);
+    expect(getSchemaVersion(doc)).toBe(CORE_SCHEMA_VERSION);
   });
 });
 

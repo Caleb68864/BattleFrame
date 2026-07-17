@@ -5,6 +5,16 @@
         "name": "Minimum Dice Pool of 3",
         "hint": "Kickstarter-only house rule, not in the QSR v0.4 rulebook: floors each player's initiative dice pool at 3, even at 0-1 knights remaining. Off by default."
       }
+    },
+    "controls": {
+      "round": {
+        "title": "GREATHELM",
+        "tool": "Run Round",
+        "complete": "Round complete.",
+        "gmOnly": "Only the GM can run a GREATHELM round.",
+        "noApi": "BattleFrame's dice and measurement services are unavailable, so a round cannot be run.",
+        "noCombat": "Start a combat encounter before running a GREATHELM round."
+      }
     }
   }
 }

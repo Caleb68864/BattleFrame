@@ -819,6 +819,80 @@ dispatch: factory
     failure — record it in `docs/plans/` rather than quietly absorbing it.
 - **Dependencies:** SS-09, SS-11
 
+---
+sub_spec_id: SS-13
+phase: run
+depends_on: ['SS-11', 'SS-12']
+dispatch: factory
+---
+
+### 13. GREATHELM round trigger — the affordance that starts a round
+
+- **Scope:** Give a user a way to actually play. **Added by converge pass 2 — this closes a
+  spec gap, not a drift.**
+
+  **The gap this fixes.** No sub-spec or acceptance criterion anywhere specified what
+  *triggers* a round. SS-10 and SS-11 specified pure functions and unit tests, and both were
+  satisfied — literally and correctly — by code no user can reach. The consequence, proven by
+  the build output rather than by reading: `dist/greathelm.js` is **146 lines** containing
+  only the knight data model, the sheet, and registration.
+  `grep -c "runRound|determineInitiative|SPRINT" dist/greathelm.js` returns **0**. Rollup
+  tree-shook `loop.ts`, `dice-pool.ts`, `courage.ts`, `clash.ts` and `actions.ts` out of the
+  shipped module entirely, because nothing reachable from `main.ts` imports them. **The round
+  loop is not in the product.** It exists only as a library the test suite imports.
+
+  **The Outcome — "two six-knight forces play a full GREATHELM round" — is unreachable
+  through the surface the spec specified.** That is an authoring failure, not a worker
+  failure.
+
+  **The trigger is a scene control button**, registered by GREATHELM through Foundry's own
+  `getSceneControlButtons` hook. **Core requires zero changes**, which is the point: a
+  seam on core's combat tracker was considered and rejected, because core would have to learn
+  that a ruleset may start a round — brushing against trade-off #1 (*"if core needs to know
+  what a round is, the design has failed"*). Foundry lets any module add a scene control
+  directly, so the ruleset needs no permission from core. **If this sub-spec forces a core
+  change, stop and escalate — that is the neutrality claim breaking.**
+- **Files (new):**
+  - `packages/battleframe-greathelm/src/ui/round-control.ts`
+  - `packages/battleframe-greathelm/tests/round-control.test.ts`
+- **Files (modify):**
+  - `packages/battleframe-greathelm/src/main.ts`
+  - `packages/battleframe-greathelm/lang/en.json`
+- **Acceptance criteria:**
+  - `[STRUCTURAL]` GREATHELM registers a scene control via `getSceneControlButtons`. **No
+    file under `packages/battleframe/` is modified by this sub-spec.**
+  - `[BEHAVIORAL]` Activating the control runs one full round end-to-end: gather each side's
+    knights → roll pools (models + 1) → determine initiative on most 6s → **re-roll on an
+    exact tie** → resolve the battle phase 6→1 → run the courage phase → write order to
+    `combat.flags.battleframe.order`.
+  - `[BEHAVIORAL]` **The tie re-roll is implemented, not merely documented.** `"tie"` is
+    consumed by a real caller. It is an **invented house rule** (QSR v0.4 does not specify
+    exact ties) — keep it commented as invented and recorded in
+    `vault/greathelm/open-questions.md` #15. Bound the re-roll so a pathological tie cannot
+    loop forever.
+  - `[MECHANICAL]` **The round loop is in the shipped bundle.**
+    `[ -n "$(grep -oE 'runRound|determineInitiative' packages/battleframe-greathelm/dist/greathelm.js)" ]`
+    exits 0. This is the criterion SS-10/SS-11 needed and lacked — **an acceptance criterion
+    that dead code cannot satisfy.**
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- round-control` passes.
+  - `[BEHAVIORAL]` **Sprint is measured and capped at 5"** via `game.battleframe.measure.between`
+    — base-to-base. Closes SS-11 AC2, where the 5" constant reached only `describeAction`,
+    which had no callers at all.
+  - `[BEHAVIORAL]` Wounds written by the round persist on the Actor across a reload — i.e.
+    `resolveDieAction`/`applyClashDamage` are actually reached.
+  - `[STRUCTURAL]` `writeRoundOrderToCombatFlags` persists via `combat.setFlag`, **not** by
+    mutating a plain object. Surfaced during converge: as written, nothing would persist to
+    the document even once called.
+  - `[MECHANICAL]` `[ -z "$(grep -rniE "greathelm|knight|sprint|encircle|clash" packages/battleframe/src/)" ]`
+    exits 0 — core stays ignorant.
+  - `[HUMAN REVIEW]` A GM can start and complete a round in a live Foundry v14 world without
+    opening a console.
+- **Decisions (SS-13):** The control is **GM-only**. A round mutates shared state; a player
+  triggering it is not a feature. If the scene-control API shape differs in v14 from what the
+  vault records, **escalate — do not guess.** `vault/foundry-systems/` has no
+  `confidence: confirmed` note on `getSceneControlButtons`.
+- **Dependencies:** SS-11, SS-12
+
 ## Edge Cases
 
 **Disambiguations** — resolved so no agent has to guess:
