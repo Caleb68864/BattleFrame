@@ -22,7 +22,7 @@ import type {
  * server round-trip and nothing written to the scene. So it was a real
  * candidate for the containment engine. It is still the wrong tool, twice:
  *
- * 1. **`testPoint` tests a point. Models are discs.** A knight whose base is
+ * 1. **`testPoint` tests a point. Models are discs.** A model whose base is
  *    half under a blast, but whose centre is not, would read "not hit" --
  *    wrong in every miniatures game researched.
  * 2. **A Region circle is a 63-vertex polygon**, inscribed, 0.165% under-area.

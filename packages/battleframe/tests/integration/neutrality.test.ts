@@ -49,4 +49,33 @@ describe("neutrality", () => {
 
     expect(offenders).toEqual([]);
   });
+
+  // The import check catches a *dependency* on the ruleset. It does not catch
+  // core learning a ruleset's *vocabulary* -- a `if (actor.type === "knight")`
+  // or a comment reasoning about momentum -- which is the subtler way neutrality
+  // rots: no import, but core now knows what a GREATHELM concept is. The
+  // decision log calls this vocabulary check "the load-bearing one ... the
+  // mechanical proof that core stays ruleset-neutral", and it had only ever
+  // been a spec criterion, never an automated test. It is one now.
+  //
+  // The terms are GREATHELM proper nouns with no generic engineering meaning --
+  // core has no legitimate reason to say "knight" or "warband". Built from parts
+  // so this checker never trips over its own source.
+  const RULESET_VOCABULARY = [
+    "greathelm",
+    "kni" + "ght",
+    "mom" + "entum",
+    "cou" + "rage",
+    "war" + "band",
+  ];
+  const VOCABULARY_PATTERN = new RegExp(`\\b(${RULESET_VOCABULARY.join("|")})\\b`, "i");
+
+  it("no file under packages/battleframe/src speaks a ruleset's vocabulary", () => {
+    const offenders = listFiles(CORE_SRC)
+      .filter((path) => path.endsWith(".ts"))
+      .filter((path) => VOCABULARY_PATTERN.test(readFileSync(path, "utf8")))
+      .map((path) => path.slice(REPO_ROOT.length + 1));
+
+    expect(offenders).toEqual([]);
+  });
 });

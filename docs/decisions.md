@@ -777,3 +777,30 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   edit that widened it to any 6s advantage would now break a test instead of
   silently changing turn order.
 - Commit: refactor(greathelm): collapse initiative's dead branch, cover equal-nonzero descent
+
+## 2026-07-17 — Neutrality was tested for imports, not vocabulary; two comment leaks had slipped through
+- Symptom: the neutrality integration test proved core imports no ruleset package,
+  but not that core stays *ignorant of ruleset concepts*. The decision log calls
+  the vocabulary check "the load-bearing one ... the mechanical proof that core
+  stays ruleset-neutral", yet it had only ever been a spec criterion, never an
+  automated test. On adding it, it went red immediately: `areas/area.ts` reasoned
+  about "a knight whose base is half under a blast", and `measurement/measure.ts`
+  said "the greathelm round hands each token its own reshaped double" — the second
+  a comment I had written earlier this same session while fixing scene identity.
+  No import, but core now named a GREATHELM concept.
+- Fix: added `no file under packages/battleframe/src speaks a ruleset's vocabulary`
+  — scans core src for GREATHELM proper nouns (knight, momentum, courage, warband,
+  greathelm) that have no generic engineering meaning. Neutralised both comments
+  ("a model whose base", "a ruleset may hand each token"). The term list is built
+  from string parts so the checker never matches its own source.
+- Surfaces: `packages/battleframe/tests/integration/neutrality.test.ts` (new case),
+  `src/areas/area.ts` and `src/measurement/measure.ts` (comments only).
+- Watch: mutation-verified — appending `// knight momentum` to `constants.ts` fails
+  the test; reverting passes it. The vocabulary list is deliberately conservative
+  (unmistakable proper nouns only) to avoid false positives on generic words a
+  future core service might legitimately use ("clash", "sprint", "bash" were left
+  out for that reason). It is a floor, not a ceiling: it cannot prove core is
+  neutral, only catch the named-concept leaks that are the common failure. That an
+  in-session comment tripped it is the point — neutrality erodes through prose long
+  before it erodes through imports.
+- Commit: test(core): assert core speaks no ruleset vocabulary, and fix two comment leaks
