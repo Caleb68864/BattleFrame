@@ -199,8 +199,52 @@ describe("resolveTintApi", () => {
 
     api?.setTint(placeable, 0x123456);
     expect(placeable.mesh.tint).toBe(0x123456);
-    expect(placeable.refresh).toHaveBeenCalled();
+    // This line used to assert `refresh` HAD been called -- it encoded the bug
+    // as a requirement. Live on v14.363 that refresh is exactly what wipes the
+    // tint one tick later, so the correct assertion is the opposite.
+    expect(placeable.refresh).not.toHaveBeenCalled();
 
     vi.unstubAllGlobals();
+  });
+});
+
+describe("resolveTintApi does not refresh the token it just tinted", () => {
+  // Live on v14.363: refresh() recomputes mesh.tint from document.texture.tint
+  // (#ffffff -- we never write the document), so a setTint that ends in
+  // refresh() destroys its own write ~1 tick later. Measured: write-alone holds,
+  // write-then-refresh reads back #ffffff after 800ms. See the vault note.
+  function fakeToken() {
+    return { mesh: { tint: 0xffffff }, refresh: vi.fn() };
+  }
+
+  it("writes mesh.tint and never calls refresh()", () => {
+    vi.stubGlobal("canvas", { tokens: { placeables: [] } });
+    const api = resolveTintApi()!;
+    const token = fakeToken();
+
+    api.setTint(token, 0x33cc66);
+
+    expect(token.mesh.tint).toBe(0x33cc66);
+    expect(token.refresh).not.toHaveBeenCalled();
+  });
+
+  it("clearing writes white and still never calls refresh()", () => {
+    vi.stubGlobal("canvas", { tokens: { placeables: [] } });
+    const api = resolveTintApi()!;
+    const token = fakeToken();
+
+    api.setTint(token, 0x33cc66);
+    api.setTint(token, undefined);
+
+    expect(token.mesh.tint).toBe(0xffffff);
+    expect(token.refresh).not.toHaveBeenCalled();
+  });
+
+  it("a token with no mesh is left alone rather than throwing", () => {
+    vi.stubGlobal("canvas", { tokens: { placeables: [] } });
+    const api = resolveTintApi()!;
+
+    expect(() => api.setTint({}, 0x33cc66)).not.toThrow();
+    expect(() => api.setTint(undefined, 0x33cc66)).not.toThrow();
   });
 });
