@@ -31,6 +31,20 @@ Consolidated gaps. **Every item here is unknown. None should be guessed at durin
 13. **Item rules** (resolve at step 4).
 14. **Terrain rules** beyond "cannot move through".
 15. **Exact-tie initiative tiebreak.** ([[initiative-order-determination]])
+    - **Status:** genuinely **not found** in QSR v0.4. The rulebook covers "most 6s chooses",
+      "neither has 6s → cascade to 5s, 4s…", and "only one player has 6s → forced first". It
+      does **not** cover equal, non-zero counts at every face.
+    - **Implementation decision (INVENTED HOUSE RULE — not a rule from the rulebook):**
+      `determineInitiative` returns `{ result: "tie" }` rather than guessing, and callers
+      re-roll the tied pools. Decreed in the "Decisions (SS-10)" block of
+      `docs/specs/2026-07-16-battleframe-core-mvp.md`. Recorded here because
+      `packages/battleframe-greathelm/src/round/dice-pool.ts:56-63` cites this entry — it
+      previously pointed at nothing.
+    - **Do not present the re-roll as a real rule.** Close this by buying the ~$25 full
+      rulebook; the QSR is v0.4 and explicitly introductory.
+    - **Known gap (2026-07-16 converge pass 1):** no caller consumes the `"tie"` outcome, so
+      the re-roll is documented but **not implemented**. Tracked separately — see the converge
+      report.
 16. **Mutual wipe-out / draw handling.** ([[victory-condition-quickstart]])
 17. **Healing** — no mechanism found. ([[damage-and-removal]])
 18. **Solo rules.**

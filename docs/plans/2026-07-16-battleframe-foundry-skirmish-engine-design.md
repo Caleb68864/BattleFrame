@@ -366,7 +366,7 @@ Revised from the brain dump against the research. Struck items are recorded unde
 
 | Phase | Deliverable | Why here |
 |---|---|---|
-| **0** | **Spike** — measurement, Regions, module-subtype ergonomics | Code exists at `spike/`. **Go/no-go gate.** If base-to-base can't be reached, core grows its own measurement layer and this design's cost changes materially. |
+| ~~**0**~~ | ~~Spike — go/no-go gate~~ **DISSOLVED** | Code still at `spike/`, now **verification, not a gate**. It answers whether the *ruler* can show base-to-base and what units a gridless scene reports — useful, non-blocking. Measurement needed no gate: gridless base-to-base is arithmetic. |
 | **1** | Core canvas — measurement, base model, areas | The engine's actual value. Everything else is scaffolding around it. |
 | **2** | Registry + combat shell + generic type + setup wizard | Makes it a system. |
 | **3** | `battleframe-greathelm` | **MVP.** Small (5-page QSR), self-contained, needs no import, and its dice-pool-as-action model is the hardest possible first test. |
@@ -378,21 +378,31 @@ Revised from the brain dump against the research. Struck items are recorded unde
 
 | Gate | Question | If it fails |
 |---|---|---|
-| **Phase 0 → 1** | Is base-to-base reachable via `measurePath`'s `cost` callback? | Core grows its own measurement layer. **Re-scope before continuing** — this materially changes the project's size. See Fallback below. |
-| **Phase 4 entry** | **Does Army Forge have a user-facing JSON export?** | The drag-drop mechanism does not exist. Fall back to share-link + companion proxy, or ask OPR for a CORS header. **Verify this before building anything OPR-specific.** |
+| ~~**Phase 0 → 1**~~ | ~~Is base-to-base reachable via `measurePath`'s `cost` callback?~~ | **REMOVED — the question was malformed.** See Open Question 1. Core measures directly on `canvas.dimensions` + the base model; `measurePath` is not used, and gridless needs no diagonal rule. SS-04 shipped without this gate. |
+| **Phase 4 entry** | **Does Army Forge have a user-facing JSON export?** | The drag-drop mechanism does not exist. Fall back to share-link + companion proxy, or ask OPR for a CORS header. **Verify this before building anything OPR-specific.** This is now the project's only real unanswered gate. |
 | **Phase 5 entry** | Have three rulesets with different turn structures shipped? | Do not extract the toolkit. Extraction from too few examples is worse than no toolkit. |
 
-### Measurement fallback (if the Phase 0 gate fails)
+### Measurement — what was actually true
 
-If `cost` cannot express base-to-base, core implements measurement directly on top of
-`canvas.dimensions` and the base model, bypassing `measurePath`. Cost: Battleframe owns
-distance for **every** grid type (gridless, square, hex) plus diagonals, and diverges from
-core Foundry's ruler — meaning the ruler must also be replaced so the GM's on-screen
-measurement matches the rules. **This roughly doubles Phase 1 and is the single largest
-scope risk in the design.** It does not kill the project — it makes the canvas layer even
-more clearly the product — but it must be a conscious decision, not a discovery.
+Core implements measurement directly on `canvas.dimensions` + the base model, **gridless
+only**. That is `max(0, hypot(dx,dy)/pxPerUnit - rA - rB)` — a few lines, no Foundry API, no
+seam. Shipped in SS-04 with known-distance fixtures.
 
-**MVP = Phases 0–3.** GREATHELM playable on a verified table.
+**This was written up as "the single largest scope risk in the design" and it was not a risk
+at all.** The error: a research note said the override seam is *thin*, which means *do the
+maths yourself*; that got inflated into *measurement may be unreachable*, and the supporting
+citation (#11428) turned out to be about **square-grid diagonal rules** — irrelevant to a
+gridless paper game. The whole build queued behind a human-only spike for hours on the
+strength of it. Recorded here rather than quietly deleted, because the failure mode —
+inflating a headline into a blocker without re-reading the source — is more reusable than
+the fact.
+
+Square and hex measurement **are** genuinely deferred (BattleTech's problem, a late stress
+test). Replacing the **ruler** so it displays base-to-base is a real follow-up, but cosmetic:
+movement is a rigid translation, so only *contact* and *range* differ, and players don't
+drag-measure those.
+
+**MVP = Phases 1–3** (Phase 0 dissolved). GREATHELM playable on a verified table.
 
 **"Playable" means, concretely:** two forces of six knights on a gridless paper-sized scene;
 a full round resolves via the dice pool (6→1) with actions hard-selected by die face;
@@ -408,7 +418,7 @@ mean Scenes, campaigns, warband construction, or objectives — all of which are
 | # | Question | What the answer changes |
 |---|---|---|
 | 0 | **Does Army Forge have a user-facing JSON export?** <!-- Assumption: ASM-2 — UNSUPPORTED. The research confirmed an API; it never confirmed an export button. Drag-drop was chosen specifically to avoid the API. --> The research confirmed a fetchable **API**; it did **not** confirm an export-to-file. Drag-drop was selected precisely to avoid the API — so this assumption is load-bearing and unverified. | **The flagship feature's delivery mechanism.** If no export exists, drag-drop is impossible and the choice must be re-made (share-link + proxy, or ask OPR for CORS). Phase 4 gate. Verify **before** building anything OPR-specific. |
-| 1 | **Can base-to-base be reached via `measurePath`'s `cost` callback?** <!-- Assumption: ASM-1 — UNSUPPORTED. Core issue #11428 open, no staff response. --> Foundry measures center-to-center; core issue [#11428](https://github.com/foundryvtt/foundryvtt/issues/11428) is open and unanswered. | **The biggest unknown in this design.** If no, core grows a full measurement layer *and* replaces the ruler — roughly doubles Phase 1. See [Measurement fallback](#measurement-fallback-if-the-phase-0-gate-fails). Phase 0 gate. |
+| 1 | ~~**Can base-to-base be reached via `measurePath`'s `cost` callback?**~~ **RESOLVED 2026-07-16 — the question was malformed.** #11428 is about overriding the **diagonal rule**, and diagonal rules only exist on **square grids**. The MVP is **gridless**. For a gridless scene base-to-base is `max(0, hypot(dx,dy)/pxPerUnit - rA - rB)` — arithmetic on the base model, needing no Foundry API and no seam. `measurePath` is not used. | **Nothing. This was never the risk.** It was inflated from a research note's headline ("no clean override seam" = *do the maths yourself*, not *it cannot be done*) and it blocked the build for hours. SS-04 shipped without it; 119 tests pass. The residual question — can the **ruler** display base-to-base so player and engine agree — is cosmetic: **movement is a rigid translation**, so 5" is 5" either way; only *contact* and *range* differ, and players don't drag-measure those. |
 | 2 | Can Scene Regions replace MeasuredTemplate (deleted in v14) for previews? Regions are *persisted Documents*; templates were ephemeral. | Whether AoE is cheap or a subsystem. |
 | 3 | Are module-supplied subtypes ergonomic when *every* unit is module-provided? Does a subtype Actor **survive a world reload**? | Expected to pass. If not, fall back to a generic type + ruleset blob (the Custom System Builder path) and lose schema validation. |
 | 4 | Does system `init` run before module `init`? | Whether rulesets can call `game.battleframe.api` at `init` or must wait for `setup`. |
@@ -525,7 +535,7 @@ Unresolved contracts become vague acceptance criteria downstream, so each is dec
   `game.battleframe.measure.between(tokenA, tokenB) → {distance: number, units: string, mode: "base-to-base"}`
   Distance is **base-to-base** and never negative; touching bases return `0`. Takes Tokens,
   not points — the base model is the whole reason this exists.
-  _(Override if the Phase 0 gate fails; the shape stays, the implementation changes.)_
+  _(Shipped as specified. The gate that once qualified this was removed — see Open Question 1.)_
 
 - **Base model** → **Default:** `token.flags.battleframe.base = {shape: "circle"|"oval", widthMm: number, heightMm: number}`.
   Absent flag ⇒ derive a circle from the token's footprint and log once at debug.
@@ -574,7 +584,6 @@ Unresolved contracts become vague acceptance criteria downstream, so each is dec
   means someone inferred it.
 
 **Escalate when:**
-- The Phase 0 measurement gate fails → **stop**. Re-scope with a human before continuing.
 - Army Forge has no JSON export → **stop**. The import approach must be re-decided.
 - Core needs to know anything game-specific to make a ruleset work → **stop**. That is the
   design failing, not a detail.
@@ -619,7 +628,7 @@ from the committed defaults above.
 - Buying rulebooks (GREATHELM full rules ~$25) to close research gaps.
 - Contacting OPR about licensing or CORS.
 - Scope: adding or removing a ruleset from the build sequence.
-- Proceeding past a failed Phase 0 or Phase 4 gate.
+- Proceeding past a failed **Phase 4** gate (Army Forge export) — the only gate still live.
 
 ---
 
@@ -680,7 +689,9 @@ distance is otherwise undebuggable.
 
 - [ ] **Check whether Army Forge has a user-facing JSON export** (ASM-2 / Open Question 0).
       Cheapest task here, gates the flagship feature, and nobody has looked. Do it first.
-- [ ] Run the Phase 0 spike (`spike/`) against Foundry v14 — **go/no-go on measurement**
+- [x] ~~Run the Phase 0 spike — **go/no-go on measurement**~~ **Not a gate.** Downgraded to
+      verification; SS-04 shipped gridless base-to-base without it. Run `spike/` when
+      convenient to answer the *ruler* question and gridless unit reporting — neither blocks.
 - [ ] Record spike results as `confirmed` notes in `vault/foundry-systems/`; correct any
       note real Foundry contradicts
 

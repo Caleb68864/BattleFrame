@@ -20,25 +20,36 @@ fixtures that prove it.
 measure **base-to-base**. Every game researched needs base-to-base; no precedent system has
 solved it. That gap is the product — the rules are not.
 
-**Gate — read this before anything else:**
-
-This sub-spec is **gated on `vault/foundry-systems/spike-results-measurement.md`**, produced by
-SS-01 (`dispatch: manual`). At the time this phase spec was written, **that file does not
-exist**. SS-01 requires a human with a licensed Foundry, a live world, and eyes on a console.
-Its absence means the gate **has not been run** — it does not mean the gate passed.
-
-**If the file is absent when you start: STOP and escalate. Do not proceed. Do not guess.**
-Guessing here produces silently wrong ranges in every game Battleframe will ever host — the
-single worst failure mode in this project. See Step 1.
+> [!important] The gate described below was REMOVED. This section is retained as a record.
+> **There is no gate. Do not stop. Do not wait for SS-01.**
+>
+> This sub-spec shipped without it: gridless base-to-base is
+> `max(0, hypot(dx,dy)/pxPerUnit - rA - rB)` — arithmetic on the SS-03 base model, needing
+> no Foundry API, no `measurePath`, and no extension seam. **Do not use `measurePath`.**
+> **Do not build square or hex measurement** — gridless only; the rest is backlogged with
+> BattleTech.
+>
+> **Why the gate was wrong:** it rested on core issue #11428, which is *"allow overriding
+> the **diagonal rule** for `measurePath()`"*. Diagonal rules only exist on **square grids**.
+> The MVP is gridless. Note the irony recorded below in this very file: the vault already
+> states **`GridlessGrid` never consults `diagonals`** — the evidence that #11428 could not
+> apply was here all along. A research note's headline ("no clean override seam", meaning
+> *do the maths yourself*) was inflated into *measurement may be unreachable*, and the build
+> queued behind a human-only spike for hours on the strength of it.
+>
+> SS-01 is now **verification, not a blocker.** It still usefully answers whether the
+> **ruler** can display base-to-base — cosmetic, since movement is a rigid translation and
+> only *contact* and *range* differ.
 
 **Research status — respect the confidence levels:**
 
 - `vault/foundry-systems/custom-distance-measurement-has-no-clean-override-seam.md` is
-  `confidence: partial`. It establishes that `BaseGrid#measurePath` is the canonical method and
-  that **its `cost` callback is the only real extension point**. Core issue
-  [foundryvtt#11428](https://github.com/foundryvtt/foundryvtt/issues/11428) is **open, no
-  milestone, no staff response**. The requester's own workaround was maintaining custom
-  measurement in their module.
+  `confidence: partial`. It establishes that `BaseGrid#measurePath` is the canonical method
+  and that its `cost` callback is the only real extension point. Core issue
+  [foundryvtt#11428](https://github.com/foundryvtt/foundryvtt/issues/11428) is open with no
+  staff response — **but it concerns the diagonal rule, which gridless does not use.**
+  **Irrelevant to this sub-spec.** The requester's workaround — maintaining custom
+  measurement in their own module — is exactly what we do, and is fine.
 - The same note records that **v13 moved computation out of the Ruler** — the v13/v14 Ruler
   renders measurement, it no longer computes it. Target the grid layer, not the ruler.
   `CONFIG.Canvas.rulerClass` is marked **not found / unverified**. Do not rely on it.

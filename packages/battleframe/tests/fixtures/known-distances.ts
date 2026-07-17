@@ -14,6 +14,12 @@ export const gridlessScene: MeasurementScene = {
 
 export const PX_PER_UNIT = gridlessScene.grid.size / gridlessScene.grid.distance;
 
+/**
+ * Mirrors `MM_PER_GRID_DISTANCE_UNIT` in `src/base/base-model.ts` (private
+ * there). Fixtures use it to convert base sizes in mm to distance units.
+ */
+export const MM_PER_UNIT = 25.4;
+
 interface FixtureTokenOptions {
   x: number;
   y: number;
@@ -34,6 +40,23 @@ export function makeFixtureToken(options: FixtureTokenOptions): MeasurableToken 
         base: { shape: "circle", widthMm: options.widthMm, heightMm }
       }
     }
+  };
+}
+
+/**
+ * Deterministic PRNG (mulberry32) for property tests. `Math.random()` is
+ * banned repo-wide, and a property test that fails only on some runs is worse
+ * than no property test at all — a fixed seed makes any counter-example
+ * reproducible from the seed alone.
+ */
+export function seededRandom(seed: number): () => number {
+  let a = seed >>> 0;
+
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
 

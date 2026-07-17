@@ -158,6 +158,59 @@ describe("runCouragePhase", () => {
     expect([...outcomes.keys()]).toEqual(["kB1", "kB2", "kA1"]);
   });
 
+  it("orders by damage across the whole warband, including knights not in base contact", async () => {
+    // Player "a" carries 6 damage across the warband but only one knight is in
+    // base contact; player "b" carries 2. QSR p2 counts total damage markers on
+    // a player's knights, so "a" tests first even though "b" has the more
+    // damaged *tester*. Summarizing the testers only would score a at 1 and
+    // hand the first slot to b.
+    const outcomes = await runCouragePhase(
+      fixedDice([6]),
+      new Map([
+        [
+          "a",
+          [
+            { id: "kA1", ownerId: "a", damage: 1, inBaseContactWithEnemy: true },
+            { id: "kA2", ownerId: "a", damage: 5, inBaseContactWithEnemy: false },
+          ],
+        ],
+        ["b", [{ id: "kB1", ownerId: "b", damage: 2, inBaseContactWithEnemy: true }]],
+      ])
+    );
+
+    // Only the in-contact damaged knights test, but a's out-of-contact damage
+    // still bought it the first slot.
+    expect([...outcomes.keys()]).toEqual(["kA1", "kB1"]);
+  });
+
+  it("tiebreaks on knights remaining in the whole warband, not the testing knights", async () => {
+    // Both warbands total 2 damage, so the tiebreak decides: "b" has 2 knights
+    // remaining against a's 3, so b tests first. Counting testers instead would
+    // score both warbands at 1 remaining and leave a first on input order.
+    const outcomes = await runCouragePhase(
+      fixedDice([6]),
+      new Map([
+        [
+          "a",
+          [
+            { id: "kA1", ownerId: "a", damage: 2, inBaseContactWithEnemy: true },
+            { id: "kA2", ownerId: "a", damage: 0, inBaseContactWithEnemy: false },
+            { id: "kA3", ownerId: "a", damage: 0, inBaseContactWithEnemy: false },
+          ],
+        ],
+        [
+          "b",
+          [
+            { id: "kB1", ownerId: "b", damage: 2, inBaseContactWithEnemy: true },
+            { id: "kB2", ownerId: "b", damage: 0, inBaseContactWithEnemy: false },
+          ],
+        ],
+      ])
+    );
+
+    expect([...outcomes.keys()]).toEqual(["kB1", "kA1"]);
+  });
+
   it("cascades: a failed test raises difficulty for that player's remaining tests this phase", async () => {
     const outcomes = await runCouragePhase(
       fixedDice([3, 3]),
