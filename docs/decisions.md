@@ -559,3 +559,25 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   registers at module top level rather than in `init`, it gets the fallback — fine
   today because greathelm registers in `init`.
 - Commit: fix(core): couple the running version to system.json instead of a pinned literal
+
+## 2026-07-17 — The win banner named one knight for a whole warband
+- Symptom: `sideLabel(playerId, knight)` returned `knight?.name`, so a warband
+  victory announced "Sir Bedwyr wins" — one model named as if it were the army.
+  The `playerId` it receives is a **disposition id** (`sideFromDisposition` →
+  `"friendly"`/`"hostile"`), which is what a GREATHELM side actually is: the QSR
+  gives warbands no identity ("warband construction" is `not found` in the
+  vault), so a side is a disposition and nothing finer.
+- Fix: `sideLabel(playerId)` drops the knight entirely and localizes the side —
+  new `side.friendly`/`side.hostile` keys → "The hostile warband wins". Falls
+  back to the id (`"hostile"`, still readable) rather than a raw i18n key for an
+  unmapped disposition.
+- Surfaces: `packages/battleframe-greathelm/src/ui/round-control.ts` (`sideLabel`,
+  now exported and unit-tested; `resolveRoundEnd` drops its dead knight lookup),
+  `lang/en.json` (`side.*`), `tests/side-label.test.ts`.
+- Watch: The original comment had the right instinct — a raw disposition id is
+  engine vocabulary, not player prose — and then fixed it by naming the wrong
+  thing. Reaching for *a* value that is present (a knight's name) over *the*
+  value that is correct (the side) is the same shape as the victory-wiring bug
+  in the same file: convenient-but-wrong beats absent, and reads fine until a
+  human sees it. A side is not a knight; do not label it with one.
+- Commit: fix(greathelm): win banner names the side, not one of its knights
