@@ -532,3 +532,30 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   Also: the `fled` flag persists on the Actor with no reset path, exactly as
   `system.damage` already does. Consistent, but a fresh battle needs both cleared.
 - Commit: feat(greathelm): end the game — victory check, action hints, and both routes out of play
+
+## 2026-07-17 — The running version was a pinned literal, coupled to nothing
+- Symptom: `registry.ts` held `const RUNNING_BATTLEFRAME_VERSION = "0.1.0"`,
+  agreeing with `system.json` by coincidence. It is the value a ruleset's
+  `battleframeCompatibility.minimum` is compared against in `validate.ts`, so a
+  stale literal fails **backwards**: bump `system.json` to `0.2.0` and a ruleset
+  correctly requiring `>= 0.2.0` is rejected — "requires battleframe >= 0.2.0,
+  but the running system is 0.1.0" — with no error, just refused good work. The
+  converge report flagged it as "hardcoded, nothing couples them".
+- Fix: `src/version.ts` resolves it from two sources, neither able to drift.
+  `game.system.version` is the runtime authority — literally what Foundry parsed
+  from the manifest and loaded, and present by the time a ruleset's `init` calls
+  `registerRuleset`. When `game` is absent (tests, top-level registration before
+  init), it falls back to `system.json` **imported at build time** (`MANIFEST_VERSION`),
+  which is the file itself rather than a transcribed number. `resolveJsonModule`
+  is already on; the import inlines the manifest into the bundle.
+- Surfaces: `packages/battleframe/src/version.ts` (new),
+  `src/rulesets/registry.ts` (calls `runningBattleframeVersion()`),
+  `tests/version.test.ts`. `validate.ts` was already parameterized on
+  `runningVersion` — the literal was the only coupling point.
+- Watch: `game.system.version` is trusted only when `game.system.id === SYSTEM_ID`,
+  so a different active system cannot spoof the check. The build-time fallback can
+  only ever be *behind* a bumped runtime, never ahead, and only in no-`game`
+  contexts where no user-facing compat decision rides on it. If a ruleset ever
+  registers at module top level rather than in `init`, it gets the fallback — fine
+  today because greathelm registers in `init`.
+- Commit: fix(core): couple the running version to system.json instead of a pinned literal
