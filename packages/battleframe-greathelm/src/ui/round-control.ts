@@ -485,7 +485,12 @@ export async function beginRoundFromControl(
     sides.map((playerId) => [
       playerId,
       computeDicePoolSize(
-        knightsOfSide(knights, playerId).length,
+        // QSR p1 (confirmed): "1 initiative die for every knight you control in
+        // the play area, plus 1" -- and the pool "shrinks as your knights die".
+        // Removed knights keep their tokens on the canvas, so they must be
+        // filtered out of the count here, or a wiped-down warband keeps rolling
+        // a full pool and the death-spiral never bites.
+        knightsOfSide(knights, playerId).filter((knight) => !isKnightRemoved(knight.actor)).length,
         options.minDicePoolFloorEnabled === true
       ),
     ])

@@ -957,3 +957,29 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   order (b's higher face acts before a's, even though a won initiative), so it also
   guards the alternation and offerability rules the two prior passes pinned.
 - Commit: test(greathelm): end-to-end round -- clash, removal, courage, victory compose
+
+## 2026-07-17 — The initiative pool counted dead knights; the death-spiral never bit
+- Symptom: `beginRoundFromControl` sized each side's initiative pool from
+  `knightsOfSide(knights, playerId).length` — every knight on the side, removed or
+  not. QSR p1 (`initiative-dice-pool-size.md`, `confirmed`): "1 initiative die for
+  every knight you control **in the play area**, plus 1", and the pool "shrinks as
+  your knights die" — a deliberate death-spiral. But a knight removed by damage or
+  flight keeps its token on the canvas (removal is a flag, not a token deletion),
+  so a warband ground down to one knight kept rolling a full pool round after
+  round. The single confirmed dynamic the pool exists to create was silently off.
+- Fix: filter the count by `!isKnightRemoved(knight.actor)`, so only knights in the
+  play area contribute. This is the third time in this session the same species
+  surfaced — a "knights in play" number that quietly included the dead (courage
+  difficulty, and before that the victory `isRemoved` wiring).
+- Surfaces: `packages/battleframe-greathelm/src/ui/round-control.ts`
+  (`beginRoundFromControl` pool sizing), `tests/round-control.test.ts` (a removed
+  knight does not inflate the pool).
+- Watch: the RED test failed against the old code (pool 3 for one live knight) and
+  passes now (2); mutation-honest. Note the count is taken at round *start*, so a
+  knight removed mid-round shrinks the *next* round's pool, not the current one —
+  correct, since the pool is rolled once per round. `sideIds` still derives sides
+  from all present tokens including fully-removed ones, but that only matters if a
+  wiped side reaches a new round, which the victory check prevents first; left as
+  is. The min-dice floor still applies after the filter, which is exactly where the
+  Kickstarter floor is meant to bind (≤1 knight remaining).
+- Commit: fix(greathelm): size the initiative pool from knights in play, not the dead too

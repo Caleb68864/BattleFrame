@@ -389,6 +389,29 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
     ]);
   });
 
+  it("counts only knights in play toward the pool -- a removed knight does not inflate it", async () => {
+    // QSR p1 (confirmed): pool = knights in the play area + 1, and it "shrinks
+    // as your knights die" -- the deliberate death-spiral. A knight removed by
+    // damage keeps its token on the canvas, so it must be excluded from the pool
+    // count, not merely from activation. Same family as the courage-difficulty
+    // bug: a "knights in play" number that quietly counts the dead.
+    const knights = [
+      knight("kA1", "a", 0),                // in play
+      knight("kA2", "a", 0, fakeActor(3)),  // removed (damage 3); token still present
+      knight("kB1", "b", 0),                // in play
+    ];
+    const { poolSizes } = await beginRoundFromControl({
+      knights,
+      combat: fakeCombat(),
+      dice: scriptedDice([6, 5, 4, 3, 2, 1, 6, 5]),
+      measure: lineMeasure(),
+    });
+
+    // a has one knight in play -> pool 2, not 3.
+    expect(poolSizes.get("a")).toBe(2);
+    expect(poolSizes.get("b")).toBe(2);
+  });
+
   it("persists the order via combat.setFlag exactly once, only after the session completes", async () => {
     const measure = lineMeasure();
     const combat = fakeCombat();
