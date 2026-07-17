@@ -5,6 +5,22 @@ export const SETTING_SETUP_COMPLETED = "setupCompleted";
 export const SETTING_DEFAULT_GRID_UNIT = "defaultGridUnit";
 export const SETTING_MENU_SETUP_WIZARD = "setupWizardMenu";
 
+/**
+ * Default scene distance units.
+ *
+ * Inches, not feet. The spec's committed decision is a gridless grid with
+ * `distance: 1, units: "in"` — these are paper-sized tabletop games — and
+ * `system.json` declares `grid.units: "in"` for every world created on this
+ * system. This setting previously defaulted to `"ft"`, which disagreed with
+ * both by a factor of 12.
+ *
+ * (Reworded during converge: the original cited a specific game by name and
+ * tripped SS-12's core-vocabulary check. That check is intentionally
+ * aggressive — reword the comment, never weaken the check. Core staying free
+ * of game vocabulary is the point, not a side effect.)
+ */
+export const DEFAULT_GRID_UNIT = "in";
+
 interface FoundrySettingsApi {
   register: (
     namespace: string,
@@ -68,11 +84,13 @@ export async function setSetupCompleted(completed: boolean): Promise<void> {
 export function getDefaultGridUnit(): string {
   const settings = resolveSettings();
   if (!settings) {
-    return "ft";
+    return DEFAULT_GRID_UNIT;
   }
 
   const value = settings.get(SYSTEM_ID, SETTING_DEFAULT_GRID_UNIT);
-  return typeof value === "string" && value.length > 0 ? value : "ft";
+  return typeof value === "string" && value.length > 0
+    ? value
+    : DEFAULT_GRID_UNIT;
 }
 
 export async function setDefaultGridUnit(unit: string): Promise<void> {
@@ -125,7 +143,7 @@ export function registerBattleframeSettings(
     scope: "world",
     config: true,
     type: String,
-    default: "ft",
+    default: DEFAULT_GRID_UNIT,
   });
 
   if (wizardApplicationClass) {

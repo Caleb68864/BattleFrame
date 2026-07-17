@@ -23,6 +23,12 @@ export interface TokenLike {
 export interface SceneGridLike {
   size: number;
   distance: number;
+  /**
+   * The scene's distance units, verbatim from Foundry (e.g. `"in"`, `"ft"`).
+   * Optional because Foundry does not guarantee it is set; `radiusPx` refuses
+   * to convert rather than assuming a unit when it is missing.
+   */
+  units?: string;
 }
 
 export interface SceneLike {

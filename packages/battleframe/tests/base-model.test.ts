@@ -1,7 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   InvalidBaseSizeError,
+  UnknownGridUnitError,
   getBase,
+  mmPerGridDistanceUnit,
   radiusPx
 } from "../src/base/base-model";
 import type { SceneLike, TokenLike } from "../src/base/types";
@@ -15,12 +17,27 @@ function makeToken(overrides: Partial<TokenLike> = {}): TokenLike {
   };
 }
 
-const scene: SceneLike = {
-  grid: {
-    size: 100,
-    distance: 5
-  }
-};
+function makeScene(units: string | undefined): SceneLike {
+  return {
+    grid: {
+      size: 100,
+      distance: 5,
+      units
+    }
+  };
+}
+
+function circleToken(diameterMm: number): TokenLike {
+  return makeToken({
+    flags: {
+      battleframe: {
+        base: { shape: "circle", widthMm: diameterMm, heightMm: diameterMm }
+      }
+    }
+  });
+}
+
+const scene: SceneLike = makeScene("in");
 
 describe("getBase", () => {
   it("reads a circle base from token flags", () => {
@@ -181,5 +198,117 @@ describe("radiusPx", () => {
     });
 
     expect(() => radiusPx(token, scene)).toThrow(InvalidBaseSizeError);
+  });
+});
+
+describe("radiusPx grid units", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "debug").mockImplementation(() => {});
+  });
+
+  it("uses inches when the scene grid units are inches", () => {
+    // pxPerMm = size / (distance * 25.4) = 100 / (5 * 25.4)
+    const expectedRadiusPx = (25.4 / 2) * (100 / (5 * 25.4));
+
+    expect(radiusPx(circleToken(25.4), makeScene("in"))).toBeCloseTo(
+      expectedRadiusPx,
+      10
+    );
+  });
+
+  it("uses feet when the scene grid units are feet", () => {
+    // pxPerMm = size / (distance * 25.4 * 12) = 100 / (5 * 304.8)
+    const expectedRadiusPx = (25.4 / 2) * (100 / (5 * 304.8));
+
+    expect(radiusPx(circleToken(25.4), makeScene("ft"))).toBeCloseTo(
+      expectedRadiusPx,
+      10
+    );
+  });
+
+  it("returns a radius exactly 12x smaller on a feet scene than an inches scene", () => {
+    // The whole point: one foot is twelve inches, so the same base spans a
+    // twelfth of the pixels. Assuming inches on a feet scene is a silent 12x
+    // error in every base-to-base distance.
+    const token = circleToken(32);
+
+    const inches = radiusPx(token, makeScene("in"));
+    const feet = radiusPx(token, makeScene("ft"));
+
+    expect(inches / feet).toBeCloseTo(12, 10);
+  });
+
+  it("accepts documented aliases and tolerates case and surrounding whitespace", () => {
+    const token = circleToken(32);
+    const inches = radiusPx(token, makeScene("in"));
+    const feet = radiusPx(token, makeScene("ft"));
+
+    for (const units of ["In", " in ", "INCH", "inches", '"']) {
+      expect(radiusPx(token, makeScene(units))).toBeCloseTo(inches, 10);
+    }
+
+    for (const units of ["ft ", "FT", "Foot", "feet", "'"]) {
+      expect(radiusPx(token, makeScene(units))).toBeCloseTo(feet, 10);
+    }
+  });
+
+  it("throws for an unknown unit instead of defaulting to inches", () => {
+    const token = circleToken(32);
+
+    expect(() => radiusPx(token, makeScene("furlongs"))).toThrow(
+      UnknownGridUnitError
+    );
+    expect(() => radiusPx(token, makeScene("squares"))).toThrow(
+      UnknownGridUnitError
+    );
+  });
+
+  it("throws for absent or empty units instead of defaulting to inches", () => {
+    const token = circleToken(32);
+
+    expect(() => radiusPx(token, makeScene(undefined))).toThrow(
+      UnknownGridUnitError
+    );
+    expect(() => radiusPx(token, makeScene(""))).toThrow(UnknownGridUnitError);
+    expect(() => radiusPx(token, makeScene("   "))).toThrow(
+      UnknownGridUnitError
+    );
+  });
+
+  it("names the offending unit and the supported units in the error", () => {
+    let caught: unknown;
+    try {
+      radiusPx(circleToken(32), makeScene("furlongs"));
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(UnknownGridUnitError);
+    expect((caught as Error).message).toContain("furlongs");
+    expect((caught as Error).message).toContain("in");
+    expect((caught as Error).message).toContain("ft");
+  });
+});
+
+describe("mmPerGridDistanceUnit", () => {
+  it("exposes the conversion on its own so measurement is inspectable", () => {
+    expect(mmPerGridDistanceUnit("in")).toBe(25.4);
+    expect(mmPerGridDistanceUnit("ft")).toBe(25.4 * 12);
+    // 304.8 / 25.4 is 11.999999999999998 in IEEE-754, not 12 — close, not exact.
+    expect(
+      mmPerGridDistanceUnit("ft") / mmPerGridDistanceUnit("in")
+    ).toBeCloseTo(12, 10);
+    expect(mmPerGridDistanceUnit("mm")).toBe(1);
+    expect(mmPerGridDistanceUnit("cm")).toBe(10);
+    expect(mmPerGridDistanceUnit("m")).toBe(1000);
+  });
+
+  it("throws rather than returning a plausible default", () => {
+    expect(() => mmPerGridDistanceUnit(undefined)).toThrow(
+      UnknownGridUnitError
+    );
+    expect(() => mmPerGridDistanceUnit("parsecs")).toThrow(
+      UnknownGridUnitError
+    );
   });
 });

@@ -6,7 +6,8 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build --workspace packages/battleframe",
+    "typecheck": "tsc --noEmit",
+    "build": "npm run typecheck && npm run build --workspaces --if-present",
     "test": "vitest run"
   },
   "devDependencies": {

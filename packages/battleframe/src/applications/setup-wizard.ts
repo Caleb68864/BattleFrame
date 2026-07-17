@@ -14,6 +14,43 @@ export interface RulesetSummary {
   version: string;
   compatibility: string;
   primary: boolean;
+  setAside: boolean;
+}
+
+/**
+ * Primary claims the GM has set aside to break a two-primary conflict.
+ *
+ * Core cannot actually disable a Foundry module: the only mechanism is
+ * `core.moduleConfiguration`, which vault/foundry-systems/ records at no
+ * confidence level, and which needs a world reload to take effect anyway.
+ * So the wizard resolves the conflict in the terms core *does* own --
+ * whose primary claim this world honours -- and the copy points the GM at
+ * Manage Modules for the permanent fix.
+ *
+ * Deliberately in-memory and not persisted: the world setting that would
+ * back it lives in settings/index.ts, and adding one is not in this
+ * change's scope. The set-aside lasts until reload, which is long enough
+ * to pick a primary and finish setup.
+ */
+const setAsidePrimaryIds = new Set<string>();
+
+/** Sets aside a ruleset's `primary: true` claim for this session. */
+export function setAsidePrimaryClaim(id: string): void {
+  setAsidePrimaryIds.add(id);
+}
+
+/** Restores a set-aside claim -- the GM changing their mind. */
+export function restorePrimaryClaim(id: string): void {
+  setAsidePrimaryIds.delete(id);
+}
+
+/** Clears every set-aside claim. */
+export function clearSetAsidePrimaryClaims(): void {
+  setAsidePrimaryIds.clear();
+}
+
+export function isPrimaryClaimSetAside(id: string): boolean {
+  return setAsidePrimaryIds.has(id);
 }
 
 export interface WizardStateEmpty {
@@ -33,13 +70,14 @@ export interface WizardStateReady {
 
 export type WizardState = WizardStateEmpty | WizardStateConflict | WizardStateReady;
 
-function summarize(def: RulesetDefinition): RulesetSummary {
+function summarize(def: RulesetDefinition, setAside: ReadonlySet<string>): RulesetSummary {
   return {
     id: def.id,
     title: def.title,
     version: def.version,
     compatibility: `${def.battleframeCompatibility.minimum}+ (verified ${def.battleframeCompatibility.verified})`,
     primary: def.primary,
+    setAside: setAside.has(def.id),
   };
 }
 
@@ -48,23 +86,32 @@ function summarize(def: RulesetDefinition): RulesetSummary {
  * view: nothing installed, two `primary: true` rulesets fighting over the
  * seat, or a normal ready-to-choose list. The conflict state must be
  * surfaced before anything is allowed to activate.
+ *
+ * A ruleset whose primary claim the GM has set aside no longer counts
+ * toward the conflict -- that is what resolves it.
  */
-export function evaluateWizardState(rulesets: readonly RulesetDefinition[]): WizardState {
+export function evaluateWizardState(
+  rulesets: readonly RulesetDefinition[],
+  setAside: ReadonlySet<string> = setAsidePrimaryIds
+): WizardState {
   if (rulesets.length === 0) {
     return { state: "empty" };
   }
 
-  const primaryDefs = rulesets.filter((def) => def.primary);
+  const summaries = rulesets.map((def) => summarize(def, setAside));
+  const contendingPrimaries = rulesets.filter(
+    (def) => def.primary && !setAside.has(def.id)
+  );
 
-  if (primaryDefs.length > 1) {
+  if (contendingPrimaries.length > 1) {
     return {
       state: "conflict",
-      conflictingIds: primaryDefs.map((def) => def.id),
-      rulesets: rulesets.map(summarize),
+      conflictingIds: contendingPrimaries.map((def) => def.id),
+      rulesets: summaries,
     };
   }
 
-  return { state: "ready", rulesets: rulesets.map(summarize) };
+  return { state: "ready", rulesets: summaries };
 }
 
 /**
@@ -86,8 +133,33 @@ export interface ActivateSelectionResult {
  * written. Writing the setting first (and activation failing after) leaves
  * a world pointed at a ruleset that never actually activated -- a state
  * that survives reloads and looks like corruption.
+ *
+ * The two-primary refusal lives here rather than in the wizard's click
+ * handler. A guard that only exists in the UI is not a refusal -- it is a
+ * disabled button, and any other caller of this function walks straight
+ * past it into the ambiguous state the spec forbids.
  */
 export async function activatePrimarySelection(id: string): Promise<ActivateSelectionResult> {
+  const wizardState = evaluateWizardState(rulesetRegistry.listRulesets());
+
+  if (wizardState.state === "conflict") {
+    return {
+      ok: false,
+      errors: [
+        `Cannot activate "${id}": rulesets ${wizardState.conflictingIds
+          .map((conflictId) => `"${conflictId}"`)
+          .join(" and ")} both claim primary. Resolve the conflict first.`,
+      ],
+    };
+  }
+
+  if (isPrimaryClaimSetAside(id)) {
+    return {
+      ok: false,
+      errors: [`Cannot activate "${id}": its primary claim has been set aside.`],
+    };
+  }
+
   const result = rulesetRegistry.activateRuleset(id);
 
   if (!result.ok) {
@@ -165,6 +237,8 @@ export function createSetupWizardClass(
       position: { width: 520, height: 480 },
       actions: {
         "select-primary": SetupWizard.prototype.onSelectPrimary,
+        "set-aside-primary": SetupWizard.prototype.onSetAsidePrimary,
+        "restore-primary": SetupWizard.prototype.onRestorePrimary,
       },
     };
 
@@ -185,21 +259,45 @@ export function createSetupWizardClass(
       return context;
     }
 
+    rerender(): void {
+      const self = this as unknown as { render?: (force?: boolean) => void };
+      if (typeof self.render === "function") {
+        self.render(true);
+      }
+    }
+
     async onSelectPrimary(event: unknown, target: { dataset?: { rulesetId?: string } }): Promise<void> {
       const id = target?.dataset?.rulesetId;
       if (!id) {
         return;
       }
 
-      const wizardState = evaluateWizardState(rulesetRegistry.listRulesets());
-      if (wizardState.state === "conflict") {
+      // No conflict guard here on purpose -- activatePrimarySelection owns
+      // the refusal, so it holds for every caller and not just this button.
+      const result = await activatePrimarySelection(id);
+      if (result.ok) {
+        this.rerender();
+      }
+    }
+
+    async onSetAsidePrimary(event: unknown, target: { dataset?: { rulesetId?: string } }): Promise<void> {
+      const id = target?.dataset?.rulesetId;
+      if (!id) {
         return;
       }
 
-      const result = await activatePrimarySelection(id);
-      if (result.ok && typeof (this as unknown as { render?: (force?: boolean) => void }).render === "function") {
-        (this as unknown as { render: (force?: boolean) => void }).render(true);
+      setAsidePrimaryClaim(id);
+      this.rerender();
+    }
+
+    async onRestorePrimary(event: unknown, target: { dataset?: { rulesetId?: string } }): Promise<void> {
+      const id = target?.dataset?.rulesetId;
+      if (!id) {
+        return;
       }
+
+      restorePrimaryClaim(id);
+      this.rerender();
     }
   }
 
