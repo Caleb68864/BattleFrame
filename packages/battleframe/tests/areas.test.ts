@@ -4,6 +4,7 @@ import {
   circle,
   contains,
   createAreaApi,
+  InvalidAreaError,
   rectangle,
   toRegionShapes,
   tokensInside
@@ -35,6 +36,28 @@ function knightAt(x: number, y: number, widthMm = 32) {
 
 /** Base radius of a 32mm model, in distance units (inches). */
 const BASE_RADIUS_UNITS = 32 / 2 / MM_PER_UNIT; // 0.6299...
+
+describe("area construction refuses degenerate dimensions", () => {
+  // The same contract base-model holds for a base (InvalidBaseSizeError): a
+  // zero or negative extent is a caller bug, and a silently-wrong containment
+  // result -- a blast that catches everything or nothing -- is worse than a
+  // throw. A ruleset computing a blast radius from a weapon profile is exactly
+  // where an off-by-sign slips in.
+  it("throws for a non-positive circle radius", () => {
+    expect(() => circle({ x: 0, y: 0 }, 0)).toThrow(InvalidAreaError);
+    expect(() => circle({ x: 0, y: 0 }, -3)).toThrow(InvalidAreaError);
+  });
+
+  it("throws for a non-positive rectangle width or height", () => {
+    expect(() => rectangle(0, 0, 0, 5)).toThrow(InvalidAreaError);
+    expect(() => rectangle(0, 0, 5, -1)).toThrow(InvalidAreaError);
+  });
+
+  it("accepts valid dimensions unchanged", () => {
+    expect(circle({ x: 0, y: 0 }, 3)).toEqual({ kind: "circle", centre: { x: 0, y: 0 }, radius: 3 });
+    expect(rectangle(1, 2, 5, 6)).toEqual({ kind: "rectangle", x: 1, y: 2, width: 5, height: 6 });
+  });
+});
 
 describe("circle containment is exact, not a 63-gon", () => {
   it("catches a model whose centre is under the blast", () => {

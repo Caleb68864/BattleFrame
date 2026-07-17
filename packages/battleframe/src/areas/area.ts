@@ -1,5 +1,6 @@
 import { battleframeNamespace } from "../api/index";
 import { radiusPx } from "../base/base-model";
+import { SYSTEM_ID } from "../constants";
 import type { MeasurableToken } from "../measurement/types";
 import type {
   Area,
@@ -45,7 +46,32 @@ function pxPerUnit(scene: MeasurableToken["scene"]): number {
   return scene.grid.size / scene.grid.distance;
 }
 
+/**
+ * Thrown when an area is constructed with a non-positive extent.
+ *
+ * The same stance `base-model` takes with `InvalidBaseSizeError`: a zero or
+ * negative radius/width/height is a caller bug, and the alternative is a
+ * silently meaningless containment result -- a blast that catches everything
+ * or nothing -- which per trade-off #2 is worse than failing loud. No extent
+ * is assumed or coerced.
+ */
+export class InvalidAreaError extends Error {
+  constructor(dimension: "radius" | "width" | "height", value: number) {
+    super(`${SYSTEM_ID} | area ${dimension} must be greater than 0, got ${value}`);
+    this.name = "InvalidAreaError";
+  }
+}
+
+function assertPositive(dimension: "radius" | "width" | "height", value: number): void {
+  // `!(value > 0)` rather than `value <= 0` so NaN is rejected too.
+  if (!(value > 0)) {
+    throw new InvalidAreaError(dimension, value);
+  }
+}
+
 export function circle(centre: Point, radius: number): CircleArea {
+  assertPositive("radius", radius);
+
   return { kind: "circle", centre, radius };
 }
 
@@ -55,6 +81,9 @@ export function rectangle(
   width: number,
   height: number
 ): RectangleArea {
+  assertPositive("width", width);
+  assertPositive("height", height);
+
   return { kind: "rectangle", x, y, width, height };
 }
 
