@@ -7,7 +7,10 @@ import {
 import type { MeasurementApi } from "../src/measurement/types";
 import {
   gridlessScene,
+  KNIGHT_A,
+  KNIGHT_B,
   knownDistanceFixtures,
+  makeFixturePlaceableToken,
   makeFixtureToken,
   MM_PER_UNIT,
   PX_PER_UNIT,
@@ -171,6 +174,79 @@ describe("measure.between", () => {
       centreToCentreUnits - radiusAUnits - radiusBUnits,
       10
     );
+  });
+
+  describe("real canvas Token placeables", () => {
+    // Regression: every test above hands `between` a plain object with `flags`
+    // at the top level. Real tokens have no top-level `flags` at all — the
+    // flag lives on `document.flags`, and the placeable's own `width`/`height`
+    // are PIXI bounds. 189 tests passed while base-to-base returned 0 for
+    // every real pair, because none of them resembled a real token.
+
+    it("measures two 32mm knights 3 units apart as 1.7401574803149606, not 0", () => {
+      const result = between(KNIGHT_A, KNIGHT_B);
+
+      expect(result.distance).toBeCloseTo(1.7401574803149606, 10);
+      expect(result.distance).not.toBe(0);
+      expect(result.units).toBe("in");
+      expect(result.mode).toBe("base-to-base");
+    });
+
+    it("resembles a real token: no top-level flags, bogus PIXI width/height", () => {
+      // Guards the fixture itself. If it ever grows a top-level `flags`, or
+      // loses the wrong `width`/`height`, it stops being able to catch this
+      // class of bug and these tests would pass for the wrong reason.
+      expect("flags" in KNIGHT_A).toBe(false);
+      expect(KNIGHT_A.document?.flags?.battleframe?.base).toEqual({
+        shape: "circle",
+        widthMm: 32,
+        heightMm: 32
+      });
+      expect(KNIGHT_A.document?.width).toBeCloseTo(1.2598425196850394, 10);
+      expect(KNIGHT_A.width).toBe(9);
+      expect(KNIGHT_A.height).toBe(32);
+    });
+
+    it("ignores the placeable's PIXI bounds entirely", () => {
+      // max(9, 32) * 25mm = an 800mm base -> 15.748in radius each -> a 3-unit
+      // gap collapses to 0. If the bounds leak back in, this fails.
+      const derivedFromPixiRadiusUnits = (32 * 25) / 2 / MM_PER_UNIT;
+      expect(derivedFromPixiRadiusUnits * 2).toBeGreaterThan(3);
+
+      expect(between(KNIGHT_A, KNIGHT_B).distance).toBeGreaterThan(1.7);
+    });
+
+    it("is symmetric for placeables too", () => {
+      expect(between(KNIGHT_A, KNIGHT_B).distance).toBe(
+        between(KNIGHT_B, KNIGHT_A).distance
+      );
+    });
+
+    it("measures a placeable against a plain object, both shapes agreeing", () => {
+      // Both shapes must resolve to the same base, or the two callers of this
+      // API disagree about where a token is.
+      const plain = makeFixtureToken({
+        x: 3 * PX_PER_UNIT,
+        y: 0,
+        widthMm: 32
+      });
+
+      expect(between(KNIGHT_A, plain).distance).toBeCloseTo(
+        between(KNIGHT_A, KNIGHT_B).distance,
+        10
+      );
+    });
+
+    it("clamps overlapping placeables to 0", () => {
+      const near = makeFixturePlaceableToken({
+        x: 0.5 * PX_PER_UNIT,
+        y: 0,
+        widthMm: 32,
+        documentWidth: 1.2598425196850394
+      });
+
+      expect(between(KNIGHT_A, near).distance).toBe(0);
+    });
   });
 
   it("wires up game.battleframe.measure.between via installMeasurementApi", () => {
