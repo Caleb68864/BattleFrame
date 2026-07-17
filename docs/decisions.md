@@ -851,3 +851,33 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   path check-free. If a future ruleset is found building area literals directly,
   move the assert into `contains`/`tokensInside` instead.
 - Commit: harden(core): areas reject non-positive dimensions, like base-model already does
+
+## 2026-07-17 — Battle-phase alternation is continuous across steps; the rewrite changed it silently and untested
+- Symptom: the player-layer rewrite moved the round from the (now-deleted)
+  `resolveBattlePhaseOrder`, which restarted each initiative step from the
+  initiative winner, to `session.ts`'s continuous `turnPointer`, which advances to
+  the other side after every spend and is never reset per step. That is a real
+  behavioural difference — after an odd number of activations in a step, the *next*
+  step opens with the initiative **loser** — and it was neither documented nor
+  covered by a test. The within-step alternation was tested; the step *boundary*
+  was not.
+- Fix: pinned the behaviour with a step-boundary test (a wins initiative with two
+  6s to b's one; after the three 6s alternate a,b,a, b opens the 5s) and documented
+  the interpretation at `consumeDie`. QSR p1 — "starting with whoever goes first,
+  players alternate ... working through the current step before the next"
+  (`battle-phase-initiative-steps.md`, `confirmed` for the step *structure*) — reads
+  as one unbroken alternation, with "starting with" setting only the phase's first
+  activation. The continuous reading is therefore at least as defensible as the old
+  per-step restart, and probably more so.
+- Surfaces: `packages/battleframe-greathelm/src/round/session.ts` (`consumeDie`
+  comment), `tests/session.test.ts` (step-boundary case).
+- Watch: this pins an *interpretation*, not a proven rule — the QSR does not
+  explicitly say whether a new step restarts with the winner, so the per-step-start
+  is genuinely open and wants full-rulebook verification (same status as the
+  courage intra-phase cascade). Mutation-verified the test is load-bearing: adding
+  a per-step reset to `consumeDie` fails exactly this test and nothing else. If the
+  rulebook later says restart-per-step, the change is one line at `consumeDie` plus
+  flipping the test's expectation — both now carry the rationale, so it will be a
+  deliberate change, not a silent one. The value is converting an accidental,
+  invisible behaviour into a documented, tested, flagged one.
+- Commit: test(greathelm): pin continuous battle-phase alternation across step boundaries

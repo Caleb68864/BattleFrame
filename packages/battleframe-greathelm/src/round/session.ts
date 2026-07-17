@@ -287,6 +287,15 @@ export function createRoundSession(options: CreateRoundSessionOptions): RoundSes
       die.playerId,
       pool.filter((candidate) => candidate.id !== die.id)
     );
+    // Alternation is continuous across the whole phase: the pointer advances to
+    // the other side and is deliberately NOT reset to the initiative winner at
+    // each new initiative step. QSR p1 -- "starting with whoever goes first,
+    // players alternate ... working through the current step before the next" --
+    // reads as one unbroken alternation, not a per-step restart; "starting with"
+    // sets the phase's first activation, once. A now-deleted earlier
+    // implementation restarted each step with the winner; the step-boundary test
+    // in session.test.ts pins this reading against a silent revert. The residual
+    // ambiguity is logged for rulebook verification (courage-order style).
     turnPointer = (playerIndex + 1) % playerIds.length;
   }
 
