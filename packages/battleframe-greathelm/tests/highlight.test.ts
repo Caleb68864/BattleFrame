@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import {
   applyHighlights,
   clearHighlights,
+  createHighlightController,
   CONTACT_TINT_COLOR,
   LEGAL_TINT_COLOR,
   resolveTintApi,
@@ -123,6 +124,60 @@ describe("clearHighlights", () => {
 
   it("is a no-op when the tint API is unavailable", () => {
     expect(() => clearHighlights(KNIGHTS, undefined)).not.toThrow();
+  });
+});
+
+describe("createHighlightController", () => {
+  it("applies highlights for the given selection", () => {
+    const dice: RoundSessionDie[] = [{ id: "a-d1", playerId: "a", face: 6 }];
+    const targets: LegalTarget[] = [{ knightId: "a1", legal: true }];
+    const session = fakeSession({
+      remainingDice: () => dice,
+      legalTargetsFor: () => targets,
+    });
+    const tintApi = fakeTintApi();
+    const controller = createHighlightController({ session, knights: KNIGHTS, tintApi });
+
+    controller.update("a-d1");
+
+    expect(tintApi.calls).toContainEqual([KNIGHT_A.token, LEGAL_TINT_COLOR]);
+  });
+
+  it("clears highlights when the die is deselected", () => {
+    const session = fakeSession();
+    const tintApi = fakeTintApi();
+    const controller = createHighlightController({ session, knights: KNIGHTS, tintApi });
+
+    controller.update(undefined);
+
+    expect(tintApi.calls).toContainEqual([KNIGHT_A.token, undefined]);
+    expect(tintApi.calls).toContainEqual([KNIGHT_B.token, undefined]);
+  });
+
+  it("clears highlights instead of applying them once the round has completed", () => {
+    const targets: LegalTarget[] = [{ knightId: "a1", legal: true }];
+    const session = fakeSession({
+      legalTargetsFor: () => targets,
+      isComplete: () => true,
+    });
+    const tintApi = fakeTintApi();
+    const controller = createHighlightController({ session, knights: KNIGHTS, tintApi });
+
+    controller.update("a-d1");
+
+    expect(tintApi.calls).toContainEqual([KNIGHT_A.token, undefined]);
+    expect(tintApi.calls).not.toContainEqual([KNIGHT_A.token, LEGAL_TINT_COLOR]);
+  });
+
+  it("clears highlights on close, e.g. when the panel closes", () => {
+    const session = fakeSession();
+    const tintApi = fakeTintApi();
+    const controller = createHighlightController({ session, knights: KNIGHTS, tintApi });
+
+    controller.close();
+
+    expect(tintApi.calls).toContainEqual([KNIGHT_A.token, undefined]);
+    expect(tintApi.calls).toContainEqual([KNIGHT_B.token, undefined]);
   });
 });
 
