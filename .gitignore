@@ -31,3 +31,6 @@ Thumbs.db
 .playwright-mcp/
 *.stackdump
 bgg.xml
+
+# forge-factory scratch (audit backups of specs it rewrote)
+*.audit-backup-*
