@@ -4,8 +4,7 @@ import type {
   RulesetDefinition,
 } from "./types";
 import { validateRulesetDefinition } from "./validate";
-
-const RUNNING_BATTLEFRAME_VERSION = "0.1.0";
+import { runningBattleframeVersion } from "../version";
 
 function callHook(hook: string, ...args: unknown[]): void {
   if (typeof Hooks === "undefined") {
@@ -28,7 +27,7 @@ export class RulesetRegistry {
       const errors = validateRulesetDefinition(
         def,
         Array.from(this.rulesets.keys()),
-        RUNNING_BATTLEFRAME_VERSION
+        runningBattleframeVersion()
       );
 
       if (errors.length > 0) {
