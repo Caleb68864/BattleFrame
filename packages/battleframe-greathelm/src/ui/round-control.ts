@@ -12,7 +12,7 @@ import {
   type InitiativeOutcome,
   type RolledDie,
 } from "../round/dice-pool";
-import { type ActorLike, type CombatLike, type ResolvedDie, type RoundDie } from "../round/loop";
+import { type ActorLike, type CombatLike, type ResolvedDie } from "../round/loop";
 import {
   createRoundSession,
   type PoolDie,
@@ -234,35 +234,6 @@ export function resolveFirstPlayer(
   const other = playerIds.find((playerId) => playerId !== outcome.playerId);
 
   return other ?? outcome.playerId;
-}
-
-/**
- * Assigns a player's rolled faces to that player's knights, round-robin.
- *
- * ENGINE DEFAULT, not a rule. The dice pool is a PLAYER-level resource and
- * any die may activate any of that player's knights -- there is no activation
- * limit and one knight may legally take every action in a round
- * (vault/greathelm/action-economy-per-die-not-per-model.md). Which knight
- * spends which die is the player's choice, every time. Round-robin is a
- * placeholder that spreads the round across the warband so it plays out
- * visibly; it is not an AI and does not claim to be a good one. A real
- * per-die knight picker is the obvious next increment.
- */
-export function assignDiceToKnights(
-  playerId: string,
-  faces: readonly RolledDie[],
-  knights: readonly RoundKnight[]
-): RoundDie[] {
-  if (knights.length === 0) {
-    return [];
-  }
-
-  return faces.map((rolled, index) => ({
-    id: `${playerId}-d${index + 1}`,
-    playerId,
-    knightId: knights[index % knights.length].id,
-    face: rolled.face as DieFace,
-  }));
 }
 
 export interface NearestEnemy {
