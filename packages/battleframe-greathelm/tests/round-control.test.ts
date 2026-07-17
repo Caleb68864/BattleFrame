@@ -10,6 +10,7 @@ import {
   formatInches,
   onRoundControlActivated,
   planMovement,
+  resetBattleFromControl,
   resolveFirstPlayer,
   rollPool,
   sideFromDisposition,
@@ -543,6 +544,9 @@ describe("addRoundSceneControl tolerates both known payload shapes", () => {
     expect(controls).toHaveLength(1);
     expect(controls[0].name).toBe("battleframe-greathelm");
     expect(Array.isArray(controls[0].tools)).toBe(true);
+    // Both tools present: running a round and starting a new battle.
+    const toolNames = (controls[0].tools as Array<{ name: string }>).map((t) => t.name);
+    expect(toolNames).toEqual(["greathelm-run-round", "greathelm-new-battle"]);
   });
 
   it("keys into a record-shaped controls payload", () => {
@@ -552,11 +556,123 @@ describe("addRoundSceneControl tolerates both known payload shapes", () => {
     addRoundSceneControl(controls);
 
     expect(controls["battleframe-greathelm"].tools).toHaveProperty("greathelm-run-round");
+    expect(controls["battleframe-greathelm"].tools).toHaveProperty("greathelm-new-battle");
   });
 
   it("does not throw on an unexpected payload", () => {
     vi.stubGlobal("game", { user: { isGM: true } });
 
     expect(() => addRoundSceneControl(undefined)).not.toThrow();
+  });
+});
+
+/**
+ * The "New Battle" reset is destructive -- it clears every knight's wounds,
+ * momentum and flight. These tests pin the safety ordering: it is GM-gated, it
+ * confirms BEFORE it touches an Actor, and a refused or absent confirmation
+ * resets nothing. The reset payload itself is unit-tested in removal.test.ts
+ * (resetKnight); here we prove the orchestrator never reaches it without
+ * consent.
+ */
+describe("resetBattleFromControl -- confirm before you clear the board", () => {
+  const KNIGHT_TYPE = "battleframe-greathelm.knight";
+
+  function knightPlaceable(id: string) {
+    const update = vi.fn(async () => undefined);
+    return {
+      id,
+      name: id,
+      center: { x: 0, y: 0 },
+      scene: { grid: { size: 100, distance: 1, units: "in" } },
+      document: { id, disposition: 1, flags: {}, width: 1, height: 1 },
+      actor: { id, name: id, type: KNIGHT_TYPE, system: { damage: 0 }, flags: {}, update },
+    };
+  }
+
+  function stubWorld(options: {
+    isGM: boolean;
+    placeables: ReturnType<typeof knightPlaceable>[];
+    confirm?: "confirm" | "cancel" | "no-dialog";
+  }) {
+    const warn = vi.fn();
+    const info = vi.fn();
+    vi.stubGlobal("game", {
+      user: { isGM: options.isGM },
+      i18n: { localize: (k: string) => k, format: (k: string) => k },
+    });
+    vi.stubGlobal("ui", { notifications: { warn, info } });
+    vi.stubGlobal("canvas", {
+      tokens: { placeables: options.placeables },
+      scene: { grid: { size: 100, distance: 1, units: "in" } },
+    });
+
+    if (options.confirm === "no-dialog") {
+      vi.stubGlobal("foundry", undefined);
+    } else if (options.confirm) {
+      const wait = vi.fn().mockResolvedValue(options.confirm);
+      vi.stubGlobal("foundry", { applications: { api: { DialogV2: { wait } } } });
+    }
+
+    return { warn, info };
+  }
+
+  it("refuses a non-GM: no Actor is touched, and it says why", async () => {
+    const knights = [knightPlaceable("a")];
+    const { warn } = stubWorld({ isGM: false, placeables: knights, confirm: "confirm" });
+
+    const count = await resetBattleFromControl();
+
+    expect(count).toBe(0);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(knights[0].actor.update).not.toHaveBeenCalled();
+  });
+
+  it("does nothing when the canvas holds no knights", async () => {
+    const wait = vi.fn().mockResolvedValue("confirm");
+    stubWorld({ isGM: true, placeables: [] });
+    vi.stubGlobal("foundry", { applications: { api: { DialogV2: { wait } } } });
+
+    const count = await resetBattleFromControl();
+
+    expect(count).toBe(0);
+    // Never even opened the confirmation: there was nothing to confirm.
+    expect(wait).not.toHaveBeenCalled();
+  });
+
+  it("resets nothing when the GM cancels the confirmation", async () => {
+    const knights = [knightPlaceable("a"), knightPlaceable("b")];
+    stubWorld({ isGM: true, placeables: knights, confirm: "cancel" });
+
+    const count = await resetBattleFromControl();
+
+    expect(count).toBe(0);
+    expect(knights[0].actor.update).not.toHaveBeenCalled();
+    expect(knights[1].actor.update).not.toHaveBeenCalled();
+  });
+
+  it("resets nothing when no dialog API is available -- absence is not consent", async () => {
+    const knights = [knightPlaceable("a")];
+    stubWorld({ isGM: true, placeables: knights, confirm: "no-dialog" });
+
+    const count = await resetBattleFromControl();
+
+    expect(count).toBe(0);
+    expect(knights[0].actor.update).not.toHaveBeenCalled();
+  });
+
+  it("resets every knight once the GM confirms, and reports the count", async () => {
+    const knights = [knightPlaceable("a"), knightPlaceable("b")];
+    stubWorld({ isGM: true, placeables: knights, confirm: "confirm" });
+
+    const count = await resetBattleFromControl();
+
+    expect(count).toBe(2);
+    for (const knight of knights) {
+      expect(knight.actor.update).toHaveBeenCalledWith({
+        "system.damage": 0,
+        "system.momentum": 0,
+        "flags.battleframe-greathelm.-=fled": null,
+      });
+    }
   });
 });
