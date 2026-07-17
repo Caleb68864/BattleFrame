@@ -28,6 +28,45 @@ function resolveGame(): {
 }
 
 /**
+ * Resolves the battleframe api without depending on load order.
+ *
+ * `globalThis.battleframe` is preferred: the system builds that namespace at
+ * its module top level (packages/battleframe/src/battleframe.ts), so it
+ * exists before *any* package's `init` runs, whichever order Foundry loaded
+ * them in -- this is the dnd5e trick, see the system's own comments and
+ * vault/foundry-systems/settings-and-api-namespace-conventions.md. The
+ * `game.battleframe` fallback covers the bound form, which the system
+ * attaches at its `init`; both are the same object once bound.
+ */
+function resolveBattleframeApi(): BattleframeApi | undefined {
+  const globalScope = globalThis as unknown as {
+    battleframe?: { api?: BattleframeApi };
+  };
+
+  return globalScope.battleframe?.api ?? resolveGame()?.battleframe?.api;
+}
+
+/**
+ * Reports a fatal registration failure to the user, then throws. Never
+ * returns.
+ *
+ * Loud failure over plausible output: a ruleset that silently vanishes leaves
+ * a world that looks fine and does nothing, with no error, no warning and no
+ * trace to debug from. The notification reaches the GM; the throw reaches the
+ * console and stops us pretending we registered.
+ */
+function failRegistration(reason: string): never {
+  const message = `${MODULE_ID} | GREATHELM did not register: ${reason}`;
+
+  const notifications = (globalThis as unknown as {
+    ui?: { notifications?: { error?: (text: string) => void } };
+  }).ui?.notifications;
+  notifications?.error?.(message);
+
+  throw new Error(message);
+}
+
+/**
  * The min-dice-pool-floor setting is Kickstarter-only, not QSR v0.4 -- see
  * constants.ts MIN_DICE_POOL_FLOOR. Defaults off so no house rule is
  * silently applied.
@@ -52,36 +91,34 @@ function registerGreathelmSettings(): void {
  * Registers GREATHELM as the primary ruleset via the battleframe system's
  * public API.
  *
- * The `if (!api)` guard is load-bearing and NOT belt-and-braces. An earlier
- * version of this comment claimed the API "is guaranteed present here"
- * because a system's `init` always precedes a module's. The vault records the
- * opposite: whether "load order guarantees the system's `init` runs before
- * the ruleset module's `init`" is listed, verbatim, as an unsettled question
- * in vault/foundry-systems/the-experiment-that-would-settle-the-critical-question.md
- * -- and core currently installs the API *inside* its own `init` hook
- * (packages/battleframe/src/hooks/index.ts), rather than at module top level,
- * so it does not use the dnd5e load-order trick that would actually make the
- * guarantee true (see settings-and-api-namespace-conventions.md, "The
- * load-order trick is the point"). Nothing has confirmed the ordering in a
- * live world.
- *
- * Known consequence, out of scope for SS-13 and reported rather than fixed
- * here: if the ordering ever does not hold, this returns silently and
- * GREATHELM simply never registers.
+ * There is no silent path out of this function. The api is resolved in a
+ * load-order-independent way (resolveBattleframeApi), so a miss no longer
+ * means "the system's `init` has not run yet" -- it means the battleframe
+ * system is absent, broken, or has changed its namespace convention. Every
+ * one of those is a real failure the user has to be told about, and a
+ * rejected registration is too: GREATHELM not being the active ruleset is
+ * not something to discover from an empty character sheet.
  */
 function registerGreathelmRuleset(): void {
-  const api = resolveGame()?.battleframe?.api;
+  const api = resolveBattleframeApi();
   if (!api) {
-    return;
+    failRegistration(
+      "the battleframe system API was not found on globalThis.battleframe or " +
+        "game.battleframe. Is the battleframe system installed and active?"
+    );
   }
 
-  api.registerRuleset({
+  const result = api.registerRuleset({
     id: MODULE_ID,
     title: "GREATHELM",
     version: "0.1.0",
     battleframeCompatibility: { minimum: "0.1.0", verified: "0.1.0" },
     primary: true,
   });
+
+  if (!result.ok) {
+    failRegistration(result.errors?.join("; ") ?? "the system rejected the ruleset");
+  }
 }
 
 Hooks.once("init", () => {
@@ -90,10 +127,14 @@ Hooks.once("init", () => {
   registerKnightDataModel();
   registerKnightSheet();
   registerGreathelmSettings();
-  registerGreathelmRuleset();
   // The round trigger: a scene control button, registered through Foundry's
   // own getSceneControlButtons hook. This is what makes the round loop
   // reachable by a user -- and it needs nothing from packages/battleframe,
   // which is the point (see ./ui/round-control.ts).
   registerRoundControl();
+  // Last, deliberately: registerGreathelmRuleset throws on failure rather
+  // than returning silently, and everything above it is independent of the
+  // system's api. Ordering it here means a missing system produces a loud
+  // error without also swallowing the registrations that would have worked.
+  registerGreathelmRuleset();
 });

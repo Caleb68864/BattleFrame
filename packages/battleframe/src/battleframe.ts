@@ -1,4 +1,4 @@
-import { installBattleframeApi } from "./api/index";
+import { bindBattleframeNamespace, installBattleframeApi } from "./api/index";
 import { createBattleframeCombatClass } from "./combat/battleframe-combat";
 import { SYSTEM_ID } from "./constants";
 import { installDiceApi } from "./dice/dice";
@@ -23,6 +23,23 @@ import "./data/generic-actor";
 import "./applications/generic-actor-sheet";
 import "./rulesets/orphan-check";
 import "./applications/setup-wizard";
+
+// The namespace, built at MODULE TOP LEVEL -- the dnd5e trick, verbatim in
+// spirit (vault/foundry-systems/settings-and-api-namespace-conventions.md):
+//
+//   globalThis.dnd5e = { ... };                    // module top level
+//   Hooks.once("init", () => { globalThis.dnd5e = game.dnd5e =
+//     Object.assign(game.system, globalThis.dnd5e); });
+//
+// Everything a ruleset module needs -- api, measure, dice -- is reachable on
+// `globalThis.battleframe` from this line onward, before *any* package's
+// `init` hook runs. That is the point: Foundry publishes no package
+// load-order contract, so a ruleset that reads the api from its own `init`
+// must not depend on this system's `init` having run first. None of these
+// installers touch `game`; `game` does not exist yet here.
+installBattleframeApi();
+installMeasurementApi();
+installDiceApi();
 
 function hooksAvailable(): boolean {
   return typeof Hooks !== "undefined";
@@ -66,18 +83,20 @@ function registerCombatDocumentClass(): void {
 }
 
 /**
- * Wires core at `init`. `game.battleframe.api` is installed first: ruleset
- * modules call `game.battleframe.api.registerRuleset` from their own `init`,
- * and this system's `init` listener is registered at import time -- before
- * any module's -- so the namespace exists by the time they look for it.
- * `./hooks` installs the api too; doing it here as well is harmless (the
- * ruleset registry behind it is a module singleton) and keeps the entry
- * point's ordering guarantee independent of import side effects.
+ * Wires core at `init`. The api is NOT installed here -- it was installed at
+ * module top level, above, and a ruleset module may already have registered
+ * against it before this hook fired. What happens here is the binding step:
+ * `game` finally exists, so the namespace gets attached to it, making
+ * `globalThis.battleframe`, `game.battleframe` and `game.system` the same
+ * object (see bindBattleframeNamespace). Consumers reading any of the three
+ * from their own `init` therefore see the same, already-populated api,
+ * whichever package Foundry loaded first.
+ *
+ * `./hooks` no longer installs the api -- there is one installer now, and it
+ * runs at import time.
  */
 export function initialiseBattleframe(): void {
-  installBattleframeApi();
-  installMeasurementApi();
-  installDiceApi();
+  bindBattleframeNamespace();
 
   registerBattleframeSettings(resolveWizardClass());
   registerCombatDocumentClass();

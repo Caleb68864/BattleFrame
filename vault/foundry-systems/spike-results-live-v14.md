@@ -109,13 +109,41 @@ yourself is fine.
 ## Caveats — read before treating this as settled
 
 - **One configuration, one observation.** Ordering held for `battleframe` + one module on
-  v14.363. It is **not proof of a general guarantee**. Foundry publishes no ordering
-  contract, and [[settings-and-api-namespace-conventions]] (`confirmed`) still says the
-  **top-level assignment** pattern is the way to make load order irrelevant. We install
-  inside `init`. **Adopt the top-level pattern anyway** — it removes the dependency on this
-  observation entirely, and costs one line.
-- **`main.ts`'s silent `return` on a missing api is still a bug**, independent of ordering.
-  It inverts trade-off #2 (loud failure over plausible output): if this ever breaks, the
-  ruleset vanishes with no error, no warning, no trace.
+  v14.363. It is **not proof of a general guarantee** — Foundry publishes no ordering
+  contract.
+- **~~Adopt the top-level pattern anyway~~ — DONE, same day.** The api is now built at
+  module top level and merged onto `game.system` at `init`, per
+  [[settings-and-api-namespace-conventions]] (`confirmed`, dnd5e's verbatim two-step). **This
+  observation is therefore no longer load-bearing** — registration works regardless of which
+  package Foundry loads first. Verified by mutation test: reverting the installers back
+  inside `init` fails the tests that assert the api is reachable with `init` never fired and
+  with `game` deleted entirely.
+- **~~`main.ts`'s silent `return` is still a bug~~ — FIXED, same day.** `failRegistration()`
+  now notifies the GM and throws. A *rejected* registration (`result.ok === false`) was also
+  being discarded silently — the same vanish-failure wearing a different hat — and now fails
+  loudly too.
 - Related: [[modules-can-contribute-document-subtypes]],
   [[lancer-activation-based-combat-precedent]], [[foundry-v14-is-current-as-of-july-2026]].
+
+## Addendum — two development-workflow facts (2026-07-17, confirmed)
+
+### Foundry scans `Data/systems` only at startup
+
+Deploying a **new** system to a running Foundry produces **nothing**: it is absent from the
+Create World dropdown, with no error, no log line, no hint. A container restart made it
+appear immediately. Affects every install path — belongs in any install documentation.
+Updating an already-registered system does not need a restart.
+
+### System JS is served with `Cache-Control: max-age=14400`
+
+Four hours. After a redeploy the browser **keeps running the old bundle and will not even
+revalidate**. Observed directly: `globalThis.battleframe` was `undefined` in a live world
+while the server was serving a byte-identical copy of the new build containing that exact
+assignment (32,099 bytes, 17 `globalThis` references, `Last-Modified` matching the deploy).
+
+**This is a trap that fabricates evidence.** Without checking the served bytes, the obvious
+conclusion is "the fix does not work in production" — and it would have been wrong. Purging
+`caches` and unregistering service workers does not help; neither is involved. It is the
+plain HTTP cache. Hard-reload, or compare the served bytes with `curl` + `cmp`.
+
+Recorded in `docs/DEPLOY.md` as well, because that is where someone will look.

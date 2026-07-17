@@ -29,6 +29,44 @@ Re-running the script replaces any previously deployed copy of each
 package; it does not touch anything else under `Data/systems` or
 `Data/modules`.
 
+## Two things that will waste your afternoon
+
+Both learned the hard way against a live v14.363 instance on 2026-07-17.
+
+### 1. Foundry only scans `Data/systems` at startup
+
+Deploying a **new** system to a running Foundry does nothing visible — it will
+not appear in the Create World dropdown, with no error anywhere. **Restart
+Foundry after adding a system for the first time.** Updating an
+already-registered system does not need this.
+
+### 2. System JS is cached for four hours
+
+Foundry serves `dist/*.js` with:
+
+```
+Cache-Control: max-age=14400
+```
+
+So after a redeploy, **the browser keeps running your old code for up to four
+hours** and will not even revalidate. This is the single most confusing thing
+about iterating on a Foundry system: your fix is on the server, the served
+bytes are correct, and the world still behaves like the old build.
+
+**Always hard-reload (Ctrl+Shift+R / Cmd+Shift+R) after a redeploy.** If you
+are automating a browser, purging `caches` and unregistering service workers is
+*not* enough — neither is involved; it is the plain HTTP cache.
+
+To confirm what the server actually has, bypass the browser entirely:
+
+```
+curl -s "<host>/systems/battleframe/dist/battleframe.js?cb=$(date +%s)" \
+  | cmp - packages/battleframe/dist/battleframe.js && echo "server has your build"
+```
+
+If that says the server has your build but the world disagrees, it is the
+cache — not your code.
+
 ## Manual verification checklist
 
 Once deployed, follow the end-to-end steps in the master spec's

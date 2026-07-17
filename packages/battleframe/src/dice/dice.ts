@@ -1,3 +1,4 @@
+import { battleframeNamespace } from "../api/index";
 import { SYSTEM_ID } from "../constants";
 import { postRollToChat } from "./chat";
 
@@ -49,15 +50,14 @@ export function createDiceApi(): DiceApi {
   return { roll };
 }
 
+/**
+ * Installs onto the shared namespace, not onto `game` -- same reason as the
+ * measurement api: `game` is absent at module top level, and the namespace
+ * has to be reachable before any package's `init`. See ../api/index.
+ */
 export function installDiceApi(): DiceApi {
-  const api = createDiceApi();
+  const namespace = battleframeNamespace();
+  namespace.dice = namespace.dice ?? createDiceApi();
 
-  if (typeof game !== "undefined" && game) {
-    game.battleframe = {
-      ...(game.battleframe ?? {}),
-      dice: api,
-    } as BattleframeGameNamespace;
-  }
-
-  return api;
+  return namespace.dice;
 }
