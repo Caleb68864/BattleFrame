@@ -41,6 +41,7 @@ async function roll(
     total: rollInstance.total,
     rulesetId: options.rulesetId ?? SYSTEM_ID,
     flavor: options.flavor,
+    roll: rollInstance,
   });
 
   return rollInstance;

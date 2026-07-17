@@ -468,3 +468,31 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   exact touch must define a tolerance in rules units, as greathelm's clash does. Cones and lines
   are unbuilt: both need a base-overlap-against-arc/capsule decision no ruleset has asked for.
 - Commit: feat(core): area service — exact base-aware containment on gridless boards
+
+## 2026-07-17 — The dice service threw away the Roll; nothing could animate it
+- Symptom: The design specifies the dice service as a thin passthrough *because*
+  "thin = Dice So Nice works free" (design line 134), and carries a HUMAN REVIEW
+  item asserting it animates. It cannot. `dice.roll` evaluated a `Roll`, read
+  `formula` and `total` off it into primitives, and `postRollToChat` rendered
+  those into an HTML string and called `ChatMessage.create({content, flavor})`.
+  The Roll object never reached the message. Foundry attaches dice to a message
+  via `rolls`; that is what the breakdown tooltip is built from, what roll modes
+  gate on, and what Dice So Nice hooks. A message carrying only pre-rendered
+  numbers has no dice on it, so it animates nothing — and reads perfectly.
+- Fix: Pass the evaluated Roll through `RollChatCardData.roll` and attach it as
+  `rolls: [roll]`. The template never reads it; `renderRollChatCard` is unchanged
+  and the card is unchanged. **Thin was never the problem** — the passthrough was
+  thin in the one way that didn't help. No Dice So Nice dependency and no module
+  detection: the free integration is free only if the Roll travels with the
+  message.
+- Surfaces: `packages/battleframe/src/dice/chat.ts` (`RollChatCardData.roll`,
+  `postRollToChat`), `packages/battleframe/src/dice/dice.ts`. Every ruleset roll
+  goes through here — greathelm's initiative, clash, and courage tests all inherit
+  the fix.
+- Watch: **The `rolls` create-data field name is UNVERIFIED against a live v14** —
+  it comes from the docs, not observation, and is marked as such in place. A wrong
+  field name animates nothing and throws nothing: the identical silent failure to
+  the bug being fixed. The tests mock `ChatMessage` and therefore *cannot* detect
+  it; only the live Dice So Nice HUMAN REVIEW item can. More generally: a card that
+  renders the right numbers is not evidence the message carries dice.
+- Commit: fix(core): attach the Roll to its chat message so dice can animate
