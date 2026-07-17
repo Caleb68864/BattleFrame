@@ -19,9 +19,22 @@ export class SceneMismatchError extends Error {
 
 /**
  * Both tokens must be measured in the same space, or the result is a
- * plausible-looking wrong number. Scenes carry no id on `SceneLike`, so the
- * grid parameters are what we can compare: they are exactly what the
- * pxPerUnit conversion and the reported units depend on.
+ * plausible-looking wrong number.
+ *
+ * Scene identity is decided in three tiers, most authoritative first:
+ *
+ * 1. Same object reference — trivially the same scene.
+ * 2. Scene ids, when both are present. This is the authoritative check: two
+ *    *different* scenes can share identical grid settings, and the id is the
+ *    only thing that tells them apart. Equal ids are the same space even if
+ *    the grid objects are separate instances (the greathelm round hands each
+ *    token its own reshaped double); differing ids are a mismatch even if the
+ *    grids are byte-identical.
+ * 3. Grid parameters, when either id is absent. A fallback for plain-object
+ *    callers and tests: they are exactly what the pxPerUnit conversion and the
+ *    reported units depend on, so a difference there is a genuine mismatch —
+ *    but equal grids without ids can only be assumed, not proven, to be the
+ *    same scene.
  */
 function assertSameMeasurementSpace(
   tokenA: MeasurableToken,
@@ -31,6 +44,14 @@ function assertSameMeasurementSpace(
   const b = tokenB.scene;
 
   if (a === b) {
+    return;
+  }
+
+  if (a.id !== undefined && b.id !== undefined) {
+    if (a.id !== b.id) {
+      throw new SceneMismatchError();
+    }
+
     return;
   }
 

@@ -160,6 +160,34 @@ describe("measure.between", () => {
     expect(() => between(tokenA, tokenB)).not.toThrow();
   });
 
+  it("throws across two distinct scenes even when their grids are identical", () => {
+    const tokenA = makeFixtureToken({ x: 0, y: 0, widthMm: 25.4 });
+    const tokenB = makeFixtureToken({ x: 10 * PX_PER_UNIT, y: 0, widthMm: 25.4 });
+
+    // The failure this closes: identical grid settings on two *different*
+    // scenes. Grid comparison alone cannot tell them apart, so the old check
+    // returned a plausible-but-meaningless distance for tokens that share no
+    // measurement space. A scene id makes the two scenes distinguishable.
+    tokenA.scene = { id: "scene-A", grid: { ...gridlessScene.grid } };
+    tokenB.scene = { id: "scene-B", grid: { ...gridlessScene.grid } };
+
+    expect(() => between(tokenA, tokenB)).toThrow(SceneMismatchError);
+    expect(() => between(tokenB, tokenA)).toThrow(SceneMismatchError);
+  });
+
+  it("allows the same scene id across distinct grid-object instances", () => {
+    const tokenA = makeFixtureToken({ x: 0, y: 0, widthMm: 25.4 });
+    const tokenB = makeFixtureToken({ x: 10 * PX_PER_UNIT, y: 0, widthMm: 25.4 });
+
+    // Same scene, but each token carries its own reshaped double (as the
+    // greathelm round does) — so the grid objects are separate instances with
+    // equal values. A matching id must short-circuit to "same space".
+    tokenA.scene = { id: "scene-1", grid: { ...gridlessScene.grid } };
+    tokenB.scene = { id: "scene-1", grid: { ...gridlessScene.grid } };
+
+    expect(() => between(tokenA, tokenB)).not.toThrow();
+  });
+
   it("equals centre-to-centre minus the sum of base radii for non-overlapping tokens", () => {
     const tokenA = makeFixtureToken({ x: 0, y: 0, widthMm: 25.4 });
     const tokenB = makeFixtureToken({ x: 20 * PX_PER_UNIT, y: 0, widthMm: 50.8 });

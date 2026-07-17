@@ -65,5 +65,15 @@ export interface SceneGridLike {
 }
 
 export interface SceneLike {
+  /**
+   * The scene's document id, when known. A real Foundry `Scene` always carries
+   * one; the reshaped doubles that `measure.between`'s callers build carry it
+   * through from `placeable.scene`. It is the only thing that distinguishes two
+   * *different* scenes that happen to share grid settings — grid parameters
+   * alone cannot, so two such scenes would otherwise yield a plausible but
+   * meaningless distance. Optional because plain-object callers and tests may
+   * omit it, in which case the grid parameters are the best available proxy.
+   */
+  id?: string;
   grid: SceneGridLike;
 }

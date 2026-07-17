@@ -581,3 +581,33 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   in the same file: convenient-but-wrong beats absent, and reads fine until a
   human sees it. A side is not a knight; do not label it with one.
 - Commit: fix(greathelm): win banner names the side, not one of its knights
+
+## 2026-07-17 — Measurement space was decided by grid settings, not scene identity
+- Symptom: `assertSameMeasurementSpace` compared only `grid.size/distance/units`.
+  Two **different** scenes with identical grid settings — the common case, since
+  most gridless scenes share the same grid — passed the check and produced a
+  plausible-but-meaningless base-to-base distance. The measure.ts comment
+  admitted it: "Scenes carry no id on `SceneLike`, so the grid parameters are
+  what we can compare." Grid parameters cannot tell two scenes apart; only an id
+  can. The earlier commutativity entry flagged this same gap in its Watch.
+- Fix: added `id?: string` to `SceneLike` and made identity a three-tier check:
+  same reference → same space; both ids present → **the id decides** (equal ids
+  are the same space even across distinct grid-object instances, which is exactly
+  how the greathelm round hands each token its own reshaped double; differing ids
+  mismatch even with byte-identical grids); either id absent → fall back to grid
+  comparison for plain-object callers and tests. Real Foundry Scenes always carry
+  `.id`, and `round-control.ts` already threads `placeable.scene` through, so the
+  stronger check engages in-game with no caller change.
+- Surfaces: `packages/battleframe/src/base/types.ts` (`SceneLike.id`),
+  `src/measurement/measure.ts` (`assertSameMeasurementSpace`),
+  `tests/measure.test.ts` (distinct-scenes-same-grid throws; same-id-distinct-grid
+  allowed).
+- Watch: the fallback still *assumes* equal grids without ids are the same scene —
+  it cannot prove it. That is unavoidable for id-less doubles and is why the id
+  tier is checked first. A caller that builds doubles from real scenes should
+  always carry the id through (greathelm does); dropping it silently downgrades
+  the check to the weaker proxy without any error. The RED test failed before the
+  fix (no throw) and passes after — the same-id test passed before via the grid
+  fallback and still does, so it is a passenger guarding the id short-circuit, not
+  proof of the new behaviour; the distinct-scenes test is the load-bearing one.
+- Commit: fix(core): decide measurement-space identity by scene id, not just grid
