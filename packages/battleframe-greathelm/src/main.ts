@@ -1,5 +1,6 @@
 import { MODULE_ID, SETTING_MIN_DICE_POOL_FLOOR_ENABLED } from "./constants";
 import { registerKnightDataModel } from "./data/knight";
+import { registerKnightSheet } from "./sheets/knight-sheet";
 
 interface FoundrySettingsApi {
   register: (namespace: string, key: string, data: Record<string, unknown>) => void;
@@ -72,6 +73,7 @@ Hooks.once("init", () => {
   // Registers the knight Actor subtype at CONFIG.Actor.dataModels (see
   // ../data/knight.ts registerKnightDataModel).
   registerKnightDataModel();
+  registerKnightSheet();
   registerGreathelmSettings();
   registerGreathelmRuleset();
 });
