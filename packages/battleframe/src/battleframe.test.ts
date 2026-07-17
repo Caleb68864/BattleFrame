@@ -244,6 +244,36 @@ describe("battleframe entry point", () => {
     expect(namespace?.api).toBeDefined();
   });
 
+  it("exposes the complete public API surface a ruleset module builds against", () => {
+    // The contract a module author depends on: `game.battleframe.{api, measure,
+    // dice, areas}`, each with its documented methods. `areas` in particular was
+    // wired at the entry point (installAreaApi) but asserted nowhere -- so a
+    // dropped install would vanish the AoE primitive silently, the same
+    // reachability failure that once shipped an empty bundle. This pins the
+    // whole surface so any of the four disappearing fails here, at the seam a
+    // module actually reads, not only in each service's own unit test.
+    const namespace = (globalThis as unknown as {
+      game: { battleframe?: Record<string, Record<string, unknown> | undefined> };
+    }).game.battleframe;
+
+    const surface: Record<string, readonly string[]> = {
+      api: ["registerRuleset", "activateRuleset", "getActiveRuleset", "getRuleset", "listRulesets"],
+      measure: ["between"],
+      dice: ["roll"],
+      areas: ["circle", "rectangle", "contains", "tokensInside", "toRegionShapes"],
+    };
+
+    for (const [service, methods] of Object.entries(surface)) {
+      expect(namespace?.[service], `game.battleframe.${service} is missing`).toBeDefined();
+      for (const method of methods) {
+        expect(
+          typeof namespace?.[service]?.[method],
+          `game.battleframe.${service}.${method} is not a function`
+        ).toBe("function");
+      }
+    }
+  });
+
   it("registers every setup setting plus the wizard menu", () => {
     expect(env.settings.has(SETTING_ACTIVE_RULESET_ID)).toBe(true);
     expect(env.settings.has(SETTING_SETUP_COMPLETED)).toBe(true);
