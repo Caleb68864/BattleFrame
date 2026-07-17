@@ -36,12 +36,17 @@ export interface RollChatCardData {
    * posting that alone yields a card that reads correctly and animates
    * nothing, with no error anywhere.
    *
-   * UNVERIFIED against a live v14: the `rolls` create-data field name comes
-   * from the docs, not observation, and this failure mode is silent in exactly
-   * the same way the bug it fixes was -- a wrong field name animates nothing
-   * and throws nothing. Confirm alongside the existing "Dice So Nice animates
-   * Battleframe rolls" HUMAN REVIEW item rather than trusting these tests,
-   * which mock ChatMessage and so cannot detect a wrong name.
+   * The field name is DOC-CONFIRMED: Foundry's official v10 migration article
+   * states the ChatMessage `rolls` field became "an array of Roll objects
+   * instead of a single roll" and deprecated the singular `roll` -- and that
+   * shape carries through v14. So `rolls: [roll]` is the correct create-data
+   * key, and `dice.test.ts` pins it against an accidental rename to `roll`.
+   * What remains genuinely live-only is whether Dice So Nice (a third-party
+   * module) then animates off it -- confirm that under the existing "Dice So
+   * Nice animates Battleframe rolls" HUMAN REVIEW item, since these tests mock
+   * ChatMessage and cannot exercise a real module. The original silent-failure
+   * warning stood only while the field name itself was unverified; it no longer
+   * is.
    */
   roll?: unknown;
 }
