@@ -97,11 +97,70 @@ export function mmPerGridDistanceUnit(units: string | undefined): number {
   return mm;
 }
 
+/**
+ * Thrown when a token has neither a base flag nor a footprint that can be
+ * trusted to be in grid units.
+ *
+ * There is deliberately no fallback footprint. This error exists because its
+ * absence was a shipped bug: `deriveBaseFromFootprint` read `.width`/`.height`
+ * off a canvas Token placeable, where those are PIXI rendered bounds in
+ * pixels, not grid units. A 32mm-based token reported `height = 32`, which
+ * became a 800mm base, a 15.7in radius, and a base-to-base distance of 0 for
+ * every pair on the canvas. Nothing threw; the numbers were merely wrong.
+ *
+ * Per trade-off #2 (loud failure over plausible output), refusing to guess is
+ * the only defensible answer. A token whose footprint we cannot read in grid
+ * units gives us nothing to derive *from* — anything we returned would be a
+ * number with no provenance, which is exactly the failure mode above.
+ */
+export class MissingBaseFootprintError extends Error {
+  constructor() {
+    super(
+      `${SYSTEM_ID} | cannot determine a base for a token: no ` +
+        `flags.${SYSTEM_ID}.base and no footprint in grid units ` +
+        `(document.width/height); no base is assumed. Set the token's ` +
+        `base flag, or measure a token backed by a TokenDocument.`
+    );
+    this.name = "MissingBaseFootprintError";
+  }
+}
+
 let hasLoggedMissingBaseFlag = false;
 
+/**
+ * The token's footprint in **grid units**, or `undefined` if it cannot be read.
+ *
+ * The presence of `document` is the discriminator, and it is load-bearing:
+ *
+ * - A **placeable** (has `document`) keeps its footprint on the document.
+ *   Its own `.width`/`.height` are PIXI bounds — measured live on a 32mm
+ *   token: `placeable.width === 9`, `placeable.height === 32`, while
+ *   `document.width === 1.2598`. So when a document is present we read it and
+ *   read nothing else: falling back to the placeable's bounds would silently
+ *   reintroduce the original bug.
+ * - A **plain object** (no `document`) carries its footprint at the top level,
+ *   already in grid units. That path is safe precisely because there is no
+ *   PIXI container to confuse it with.
+ */
+function footprintGridUnits(
+  token: TokenLike
+): { width: number; height: number } | undefined {
+  const source = token.document ?? token;
+
+  return typeof source.width === "number" && typeof source.height === "number"
+    ? { width: source.width, height: source.height }
+    : undefined;
+}
+
 function deriveBaseFromFootprint(token: TokenLike): BaseDimensions {
+  const footprint = footprintGridUnits(token);
+
+  if (footprint === undefined) {
+    throw new MissingBaseFootprintError();
+  }
+
   const diameterMm =
-    Math.max(token.width, token.height) * DEFAULT_MM_PER_GRID_SQUARE;
+    Math.max(footprint.width, footprint.height) * DEFAULT_MM_PER_GRID_SQUARE;
 
   return {
     shape: "circle",
@@ -122,12 +181,20 @@ function assertValidSize(base: BaseDimensions): void {
 /**
  * Reads a token's base dimensions, in millimetres.
  *
- * The `flags.battleframe.base` flag wins when present. When absent, a
- * circular base is derived from the token's rectangular footprint and a
- * one-time debug line is logged (not once per call).
+ * The base flag wins when present. It is read from `document.flags` first,
+ * because that is where Foundry actually stores it: a canvas Token placeable
+ * has no `flags` of its own (`'flags' in placeable` is `false` on v14), so
+ * reading only `token.flags` finds nothing on every real token and silently
+ * falls through to the derive path. The top-level `flags` fallback serves the
+ * plain-object shape used by `measure.between`'s callers and by tests.
+ *
+ * When no flag is present, a circular base is derived from the token's
+ * footprint (which may throw — see `MissingBaseFootprintError`) and a one-time
+ * debug line is logged (not once per call).
  */
 export function getBase(token: TokenLike): BaseDimensions {
-  const flaggedBase = token.flags?.battleframe?.base;
+  const flaggedBase =
+    token.document?.flags?.battleframe?.base ?? token.flags?.battleframe?.base;
 
   const base = flaggedBase ?? deriveBaseFromFootprint(token);
 

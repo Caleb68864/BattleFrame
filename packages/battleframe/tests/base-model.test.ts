@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   InvalidBaseSizeError,
+  MissingBaseFootprintError,
   UnknownGridUnitError,
   getBase,
   mmPerGridDistanceUnit,
@@ -132,6 +133,129 @@ describe("getBase", () => {
     });
 
     expect(() => getBase(token)).toThrow(InvalidBaseSizeError);
+  });
+});
+
+describe("getBase on a canvas Token placeable", () => {
+  beforeEach(() => {
+    vi.spyOn(console, "debug").mockImplementation(() => {});
+  });
+
+  /**
+   * A real placeable: no top-level `flags`, flags on `document`, footprint in
+   * grid units on `document`, and top-level `width`/`height` that are PIXI
+   * rendered bounds (the live values off a 32mm-based token on v14.363).
+   */
+  function makePlaceable(document: TokenLike["document"]): TokenLike {
+    return { width: 9, height: 32, document };
+  }
+
+  it("reads the base flag from document.flags, where Foundry actually puts it", () => {
+    const token = makePlaceable({
+      width: 1.2598,
+      height: 1.2598,
+      flags: {
+        battleframe: {
+          base: { shape: "circle", widthMm: 32, heightMm: 32 }
+        }
+      }
+    });
+
+    expect(getBase(token)).toEqual({
+      shape: "circle",
+      widthMm: 32,
+      heightMm: 32
+    });
+  });
+
+  it("does not derive an 800mm base from the placeable's PIXI bounds", () => {
+    const token = makePlaceable({
+      width: 1.2598,
+      height: 1.2598,
+      flags: {
+        battleframe: {
+          base: { shape: "circle", widthMm: 32, heightMm: 32 }
+        }
+      }
+    });
+
+    // max(9, 32) * 25 = 800: the exact wrong answer the old code produced.
+    expect(getBase(token).widthMm).not.toBe(800);
+  });
+
+  it("derives from document.width/height, never the placeable's bounds", () => {
+    const token = makePlaceable({ width: 2, height: 1 });
+
+    // 2 grid units * 25mm = 50mm, not max(9, 32) * 25 = 800mm.
+    expect(getBase(token)).toEqual({
+      shape: "circle",
+      widthMm: 50,
+      heightMm: 50
+    });
+  });
+
+  it("prefers document.flags over the top-level flags fallback", () => {
+    const token: TokenLike = {
+      width: 9,
+      height: 32,
+      flags: {
+        battleframe: {
+          base: { shape: "circle", widthMm: 25, heightMm: 25 }
+        }
+      },
+      document: {
+        width: 1.2598,
+        height: 1.2598,
+        flags: {
+          battleframe: {
+            base: { shape: "circle", widthMm: 32, heightMm: 32 }
+          }
+        }
+      }
+    };
+
+    expect(getBase(token).widthMm).toBe(32);
+  });
+
+  it("throws rather than guessing when there is no flag and no document footprint", () => {
+    // A placeable with a document but no readable footprint. Falling back to
+    // the placeable's own width/height here is exactly the shipped bug, so
+    // there is deliberately no fallback: no provenance, no number.
+    const token = makePlaceable({});
+
+    expect(() => getBase(token)).toThrow(MissingBaseFootprintError);
+  });
+
+  it("throws for a bare object with neither flag nor footprint", () => {
+    expect(() => getBase({})).toThrow(MissingBaseFootprintError);
+  });
+
+  it("names the flag and the document footprint in the error", () => {
+    let caught: unknown;
+    try {
+      getBase({});
+    } catch (error) {
+      caught = error;
+    }
+
+    expect(caught).toBeInstanceOf(MissingBaseFootprintError);
+    expect((caught as Error).message).toContain("document.width/height");
+    expect((caught as Error).message).toContain("battleframe.base");
+  });
+
+  it("converts a placeable's flagged base to a radius via radiusPx", () => {
+    const token = makePlaceable({
+      width: 1.2598,
+      height: 1.2598,
+      flags: {
+        battleframe: {
+          base: { shape: "circle", widthMm: 32, heightMm: 32 }
+        }
+      }
+    });
+
+    // pxPerMm = 100 / (5 * 25.4); radius = 16mm
+    expect(radiusPx(token, scene)).toBeCloseTo(16 * (100 / (5 * 25.4)), 10);
   });
 });
 

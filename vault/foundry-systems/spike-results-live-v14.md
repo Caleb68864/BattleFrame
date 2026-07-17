@@ -43,23 +43,62 @@ the entire premise of the ruleset-module architecture — see
 package id** exactly as [[document-subtypes-are-namespaced-by-package-id]] predicted, which
 is why the registry needs no type-collision detection.
 
-## Measurement — **EXACT**
+## Measurement — **EXACT for synthetic tokens, BROKEN for real ones**
+
+> [!danger] This section originally read "**EXACT**" and was wrong. Corrected the same day.
+> The probe below passed a **synthetic** object with `flags` set at the top level. **Real
+> canvas Tokens do not have `.flags`** — they have `.document.flags`. Against real tokens
+> the arithmetic below never runs. See "The bug the synthetic probe hid" and
+> [[real-tokens-keep-their-flags-on-the-document]].
 
 ```js
-// two 32mm bases, centres 3.00in apart
+// SYNTHETIC token: { center, scene, flags: { battleframe: { base } } }
 game.battleframe.measure.between(a, b)
 // → { distance: 1.7401574803149606, units: 'in', mode: 'base-to-base' }
 // expected 3 - (32/25.4) = 1.7401574803149606   ← exact to the last bit
 ```
 
-| case | result |
+| case (synthetic tokens only) | result |
 |---|---|
 | touching bases | **exactly `0`** |
 | overlapping bases | `0` — never negative |
 | `between(a,b) === between(b,a)` | **`strictlyEqual: true`** |
 
-The commutativity fix (`centre - (rA + rB)` rather than `centre - rA - rB`) holds in
-production, not just in a property test.
+The maths and the commutativity fix (`centre - (rA + rB)` rather than `centre - rA - rB`)
+are correct. **What was wrong was the input.**
+
+## The bug the synthetic probe hid — `confirmed`, live
+
+Placing 12 real knights on a real gridless scene and measuring two that were **3 inches
+apart** returned **`0`**. The engine's own debug line:
+
+```
+measure.between centreToCentre=3.007  radiusA=15.748  radiusB=15.748  base-to-base=0
+```
+
+**A radius of 15.748 inches** — 400mm — for a 32mm base whose radius is 0.63in.
+
+The chain, measured live:
+
+1. `getBase` reads `token.flags?.battleframe?.base`. **`'flags' in token` → `false`.** A
+   canvas Token placeable keeps flags on **`token.document.flags`**.
+2. So every real token falls through to `deriveBaseFromFootprint(token)`, which reads
+   `token.width` / `token.height`.
+3. **A Token placeable is a PIXI container**, so those are arbitrary rendered bounds:
+   `placeable.width` → **9**, `placeable.height` → **32**. The real values are
+   `placeable.w` → 125.98 (px) and `document.width` → 1.2598 (grid units).
+4. `max(9, 32) = 32` × `DEFAULT_MM_PER_GRID_SQUARE (25)` = **800mm diameter** → 400mm radius
+   → 15.748in. Every knight becomes a 32-inch model; everything overlaps; **every distance
+   is 0**.
+
+**All 189 tests passed.** Every one hands `between()` a synthetic object with top-level
+`flags`. The code was written against the tests' shape rather than Foundry's — and the tests
+were written from the same misunderstanding, so they could not catch it. My own live probe an
+hour earlier made the identical mistake and produced the "EXACT" verdict above.
+
+**The lesson is not "write more tests". It is that a test double which does not resemble the
+real object in the one way that matters is worse than no test** — it manufactures confidence.
+Twelve tokens on a board found in one call what 189 tests could not.
 
 **This is the finding that should be read alongside
 [[custom-distance-measurement-has-no-clean-override-seam]].** Base-to-base measurement was

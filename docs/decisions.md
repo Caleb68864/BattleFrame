@@ -279,3 +279,30 @@ reader would otherwise re-derive or re-break.
   three agents reported "build exit 0" while `tsc` exited 2. **Verify the thing you actually
   care about, not a proxy for it.**
 - Commit: this commit.
+
+## 2026-07-17 — Playing one round found what 189 tests could not
+- Symptom: placing 12 real knights on a real board and running one round exposed two bugs
+  that the entire suite, a clean typecheck, and my own live probe had all missed.
+  **(1)** `measure.between` returned **0 for every pair** of real tokens — two knights three
+  inches apart measured zero. **(2)** Base contact could never fire, so a full round spent 14
+  dice and produced **zero damage and zero courage tests**.
+- Fix (1): `getBase` read `token.flags`, but **a canvas Token has no `.flags`** — they live on
+  `token.document.flags`. So every real token fell through to `deriveBaseFromFootprint`, which
+  read `token.width`/`.height` — **PIXI container bounds** (measured: 9 and 32), not grid
+  units. `max(9,32) × 25mm` = 800mm diameter → **15.748in radius** for a 32mm base. Every
+  knight became a 32-inch model; everything overlapped; every distance collapsed to 0. Now
+  reads `document.flags` first, derives only from `document.width`, and **throws** when there
+  is nothing legitimate to derive from — the only remaining candidate was the PIXI bounds that
+  caused the bug.
+- Fix (2): see the next entry — base contact needs a tolerance.
+- Surfaces: `packages/battleframe/src/base/{base-model.ts,types.ts}`, tests + fixtures.
+- Watch: **All 189 tests passed because every one handed `between()` a synthetic object with
+  top-level `flags`.** The code was written against the tests' shape rather than Foundry's,
+  and the tests were written from the same misunderstanding — so they agreed with each other
+  and both were wrong. My own live probe an hour earlier made the identical mistake and
+  produced a `confirmed` vault note saying measurement was "EXACT". **A test double that does
+  not resemble the real object in the one way that matters is worse than no test: it
+  manufactures confidence.** The new fixture deliberately carries *wrong-but-present*
+  top-level `width: 9, height: 32` — omitting them wouldn't catch this, because `undefined`
+  fails loudly while `32` produces a plausible silent error.
+- Commit: this commit.
