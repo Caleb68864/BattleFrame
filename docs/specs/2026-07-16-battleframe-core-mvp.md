@@ -87,8 +87,13 @@ Battleframe is a Foundry VTT **game system**; individual games ship as separatel
 **ruleset modules** that register with it. This spec builds the system and the first
 ruleset.
 
-The architecture rests on ~260 atomized research notes in `vault/` (gitignored). Key
-confirmed findings that this spec depends on:
+The architecture rests on **262 atomized research notes in `vault/`, which ARE tracked in
+git** — workers spawn a worktree from HEAD and must be able to read them. Only copyrighted
+source documents (`vault/**/*.pdf` etc.) are gitignored. Notes carry
+`confidence: confirmed | partial | unverified` frontmatter — **respect it**, and prefer them
+over recollection.
+
+Key confirmed findings this spec depends on:
 
 - **Modules can contribute Actor/Item subtypes to a system** — official since Foundry v11.
   Type *names* are declared statically in `module.json`; the **DataModel class** is
@@ -101,9 +106,11 @@ confirmed findings that this spec depends on:
   (`vault/foundry-systems/lancer-activation-based-combat-precedent.md`)
 - **Foundry v14 is current** (14.363 confirmed on the target server). ApplicationV2 only,
   no `template.json`.
-- **GREATHELM's rulebook is at `vault/greathelm/GREATHELM-QSR.pdf`** (v0.4, 5pp). It is the
-  authority. The web is wrong about it — Goonhammer says Run = 6"; the rulebook says
-  **Sprint = 5"**.
+- **GREATHELM's authority is `vault/greathelm/` (36 notes, start at `index.md`)** —
+  transcribed from the official v0.4 QSR, each mechanic marked `confirmed` with a source.
+  **The QSR PDF itself is NOT in git** (copyrighted; must never be redistributed) and will
+  not exist in a worker's worktree. **Do not substitute web sources — they are wrong.**
+  Goonhammer says Run = 6"; the rulebook says **Sprint = 5"**.
 
 **Why activation is not in core:** five researched games produced five incompatible turn
 structures — GREATHELM fuses initiative/action/sequence into one dice pool; Battlefront
@@ -213,8 +220,18 @@ dispatch: factory
   - `README.md`
   - `LICENSE`
 - **Acceptance criteria:**
-  - `[MECHANICAL]` `npm install && npm run build` exits 0.
-  - `[MECHANICAL]` `npm test` exits 0 (a trivial passing test is acceptable here).
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm install && npm run build`
+    exits 0.
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test` exits 0 (a trivial
+    passing test is acceptable here).
+
+  > **Every npm command in this spec runs at the repo ROOT — never inside a package.**
+  > This is an npm **workspaces** monorepo: the root `package.json` owns `workspaces`,
+  > the dependency tree, and the `build`/`test` scripts. `cd packages/battleframe && npm
+  > install` would install the wrong tree and is **wrong**, not merely stylistic. The
+  > explicit `cd "$(git rev-parse --show-toplevel)"` prefix is there to make that
+  > unambiguous to both humans and the factory's hygiene linter, which otherwise assumes
+  > per-package scripts.
   - `[STRUCTURAL]` `packages/battleframe/system.json` contains `"id": "battleframe"`,
     `compatibility: {minimum: "14", verified: "14"}` with **no** `maximum` key, and
     `grid: {type: 0, distance: 1, units: "in"}`.
@@ -275,7 +292,7 @@ dispatch: factory
   - `[STRUCTURAL]` When the flag is **absent**, a circle is derived from the token footprint
     and a debug line is logged once — not per call.
   - `[STRUCTURAL]` When the flag is **present**, it wins over the footprint.
-  - `[MECHANICAL]` `npm test -- base-model` passes with cases for: circle, oval, missing
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- base-model` passes with cases for: circle, oval, missing
     flag, zero-size, and a base larger than its token. **Zero-size throws a specific error
     and never coerces** — per Edge Cases ("handles invalid input" → strict) and trade-off #2
     (loud failure over plausible output). A base of size 0 makes every distance wrong
@@ -322,7 +339,7 @@ dispatch: factory
   - `[STRUCTURAL]` `game.battleframe.measure.between(tokenA, tokenB)` returns
     `{distance: number, units: string, mode: "base-to-base"}` and takes **Tokens, not
     points**.
-  - `[MECHANICAL]` `npm test -- measure` passes against known-distance fixtures covering:
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- measure` passes against known-distance fixtures covering:
     gridless, square, and hex; equal and unequal base sizes.
   - `[BEHAVIORAL]` Two tokens whose bases touch return **exactly 0**, not a small positive
     number.
@@ -378,7 +395,7 @@ dispatch: factory
     conflict is surfaced at activation, not registration.
   - `[STRUCTURAL]` Hooks `battleframe.ready`, `battleframe.rulesetRegistered`, and
     `battleframe.rulesetActivated` fire, named exactly so.
-  - `[MECHANICAL]` `npm test -- registry` passes.
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- registry` passes.
   - `[MECHANICAL]` `grep -rn "greathelm" packages/battleframe/src/` returns nothing.
 - **Decisions (SS-05):** Do **not** write type-name collision detection — Foundry namespaces
   subtypes by package id, so collisions are structurally impossible. Police ruleset `id`
@@ -419,7 +436,7 @@ dispatch: factory
   - `[HUMAN REVIEW]` Order and combat state sync to a **second connected client**. Retagged
     during red-team: this needs two live browsers and cannot be asserted by a worker.
   - `[STRUCTURAL]` The tracker is registered via `CONFIG.ui.combat`.
-  - `[MECHANICAL]` `npm test -- combat` passes.
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- combat` passes.
 - **Decisions (SS-06):** Core provides **no** `nextTurn`, `advanceActivation`, or round
   semantics. If a ruleset needs one, the ruleset writes it. This is deliberate — see Intent.
 
@@ -463,7 +480,7 @@ dispatch: factory
     This is the default test environment: **zero third-party modules**.
   - `[STRUCTURAL]` Chat cards render via a Handlebars template and carry the ruleset id
     that produced them.
-  - `[MECHANICAL]` `npm test -- dice` passes.
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- dice` passes.
 - **Decisions (SS-07):** Add **no** dice mechanics — no exploding, no re-rolls, no
   success-counting. Those belong to rulesets. If this file grows past ~100 lines, something
   has gone wrong.
@@ -500,7 +517,7 @@ dispatch: factory
     `system` payload** so nothing is destroyed.
   - `[BEHAVIORAL]` **No orphaned Actor is ever silently dropped or auto-converted.** The GM
     decides.
-  - `[MECHANICAL]` `npm test -- orphan-check` passes, covering: no orphans, one orphan, and
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- orphan-check` passes, covering: no orphans, one orphan, and
     orphans from two different disabled modules.
   - `[STRUCTURAL]` **Migration flag plumbing exists.** Core stamps
     `flags.battleframe.schemaVersion` on Actors **core itself creates** (the generic type),
@@ -567,7 +584,7 @@ dispatch: factory
   - `[BEHAVIORAL]` The wizard reopens from a settings menu after first launch.
   - `[STRUCTURAL]` World settings exist for `activeRulesetId`, `setupCompleted`, and
     `defaultGridUnit`.
-  - `[MECHANICAL]` `npm test -- settings` passes.
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- settings` passes.
 - **Decisions (SS-09):** The zero-ruleset case is a real product state, not an error.
   Battleframe with no ruleset is a table and a ruler. Say so plainly.
 - **Dependencies:** SS-05
@@ -636,9 +653,10 @@ dispatch: factory
     `3`=Shift, `2`=Light, `1`=Heavy. A single exported constant in `constants.ts`, not
     scattered.
   - `[BEHAVIORAL]` Initiative goes to the most 6s.
-  - `[MECHANICAL]` `npm test -- dice-pool` passes, covering: pool sizing at 1/5/6 models,
-    the min-3 setting both on and off, face→action mapping for all six faces, and initiative
-    ties.
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- dice-pool` passes,
+    covering: pool sizing at 1/5/6 models, the min-3 setting both on and off, face→action
+    mapping for all six faces, and initiative ties. Root-anchored: workspaces monorepo — see
+    SS-02.
   - `[STRUCTURAL]` **Ship no rules text**, no stat blocks, no artwork, no prose from the
     rulebook. Mechanics only.
   - `[STRUCTURAL]` All GREATHELM constants live in `constants.ts` and are externalised — the
@@ -651,7 +669,7 @@ dispatch: factory
 ---
 sub_spec_id: SS-11
 phase: run
-depends_on: ['SS-10']
+depends_on: ['SS-04', 'SS-10']
 dispatch: factory
 ---
 
@@ -706,7 +724,7 @@ dispatch: factory
   - `[STRUCTURAL]` The sheet uses ApplicationV2 via
     `foundry.applications.sheets.ActorSheetV2` + `HandlebarsApplicationMixin`, registered
     with the **module's own** package id.
-  - `[MECHANICAL]` `npm test -- loop courage` passes, covering: full 6→1 ordering, an empty
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- loop courage` passes, covering: full 6→1 ordering, an empty
     pool, a round where one side has no legal action, and courage tests for — damaged +
     in-contact (tests), damaged + alone (does not test), undamaged + in-contact (does not
     test), and both tiebreaks.
@@ -755,7 +773,7 @@ dispatch: factory
     section — not asserted by this suite. **Do not let a green tick stand in for the round
     having actually been played.** The seam test proves the seams; only a human proves the
     game.
-  - `[MECHANICAL]` **The neutrality test:** `npm test -- neutrality` asserts that no file
+  - `[MECHANICAL]` **The neutrality test:** `cd "$(git rev-parse --show-toplevel)" && npm test -- neutrality` asserts that no file
     under `packages/battleframe/src/` imports from `packages/battleframe-greathelm/`, and
     that the core test suite imports no ruleset package. This is requirement 9, made
     executable.
