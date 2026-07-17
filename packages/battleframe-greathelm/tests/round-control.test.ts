@@ -4,6 +4,7 @@ import {
   InitiativeTieUnresolvedError,
   WrongSideCountError,
   addRoundSceneControl,
+  beginRoundFromControl,
   determineInitiativeWithRerolls,
   findDefenderInBaseContact,
   formatInches,
@@ -11,14 +12,45 @@ import {
   planMovement,
   resolveFirstPlayer,
   rollPool,
-  runRoundFromControl,
   sideFromDisposition,
   type CombatDocumentLike,
   type RoundKnight,
 } from "../src/ui/round-control";
 import { SPRINT_MOVE_INCHES } from "../src/constants";
 import type { ResolvedDie } from "../src/round/loop";
+import type { RoundSession } from "../src/round/session";
 import type { DiceApiLike, MeasureApiLike } from "../src/combat/clash";
+
+/**
+ * Drives a session to completion by spending every offerable die on the
+ * first knight the session reports as a legal target -- these tests care
+ * about initiative, movement notification, and persistence, not which
+ * knight gets which die (that "who chooses" behaviour is session.test.ts's
+ * job, headless, and pool-panel.test.ts's for the click-through). A die
+ * with no legal target is discarded rather than deadlocking the round (see
+ * round/session.ts's own discardDie -- exactly the "side runs out" edge
+ * case in the master spec's Edge Cases table).
+ */
+async function playToCompletion(session: RoundSession): Promise<void> {
+  while (!session.isComplete()) {
+    const dice = session.remainingDice();
+    const active = session.activePlayerId();
+    const die = dice.find((candidate) => candidate.playerId === active);
+
+    if (!die) {
+      return;
+    }
+
+    const targets = session.legalTargetsFor(die.id).filter((target) => target.legal);
+
+    if (targets.length === 0) {
+      await session.discardDie(die.id, "no legal target");
+      continue;
+    }
+
+    await session.spendDie(die.id, targets[0].knightId);
+  }
+}
 
 /**
  * A dice API that reads faces from a script, so a round is deterministic
@@ -301,8 +333,8 @@ describe("findDefenderInBaseContact", () => {
   });
 });
 
-describe("runRoundFromControl -- one full round, end to end", () => {
-  it("gathers, rolls pools of knights+1, takes initiative, resolves 6->1, runs courage, persists order", async () => {
+describe("beginRoundFromControl -- initiative and a session the panel drives, not an auto-battler", () => {
+  it("gathers, rolls pools of knights+1, takes initiative, and hands back a session that resolves 6->1, runs courage, and persists order once played out", async () => {
     const measure = lineMeasure();
     const actorA = fakeActor();
     const actorB = fakeActor();
@@ -316,7 +348,7 @@ describe("runRoundFromControl -- one full round, end to end", () => {
     // then the courage tests run off the end of the script as 6s (a pass).
     const dice = scriptedDice([2, 2, 1, 1, 6, 1, 6, 1, 6, 1, 6, 1, 6]);
 
-    const result = await runRoundFromControl({
+    const { session, firstPlayerId, tieRerolls, poolSizes } = await beginRoundFromControl({
       knights: [knightA, knightB],
       combat,
       dice,
@@ -324,13 +356,16 @@ describe("runRoundFromControl -- one full round, end to end", () => {
     });
 
     // Pool = knights in play + 1 (QSR p1), one knight a side.
-    expect([...result.poolSizes.values()]).toEqual([2, 2]);
-    expect(result.firstPlayerId).toBe("a");
-    expect(result.tieRerolls).toBe(0);
+    expect([...poolSizes.values()]).toEqual([2, 2]);
+    expect(firstPlayerId).toBe("a");
+    expect(tieRerolls).toBe(0);
 
-    // Battle phase walks strictly 6 -> 1: both 2s (Light) before both 1s (Heavy).
-    expect(result.order.map((die) => die.face)).toEqual([2, 2, 1, 1]);
-    expect(result.order.map((die) => die.action)).toEqual(["light", "light", "heavy", "heavy"]);
+    // Nothing has been spent yet -- the auto-battler resolved the whole
+    // round synchronously; a session instead waits to be played.
+    expect(session.remainingDice()).toHaveLength(4);
+    expect(combat.flagWrites).toEqual([]);
+
+    await playToCompletion(session);
 
     // Wounds reached the Actor documents -- resolveDieAction/applyClashDamage
     // are actually on the path, and damage caps at 3.
@@ -338,74 +373,81 @@ describe("runRoundFromControl -- one full round, end to end", () => {
     expect(actorA.system.damage).toBe(3);
     expect(actorA.updates).toBeGreaterThan(0);
 
-    // The courage phase ran after every die was spent, and both damaged
-    // knights in base contact tested.
-    expect([...result.courageOutcomes.keys()].sort()).toEqual(["kA", "kB"]);
+    // The courage phase ran after every die was spent (a defined, empty Map,
+    // not undefined). Nobody tested: kA reached the damage limit and was
+    // immediately removed (QSR p2), and kB's only enemy was that removed
+    // kA -- with no living enemy left in contact, kB has nothing to test
+    // against either (round/session.ts's isRemoved is live, not cached).
+    expect(session.courageOutcomes()).toBeDefined();
+    expect([...(session.courageOutcomes()?.keys() ?? [])]).toEqual([]);
 
-    // Order persisted through the document's own setFlag.
+    // Order persisted through the document's own setFlag, once the session
+    // completed -- not up front, and not by mutating a plain flags object.
     expect(combat.flagWrites).toEqual([
       ["battleframe", "order", ["kA", "kA", "kB", "kB"]],
     ]);
-    expect(result.persistedOrder).toEqual(["kA", "kA", "kB", "kB"]);
   });
 
-  it("persists the order via combat.setFlag, not by mutating a plain flags object", async () => {
+  it("persists the order via combat.setFlag exactly once, only after the session completes", async () => {
     const measure = lineMeasure();
     const combat = fakeCombat();
     const setFlag = vi.spyOn(combat, "setFlag");
 
-    await runRoundFromControl({
+    const { session } = await beginRoundFromControl({
       knights: [knight("kA", "a", 0), knight("kB", "b", 9)],
       combat,
       dice: scriptedDice([6, 6, 5, 5, 6]),
       measure,
     });
 
+    expect(setFlag).not.toHaveBeenCalled();
+
+    await playToCompletion(session);
+
     expect(setFlag).toHaveBeenCalledTimes(1);
     expect(setFlag).toHaveBeenCalledWith("battleframe", "order", expect.any(Array));
   });
 
-  it("measures and caps a Sprint during a real round", async () => {
+  it("measures and caps a Sprint during a real round, notifying the distance as each die is spent", async () => {
     const measure = lineMeasure();
     // a rolls [6,6] (Sprint), b rolls [5,5] -- a holds the only 6s, forced first.
     const dice = scriptedDice([6, 6, 5, 5, 6]);
-
-    const result = await runRoundFromControl({
-      knights: [knight("kA", "a", 0), knight("kB", "b", 9)],
-      combat: fakeCombat(),
-      dice,
-      measure,
-    });
-
-    expect(result.firstPlayerId).toBe("a");
-    expect(result.movements.every((plan) => plan.moveInches <= SPRINT_MOVE_INCHES)).toBe(true);
-    expect(result.movements.filter((plan) => plan.action === "sprint")).toHaveLength(2);
-    expect(result.movements[0]).toMatchObject({
-      knightId: "kA",
-      action: "sprint",
-      allowanceInches: 5,
-      moveInches: 5,
-    });
-  });
-
-  it("skips a clash die with no enemy in base contact rather than resolving it at range", async () => {
-    const measure = lineMeasure();
-    const actorB = fakeActor();
-    // a rolls [1,1] (Heavy) but the enemy is 9" away -- no legal spend.
-    const dice = scriptedDice([1, 1, 3, 3, 6]);
     const notes: string[] = [];
 
-    const result = await runRoundFromControl({
-      knights: [knight("kA", "a", 0), knight("kB", "b", 9, actorB)],
+    const { session, firstPlayerId } = await beginRoundFromControl({
+      knights: [knight("kA", "a", 0), knight("kB", "b", 9)],
       combat: fakeCombat(),
       dice,
       measure,
       notify: (message) => notes.push(message),
     });
 
-    expect(result.order.map((die) => die.action)).toEqual(["shift", "shift", "heavy", "heavy"]);
+    expect(firstPlayerId).toBe("a");
+
+    await playToCompletion(session);
+
+    const sprintNotes = notes.filter((note) => note.includes("sprint up to"));
+    expect(sprintNotes).toHaveLength(2);
+    expect(sprintNotes.every((note) => note.includes('up to 5"'))).toBe(true);
+  });
+
+  it("lets a side discard a clash die with no enemy in base contact rather than resolving it at range", async () => {
+    const measure = lineMeasure();
+    const actorB = fakeActor();
+    // a rolls [1,1] (Heavy) but the enemy is 9" away -- no legal spend.
+    const dice = scriptedDice([1, 1, 3, 3, 6]);
+
+    const { session } = await beginRoundFromControl({
+      knights: [knight("kA", "a", 0), knight("kB", "b", 9, actorB)],
+      combat: fakeCombat(),
+      dice,
+      measure,
+    });
+
+    await playToCompletion(session);
+
     expect(actorB.system.damage).toBe(0);
-    expect(notes.some((note) => note.includes("no enemy in base contact"))).toBe(true);
+    expect(session.isComplete()).toBe(true);
   });
 
   it("applies the Kickstarter dice-pool floor only when the setting is on", async () => {
@@ -415,27 +457,27 @@ describe("runRoundFromControl -- one full round, end to end", () => {
       measure: lineMeasure(),
     };
 
-    const floored = await runRoundFromControl({
+    const { poolSizes: flooredSizes } = await beginRoundFromControl({
       ...base,
       combat: fakeCombat(),
       minDicePoolFloorEnabled: true,
     });
 
-    expect([...floored.poolSizes.values()]).toEqual([3, 3]);
+    expect([...flooredSizes.values()]).toEqual([3, 3]);
 
-    const unfloored = await runRoundFromControl({
+    const { poolSizes: unflooredSizes } = await beginRoundFromControl({
       knights: base.knights,
       combat: fakeCombat(),
       dice: scriptedDice([6, 6, 5, 5, 6]),
       measure: lineMeasure(),
     });
 
-    expect([...unfloored.poolSizes.values()]).toEqual([2, 2]);
+    expect([...unflooredSizes.values()]).toEqual([2, 2]);
   });
 
   it("refuses to run without exactly two sides", async () => {
     await expect(
-      runRoundFromControl({
+      beginRoundFromControl({
         knights: [knight("kA", "a", 0), knight("kA2", "a", 1)],
         combat: fakeCombat(),
         dice: scriptedDice([6]),
