@@ -1,0 +1,16 @@
+{{!-- Battleframe's generic Actor sheet -- the fallback landing pad when no
+     ruleset is installed, or when a ruleset that defined this Actor's real
+     type gets disabled. Renders only the generic data model's own fields. --}}
+<form class="battleframe generic-actor-sheet">
+  <div class="form-group">
+    <label>{{localize "battleframe.fields.notes"}}</label>
+    <input type="text" name="system.notes" value="{{system.notes}}">
+  </div>
+
+  <div class="form-group stacked">
+    <label>{{localize "battleframe.fields.biography"}}</label>
+    <div class="editor" data-field="system.biography">
+      {{{system.biography}}}
+    </div>
+  </div>
+</form>
