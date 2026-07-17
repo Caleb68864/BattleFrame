@@ -666,3 +666,25 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   that Foundry's `getSceneControlButtons` calls the click handler — that remains
   the live HUMAN REVIEW item.
 - Commit: test(greathelm): cover the New Battle control's destructive-action safety
+
+## 2026-07-17 — The dice `rolls` field name was doc-confirmed; only the animation stays live-only
+- Symptom: `chat.ts` attached the evaluated Roll to `ChatMessage.create` as
+  `rolls: [roll]` but carried a standing "UNVERIFIED against a live v14 … comes
+  from the docs, not observation" warning, treating the field *name* as an open
+  risk equal to the silent bug it fixed.
+- Fix: verified the name against Foundry's official v10 migration article — the
+  ChatMessage `rolls` field "now contains an array of Roll objects instead of a
+  single roll", singular `roll` deprecated, and that shape carries through v14.
+  So `rolls: [roll]` is correct, and `dice.test.ts` already pins it
+  (`payload.rolls === [result]`) against an accidental rename. Narrowed the
+  comment: the residual live-only unknown is only whether Dice So Nice, a
+  third-party module, animates off the attached Roll — not the field name.
+- Surfaces: `packages/battleframe/src/dice/chat.ts` (comment only; no behaviour
+  change). Verified via context7 against `/websites/foundryvtt_article`.
+- Watch: this is a "verify the thing you care about" close-out, not a new
+  behaviour — the test and the code were already right; only the recorded
+  confidence was stale. Do not read this as clearance that Dice So Nice works;
+  that still needs the live HUMAN REVIEW. A doc-confirmed field name plus a
+  mock-based payload test is strong evidence the message *carries* dice, and no
+  evidence at all that a specific module *renders* them.
+- Commit: docs(core): the dice rolls field name is doc-confirmed, not unverified
