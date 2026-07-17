@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { RulesetRegistry } from "../src/rulesets/registry";
 import type { RulesetDefinition } from "../src/rulesets/types";
 
@@ -75,5 +75,69 @@ describe("RulesetRegistry", () => {
 
     const activateBeta = registry.activateRuleset("beta");
     expect(activateBeta.ok).toBe(false);
+  });
+});
+
+describe("RulesetRegistry hooks", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("fires battleframe.rulesetRegistered on successful registration", () => {
+    const callAll = vi.fn();
+    vi.stubGlobal("Hooks", { callAll });
+
+    const registry = new RulesetRegistry();
+    registry.registerRuleset(makeDefinition());
+
+    expect(callAll).toHaveBeenCalledWith("battleframe.rulesetRegistered", makeDefinition());
+  });
+
+  it("does not fire battleframe.rulesetRegistered when registration fails", () => {
+    const callAll = vi.fn();
+    vi.stubGlobal("Hooks", { callAll });
+
+    const registry = new RulesetRegistry();
+    registry.registerRuleset(makeDefinition());
+    callAll.mockClear();
+    registry.registerRuleset(makeDefinition({ title: "Duplicate" }));
+
+    expect(callAll).not.toHaveBeenCalled();
+  });
+
+  it("fires battleframe.rulesetActivated on activation", () => {
+    const callAll = vi.fn();
+    vi.stubGlobal("Hooks", { callAll });
+
+    const registry = new RulesetRegistry();
+    registry.registerRuleset(makeDefinition());
+    registry.activateRuleset("core-ruleset");
+
+    expect(callAll).toHaveBeenCalledWith("battleframe.rulesetActivated", makeDefinition());
+  });
+});
+
+describe("battleframe.ready hook", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("fires battleframe.ready once the Foundry ready hook resolves", async () => {
+    const callAll = vi.fn();
+    const handlers: Record<string, () => void> = {};
+    vi.stubGlobal("Hooks", {
+      once: (hook: string, callback: () => void) => {
+        handlers[hook] = callback;
+      },
+      callAll,
+    });
+    vi.stubGlobal("game", {});
+
+    vi.resetModules();
+    await import("../src/hooks/index");
+
+    handlers.ready();
+
+    expect(callAll).toHaveBeenCalledWith("battleframe.ready");
   });
 });
