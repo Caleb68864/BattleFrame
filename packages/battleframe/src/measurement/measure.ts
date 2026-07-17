@@ -1,3 +1,4 @@
+import { battleframeNamespace } from "../api/index";
 import { radiusPx } from "../base/base-model";
 import { SYSTEM_ID } from "../constants";
 import type {
@@ -104,15 +105,15 @@ declare global {
   }
 }
 
+/**
+ * Installs onto the shared namespace rather than onto `game`: at module
+ * top level `game` does not exist yet, and the whole point is that the
+ * namespace is reachable before anyone's `init`. `battleframeNamespace()`
+ * binds to `game` later -- see ../api/index.
+ */
 export function installMeasurementApi(): MeasurementApi {
-  const measure = createMeasurementApi();
+  const namespace = battleframeNamespace();
+  namespace.measure = namespace.measure ?? createMeasurementApi();
 
-  if (typeof game !== "undefined" && game) {
-    game.battleframe = {
-      ...(game.battleframe ?? {}),
-      measure,
-    } as BattleframeGameNamespace;
-  }
-
-  return measure;
+  return namespace.measure;
 }

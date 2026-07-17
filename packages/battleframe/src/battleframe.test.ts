@@ -40,6 +40,11 @@ function installFakeFoundry(): {
 
   const globalScope = globalThis as unknown as Record<string, unknown>;
 
+  // A fresh world has no namespace. Leaving one behind from a previous
+  // import would let a stale api (bound to a since-reset registry module)
+  // satisfy the next test.
+  delete globalScope.battleframe;
+
   globalScope.Hooks = {
     once: (name: string, callback: () => void) => {
       const existing = hooks.get(name) ?? [];
@@ -111,6 +116,74 @@ function installFakeFoundry(): {
   return { hooks, settings, menus, sheets };
 }
 
+interface NamespaceShape {
+  api?: { registerRuleset?: (def: unknown) => { ok: boolean } };
+  measure?: { between?: unknown };
+  dice?: { roll?: unknown };
+}
+
+/**
+ * The load-order proof, and the reason the namespace is built at module top
+ * level instead of inside `init` (see battleframe.ts, and
+ * vault/foundry-systems/settings-and-api-namespace-conventions.md).
+ *
+ * Foundry publishes no package load-order contract. A ruleset module reading
+ * the api from its own `init` must therefore work even if this system's
+ * `init` has not run -- so this test imports the entry point and then
+ * deliberately does NOT fire `init`. Everything below has to hold anyway.
+ * Runs first in the file: the entry-point suite below fires `init`, and a
+ * namespace bound by that suite would make this pass for the wrong reason.
+ */
+describe("battleframe namespace before init", () => {
+  it("exposes a callable api on globalThis without init having fired", async () => {
+    const env = installFakeFoundry();
+
+    vi.resetModules();
+    await import("./battleframe");
+
+    // The `init` listener is registered -- and pointedly never invoked.
+    expect((env.hooks.get("init") ?? []).length).toBeGreaterThan(0);
+
+    const namespace = (globalThis as unknown as { battleframe?: NamespaceShape }).battleframe;
+
+    expect(namespace).toBeDefined();
+    expect(typeof namespace?.api?.registerRuleset).toBe("function");
+
+    // Callable, not merely present: a ruleset registering here is exactly
+    // what an unlucky load order would ask of it.
+    const result = namespace!.api!.registerRuleset!({
+      id: "pre-init-ruleset",
+      title: "Pre-init Ruleset",
+      version: "1.0.0",
+      primary: false,
+      battleframeCompatibility: { minimum: "0.1.0", verified: "0.1.0" },
+    });
+
+    expect(result.ok).toBe(true);
+
+    // The sibling apis are built at top level too -- a ruleset reaching for
+    // measure/dice before init is in the same position.
+    expect(typeof namespace?.measure?.between).toBe("function");
+    expect(typeof namespace?.dice?.roll).toBe("function");
+  });
+
+  it("does not touch game before init -- game may not exist at top level", async () => {
+    installFakeFoundry();
+    delete (globalThis as unknown as Record<string, unknown>).game;
+
+    vi.resetModules();
+    await import("./battleframe");
+
+    // Top-level evaluation must not have needed, created, or written to
+    // `game`; the namespace still stands up.
+    expect((globalThis as unknown as { game?: unknown }).game).toBeUndefined();
+    expect(
+      typeof (globalThis as unknown as { battleframe?: NamespaceShape }).battleframe?.api
+        ?.registerRuleset
+    ).toBe("function");
+  });
+});
+
 describe("battleframe entry point", () => {
   let env: ReturnType<typeof installFakeFoundry>;
 
@@ -146,6 +219,18 @@ describe("battleframe entry point", () => {
     expect(typeof (namespace?.api as { activateRuleset?: unknown }).activateRuleset).toBe(
       "function"
     );
+  });
+
+  it("binds globalThis.battleframe and game.battleframe to one object at init", () => {
+    // The dnd5e merge step: after `init`, whichever handle a consumer reached
+    // for, they hold the same namespace and therefore the same registry.
+    const scope = globalThis as unknown as {
+      battleframe?: NamespaceShape;
+      game: { battleframe?: NamespaceShape };
+    };
+
+    expect(scope.battleframe).toBeDefined();
+    expect(scope.game.battleframe).toBe(scope.battleframe);
   });
 
   it("installs the measurement and dice apis alongside the api", () => {

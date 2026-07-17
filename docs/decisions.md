@@ -236,3 +236,46 @@ reader would otherwise re-derive or re-break.
   and it removes the dependency on this observation. The silent `return` in `main.ts` remains
   a trade-off #2 violation regardless.
 - Commit: this commit.
+
+## 2026-07-17 — Removed the load-order dependency instead of relying on a lucky observation
+- Symptom: live v14 showed init ordering HOLDS — the system's `init` ran before the module's,
+  GREATHELM registered, the silent `if (!api) return` never fired. It would have been easy to
+  call that settled and move on. But it is **one configuration, one version, one observation**,
+  and Foundry publishes no ordering contract.
+- Fix: adopted dnd5e's verbatim two-step from
+  `vault/foundry-systems/settings-and-api-namespace-conventions.md` (`confirmed`):
+  build `globalThis.battleframe` at **module top level**, then merge onto `game.system` at
+  `init`. Registration now works regardless of which package Foundry loads first. The old
+  installers guarded `typeof game !== "undefined"` and spread into a fresh object — at top
+  level that guard is always false, so the dependency had to be inverted: installers write to
+  the namespace; binding to `game` is deferred to `init`. The spread was a latent bug too — a
+  late installer could clobber a sibling. GREATHELM's silent `return` became
+  `failRegistration()`: notify the GM, then throw.
+- Surfaces: `packages/battleframe/src/{battleframe.ts,api/index.ts,measurement/measure.ts,dice/dice.ts,hooks/index.ts}`,
+  `packages/battleframe-greathelm/src/main.ts`.
+- Watch: **A passing observation is not a guarantee.** The temptation after seeing ordering
+  hold live was to delete the risk from the report. The right move was to delete the
+  *dependency*. Mutation-verified: reverting the installers back inside `init` fails both new
+  tests (api reachable with `init` never fired; `game` deleted entirely). Also: a *rejected*
+  registration (`result.ok === false`) was being discarded silently — the same vanish-failure
+  wearing a different hat. Any code path that can make a ruleset disappear must be loud.
+- Commit: this commit.
+
+## 2026-07-17 — Foundry's 4-hour JS cache fabricates evidence
+- Symptom: after redeploying the top-level-namespace fix, `globalThis.battleframe` read
+  `undefined` in the live world while `game.battleframe` existed — exactly the signature of
+  the OLD build. The obvious conclusion was "the fix does not work in production."
+- Fix: **that conclusion was wrong.** The server was serving a **byte-identical** copy of the
+  new build (32,099 bytes, 17 `globalThis` references, `Last-Modified` matching the deploy).
+  Foundry serves system JS with `Cache-Control: max-age=14400` — the browser keeps running
+  the old bundle for **four hours** and does not even revalidate. Purging `caches` and
+  unregistering service workers does nothing; neither is involved. It is the plain HTTP cache.
+  Documented in `docs/DEPLOY.md` and the vault.
+- Surfaces: `docs/DEPLOY.md`, `vault/foundry-systems/spike-results-live-v14.md`.
+- Watch: **This trap manufactures false evidence for a plausible wrong conclusion**, which
+  makes it worse than a plain bug. The check that saved it: fetch the served bytes with a
+  cache-buster and `cmp` them against the local build. If the server has your build and the
+  world disagrees, it is the cache — not your code. Pairs with the same day's other lesson:
+  three agents reported "build exit 0" while `tsc` exited 2. **Verify the thing you actually
+  care about, not a proxy for it.**
+- Commit: this commit.
