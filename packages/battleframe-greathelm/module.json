@@ -15,7 +15,12 @@
       }
     ]
   },
-  "esmodules": ["dist/greathelm.js"],
+  "esmodules": [
+    "dist/greathelm.js"
+  ],
+  "styles": [
+    "styles/greathelm.css"
+  ],
   "languages": [
     {
       "lang": "en",
