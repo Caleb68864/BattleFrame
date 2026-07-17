@@ -611,3 +611,36 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   fallback and still does, so it is a passenger guarding the id short-circuit, not
   proof of the new behaviour; the distinct-scenes test is the load-bearing one.
 - Commit: fix(core): decide measurement-space identity by scene id, not just grid
+
+## 2026-07-17 — A knight's battle state had no reset path; a second battle was unplayable
+- Symptom: the three things a battle writes to a knight — `system.damage`
+  (persisted by `applyClashDamage`), the `fled` flag (`markFled`), and momentum
+  — all persist on the Actor document and none reset. The victory entry's own
+  Watch flagged it: "a fresh battle needs both cleared." So a second battle began
+  with every knight still carrying the first battle's wounds and flight, and
+  `checkVictory` would declare a winner before the first die was thrown. The only
+  way to replay was to hand-edit every knight.
+- Fix: `resetKnight(actor)` returns a knight to pristine state — `system.damage`
+  0, `system.momentum` 0, and the `fled` flag *deleted* (Foundry's `-=` key-removal
+  idiom, the exact inverse of `markFled` setting it) — in a single `actor.update`.
+  Reachable via a new **"New Battle"** scene control tool, which is GM-only (it
+  writes shared Actor state) and confirms first through `promptResetConfirmation`.
+  That confirmation's no-dialog and error paths return `false` — unlike the other
+  prompts, whose no-dialog default is a safe *game* choice, a reset is destructive
+  and a missing confirmation is never consent.
+- Surfaces: `packages/battleframe-greathelm/src/round/removal.ts` (`resetKnight`),
+  `src/ui/choice-prompts.ts` (`promptResetConfirmation`),
+  `src/ui/round-control.ts` (`resetBattleFromControl`, second tool in
+  `addRoundSceneControl`), `lang/en.json` (`controls.newBattle.*`,
+  `prompts.resetBattle.*`), `tests/removal.test.ts`, `tests/choice-prompts.test.ts`.
+- Watch: the button-wiring shares the round tool's payload shape, which IS
+  live-verified on v14.363, so it accommodates both `getSceneControlButtons`
+  idioms without asserting either — but a GM running battle two live is still the
+  check that settles that the tool appears. Reachability was grepped in the built
+  bundle (`resetKnight`, `resetBattleFromControl`, `greathelm-new-battle` all
+  present) so this is not another dead-code-satisfies-existence trap. The reset
+  clears momentum defensively: no code currently persists `system.momentum` via
+  `update`, so today that key is a 0→0 no-op, but it is a schema field a battle is
+  meant to accrue and the reset must own the whole fresh-knight state, not the
+  subset that happens to be wired now.
+- Commit: feat(greathelm): New Battle control — reset every knight for a fresh game

@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   promptAttackTarget,
   promptFirstOrSecond,
+  promptResetConfirmation,
   resolveDialogChooser,
   type DialogChooserLike,
   type WorldSettingsLike,
@@ -147,6 +148,41 @@ describe("promptAttackTarget", () => {
     });
 
     expect(target).toBe(enemyA);
+    expect(logSpy).toHaveBeenCalled();
+  });
+});
+
+describe("promptResetConfirmation", () => {
+  it("confirms only when the confirm button is clicked", async () => {
+    const dialog: DialogChooserLike = { choose: vi.fn().mockResolvedValue("confirm") };
+
+    expect(await promptResetConfirmation({ dialog })).toBe(true);
+    expect(dialog.choose).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not reset when the dialog is cancelled or dismissed", async () => {
+    const cancelled: DialogChooserLike = { choose: vi.fn().mockResolvedValue("cancel") };
+    const dismissed: DialogChooserLike = { choose: vi.fn().mockResolvedValue(null) };
+
+    expect(await promptResetConfirmation({ dialog: cancelled })).toBe(false);
+    expect(await promptResetConfirmation({ dialog: dismissed })).toBe(false);
+  });
+
+  // Unlike the other prompts, whose no-dialog default is a *safe* game choice,
+  // reset is destructive: with no dialog API the only safe default is to NOT
+  // reset. A missing confirmation must never be read as consent.
+  it("refuses to reset and logs when no dialog API resolves", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+
+    expect(await promptResetConfirmation({ dialog: null })).toBe(false);
+    expect(logSpy).toHaveBeenCalled();
+  });
+
+  it("refuses to reset and logs when the dialog rejects", async () => {
+    const logSpy = vi.spyOn(console, "log").mockImplementation(() => undefined);
+    const dialog: DialogChooserLike = { choose: vi.fn().mockRejectedValue(new Error("boom")) };
+
+    expect(await promptResetConfirmation({ dialog })).toBe(false);
     expect(logSpy).toHaveBeenCalled();
   });
 });
