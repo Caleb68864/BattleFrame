@@ -137,6 +137,27 @@ describe("createRoundSession", () => {
     expect(session.activePlayerId()).toBe("b");
   });
 
+  it("exposes isOfferable as the single authority for the 6->1 + turn rule", async () => {
+    // The pool panel must not re-derive playability; it asks the session. This
+    // pins the predicate the panel delegates to, so panel and session cannot
+    // drift into disagreeing about which die is playable.
+    const knights = [knight("a1", "a"), knight("b1", "b")];
+    const pools = new Map([
+      ["a", pool(6, 3)],
+      ["b", pool(2)],
+    ]);
+    const session = createRoundSession(baseOptions(knights, pools, "a"));
+
+    expect(session.isOfferable("a-d1")).toBe(true); // face 6, a's turn
+    expect(session.isOfferable("a-d2")).toBe(false); // face 3, blocked by the unspent 6
+    expect(session.isOfferable("b-d1")).toBe(false); // face 2, not the current step
+    expect(session.isOfferable("no-such-die")).toBe(false);
+
+    await session.spendDie("a-d1", "a1"); // spend the 6; step drops to 3 (a's)
+    expect(session.isOfferable("a-d2")).toBe(true);
+    expect(session.isOfferable("b-d1")).toBe(false);
+  });
+
   it("throws on an illegal (die, knight) pair instead of silently no-opping", async () => {
     const knights = [knight("a1", "a"), knight("a2", "a"), knight("b1", "b")];
     const pools = new Map([

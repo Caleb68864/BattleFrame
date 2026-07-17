@@ -21,16 +21,29 @@ function flattenKeys(obj: Record<string, unknown>, prefix = ""): string[] {
 const LANG_KEYS = new Set(flattenKeys(langEn));
 
 function fakeSession(overrides: Partial<RoundSession> = {}): RoundSession {
-  return {
+  const session: RoundSession = {
     remainingDice: () => [],
     legalTargetsFor: () => [],
     spendDie: vi.fn(async () => undefined),
     discardDie: vi.fn(async () => undefined),
     isComplete: () => false,
     activePlayerId: () => undefined,
+    // Default mirrors the real rule (active player's highest unspent face) so
+    // tests that set only remainingDice/activePlayerId still exercise offerable.
+    // A test wanting a specific answer overrides isOfferable directly.
+    isOfferable: (dieId) => {
+      const dice = session.remainingDice();
+      const highest = dice.reduce<number | undefined>(
+        (max, d) => (max === undefined || d.face > max ? d.face : max),
+        undefined
+      );
+      const die = dice.find((d) => d.id === dieId);
+      return die !== undefined && die.playerId === session.activePlayerId() && die.face === highest;
+    },
     courageOutcomes: () => undefined,
     ...overrides,
   };
+  return session;
 }
 
 afterEach(() => {

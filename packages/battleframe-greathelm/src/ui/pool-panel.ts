@@ -78,34 +78,24 @@ const ILLEGAL_REASON_KEYS: Readonly<Record<IllegalTargetReason, string>> = {
 };
 
 /**
- * View models for every unspent die, both sides. `offerable` is derived
- * from the session's own public accessors (`remainingDice`, `activePlayerId`)
- * -- never from a locally re-implemented copy of the 6-to-1 rule -- so a die
- * this player cannot yet play is shown, not hidden, with the reason visible
- * as "an unspent higher face exists" rather than the panel pretending the
- * die does not exist.
+ * View models for every unspent die, both sides. `offerable` comes straight
+ * from `session.isOfferable` -- the session owns the 6-to-1 + turn rule, and
+ * the panel asks rather than re-implementing it, so the two cannot drift into
+ * disagreeing about which die is playable. Every unspent die is still *shown*
+ * (both sides); `offerable` only governs whether it reads as playable, so a die
+ * this player cannot yet play is greyed, not hidden.
  */
 export function buildDieViewModels(
   session: RoundSession,
   selectedDieId: string | undefined
 ): DieViewModel[] {
-  const dice = session.remainingDice();
-  const activePlayerId = session.activePlayerId();
-
-  let highestUnspentFace: DieFace | undefined;
-  for (const die of dice) {
-    if (highestUnspentFace === undefined || die.face > highestUnspentFace) {
-      highestUnspentFace = die.face;
-    }
-  }
-
-  return dice.map((die) => ({
+  return session.remainingDice().map((die) => ({
     id: die.id,
     playerId: die.playerId,
     face: die.face,
     actionKey: ACTION_NAME_KEYS[actionForFace(die.face)],
     hint: actionHint(actionForFace(die.face)),
-    offerable: die.playerId === activePlayerId && die.face === highestUnspentFace,
+    offerable: session.isOfferable(die.id),
     selected: die.id === selectedDieId,
   }));
 }

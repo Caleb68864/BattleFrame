@@ -546,6 +546,7 @@ export async function beginRoundFromControl(
   const session: RoundSession = {
     remainingDice: () => baseSession.remainingDice(),
     legalTargetsFor: (dieId) => baseSession.legalTargetsFor(dieId),
+    isOfferable: (dieId) => baseSession.isOfferable(dieId),
     async spendDie(dieId, knightId, choices) {
       // Movement (Sprint/Encircle/Shift) is reported here, never applied to
       // the token -- see planMovement's own comment: auto-sliding a model
