@@ -88,6 +88,13 @@ export interface RoundSession {
   isComplete(): boolean;
   /** Whose turn it is to spend/discard next, or undefined once complete. */
   activePlayerId(): string | undefined;
+  /**
+   * Whether `dieId` may be played right now -- the single authority for the
+   * 6->1 + turn rule. The pool panel reads this rather than re-deriving the
+   * rule, so the panel and the spend path cannot disagree about which die is
+   * playable. `requirePlayableDie` enforces the same conditions, loudly.
+   */
+  isOfferable(dieId: string): boolean;
   /** The courage phase's outcomes, once `isComplete()` -- undefined until then. */
   courageOutcomes(): Map<string, CourageTestOutcome> | undefined;
 }
@@ -281,6 +288,23 @@ export function createRoundSession(options: CreateRoundSessionOptions): RoundSes
     return { die, playerIndex: playerIds.indexOf(die.playerId) };
   }
 
+  /**
+   * The boolean sibling of `requirePlayableDie`: same 6->1 + turn rule, no
+   * throw. Both compose `currentFace()` and `activePlayerId()`, so the rule
+   * itself has one definition; this exists so the pool panel can ask instead of
+   * re-implementing "highest unspent face && active player" in a second file,
+   * where the two copies could drift.
+   */
+  function isOfferable(dieId: string): boolean {
+    if (complete) {
+      return false;
+    }
+
+    const die = findDie(dieId);
+
+    return die !== undefined && die.face === currentFace() && die.playerId === activePlayerId();
+  }
+
   function consumeDie(playerIndex: number, die: RoundSessionDie): void {
     const pool = unspent.get(die.playerId) ?? [];
     unspent.set(
@@ -431,6 +455,7 @@ export function createRoundSession(options: CreateRoundSessionOptions): RoundSes
     discardDie,
     isComplete: () => complete,
     activePlayerId,
+    isOfferable,
     courageOutcomes: () => outcomes,
   };
 }

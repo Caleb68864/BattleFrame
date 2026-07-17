@@ -881,3 +881,31 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   deliberate change, not a silent one. The value is converting an accidental,
   invisible behaviour into a documented, tested, flagged one.
 - Commit: test(greathelm): pin continuous battle-phase alternation across step boundaries
+
+## 2026-07-17 — The pool panel re-derived the 6->1 rule its own comment said it never did
+- Symptom: `buildDieViewModels` computed `offerable` locally —
+  `die.playerId === activePlayerId && die.face === highestUnspentFace`, with its
+  own loop to find the highest unspent face — a second copy of the 6->1 + turn
+  rule the session already owns in `requirePlayableDie`. The function's comment
+  claimed offerability was "never from a locally re-implemented copy of the 6-to-1
+  rule". It was. Two copies in two files that agreed today and could drift
+  tomorrow — the duplicated-predicate hazard that turned a one-line `=== 0` fix
+  into a worse bug earlier in this project.
+- Fix: added `session.isOfferable(dieId)` — the boolean sibling of
+  `requirePlayableDie`, both composing `currentFace()`/`activePlayerId()`, so the
+  rule has one definition. The panel now calls it and renders the result; it no
+  longer knows what "offerable" means. The wrapper session in `round-control.ts`
+  forwards it too.
+- Surfaces: `packages/battleframe-greathelm/src/round/session.ts` (`isOfferable` +
+  interface + return), `src/ui/pool-panel.ts` (`buildDieViewModels` delegates),
+  `src/ui/round-control.ts` (forward), `tests/session.test.ts` (isOfferable
+  authority), `tests/pool-panel.test.ts` (stub mirrors the rule).
+- Watch: the pool-panel test *double* still mirrors the rule (a stub has to
+  answer `isOfferable` somehow), but the shipped panel no longer does — the
+  duplication that mattered was production panel vs production session, and that
+  is gone. The session now has two internal expressions of the composition
+  (`isOfferable` returns a bool, `requirePlayableDie` throws with per-branch
+  messages); they are co-located in one file and both build on the same two
+  helpers, so the *rule* — what the current face and active player are — is single-
+  sourced, which is the part that was actually spread across files.
+- Commit: refactor(greathelm): session owns die offerability; the panel asks instead of re-deriving
