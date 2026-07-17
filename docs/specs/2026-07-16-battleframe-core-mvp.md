@@ -237,8 +237,11 @@ dispatch: factory
     `grid: {type: 0, distance: 1, units: "in"}`.
   - `[STRUCTURAL]` `system.json` declares `documentTypes.Actor.generic` and **no**
     game-specific types.
-  - `[MECHANICAL]` `grep -c "template.json" packages/battleframe/system.json` returns 0 —
-    deprecated in v14.
+  - `[MECHANICAL]` `[ -z "$(grep -o 'template.json' packages/battleframe/system.json)" ]`
+    exits 0 — `template.json` is deprecated in v14. **Written as `[ -z "$(...)" ]`, not
+    `grep -c ... returns 0`: `grep` exits 1 when it matches nothing, so the naive form fails
+    exactly when the spec is satisfied.** This inversion deferred SS-02 on the first factory
+    run; every negative grep below uses the same corrected shape.
   - `[STRUCTURAL]` The build emits an ES module; `system.json` references it via
     `esmodules`, not `scripts`. **Committed default:** Vite outputs to
     `packages/battleframe/dist/battleframe.js`, and `system.json` declares
@@ -251,7 +254,7 @@ dispatch: factory
   - `[BEHAVIORAL]` Copying `packages/battleframe/` into Foundry `Data/systems/battleframe/`
     allows a world to be created on it, and the console logs a readiness line at `ready`.
   - `[MECHANICAL]` **No copyrighted source document is tracked.**
-    `git ls-files | grep -iE '\.(pdf|epub|mobi|cbz|cbr)$'` returns nothing. Rulebooks
+    `[ -z "$(git ls-files | grep -iE '\.(pdf|epub|mobi|cbz|cbr)$')" ]` exits 0. Rulebooks
     obtained for reference must never be redistributed — not in the repo, not in a release.
   - `[MECHANICAL]` **The research notes ARE tracked.**
     `git ls-files vault/ | grep -c '\.md$'` returns > 200. Factory workers spawn a worktree
@@ -347,8 +350,8 @@ dispatch: factory
   - `[STRUCTURAL]` A property test asserts `between(a,b) === between(b,a)`.
   - `[STRUCTURAL]` A test asserts base-to-base equals centre-to-centre **minus the sum of
     base radii**, for non-overlapping tokens.
-  - `[MECHANICAL]` `grep -rn "measurePath" packages/battleframe/src/ | grep -v "measurement/"`
-    returns nothing — measurement is not reimplemented anywhere else.
+  - `[MECHANICAL]` `[ -z "$(grep -rn "measurePath" packages/battleframe/src/ | grep -v "measurement/")" ]`
+    exits 0 — measurement is not reimplemented anywhere else.
   - `[HUMAN REVIEW]` The on-screen ruler and `measure.between()` agree. If they diverge,
     players trust the ruler and the game is silently wrong.
   - `[STRUCTURAL]` **Measurement is inspectable, not implicit.** The returned object carries
@@ -396,7 +399,7 @@ dispatch: factory
   - `[STRUCTURAL]` Hooks `battleframe.ready`, `battleframe.rulesetRegistered`, and
     `battleframe.rulesetActivated` fire, named exactly so.
   - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && npm test -- registry` passes.
-  - `[MECHANICAL]` `grep -rn "greathelm" packages/battleframe/src/` returns nothing.
+  - `[MECHANICAL]` `[ -z "$(grep -rni "greathelm" packages/battleframe/src/)" ]` exits 0.
 - **Decisions (SS-05):** Do **not** write type-name collision detection — Foundry namespaces
   subtypes by package id, so collisions are structurally impossible. Police ruleset `id`
   only. If SS-01 showed module `init` precedes system `init`, move registration to `setup`
@@ -426,8 +429,8 @@ dispatch: factory
     to it.
   - `[STRUCTURAL]` Order lives in `combat.flags.battleframe.order: string[]` (Combatant ids)
     and is **read** by core, never written by core.
-  - `[MECHANICAL]` `grep -rn "rollInitiative\|_sortCombatants" packages/battleframe/src/combat/`
-    returns nothing.
+  - `[MECHANICAL]` `[ -z "$(grep -rnE "rollInitiative|_sortCombatants" packages/battleframe/src/combat/)" ]`
+    exits 0.
   - `[BEHAVIORAL]` The tracker renders in the order given by the flag, including when the
     flag changes mid-round.
   - `[BEHAVIORAL]` An **empty** order array renders an empty tracker without error — some
@@ -471,7 +474,7 @@ dispatch: factory
 - **Acceptance criteria:**
   - `[STRUCTURAL]` `game.battleframe.dice.roll(formula, data?)` returns a standard Foundry
     `Roll` — not a wrapper type.
-  - `[MECHANICAL]` `grep -rn "Math.random" packages/battleframe/src/` returns nothing — all
+  - `[MECHANICAL]` `[ -z "$(grep -rn "Math.random" packages/battleframe/src/)" ]` exits 0 — all
     randomness goes through Foundry's `Roll` so Dice So Nice can hook it.
   - `[HUMAN REVIEW]` With Dice So Nice installed, a roll animates with **no** Battleframe
     integration code. Retagged during red-team: requires installing a third-party module in
@@ -527,7 +530,7 @@ dispatch: factory
   - `[STRUCTURAL]` `getSchemaVersion(doc)` / `setSchemaVersion(doc, v)` are exported and
     unit-tested, including a document with **no** flag (treat as unversioned — never assume
     current).
-  - `[MECHANICAL]` `grep -rn "schemaVersion" packages/battleframe/src/settings/` returns
+  - `[MECHANICAL]` `[ -z "$(grep -rn "schemaVersion" packages/battleframe/src/settings/)" ]` exits 0 —
     nothing — version is **per-document**, never a world setting. Documents arrive from
     ruleset compendia at arbitrary versions and a world-level number cannot describe that.
   - `[STRUCTURAL]` Orphan conversion writes the original payload to
@@ -728,8 +731,8 @@ dispatch: factory
     pool, a round where one side has no legal action, and courage tests for — damaged +
     in-contact (tests), damaged + alone (does not test), undamaged + in-contact (does not
     test), and both tiebreaks.
-  - `[MECHANICAL]` `grep -rn "battleframe-greathelm\|greathelm" packages/battleframe/src/`
-    returns nothing — core stays ignorant.
+  - `[MECHANICAL]` `[ -z "$(grep -rniE "battleframe-greathelm|greathelm" packages/battleframe/src/)" ]`
+    exits 0 — core stays ignorant.
 - **Dependencies:** SS-10
 
 ---
@@ -777,8 +780,8 @@ dispatch: factory
     under `packages/battleframe/src/` imports from `packages/battleframe-greathelm/`, and
     that the core test suite imports no ruleset package. This is requirement 9, made
     executable.
-  - `[MECHANICAL]` `grep -rniE "greathelm|knight|sprint|encircle|clash" packages/battleframe/src/`
-    returns nothing. **This check is intentionally aggressive and will occasionally match an
+  - `[MECHANICAL]` `[ -z "$(grep -rniE "greathelm|knight|sprint|encircle|clash" packages/battleframe/src/)" ]`
+    exits 0. **This check is intentionally aggressive and will occasionally match an
     innocent comment** — e.g. "clash" in prose about conflicting ruleset ids. When it fires,
     **reword the comment; do not weaken the check.** Core staying free of game vocabulary is
     the point, not a side effect. Noted during prep.
