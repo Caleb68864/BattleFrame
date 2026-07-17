@@ -809,8 +809,12 @@ dispatch: factory
     orphan warning from SS-08 firing rather than a crash.
   - `[BEHAVIORAL]` With **no** ruleset installed at all, the system still loads, the wizard
     explains itself, and the ruler measures.
-  - `[MECHANICAL]` `node scripts/deploy-local.mjs --dest <foundry-data-dir>` copies both
-    packages into `Data/systems/` and `Data/modules/` and exits 0.
+  - `[MECHANICAL]` `cd "$(git rev-parse --show-toplevel)" && node scripts/deploy-local.mjs --dest "$(mktemp -d)"`
+    exits 0, having copied `battleframe` into `<dest>/Data/systems/` and
+    `battleframe-greathelm` into `<dest>/Data/modules/`. **Uses a real temp dir, not a
+    placeholder:** the original criterion read `--dest <foundry-data-dir>` and the gate
+    executed that string **literally**, which deferred SS-12 on the first run. A `[MECHANICAL]`
+    criterion is a command that gets run — it must never contain an unfilled placeholder.
   - `[HUMAN REVIEW]` **Did core need any change to host GREATHELM?** If yes, that is a design
     failure — record it in `docs/plans/` rather than quietly absorbing it.
 - **Dependencies:** SS-09, SS-11

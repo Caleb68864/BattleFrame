@@ -79,3 +79,19 @@ reader would otherwise re-derive or re-break.
   if not, that is a follow-up, not a rewrite. Square/hex measurement is genuinely deferred
   (BattleTech's problem, a late stress test) — do not let it creep into SS-04.
 - Commit: this commit.
+
+## 2026-07-16 — SS-12 deferred on a literal placeholder in a MECHANICAL criterion
+- Symptom: `SS-12 → check FAIL: node scripts/deploy-local.mjs --dest <foundry-data-dir>`.
+  The gate executed `<foundry-data-dir>` **literally**. SS-12 deferred; its artifacts
+  (`scripts/deploy-local.mjs`, `docs/DEPLOY.md`, `tests/integration/`) were left uncommitted.
+- Fix: The worker's code was **correct** — run by hand against `$(mktemp -d)` it copies
+  `battleframe` → `Data/systems/` and `battleframe-greathelm` → `Data/modules/` and exits 0.
+  Only the criterion was broken. Rewritten to `--dest "$(mktemp -d)"`.
+- Surfaces: SS-12's deploy criterion in the master spec.
+- Watch: **A `[MECHANICAL]` criterion is a command that gets executed, not prose that gets
+  read.** It must never contain an unfilled `<placeholder>` or `{var}`. This is the third
+  defect of the same species in this spec — all three were in the *checks*, never in the
+  code: (1) nine inverted negative greps that failed on success, (2) npm criteria the hygiene
+  linter wanted "fixed" in a way that would have broken the workspaces build, (3) this
+  placeholder. The workers have been right every time a gate said they were wrong.
+- Commit: this commit.
