@@ -22,6 +22,24 @@
         "noApi": "BattleFrame's dice and measurement services are unavailable, so a round cannot be run.",
         "noCombat": "Start a combat encounter before running a GREATHELM round."
       }
+    },
+    "actions": {
+      "sprint": "Sprint",
+      "encircle": "Encircle",
+      "bash": "Bash",
+      "shift": "Shift",
+      "light": "Light Attack",
+      "heavy": "Heavy Attack"
+    },
+    "poolPanel": {
+      "title": "Dice Pool",
+      "readOnlyNotice": "Read-only: only the GM can spend dice from this panel.",
+      "reloadWarning": "Reloading this panel loses a half-played round -- the session lives only in memory.",
+      "noSelection": "Select a die to see which knights may spend it.",
+      "reasons": {
+        "knightRemoved": "This knight has been removed from play.",
+        "noEnemyInContact": "No enemy is close enough for this knight to activate with this die."
+      }
     }
   }
 }

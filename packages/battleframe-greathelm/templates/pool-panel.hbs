@@ -1,0 +1,50 @@
+{{!-- GREATHELM's pool panel: click a die, then click the knight it activates.
+     GM-only -- see PoolPanel.canUserAccess() -- and every legal/illegal
+     verdict below comes straight from the session context built each render,
+     never computed here. --}}
+<form class="battleframe-greathelm pool-panel">
+  <p class="pool-panel__reload-warning">
+    {{localize "battleframe-greathelm.poolPanel.reloadWarning"}}
+  </p>
+
+  {{#unless canAccess}}
+    <p class="pool-panel__read-only-notice">
+      {{localize "battleframe-greathelm.poolPanel.readOnlyNotice"}}
+    </p>
+  {{/unless}}
+
+  {{#if canAccess}}
+    <ol class="pool-panel__dice">
+      {{#each dice}}
+        <li
+          class="pool-panel__die {{#if this.offerable}}pool-panel__die--offerable{{/if}} {{#if this.selected}}pool-panel__die--selected{{/if}}"
+          data-die-id="{{this.id}}"
+          data-player-id="{{this.playerId}}"
+        >
+          <span class="pool-panel__die-face">{{this.face}}</span>
+          <span class="pool-panel__die-action">{{localize this.actionKey}}</span>
+        </li>
+      {{/each}}
+    </ol>
+
+    {{#if selectedDieId}}
+      <ol class="pool-panel__knights">
+        {{#each knights}}
+          <li
+            class="pool-panel__knight {{#if this.legal}}pool-panel__knight--legal{{else}}pool-panel__knight--illegal{{/if}}"
+            data-knight-id="{{this.id}}"
+          >
+            <span class="pool-panel__knight-name">{{this.name}}</span>
+            {{#unless this.legal}}
+              <span class="pool-panel__knight-reason">{{localize this.reasonKey}}</span>
+            {{/unless}}
+          </li>
+        {{/each}}
+      </ol>
+    {{else}}
+      <p class="pool-panel__no-selection">
+        {{localize "battleframe-greathelm.poolPanel.noSelection"}}
+      </p>
+    {{/if}}
+  {{/if}}
+</form>
