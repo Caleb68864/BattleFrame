@@ -1,0 +1,227 @@
+import { describe, expect, it } from "vitest";
+import {
+  createRoundSession,
+  IllegalDieSpendError,
+  type CreateRoundSessionOptions,
+  type PoolDie,
+  type RoundSessionKnight,
+} from "../src/round/session";
+import type { ActorLike } from "../src/round/loop";
+import type { DiceApiLike, MeasureApiLike } from "../src/combat/clash";
+import type { DieFace } from "../src/constants";
+
+function fixedDice(total = 6): DiceApiLike {
+  return {
+    async roll() {
+      return { total };
+    },
+  };
+}
+
+function makeActor(initialDamage = 0): ActorLike & { system: { damage: number } } {
+  const actor = {
+    system: { damage: initialDamage },
+    async update(data: Record<string, unknown>) {
+      const next = data["system.damage"];
+      if (typeof next === "number") {
+        actor.system.damage = next;
+      }
+    },
+  };
+  return actor;
+}
+
+/** A measure that reports base contact for every declared adjacent pair, and 100" otherwise. */
+function makeMeasure(adjacentPairs: ReadonlyArray<[string, string]>): MeasureApiLike {
+  const idOf = (token: unknown): string => (token as { id: string }).id;
+  const isAdjacent = (a: string, b: string): boolean =>
+    adjacentPairs.some(([x, y]) => (x === a && y === b) || (x === b && y === a));
+
+  return {
+    between(tokenA, tokenB) {
+      const distance = isAdjacent(idOf(tokenA), idOf(tokenB)) ? 0 : 100;
+      return { distance };
+    },
+  };
+}
+
+function knight(
+  id: string,
+  playerId: string,
+  overrides: Partial<RoundSessionKnight> = {}
+): RoundSessionKnight {
+  return {
+    id,
+    playerId,
+    actor: makeActor(),
+    token: { id },
+    ...overrides,
+  };
+}
+
+function pool(...faces: DieFace[]): PoolDie[] {
+  return faces.map((face) => ({ face }));
+}
+
+function baseOptions(
+  knights: RoundSessionKnight[],
+  pools: ReadonlyMap<string, readonly PoolDie[]>,
+  firstPlayerId: string,
+  dice: DiceApiLike = fixedDice(),
+  measure: MeasureApiLike = makeMeasure([])
+): CreateRoundSessionOptions {
+  return { knights, pools, firstPlayerId, dice, measure };
+}
+
+describe("createRoundSession", () => {
+  it("enforces 6->1: refuses a lower face while a higher unspent die remains", async () => {
+    const knights = [knight("a1", "a"), knight("b1", "b")];
+    const pools = new Map([
+      ["a", pool(6, 3)],
+      ["b", pool(2)],
+    ]);
+    const session = createRoundSession(baseOptions(knights, pools, "a"));
+
+    // a-d1 is the face-6 die, a-d2 is face-3, b-d1 is face-2.
+    await expect(session.spendDie("a-d2", "a1")).rejects.toThrow(IllegalDieSpendError);
+
+    // The face-6 die is legal right away.
+    await expect(session.spendDie("a-d1", "a1")).resolves.toBeUndefined();
+  });
+
+  it("alternates sides, and lets one side continue after the other runs out", async () => {
+    const knights = [knight("a1", "a"), knight("b1", "b")];
+    const pools = new Map([
+      ["a", pool(6, 5)],
+      ["b", pool(6)],
+    ]);
+    const session = createRoundSession(baseOptions(knights, pools, "a"));
+
+    expect(session.activePlayerId()).toBe("a");
+    await session.spendDie("a-d1", "a1");
+
+    expect(session.activePlayerId()).toBe("b");
+    await session.spendDie("b-d1", "b1");
+
+    // b is out of dice; a continues uninterrupted at face 5.
+    expect(session.activePlayerId()).toBe("a");
+    await session.spendDie("a-d2", "a1");
+
+    expect(session.remainingDice()).toEqual([]);
+  });
+
+  it("throws on an illegal (die, knight) pair instead of silently no-opping", async () => {
+    const knights = [knight("a1", "a"), knight("a2", "a"), knight("b1", "b")];
+    const pools = new Map([
+      ["a", pool(6)],
+      ["b", pool(6)],
+    ]);
+    const session = createRoundSession(baseOptions(knights, pools, "a"));
+
+    // a-d1 belongs to player a; it may not activate player b's knight.
+    await expect(session.spendDie("a-d1", "b1")).rejects.toThrow(IllegalDieSpendError);
+
+    // a-d1 is legal for a1; b-d1 is not yet playable (not b's turn until a1's die is spent... but
+    // it's the same face, alternation says a goes first).
+    await expect(session.spendDie("a-d1", "a2")).resolves.toBeUndefined();
+  });
+
+  it("a clash die refuses a knight with no enemy in base contact", async () => {
+    const knights = [knight("a1", "a"), knight("b1", "b")];
+    const pools = new Map([
+      ["a", pool(4)], // face 4 = bash, requires base contact
+      ["b", pool(4)],
+    ]);
+    const measure = makeMeasure([]); // nobody adjacent
+    const session = createRoundSession(baseOptions(knights, pools, "a", fixedDice(), measure));
+
+    const targets = session.legalTargetsFor("a-d1");
+    expect(targets).toEqual([{ knightId: "a1", legal: false, reason: "no-enemy-in-base-contact" }]);
+
+    await expect(session.spendDie("a-d1", "a1")).rejects.toThrow(IllegalDieSpendError);
+  });
+
+  it("a clash die activates cleanly against an enemy in base contact", async () => {
+    const knights = [knight("a1", "a"), knight("b1", "b")];
+    const pools = new Map([
+      ["a", pool(2)], // face 2 = light melee
+      ["b", pool(1)],
+    ]);
+    const measure = makeMeasure([["a1", "b1"]]);
+    const session = createRoundSession(baseOptions(knights, pools, "a", fixedDice(6), measure));
+
+    const targets = session.legalTargetsFor("a-d1");
+    expect(targets).toEqual([{ knightId: "a1", legal: true }]);
+
+    await expect(session.spendDie("a-d1", "a1")).resolves.toBeUndefined();
+  });
+
+  it("a knight vanishing mid-round does not deadlock the session; discard clears a dead die", async () => {
+    const knights: RoundSessionKnight[] = [];
+    let removed = false;
+    const a1 = knight("a1", "a", { isRemoved: () => removed });
+    const enemy = knight("b1", "b");
+    knights.push(a1, enemy);
+
+    const pools = new Map([
+      ["a", pool(4)], // bash, requires contact
+      ["b", pool(3)],
+    ]);
+    const measure = makeMeasure([["a1", "b1"]]);
+    const session = createRoundSession(baseOptions(knights, pools, "a", fixedDice(), measure));
+
+    // a1 is legal while both are present and adjacent.
+    expect(session.legalTargetsFor("a-d1")).toEqual([{ knightId: "a1", legal: true }]);
+
+    // a1 is removed from play mid-round -- legality is re-derived, not cached.
+    removed = true;
+    expect(session.legalTargetsFor("a-d1")).toEqual([
+      { knightId: "a1", legal: false, reason: "knight-removed" },
+    ]);
+
+    // Side a has no legal target for its remaining die: discard, don't deadlock.
+    await expect(session.spendDie("a-d1", "a1")).rejects.toThrow(IllegalDieSpendError);
+    await expect(session.discardDie("a-d1", "no-legal-target")).resolves.toBeUndefined();
+
+    expect(session.activePlayerId()).toBe("b");
+    await session.discardDie("b-d1", "irrelevant");
+
+    expect(session.isComplete()).toBe(true);
+  });
+
+  it("completion runs the courage phase and is reflected in isComplete/courageOutcomes", async () => {
+    const attacker = makeActor(0);
+    const defender = makeActor(1); // already damaged, in contact -> will test courage
+    const knights = [
+      knight("a1", "a", { actor: attacker }),
+      knight("b1", "b", { actor: defender }),
+    ];
+    const pools = new Map([
+      ["a", pool(6)],
+      ["b", pool(5)],
+    ]);
+    const measure = makeMeasure([["a1", "b1"]]);
+    let courageRollCount = 0;
+    const dice: DiceApiLike = {
+      async roll() {
+        courageRollCount += 1;
+        return { total: 6 }; // always passes
+      },
+    };
+    const session = createRoundSession(baseOptions(knights, pools, "a", dice, measure));
+
+    expect(session.isComplete()).toBe(false);
+    expect(session.courageOutcomes()).toBeUndefined();
+
+    await session.spendDie("a-d1", "a1"); // sprint, not complete yet
+    expect(session.isComplete()).toBe(false);
+
+    await session.spendDie("b-d1", "b1"); // last die -> triggers courage phase
+    expect(session.isComplete()).toBe(true);
+
+    const outcomes = session.courageOutcomes();
+    expect(outcomes).toBeDefined();
+    expect(outcomes?.get("b1")?.passed).toBe(true);
+    expect(courageRollCount).toBeGreaterThan(0);
+  });
+});
