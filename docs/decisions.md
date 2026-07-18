@@ -1839,3 +1839,14 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Registry resolved defensively (`globalThis.battleframe.hover` ?? 
   `game.battleframe.hover`); a miss is a no-op, matching the api-resolution pattern.
 - Commit: this commit.
+
+## 2026-07-18 — Ruleset hover stat registrations (Simple Skirmish)
+- What: Simple Skirmish advertises its unit hover stat fields via
+  `registerSimpleSkirmishHoverFields()`, called from init. The seven Basic Game
+  stats -- `models`, `move`, `attackMelee`, `attackRanged`, `attackMagic`,
+  `save`, `skill` -- register with no `max` (each is a d6 target number or a
+  count with no fixed ceiling), `defaultVisibility: "everyone"`. Labels reuse the
+  existing `battleframe-simple-skirmish.fields.*` i18n keys.
+- Registry resolved defensively (`globalThis.battleframe.hover` ??
+  `game.battleframe.hover`); a miss is a no-op.
+- Commit: this commit.

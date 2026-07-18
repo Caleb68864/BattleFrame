@@ -1,4 +1,4 @@
-import { MODULE_ID } from "./constants";
+import { MODULE_ID, UNIT_ACTOR_TYPE } from "./constants";
 import { registerUnitDataModel } from "./data/unit";
 import { registerUnitSheet } from "./sheets/unit-sheet";
 import { registerRoundControl } from "./ui/round-control";
@@ -44,6 +44,46 @@ function failRegistration(reason: string): never {
   throw new Error(message);
 }
 
+/**
+ * Resolves the engine's hover stat registry defensively -- it may live on
+ * `globalThis.battleframe` or the bound `game.battleframe`, same shape as the
+ * api resolution.
+ */
+function hoverRegistry(): { register: (t: string, p: unknown) => void } | undefined {
+  const g = globalThis as {
+    battleframe?: { hover?: { register: (t: string, p: unknown) => void } };
+    game?: { battleframe?: { hover?: { register: (t: string, p: unknown) => void } } };
+  };
+  return g.battleframe?.hover ?? g.game?.battleframe?.hover;
+}
+
+/**
+ * Registers the unit hover stat fields with the engine's hover registry. The
+ * seven Basic Game stats are all target numbers or counts with no ceiling, so
+ * none carries a `max`. Labels reuse the existing `battleframe-simple-skirmish
+ * .fields.*` i18n keys the engine localizes at render time. No-op when the
+ * registry is absent.
+ */
+export function registerSimpleSkirmishHoverFields(): void {
+  const registry = hoverRegistry();
+  if (!registry) {
+    return;
+  }
+
+  registry.register(`${MODULE_ID}.${UNIT_ACTOR_TYPE}`, {
+    fields: [
+      { key: "models", label: `${MODULE_ID}.fields.models` },
+      { key: "move", label: `${MODULE_ID}.fields.move` },
+      { key: "attackMelee", label: `${MODULE_ID}.fields.attackMelee` },
+      { key: "attackRanged", label: `${MODULE_ID}.fields.attackRanged` },
+      { key: "attackMagic", label: `${MODULE_ID}.fields.attackMagic` },
+      { key: "save", label: `${MODULE_ID}.fields.save` },
+      { key: "skill", label: `${MODULE_ID}.fields.skill` },
+    ],
+    defaultVisibility: "everyone",
+  });
+}
+
 /** Registers Simple Skirmish as the active ruleset via the system's public API. */
 export function registerSimpleSkirmishRuleset(): void {
   const api = resolveBattleframeApi();
@@ -75,6 +115,8 @@ const globalHooks = (globalThis as unknown as {
 globalHooks?.once("init", () => {
   registerUnitDataModel();
   registerUnitSheet();
+  // Advertise the unit's hover stat fields to the engine's hover registry.
+  registerSimpleSkirmishHoverFields();
   // The round trigger: a scene control answering Foundry's own hook. This is
   // what makes the combat/round/victory logic reachable in the shipped bundle
   // -- without it, all of it is tree-shaken out (see COVERAGE.md).
