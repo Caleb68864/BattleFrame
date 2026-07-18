@@ -1125,3 +1125,16 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   caveat as GREATHELM's sheet: the ApplicationV2 shape is feature-detected, and a
   live world is still the check that the sheet actually renders.
 - Commit: feat(simple-skirmish): unit sheet for the Basic Game stats
+
+## 2026-07-17 — Simple Skirmish i18n completeness guard (src + templates)
+- Symptom: n/a — new. Preventing the missing-key regression this project has hit
+  in its other ruleset, in the new one.
+- Fix: `tests/i18n.test.ts` flattens en.json and asserts every literal
+  `battleframe-simple-skirmish.*` key in both `src` (`.ts`) and `templates`
+  (`.hbs`) resolves. Scanning templates matters -- a sheet's `{{localize}}` keys
+  go missing as easily as code's. Guards against a vacuous pass with a floor.
+- Surfaces: `packages/battleframe-simple-skirmish/tests/i18n.test.ts`.
+- Watch: covers literal keys only; there are no computed key families in this
+  module yet (the exhaustive-Record trick from GREATHELM is the answer if one is
+  added). All 8 referenced keys currently resolve.
+- Commit: test(simple-skirmish): assert en.json carries every referenced i18n key
