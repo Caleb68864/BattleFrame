@@ -44,3 +44,33 @@
   text-align: center;
   padding: 1rem;
 }
+
+#battleframe-hover-panel {
+  z-index: 100;
+  min-width: 120px;
+  max-width: 260px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #f0f0e0;
+  border: 1px solid #888;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+#battleframe-hover-panel .bf-hover-name {
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+#battleframe-hover-panel .bf-hover-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+#battleframe-hover-panel .bf-hover-label {
+  opacity: 0.8;
+}
+#battleframe-hover-panel .bf-hover-statuses {
+  margin-top: 4px;
+  display: flex;
+  gap: 3px;
+}

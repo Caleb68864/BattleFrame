@@ -1794,3 +1794,15 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   `packages/battleframe/src/battleframe.ts`,
   `packages/battleframe/tests/hover-panel-glue.test.ts`.
 - Commit: feat(core): hoverToken panel glue
+
+## 2026-07-18 — hover panel styles + statVisibility i18n
+- Symptom: The panel div and the statVisibility setting existed but had no CSS
+  and no localized labels, so the panel was unstyled and the setting showed raw
+  i18n keys.
+- Fix: Appended `#battleframe-hover-panel` styling (dark rounded tooltip, flex
+  rows, status icon strip) to `styles/battleframe.css`, and added the flat-dotted
+  `battleframe.settings.statVisibility.{name,hint,choices.*}` keys to
+  `lang/en.json` right after `defaultGridUnit.hint`. JSON re-validated with node.
+- Surfaces: `packages/battleframe/styles/battleframe.css`,
+  `packages/battleframe/lang/en.json`.
+- Commit: feat(core): hover panel styles + statVisibility i18n
