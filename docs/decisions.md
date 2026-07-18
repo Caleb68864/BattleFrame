@@ -1822,3 +1822,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Surfaces: `packages/battleframe/src/ui/hover-panel.ts`,
   `packages/battleframe/tests/hover-panel-glue.test.ts`.
 - Commit: fix(core): escape hover panel HTML + correct PIXI matrix positioning
+
+## 2026-07-18 — Ruleset hover stat registrations (GREATHELM)
+- What: GREATHELM now advertises its knight hover stat fields to the engine's
+  hover registry via `registerGreathelmHoverFields()`, called from init. Fields:
+  `momentum` and `damage`, both rendered as value/3 (the knight's only per-model
+  numbers), `defaultVisibility: "everyone"`. Labels reuse the existing
+  `battleframe-greathelm.fields.*` i18n keys, which the engine localizes at
+  render time.
+- Also: GREATHELM's `main.ts` top-level `Hooks.once("init", …)` was changed to the
+  guarded `globalHooks?.once(...)` shape already used by Simple Skirmish and
+  InCountry. Raw `Hooks.once` threw `ReferenceError: Hooks is not defined` the
+  moment `main.ts` was imported under Vitest, making the module untestable. The
+  guard makes the module importable without a Foundry global while preserving
+  identical runtime behaviour in a live world.
+- Registry resolved defensively (`globalThis.battleframe.hover` ?? 
+  `game.battleframe.hover`); a miss is a no-op, matching the api-resolution pattern.
+- Commit: this commit.

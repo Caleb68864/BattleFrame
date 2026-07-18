@@ -1,4 +1,5 @@
 import {
+  KNIGHT_ACTOR_TYPE,
   MODULE_ID,
   SETTING_MIN_DICE_POOL_FLOOR_ENABLED,
   SETTING_PROMPT_ATTACK_TARGET,
@@ -49,6 +50,41 @@ function resolveBattleframeApi(): BattleframeApi | undefined {
   };
 
   return globalScope.battleframe?.api ?? resolveGame()?.battleframe?.api;
+}
+
+/**
+ * Resolves the hover stat registry defensively -- it may live on
+ * `globalThis.battleframe` (built at the system's module top level) or on the
+ * bound `game.battleframe`. Same load-order-independent shape as
+ * resolveBattleframeApi.
+ */
+function hoverRegistry(): { register: (t: string, p: unknown) => void } | undefined {
+  const g = globalThis as {
+    battleframe?: { hover?: { register: (t: string, p: unknown) => void } };
+    game?: { battleframe?: { hover?: { register: (t: string, p: unknown) => void } } };
+  };
+  return g.battleframe?.hover ?? g.game?.battleframe?.hover;
+}
+
+/**
+ * Registers the knight hover stat fields with the engine's hover registry.
+ * momentum and damage are the only per-knight numbers (see data/knight.ts),
+ * both capped at 3, so both render as value/3. Labels are i18n keys the engine
+ * localizes at render time. A no-op when the registry is absent.
+ */
+export function registerGreathelmHoverFields(): void {
+  const registry = hoverRegistry();
+  if (!registry) {
+    return;
+  }
+
+  registry.register(`${MODULE_ID}.${KNIGHT_ACTOR_TYPE}`, {
+    fields: [
+      { key: "momentum", label: `${MODULE_ID}.fields.momentum`, max: 3 },
+      { key: "damage", label: `${MODULE_ID}.fields.damage`, max: 3 },
+    ],
+    defaultVisibility: "everyone",
+  });
 }
 
 /**
@@ -148,12 +184,18 @@ function registerGreathelmRuleset(): void {
   }
 }
 
-Hooks.once("init", () => {
+const globalHooks = (globalThis as unknown as {
+  Hooks?: { once: (event: string, cb: () => void) => void };
+}).Hooks;
+
+globalHooks?.once("init", () => {
   // Registers the knight Actor subtype at CONFIG.Actor.dataModels (see
   // ../data/knight.ts registerKnightDataModel).
   registerKnightDataModel();
   registerKnightSheet();
   registerGreathelmSettings();
+  // Advertise the knight's hover stat fields to the engine's hover registry.
+  registerGreathelmHoverFields();
   // The round trigger: a scene control button, registered through Foundry's
   // own getSceneControlButtons hook. Clicking it rolls initiative and opens
   // the pool panel for the GM to play the round die by die -- it no longer
