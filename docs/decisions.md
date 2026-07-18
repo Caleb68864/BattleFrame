@@ -1221,3 +1221,25 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   computed-but-unconsumed, the documented Advanced-Game deferral. The activation
   control is the one thing left to make the Basic Game playable in-app.
 - Commit: fix(simple-skirmish): report models actually removed; fail loud on an unknown first player
+
+## 2026-07-17 — Simple Skirmish activation control: the testable orchestration core
+- Symptom: n/a — new. The combat/round/victory logic was proven but had no caller
+  a Foundry session reaches (tree-shaken). This is the first half of wiring it: the
+  part that can be tested without a canvas.
+- Fix: `ui/round-control.ts` composes the tested pieces into the GM's flow.
+  `rollInitiative` (d6/player, re-roll on tie, bounded -- the same invented house
+  rule GREATHELM uses), `beginRound` (initiative + `createSkirmishRound` with live
+  `isDestroyed`), `legalAttackTypes` (has the stat AND target in range: melee within
+  Move as a charge, ranged/magic within 12"), and `resolveActivation` (resolve the
+  declared attack, apply, advance the turn, and on the last activation read
+  `checkVictory`). All injectable (dice, notify), no Foundry.
+- Surfaces: `packages/battleframe-simple-skirmish/src/ui/round-control.ts`,
+  `tests/round-control.test.ts`.
+- Watch: this is deliberately the GREATHELM shape -- a testable `beginRound`/
+  `resolveActivation` core with the canvas glue kept separate (next pass), so the
+  round is provable without a live world. Range legality is an MVP model (melee =
+  charge within Move, ranged/magic = default 12"); per-unit ranges are the
+  documented Advanced refinement. The turn authority stays the round session; the
+  control's own turn check is an earlier, clearer message, not a second copy of the
+  rule.
+- Commit: feat(simple-skirmish): testable activation orchestration -- initiative, activation, attack, victory
