@@ -26,7 +26,14 @@ import { checkVictory, type VictoryOutcome } from "../round/victory";
  */
 
 export interface RoundControlUnit extends AttackUnit {
+  /** Display name for chat/notifications; falls back to the id when absent. */
+  name?: string;
   actor: AttackUnit["actor"] & { system?: { move?: number } };
+}
+
+/** A readable label for a unit -- its name, or the id when a test omits one. */
+function label(unit: RoundControlUnit): string {
+  return unit.name ?? unit.id;
 }
 
 export class InitiativeUnresolvedError extends Error {
@@ -164,10 +171,10 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
     attack = await performAttack({ attacker, defender: target, type, dice });
 
     if ("refused" in attack) {
-      notify(`${attacker.id}: ${attack.refused}`, "warn");
+      notify(`${label(attacker)}: ${attack.refused}`, "warn");
     } else {
       notify(
-        `${attacker.id} ${type} vs ${target.id}: ${attack.hits} hit(s), ` +
+        `${label(attacker)} ${type} vs ${label(target)}: ${attack.hits} hit(s), ` +
           `${attack.modelsRemoved} model(s) removed${attack.destroyed ? " -- destroyed" : ""}`
       );
     }
@@ -255,7 +262,7 @@ interface CanvasTokenLike {
   center?: { x: number; y: number };
   scene?: unknown;
   document?: { id?: string; disposition?: number };
-  actor?: (RoundControlUnit["actor"] & { id?: string; type?: string }) | null;
+  actor?: (RoundControlUnit["actor"] & { id?: string; name?: string; type?: string }) | null;
 }
 
 /** Builds a `RoundControlUnit` from a canvas token, or null if it is not one of our units. */
@@ -272,6 +279,7 @@ function unitFromToken(placeable: CanvasTokenLike): RoundControlUnit | null {
 
   return {
     id,
+    name: actor.name ?? id,
     playerId: sideFromDisposition(placeable.document?.disposition),
     // Centre-to-centre needs only the centre and the scene; no base flags.
     token: { center: placeable.center, scene: placeable.scene ?? globalScope().canvas?.scene },
@@ -354,17 +362,20 @@ export async function activateSelectedControl(): Promise<void> {
     return;
   }
 
-  // Prefer the GM's explicit Foundry target; otherwise attack the nearest living
-  // enemy (QSR range is measured to the nearest enemy), so a bare activation
+  // Prefer the GM's explicit Foundry target, but ONLY if it is a living enemy --
+  // a unit never attacks its own side or itself, however the GM's targeting
+  // happens to be set (found live: a stale self-target resolved a unit attacking
+  // itself). Otherwise attack the nearest living enemy, so a bare activation
   // still resolves against a sensible foe.
+  const isEnemy = (u: RoundControlUnit): boolean =>
+    u.playerId !== attacker.playerId && u.id !== attacker.id && !isUnitDestroyed(u.actor);
+
   const targets = [...(globalScope().game?.user?.targets ?? [])] as CanvasTokenLike[];
-  let target = targets.map(unitFromToken).find((u): u is RoundControlUnit => u !== null) ?? null;
+  let target = targets.map(unitFromToken).find((u): u is RoundControlUnit => u !== null && isEnemy(u)) ?? null;
 
   if (!target) {
     const measure = globalScope().game?.battleframe?.measure;
-    const enemies = activeUnits.filter(
-      (u) => u.playerId !== attacker.playerId && !isUnitDestroyed(u.actor)
-    );
+    const enemies = activeUnits.filter(isEnemy);
     if (measure && enemies.length > 0) {
       target = nearestEnemy(attacker, enemies, measure)?.enemy ?? null;
     }

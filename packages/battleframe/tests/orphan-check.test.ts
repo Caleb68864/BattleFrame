@@ -47,6 +47,14 @@ describe("extractPackageId", () => {
   it("returns null for a type starting with a dot", () => {
     expect(extractPackageId(".weird")).toBeNull();
   });
+
+  it("returns null for a non-string type -- an Actor from a disabled module has none", () => {
+    // Found live: disabling a ruleset module leaves its Actors failing validation
+    // with `type === undefined`. The orphan check runs over exactly those, so it
+    // must not crash on `undefined.indexOf`.
+    expect(extractPackageId(undefined as unknown as string)).toBeNull();
+    expect(extractPackageId(null as unknown as string)).toBeNull();
+  });
 });
 
 describe("findOrphanedActors", () => {

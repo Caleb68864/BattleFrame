@@ -37,8 +37,19 @@ export interface OrphanedActorInfo {
  * (`"moduleId.subtype"` -> `"moduleId"`). Un-namespaced types (core's own
  * `"generic"`, or anything with no dot) return `null` -- they cannot be
  * orphaned, since no module owns them.
+ *
+ * A non-string `actorType` also returns `null`. This is not defensive
+ * paranoia: an Actor whose module is disabled FAILS validation and initializes
+ * with `type === undefined`, and the orphan check exists precisely to run over
+ * those Actors -- so it must survive the very state it is built to handle.
+ * Found live: disabling a ruleset module left its Actors with no type, and
+ * `undefined.indexOf(".")` crashed the whole `ready` hook.
  */
 export function extractPackageId(actorType: string): string | null {
+  if (typeof actorType !== "string") {
+    return null;
+  }
+
   const dotIndex = actorType.indexOf(".");
 
   if (dotIndex <= 0) {

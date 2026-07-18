@@ -1272,3 +1272,32 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   charge within Move); per-unit ranges and the full advantage/champion/scenario tier
   remain the documented Advanced Game.
 - Commit: feat(simple-skirmish): activation scene control -- the Basic Game is playable in Foundry
+
+## 2026-07-17 — Live verification found three real bugs the tests could not
+- Symptom: driving the deployed packages in a live Foundry v14.363 world (Simple
+  Skirmish enabled, Greathelm disabled) surfaced three defects unit tests missed.
+- Fix: (1) CORE crash -- `extractPackageId` did `actorType.indexOf(".")`, but an
+  Actor whose module is disabled fails validation and initializes with
+  `type === undefined`; the orphan check, which exists to run over exactly those
+  Actors, crashed the whole `ready` hook. Guarded to return null for a non-string
+  type. (2) SIMPLE SKIRMISH -- the activation control used the GM's Foundry target
+  without checking it is an enemy, so a stale self-target resolved a unit attacking
+  itself; now only a living enemy (different side, different id) is accepted, else
+  it falls to the nearest enemy. (3) SIMPLE SKIRMISH -- notifications printed actor
+  ids ("O2Ydybn1... melee vs ..."); they now use the unit name.
+- Surfaces: `packages/battleframe/src/rulesets/orphan-check.ts` (+ test),
+  `packages/battleframe-simple-skirmish/src/ui/round-control.ts` (target guard,
+  `label`/`name`).
+- Watch: all three are the classic live-only class -- a test double always has a
+  string `type`, always sets a clean target, and reads a return value rather than a
+  rendered notification, so none could have caught these. What DID verify live and
+  clean: the module registered a ruleset + Actor subtype into the system,
+  centre-to-centre measurement, the scene control's two tools (the previously-
+  UNVERIFIED `getSceneControlButtons` shape), Run Round (initiative through the real
+  dice service, tie re-roll, first-player announce), Activate (4 attack dice -> 2
+  hits -> 2 saves -> 1 casualty, persisted, turn advanced), and the deathmatch
+  victory notification ("friendly wins"). The orphan crash was itself triggered by
+  the test setup (disabling Greathelm on a world full of knight Actors) -- the exact
+  scenario the orphan check is for, which is why its crashing there was the sharpest
+  finding.
+- Commit: fix: three live-found bugs -- orphan-check crash, self-target attack, id-not-name notifications
