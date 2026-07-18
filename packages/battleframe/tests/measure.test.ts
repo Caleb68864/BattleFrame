@@ -137,6 +137,41 @@ describe("measure.between", () => {
     }
   });
 
+  describe("centre-to-centre mode", () => {
+    // GREATHELM measures base-to-base; Simple Skirmish measures centre-to-centre
+    // (movement, line-of-sight). Two rulesets pulling different ways is the
+    // second witness that makes the mode a core parameter rather than one
+    // ruleset's shape.
+    it("returns the full centre distance, radii NOT subtracted", () => {
+      const tokenA = makeFixtureToken({ x: 0, y: 0, widthMm: 25.4 });
+      const tokenB = makeFixtureToken({ x: 10 * PX_PER_UNIT, y: 0, widthMm: 25.4 });
+
+      const c2c = between(tokenA, tokenB, "centre-to-centre");
+      const b2b = between(tokenA, tokenB);
+
+      expect(c2c.distance).toBeCloseTo(10, 10); // centres are 10" apart
+      expect(c2c.mode).toBe("centre-to-centre");
+      expect(b2b.distance).toBeCloseTo(9, 10); // 10 - 0.5 - 0.5 base radii
+      expect(c2c.distance).toBeGreaterThan(b2b.distance);
+    });
+
+    it("is symmetric in centre-to-centre mode", () => {
+      const tokenA = makeFixtureToken({ x: 0, y: 0, widthMm: 25.4 });
+      const tokenB = makeFixtureToken({ x: 7 * PX_PER_UNIT, y: 3 * PX_PER_UNIT, widthMm: 40 });
+
+      expect(between(tokenA, tokenB, "centre-to-centre").distance).toBe(
+        between(tokenB, tokenA, "centre-to-centre").distance
+      );
+    });
+
+    it("defaults to base-to-base when no mode is passed", () => {
+      const tokenA = makeFixtureToken({ x: 0, y: 0, widthMm: 25.4 });
+      const tokenB = makeFixtureToken({ x: 5 * PX_PER_UNIT, y: 0, widthMm: 25.4 });
+
+      expect(between(tokenA, tokenB).mode).toBe("base-to-base");
+    });
+  });
+
   it("throws rather than silently measuring across mismatched scenes", () => {
     const tokenA = makeFixtureToken({ x: 0, y: 0, widthMm: 25.4 });
     const tokenB = makeFixtureToken({ x: 10 * PX_PER_UNIT, y: 0, widthMm: 25.4 });
