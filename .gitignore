@@ -42,3 +42,9 @@ graphify-out/
 
 # Local Foundry access runbook (not for sharing)
 docs/_local-foundry-access.md
+
+# stray Playwright screenshots at repo root
+*-live.png
+*-post-fix.png
+*-check.png
+.playwright-mcp/

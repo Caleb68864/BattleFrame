@@ -1477,3 +1477,28 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   nested-`<form>` fix is the load-bearing one — it repaired sheet editing across
   ALL THREE shipped rulesets, not just InCountry.
 - Commit: fix(sheets): unwrap nested form so edits save; fix theme icon paths
+
+## 2026-07-18 — Engine rounds API hardened after an adversarial review
+- Symptom: an independent engine review of the new activation service found one
+  real contract divergence and a robustness gap. (1) `installRoundsApi` set
+  `namespace.rounds = createRoundsApi()` unconditionally, unlike the dice /
+  measure / area installers, which all guard with `?? create()`; a second
+  install (double eval, HMR, a test) would swap the object a consumer had
+  captured. (2) `createActivationOrder({ units: [] })` threw (via `orderedSides`
+  `indexOf === -1`) instead of yielding an already-complete order — a latent
+  crash for a reusable engine service handed a possibly-empty live unit list.
+- Fix: made the installer idempotent (`namespace.rounds ?? createRoundsApi()`);
+  `orderedSides` now returns `[]` for an empty round (→ phase "complete") while
+  still throwing for a NON-empty round whose `firstSideId` names no side (the
+  real caller bug that guard exists for). Corrected the `eligible()` doc to say
+  it is phase eligibility, not a turn check. Scrubbed a ruleset name from a core
+  test comment (neutrality-in-spirit). Added tests: idempotency, empty round,
+  single-side round, firstSideId mismatch, and a custom-selector-returns-
+  ineligible throw.
+- Surfaces: `packages/battleframe/src/rounds/activation.ts`,
+  `packages/battleframe/tests/activation.test.ts`.
+- Watch: kept as a deliberate fail-loud — `activeSideId()` throwing when a custom
+  `selectMain` returns an out-of-set side. That is a caller programming error
+  worth surfacing; the shipped `weightedBagSelector` can never trigger it. 488
+  tests green; typecheck clean; no regression to the two shipped rulesets.
+- Commit: harden(engine): idempotent rounds installer + empty-round handling

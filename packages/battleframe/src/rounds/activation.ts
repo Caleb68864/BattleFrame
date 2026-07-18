@@ -51,7 +51,12 @@ export interface ActivationOrder {
   phase(): ActivationPhase;
   /** Whose turn it is to activate a unit, or undefined once complete. */
   activeSideId(): string | undefined;
-  /** The active-phase unit ids `sideId` may legally activate right now. */
+  /**
+   * `sideId`'s unit ids that are eligible in the CURRENT phase (unresolved, and
+   * priority-flagged during the priority tier). This is phase eligibility, not a
+   * turn check -- a side that is not `activeSideId()` still lists its eligible
+   * units, but activating one throws until it is that side's turn.
+   */
   eligible(sideId: string): string[];
   isActivated(unitId: string): boolean;
   /** Activates `unitId`; throws on an out-of-turn, repeat, resolved, wrong-tier, or unknown activation. */
@@ -236,10 +241,15 @@ declare global {
   }
 }
 
-/** Installs onto the shared namespace at module top level (before any `init`). */
+/**
+ * Installs onto the shared namespace at module top level (before any `init`).
+ * Idempotent -- a second call keeps the object already installed, the same
+ * guard the dice / measure / area installers use, so a consumer that captured
+ * `game.battleframe.rounds` never sees it swapped underneath it.
+ */
 export function installRoundsApi(): RoundsApi {
   const namespace = battleframeNamespace();
-  namespace.rounds = createRoundsApi();
+  namespace.rounds = namespace.rounds ?? createRoundsApi();
   return namespace.rounds;
 }
 
@@ -271,6 +281,12 @@ function orderedSides(units: readonly ActivationUnit[], firstSideId: string): st
       seen.add(unit.sideId);
       order.push(unit.sideId);
     }
+  }
+
+  // An empty round is legal: it is simply already complete. Only a non-empty
+  // round with a firstSideId that names no side is a caller bug worth throwing.
+  if (order.length === 0) {
+    return [];
   }
 
   const index = order.indexOf(firstSideId);

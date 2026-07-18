@@ -13,7 +13,7 @@ import {
  *  - a PRIORITY tier that alternates (first side first) over units flagged
  *    hasPriority(), and
  *  - a MAIN tier over everyone else, whose next side is chosen by a pluggable
- *    selector (default alternating; INCOUNTRY injects a count-weighted "bag").
+ *    selector (default alternating; a ruleset can inject a count-weighted "bag").
  * A unit that isResolved() (destroyed/removed) needs no activation.
  */
 
@@ -148,6 +148,48 @@ describe("rounds API — exposed on the namespace for modules", () => {
     installRoundsApi();
     const ns = (globalThis as unknown as { battleframe?: { rounds?: unknown } }).battleframe;
     expect(ns?.rounds).toBeDefined();
+  });
+
+  it("installRoundsApi is idempotent — a second call keeps the same object", () => {
+    const first = installRoundsApi();
+    const second = installRoundsApi();
+    expect(second).toBe(first);
+  });
+});
+
+describe("createActivationOrder — empty, single-side, and bad-selector rounds", () => {
+  it("an empty round is immediately complete rather than throwing", () => {
+    const order = createActivationOrder({ units: [], firstSideId: "A" });
+    expect(order.isComplete()).toBe(true);
+    expect(order.phase()).toBe("complete");
+    expect(order.activeSideId()).toBeUndefined();
+  });
+
+  it("still throws when firstSideId matches no unit in a non-empty round", () => {
+    expect(() =>
+      createActivationOrder({ units: [unit("a1", "A")], firstSideId: "Z" })
+    ).toThrow(IllegalActivationError);
+  });
+
+  it("runs a single-side round to completion", () => {
+    const order = createActivationOrder({
+      units: [unit("a1", "A"), unit("a2", "A")],
+      firstSideId: "A"
+    });
+    expect(order.activeSideId()).toBe("A");
+    order.activate("a1");
+    expect(order.activeSideId()).toBe("A");
+    order.activate("a2");
+    expect(order.isComplete()).toBe(true);
+  });
+
+  it("throws if a custom selectMain returns a side with no eligible unit", () => {
+    const order = createActivationOrder({
+      units: [unit("a1", "A"), unit("b1", "B")],
+      firstSideId: "A",
+      selectMain: () => "Z"
+    });
+    expect(() => order.activeSideId()).toThrow(IllegalActivationError);
   });
 });
 
