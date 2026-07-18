@@ -1766,3 +1766,15 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Surfaces: `packages/battleframe/src/settings/index.ts`,
   `packages/battleframe/tests/settings-stat-visibility.test.ts`.
 - Commit: feat(core): statVisibility world setting
+
+## 2026-07-18 — hover registry installed on the namespace at module top level
+- Symptom: Rulesets register hover providers from their own `init`, which may run
+  before this system's `init`. The registry must exist before any ruleset needs it.
+- Fix: Added `installHoverApi()` mirroring `installDiceApi()` — it puts one
+  idempotent `HoverRegistry` on `battleframeNamespace().hover` and is called from
+  the module-top-level install block in `battleframe.ts`, right after
+  `installLosApi()`. Same load-order guarantee as dice/measure/area/rounds/los.
+- Surfaces: `packages/battleframe/src/ui/hover-registry.ts`,
+  `packages/battleframe/src/battleframe.ts`,
+  `packages/battleframe/tests/hover-registry.test.ts`.
+- Commit: feat(core): expose game.battleframe.hover registry

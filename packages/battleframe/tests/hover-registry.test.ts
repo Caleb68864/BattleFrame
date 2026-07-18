@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createHoverRegistry } from "../src/ui/hover-registry";
+import { createHoverRegistry, installHoverApi } from "../src/ui/hover-registry";
 
 describe("hover registry", () => {
   it("returns a provider registered for an actor type", () => {
@@ -17,5 +17,11 @@ describe("hover registry", () => {
     const second = { fields: [{ key: "a", label: "A" }] };
     reg.register("t", second);
     expect(reg.get("t")).toBe(second);
+  });
+  it("installHoverApi puts a single registry on the battleframe namespace", () => {
+    const first = installHoverApi();
+    const second = installHoverApi();
+    expect(second).toBe(first); // idempotent, like installDiceApi
+    expect((globalThis as any).battleframe.hover).toBe(first);
   });
 });

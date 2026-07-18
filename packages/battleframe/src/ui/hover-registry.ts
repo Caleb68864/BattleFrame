@@ -1,3 +1,5 @@
+import { battleframeNamespace } from "../api/index";
+
 /**
  * The hover panel's content is ruleset-owned: each ruleset registers, per
  * namespaced Actor type, which system fields to show. The engine holds only
@@ -31,4 +33,21 @@ export function createHoverRegistry(): HoverRegistry {
     register: (actorType, provider) => void providers.set(actorType, provider),
     get: (actorType) => providers.get(actorType),
   };
+}
+
+declare global {
+  interface BattleframeGameNamespace {
+    hover?: HoverRegistry;
+  }
+}
+
+/**
+ * Installs the one hover registry on the battleframe namespace, at module top
+ * level (before any ruleset's `init`), the same way the dice/measure apis are
+ * installed. See ../api/index and ../dice/dice.ts.
+ */
+export function installHoverApi(): HoverRegistry {
+  const namespace = battleframeNamespace();
+  namespace.hover = namespace.hover ?? createHoverRegistry();
+  return namespace.hover;
 }
