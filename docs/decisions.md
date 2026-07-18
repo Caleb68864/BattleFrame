@@ -1707,3 +1707,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   sets/clears `actor.statuses` on real SS-unit and GH-knight actors (temp actors
   deleted, no debris). 526 tests green; typecheck + build clean.
 - Commit: feat(ss,greathelm): native defeated status on threshold (P1)
+
+## 2026-07-18 — Hover stat panel: pure core is three injectable modules
+- Context: the hover panel (stats on token hover) must render ruleset-specific
+  fields while `packages/battleframe/src` stays ruleset-neutral (a test greps the
+  engine for ruleset vocabulary). Foundry globals also make logic hard to unit
+  test.
+- Decision: split the panel's brain into three PURE, Foundry-free modules under
+  `src/ui/` — a per-actor-type field **registry** (rulesets register providers;
+  last write wins for idempotent install), a **visibility** resolver
+  (`ruleset`→provider default→`owners`, plus a GM/owner/everyone check), and a
+  **model builder** that turns actor+provider into render-ready rows (missing
+  value → em dash, never throws) with a status resolver injected so no CONFIG
+  lookup leaks into core. The Foundry-facing glue (hooks, CONFIG, settings) lands
+  in later units and calls into these.
+- Watch: the engine names no field or type; rulesets supply both via the registry.
+- Commit: feat(core): hover-panel field registry (ruleset-neutral)
