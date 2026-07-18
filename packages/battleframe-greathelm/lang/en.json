@@ -1,0 +1,100 @@
+{
+  "TYPES": {
+    "Actor": {
+      "battleframe-greathelm.knight": "Knight"
+    }
+  },
+  "battleframe-greathelm": {
+    "sheets": {
+      "knight": "Knight"
+    },
+    "fields": {
+      "damage": "Damage",
+      "momentum": "Momentum"
+    },
+    "settings": {
+      "minDicePoolFloorEnabled": {
+        "name": "Minimum Dice Pool of 3",
+        "hint": "Kickstarter-only house rule, not in the QSR v0.4 rulebook: floors each player's initiative dice pool at 3, even at 0-1 knights remaining. Off by default."
+      },
+      "promptFirstOrSecond": {
+        "name": "Prompt: First or Second",
+        "hint": "Ask the initiative winner whether to go first or second (does not apply when a player is forced first with no choice). On by default. Off: the round always defaults to \"first\"."
+      },
+      "promptAttackTarget": {
+        "name": "Prompt: Attack Target",
+        "hint": "Ask which touching enemy to attack when 2 or more are in base contact. On by default. Off: the round always defaults to the first enemy found in base contact."
+      }
+    },
+    "controls": {
+      "round": {
+        "title": "GREATHELM",
+        "tool": "Run Round",
+        "complete": "Round complete.",
+        "gmOnly": "Only the GM can run a GREATHELM round.",
+        "noApi": "BattleFrame's dice and measurement services are unavailable, so a round cannot be run.",
+        "noCombat": "Start a combat encounter before running a GREATHELM round."
+      },
+      "newBattle": {
+        "tool": "New Battle",
+        "noKnights": "No knights on the canvas to reset.",
+        "done": "New battle: reset {count} knight(s) to full strength."
+      }
+    },
+    "prompts": {
+      "firstOrSecond": {
+        "title": "Go first or second?",
+        "body": "You won initiative. Go first or second?",
+        "first": "First",
+        "second": "Second"
+      },
+      "attackTarget": {
+        "title": "Which enemy?",
+        "body": "Multiple enemies are in base contact. Which one is this attack against?"
+      },
+      "resetBattle": {
+        "title": "Start a new battle?",
+        "body": "This clears every knight's wounds, momentum and flight. This cannot be undone.",
+        "confirm": "New Battle",
+        "cancel": "Cancel"
+      }
+    },
+    "actions": {
+      "sprint": "Sprint",
+      "encircle": "Encircle",
+      "bash": "Bash",
+      "shift": "Shift",
+      "light": "Light Attack",
+      "heavy": "Heavy Attack"
+    },
+    "poolPanel": {
+      "title": "Dice Pool",
+      "readOnlyNotice": "Read-only: only the GM can spend dice from this panel.",
+      "reloadWarning": "Reloading this panel loses a half-played round -- the session lives only in memory.",
+      "noSelection": "Select a die to see which knights may spend it.",
+      "reasons": {
+        "knightRemoved": "This knight has been removed from play.",
+        "noEnemyInContact": "No enemy is close enough for this knight to activate with this die."
+      },
+      "clashHint": "Needs an enemy in base contact.",
+      "moveHint": "Any of your knights still in play may spend this."
+    },
+    "actionHint": {
+      "sprint": "Move up to {move}\". Gains {momentum} momentum. No clash test — always succeeds.",
+      "encircle": "Move up to {move}\". Gains {momentum} momentum. No clash test — always succeeds.",
+      "bash": "Clash test. On a win, shove the defender {move}\" away. Deals no damage.",
+      "shift": "Move up to {move}\". No momentum, no clash test — always succeeds.",
+      "light": "Clash test. On a win, deals {damage} damage.",
+      "heavy": "Clash test. On a win, deals {damage} damage."
+    },
+    "side": {
+      "friendly": "The friendly warband",
+      "hostile": "The hostile warband"
+    },
+    "victory": {
+      "winner": "{player} wins — only their knights remain in the play area.",
+      "continue": "Round {round} over. Both sides still have knights: starting a new round.",
+      "mutualElimination": "No knights remain on either side. The quickstart rules do not cover a mutual wipe-out (they say \"only one player has knights remaining\"), so GREATHELM does not define a winner here. Agree the result between you."
+    }
+  }
+}

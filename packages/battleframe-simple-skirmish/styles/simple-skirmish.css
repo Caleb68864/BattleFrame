@@ -1,0 +1,203 @@
+/*
+ * Simple Skirmish — "Struck Vellum" theme, shared identity with GREATHELM.
+ *
+ * The unit sheet is a warband muster card: a meeple crest and carved name over
+ * three real stat groups the rules define — Muster (models, move), Attacks
+ * (melee/ranged/magic d6 targets), Defence (save, skill). Each stat is a
+ * heraldic tile; the ones with a natural device wear it (a figure for models, a
+ * sword for attacks, a shield for the save), and the two abstract stats (move,
+ * skill) take an inked glyph so every tile keeps the same footprint.
+ *
+ * Every heraldic mark is a black-on-white raster under the system; they ride
+ * `mix-blend-mode: multiply` so the white ground vanishes on vellum. Colour is
+ * doubled by an icon or glyph and a small-caps label, never carried alone.
+ */
+
+.battleframe-simple-skirmish.sheet.unit {
+  --bf-vellum: #e3d7bd;
+  --bf-vellum-lit: #ece1c8;
+  --bf-vellum-deep: #d6c6a4;
+  --bf-ink: #221810;
+  --bf-ink-faded: #6d5c3f;
+  --bf-iron: #3a332a;
+  --bf-gules: #7c2020;   /* heraldic red — attacks */
+  --bf-vert: #3c5636;    /* heraldic green — save */
+  --bf-azure: #2f496b;   /* heraldic blue — skill */
+  --bf-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+    "Times New Roman", serif;
+
+  padding: 0;
+  color: var(--bf-ink);
+  font-family: var(--bf-serif);
+  background:
+    radial-gradient(130% 90% at 50% -10%,
+      var(--bf-vellum-lit) 0%, var(--bf-vellum) 48%, var(--bf-vellum-deep) 100%);
+  border: 1px solid var(--bf-iron);
+  box-shadow:
+    inset 0 0 0 3px rgba(58, 51, 42, 0.10),
+    inset 0 0 26px rgba(58, 51, 42, 0.10);
+}
+
+/* ---- Masthead -------------------------------------------------------- */
+
+.battleframe-simple-skirmish.sheet.unit .bf-plate__header {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0.85rem 1rem 0.7rem;
+  border-bottom: 2px solid var(--bf-iron);
+  position: relative;
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-plate__header::after {
+  content: "";
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 3px;
+  height: 1px;
+  background: var(--bf-iron);
+  opacity: 0.4;
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-crest {
+  flex: 0 0 auto;
+  width: 58px;
+  height: 58px;
+  background: url("../../../systems/battleframe/assets/heraldry/meeple-spearman.png")
+    center / contain no-repeat;
+  mix-blend-mode: multiply;
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-plate__name {
+  margin: 0;
+  border: 0;
+  font-family: var(--bf-serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* ---- Stat sections --------------------------------------------------- */
+
+.battleframe-simple-skirmish.sheet.unit .bf-section {
+  padding: 0.7rem 1rem 0.2rem;
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-section__title {
+  margin: 0 0 0.5rem;
+  border: 0;
+  border-bottom: 1px solid rgba(58, 51, 42, 0.35);
+  padding-bottom: 0.2rem;
+  font-family: var(--bf-serif);
+  font-size: 0.8rem;
+  font-weight: 700;
+  font-variant: small-caps;
+  letter-spacing: 0.22em;
+  color: var(--bf-ink-faded);
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-devices {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(96px, 1fr));
+  gap: 0.5rem;
+}
+
+/* ---- Heraldic tiles -------------------------------------------------- */
+
+.battleframe-simple-skirmish.sheet.unit .bf-device {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  gap: 0.3rem;
+  padding: 0.55rem 0.4rem;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(58, 51, 42, 0.35);
+  border-radius: 2px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device__icon {
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  mix-blend-mode: multiply;
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device--models .bf-device__icon {
+  background-image: url("../../../systems/battleframe/assets/heraldry/knight-meeple.png");
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device--melee .bf-device__icon {
+  background-image: url("../../../systems/battleframe/assets/heraldry/sword.png");
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device--ranged .bf-device__icon {
+  background-image: url("../../../systems/battleframe/assets/heraldry/bow.png");
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device--magic .bf-device__icon {
+  background-image: url("../../../systems/battleframe/assets/heraldry/wand.png");
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device--save .bf-device__icon {
+  background-image: url("../../../systems/battleframe/assets/heraldry/shield.png");
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device--skill .bf-device__icon {
+  background-image: url("../../../systems/battleframe/assets/heraldry/star.png");
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device--move .bf-device__icon {
+  background-image: url("../../../systems/battleframe/assets/heraldry/boot.png");
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device__label {
+  font-variant: small-caps;
+  letter-spacing: 0.1em;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--bf-ink-faded);
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device__value {
+  width: 3rem;
+  height: auto;
+  text-align: center;
+  font-family: var(--bf-serif);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--bf-ink);
+  background: rgba(43, 34, 22, 0.06);
+  border: 1px solid rgba(58, 51, 42, 0.4);
+  border-radius: 2px;
+  padding: 0.05rem 0.2rem;
+  box-shadow: inset 0 2px 3px rgba(58, 51, 42, 0.18);
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device--attack .bf-device__value {
+  color: var(--bf-gules);
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device--save .bf-device__value {
+  color: var(--bf-vert);
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device--skill .bf-device__value {
+  color: var(--bf-azure);
+}
+
+.battleframe-simple-skirmish.sheet.unit .bf-device__value:focus {
+  outline: 2px solid var(--bf-iron);
+  outline-offset: 1px;
+}

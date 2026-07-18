@@ -1,0 +1,38 @@
+{
+  "id": "battleframe",
+  "title": "BattleFrame",
+  "description": "A loadable BattleFrame system scaffold for Foundry VTT. Uses documentTypes instead of the legacy Actor data template, which was deprecated in v14.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "esmodules": ["dist/battleframe.js"],
+  "styles": ["styles/battleframe.css"],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "documentTypes": {
+    "Actor": {
+      "generic": {}
+    }
+  },
+  "grid": {
+    "type": 0,
+    "distance": 1,
+    "units": "in"
+  },
+  "primaryTokenAttribute": "",
+  "authors": [
+    {
+      "name": "BattleFrame Team"
+    }
+  ],
+  "url": "",
+  "manifest": "",
+  "download": ""
+}

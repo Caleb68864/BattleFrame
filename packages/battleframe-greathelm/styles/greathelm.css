@@ -1,0 +1,308 @@
+/*
+ * GREATHELM — "Struck Vellum" theme.
+ *
+ * The engine is ruleset-neutral; the medieval identity lives here in the
+ * module. Two surfaces are themed: the knight sheet (a muster plate) and the
+ * dice pool panel (a player's war table). Heraldic marks are shared art under
+ * the system (systems/battleframe/assets/heraldry): the black-on-white raster
+ * marks ride `mix-blend-mode: multiply` so their white ground vanishes on
+ * vellum, and the SVG marks are already ink on transparency.
+ *
+ * Palette is stated as named tokens once, then referenced. Colour is never the
+ * only signal: the pool panel keeps its weight/opacity/marker cues (roughly 1
+ * in 12 men cannot separate its red/green pair), and the sheet's heraldic
+ * accents sit on labelled, iconned rows.
+ */
+
+.battleframe-greathelm.knight-sheet,
+.battleframe-greathelm .pool-panel {
+  --bf-vellum: #e3d7bd;
+  --bf-vellum-lit: #ece1c8;
+  --bf-vellum-deep: #d6c6a4;
+  --bf-ink: #221810;
+  --bf-ink-faded: #6d5c3f;
+  --bf-iron: #3a332a;
+  --bf-gules: #7c2020;   /* heraldic red — damage */
+  --bf-brass: #8a6a24;   /* heraldic gold — momentum */
+  --bf-serif: "Iowan Old Style", "Palatino Linotype", Palatino, Georgia,
+    "Times New Roman", serif;
+}
+
+/* ---- The muster plate ------------------------------------------------ */
+
+.battleframe-greathelm.knight-sheet {
+  padding: 0;
+  color: var(--bf-ink);
+  font-family: var(--bf-serif);
+  background:
+    radial-gradient(130% 90% at 50% -10%,
+      var(--bf-vellum-lit) 0%, var(--bf-vellum) 48%, var(--bf-vellum-deep) 100%);
+  border: 1px solid var(--bf-iron);
+  box-shadow:
+    inset 0 0 0 3px rgba(58, 51, 42, 0.10),
+    inset 0 0 26px rgba(58, 51, 42, 0.10);
+}
+
+.battleframe-greathelm.knight-sheet .bf-plate__header {
+  display: flex;
+  align-items: center;
+  gap: 0.9rem;
+  margin: 0;
+  padding: 0.85rem 1rem 0.7rem;
+  border-bottom: 2px solid var(--bf-iron);
+  position: relative;
+}
+
+/* The engraver's second hairline, below the border rule. */
+.battleframe-greathelm.knight-sheet .bf-plate__header::after {
+  content: "";
+  position: absolute;
+  left: 1rem;
+  right: 1rem;
+  bottom: 3px;
+  height: 1px;
+  background: var(--bf-iron);
+  opacity: 0.4;
+}
+
+.battleframe-greathelm.knight-sheet .bf-crest {
+  flex: 0 0 auto;
+  width: 58px;
+  height: 58px;
+  background: url("../../../systems/battleframe/assets/heraldry/knight-meeple.png")
+    center / contain no-repeat;
+  mix-blend-mode: multiply;
+}
+
+.battleframe-greathelm.knight-sheet .bf-plate__name {
+  margin: 0;
+  border: 0;
+  font-family: var(--bf-serif);
+  font-size: 1.55rem;
+  font-weight: 700;
+  line-height: 1.1;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+  color: var(--bf-ink);
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+
+/* ---- Struck devices (momentum, damage) ------------------------------- */
+
+.battleframe-greathelm.knight-sheet .bf-devices {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  padding: 0.9rem 1rem 1.1rem;
+}
+
+.battleframe-greathelm.knight-sheet .bf-device {
+  display: grid;
+  grid-template-columns: 56px 1fr auto;
+  align-items: center;
+  gap: 0.9rem;
+  padding: 0.45rem 0.75rem;
+  background: rgba(255, 255, 255, 0.16);
+  border: 1px solid rgba(58, 51, 42, 0.35);
+  border-radius: 2px;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.battleframe-greathelm.knight-sheet .bf-device__icon {
+  width: 56px;
+  height: 56px;
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  mix-blend-mode: multiply;
+}
+
+.battleframe-greathelm.knight-sheet .bf-device--momentum .bf-device__icon {
+  background-image: url("../../../systems/battleframe/assets/heraldry/momentum.png");
+}
+
+.battleframe-greathelm.knight-sheet .bf-device--damage .bf-device__icon {
+  background-image: url("../../../systems/battleframe/assets/heraldry/cracked-helm.png");
+}
+
+.battleframe-greathelm.knight-sheet .bf-device__label {
+  font-variant: small-caps;
+  letter-spacing: 0.12em;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--bf-ink-faded);
+}
+
+.battleframe-greathelm.knight-sheet .bf-device__value {
+  width: 3.2rem;
+  height: auto;
+  text-align: center;
+  font-family: var(--bf-serif);
+  font-size: 1.8rem;
+  font-weight: 700;
+  color: var(--bf-ink);
+  background: rgba(43, 34, 22, 0.06);
+  border: 1px solid rgba(58, 51, 42, 0.4);
+  border-radius: 2px;
+  padding: 0.05rem 0.2rem;
+  box-shadow: inset 0 2px 3px rgba(58, 51, 42, 0.18);
+}
+
+.battleframe-greathelm.knight-sheet .bf-device--momentum .bf-device__value {
+  color: var(--bf-brass);
+}
+
+.battleframe-greathelm.knight-sheet .bf-device--damage .bf-device__value {
+  color: var(--bf-gules);
+}
+
+.battleframe-greathelm.knight-sheet .bf-device__value:focus {
+  outline: 2px solid var(--bf-brass);
+  outline-offset: 1px;
+}
+
+/* ---- Dice pool panel: parchment war table ---------------------------- */
+/*
+ * A light medieval wash over the panel. The functional cues below
+ * (offerable / selected / legal / illegal) are intentionally LEFT as they
+ * were — hue plus a non-colour signal — so the theme does not cost anyone
+ * the "which of these is legal" reading.
+ */
+
+.pool-panel {
+  font-family: var(--bf-serif);
+  color: var(--bf-ink);
+  background:
+    radial-gradient(130% 90% at 50% -10%,
+      var(--bf-vellum-lit) 0%, var(--bf-vellum) 55%, var(--bf-vellum-deep) 100%);
+  border: 1px solid var(--bf-iron);
+  border-radius: 2px;
+  padding: 0.6rem 0.7rem;
+  box-shadow: inset 0 0 0 2px rgba(58, 51, 42, 0.08);
+}
+
+.pool-panel__title {
+  font-variant: small-caps;
+  letter-spacing: 0.1em;
+  border-bottom: 1px solid rgba(58, 51, 42, 0.4);
+  padding-bottom: 0.2rem;
+}
+
+.pool-panel__reload-warning {
+  margin: 0 0 0.5rem;
+  font-size: 0.8em;
+  opacity: 0.7;
+}
+
+.pool-panel__dice {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pool-panel__die {
+  display: grid;
+  grid-template-columns: 2rem 1fr;
+  grid-template-areas:
+    "face action"
+    "face hint";
+  gap: 0 0.5rem;
+  padding: 0.4rem 0.5rem;
+  border: 1px solid var(--color-border-light-tertiary, #7a7971);
+  border-radius: 4px;
+  /* Not playable yet: dimmed AND unclickable, so the cursor says so too. */
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.pool-panel__die--offerable {
+  opacity: 1;
+  cursor: pointer;
+  border-color: var(--color-border-highlight, #ff6400);
+}
+
+.pool-panel__die--offerable:hover {
+  background: rgba(255, 100, 0, 0.08);
+}
+
+.pool-panel__die--selected {
+  /* Three cues, not one: weight, fill, and a leading caret in ::before. */
+  border-width: 2px;
+  border-color: #33cc66;
+  background: rgba(51, 204, 102, 0.12);
+}
+
+.pool-panel__die--selected .pool-panel__die-face::before {
+  content: "\25B8"; /* caret: survives greyscale and colour-blindness */
+  margin-right: 0.15rem;
+}
+
+.pool-panel__die-face {
+  grid-area: face;
+  align-self: center;
+  font-size: 1.4em;
+  font-weight: bold;
+  text-align: center;
+}
+
+.pool-panel__die-action {
+  grid-area: action;
+  font-weight: 600;
+}
+
+.pool-panel__die-hint {
+  grid-area: hint;
+  font-size: 0.78em;
+  opacity: 0.75;
+  line-height: 1.25;
+}
+
+.pool-panel__knights {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  margin: 0.6rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.pool-panel__knight {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: 3px;
+  border-left: 3px solid transparent;
+}
+
+.pool-panel__knight--legal {
+  border-left-color: #33cc66;
+  background: rgba(51, 204, 102, 0.1);
+  cursor: pointer;
+}
+
+.pool-panel__knight--legal:hover {
+  background: rgba(51, 204, 102, 0.2);
+}
+
+.pool-panel__knight--illegal {
+  border-left-color: #999;
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pool-panel__knight-reason {
+  font-size: 0.78em;
+  font-style: italic;
+  text-align: right;
+}
+
+.pool-panel__no-selection,
+.pool-panel__read-only-notice {
+  margin: 0.6rem 0 0;
+  font-size: 0.85em;
+  opacity: 0.8;
+}

@@ -1,0 +1,354 @@
+import { battleframeNamespace } from "../api/index";
+import { SYSTEM_ID } from "../constants";
+
+/**
+ * Ruleset-neutral, two-tier activation order.
+ *
+ * Rulesets differ in *who acts next* but share a shape: some units act in a
+ * privileged first pass, then the rest act in some interleaving. This service
+ * captures that once.
+ *
+ *  - **Priority tier** — units whose `hasPriority()` is true act first,
+ *    alternating between sides (the round's first side leading). A side with no
+ *    priority unit left is skipped rather than stalling the tier.
+ *  - **Main tier** — everyone else. The next side is chosen by `selectMain`,
+ *    which defaults to plain alternation but can be swapped for anything: e.g.
+ *    a ruleset that drops one token per un-activated unit into a bag and draws
+ *    passes a count-weighted random pick over the sides that still have units.
+ *    The selector is handed the live per-side counts to weight on.
+ *
+ * A unit whose `isResolved()` is true (destroyed / removed / fled) needs no
+ * activation and is treated as already done, the same live-query discipline the
+ * shipped rulesets' rounds use.
+ *
+ * Every query is recomputed from the units' live callbacks, never snapshotted,
+ * so a unit dying mid-round changes the order immediately.
+ */
+
+export interface ActivationUnit {
+  id: string;
+  sideId: string;
+  /** True once the unit needs no activation (destroyed / removed). Optional. */
+  isResolved?: () => boolean;
+  /** True if the unit holds a priority order this round. Optional. */
+  hasPriority?: () => boolean;
+}
+
+/**
+ * Picks the next side to act in the main tier, from the sides that still have an
+ * eligible unit (given in the round's side order) and their live eligible
+ * counts. Must return one of `sides`.
+ */
+export type MainSelector = (
+  sides: readonly string[],
+  counts: Readonly<Record<string, number>>
+) => string;
+
+export type ActivationPhase = "priority" | "main" | "complete";
+
+export interface ActivationOrder {
+  /** Which tier the round is in, or "complete" once every unit is resolved. */
+  phase(): ActivationPhase;
+  /** Whose turn it is to activate a unit, or undefined once complete. */
+  activeSideId(): string | undefined;
+  /**
+   * `sideId`'s unit ids that are eligible in the CURRENT phase (unresolved, and
+   * priority-flagged during the priority tier). This is phase eligibility, not a
+   * turn check -- a side that is not `activeSideId()` still lists its eligible
+   * units, but activating one throws until it is that side's turn.
+   */
+  eligible(sideId: string): string[];
+  isActivated(unitId: string): boolean;
+  /** Activates `unitId`; throws on an out-of-turn, repeat, resolved, wrong-tier, or unknown activation. */
+  activate(unitId: string): void;
+  isComplete(): boolean;
+  /** The state to persist on the Combat document; restore with `restoreActivationOrder`. */
+  serialize(): ActivationOrderState;
+}
+
+/**
+ * A serializable snapshot of an activation order -- everything needed to rebuild
+ * it. Persist this on the Combat document (a flag) so a round survives a reload
+ * and syncs, instead of dying with a module-scoped variable. `selectMain` is NOT
+ * serialized (functions cannot be); pass it again on restore.
+ */
+export interface ActivationOrderState {
+  firstSideId: string;
+  activatedIds: string[];
+  priorityPointer: number;
+  mainPointer: number;
+  cachedMainSide?: string;
+}
+
+export class IllegalActivationError extends Error {
+  constructor(message: string) {
+    super(`${SYSTEM_ID} | ${message}`);
+    this.name = "IllegalActivationError";
+  }
+}
+
+export interface CreateActivationOrderParams {
+  units: readonly ActivationUnit[];
+  firstSideId: string;
+  /** Main-tier side picker. Defaults to alternation led by the first side. */
+  selectMain?: MainSelector;
+  /** Seeds the order from persisted state (see `restoreActivationOrder`). */
+  initial?: Omit<ActivationOrderState, "firstSideId">;
+}
+
+export function createActivationOrder(params: CreateActivationOrderParams): ActivationOrder {
+  const { units, firstSideId, selectMain } = params;
+  const unitById = new Map(units.map((unit) => [unit.id, unit]));
+  const sides = orderedSides(units, firstSideId);
+  const activated = new Set<string>(params.initial?.activatedIds ?? []);
+
+  let priorityPointer = params.initial?.priorityPointer ?? 0;
+  let mainPointer = params.initial?.mainPointer ?? 0;
+  let cachedMainSide: string | undefined = params.initial?.cachedMainSide;
+
+  const isResolved = (unit: ActivationUnit): boolean => unit.isResolved?.() === true;
+  const isDone = (unit: ActivationUnit): boolean => activated.has(unit.id) || isResolved(unit);
+  const isPriority = (unit: ActivationUnit): boolean => unit.hasPriority?.() === true;
+
+  const priorityOpen = (): boolean => units.some((unit) => isPriority(unit) && !isDone(unit));
+  const anyOpen = (): boolean => units.some((unit) => !isDone(unit));
+
+  function phase(): ActivationPhase {
+    if (!anyOpen()) {
+      return "complete";
+    }
+    return priorityOpen() ? "priority" : "main";
+  }
+
+  /** Units of a side that are still eligible *in the current phase*. */
+  function eligibleUnits(sideId: string): ActivationUnit[] {
+    const current = phase();
+    return units.filter((unit) => {
+      if (unit.sideId !== sideId || isDone(unit)) {
+        return false;
+      }
+      return current === "priority" ? isPriority(unit) : true;
+    });
+  }
+
+  function sidesWithEligible(): string[] {
+    return sides.filter((sideId) => eligibleUnits(sideId).length > 0);
+  }
+
+  function activePrioritySide(): string | undefined {
+    for (let step = 0; step < sides.length; step += 1) {
+      const sideId = sides[(priorityPointer + step) % sides.length];
+      if (eligibleUnits(sideId).length > 0) {
+        return sideId;
+      }
+    }
+    return undefined;
+  }
+
+  function pickMainSide(): string | undefined {
+    const candidates = sidesWithEligible();
+    if (candidates.length === 0) {
+      return undefined;
+    }
+
+    if (selectMain) {
+      const counts: Record<string, number> = {};
+      for (const sideId of candidates) {
+        counts[sideId] = eligibleUnits(sideId).length;
+      }
+      const choice = selectMain(candidates, counts);
+      if (!candidates.includes(choice)) {
+        throw new IllegalActivationError(
+          `main-tier selector returned "${choice}", which has no eligible unit`
+        );
+      }
+      return choice;
+    }
+
+    // Default: alternate. From the pointer, the next side in order with a unit.
+    for (let step = 0; step < sides.length; step += 1) {
+      const sideId = sides[(mainPointer + step) % sides.length];
+      if (candidates.includes(sideId)) {
+        return sideId;
+      }
+    }
+    return candidates[0];
+  }
+
+  function activeMainSide(): string | undefined {
+    if (cachedMainSide && eligibleUnits(cachedMainSide).length > 0) {
+      return cachedMainSide;
+    }
+    cachedMainSide = pickMainSide();
+    return cachedMainSide;
+  }
+
+  function activeSideId(): string | undefined {
+    const current = phase();
+    if (current === "complete") {
+      return undefined;
+    }
+    return current === "priority" ? activePrioritySide() : activeMainSide();
+  }
+
+  return {
+    phase,
+    activeSideId,
+    isActivated: (unitId) => activated.has(unitId),
+    isComplete: () => !anyOpen(),
+    eligible(sideId) {
+      return eligibleUnits(sideId).map((unit) => unit.id);
+    },
+    activate(unitId) {
+      const unit = unitById.get(unitId);
+      if (!unit) {
+        throw new IllegalActivationError(`unknown unit: ${unitId}`);
+      }
+      if (activated.has(unitId)) {
+        throw new IllegalActivationError(`unit ${unitId} is already activated this round`);
+      }
+      if (isResolved(unit)) {
+        throw new IllegalActivationError(`unit ${unitId} is resolved and cannot be activated`);
+      }
+
+      const current = phase();
+      const expected = activeSideId();
+      if (unit.sideId !== expected) {
+        throw new IllegalActivationError(
+          `it is not ${unit.sideId}'s turn to activate (expected ${expected ?? "no one"})`
+        );
+      }
+      if (current === "priority" && !isPriority(unit)) {
+        throw new IllegalActivationError(
+          `unit ${unitId} has no priority order; the priority tier must be cleared first`
+        );
+      }
+
+      activated.add(unitId);
+
+      const sideIndex = sides.indexOf(unit.sideId);
+      if (current === "priority") {
+        priorityPointer = (sideIndex + 1) % sides.length;
+      } else {
+        mainPointer = (sideIndex + 1) % sides.length;
+      }
+      // Force the main-tier side to be re-picked after any activation.
+      cachedMainSide = undefined;
+    },
+    serialize: () => ({
+      firstSideId,
+      activatedIds: [...activated],
+      priorityPointer,
+      mainPointer,
+      cachedMainSide
+    })
+  };
+}
+
+/**
+ * Rebuilds an activation order from the state persisted on the Combat document.
+ * The order machine is stateless between control clicks; its state lives on the
+ * document and is restored here each time. `selectMain` must be supplied again
+ * (it is not serializable) -- pass the same one the round was created with.
+ */
+export function restoreActivationOrder(
+  params: Omit<CreateActivationOrderParams, "firstSideId" | "initial"> & {
+    state: ActivationOrderState;
+  }
+): ActivationOrder {
+  const { state, ...rest } = params;
+  return createActivationOrder({
+    ...rest,
+    firstSideId: state.firstSideId,
+    initial: {
+      activatedIds: state.activatedIds,
+      priorityPointer: state.priorityPointer,
+      mainPointer: state.mainPointer,
+      cachedMainSide: state.cachedMainSide
+    }
+  });
+}
+
+/**
+ * The rounds service exposed on the shared namespace, so ruleset modules reach
+ * the engine's activation order at runtime via `game.battleframe.rounds` -- the
+ * same pattern as `dice` / `measure` / `areas`. Modules never import engine
+ * internals; they consume this.
+ */
+export interface RoundsApi {
+  createActivationOrder(params: CreateActivationOrderParams): ActivationOrder;
+  restoreActivationOrder(
+    params: Omit<CreateActivationOrderParams, "firstSideId" | "initial"> & {
+      state: ActivationOrderState;
+    }
+  ): ActivationOrder;
+  weightedBagSelector(rng: () => number): MainSelector;
+}
+
+export function createRoundsApi(): RoundsApi {
+  return { createActivationOrder, restoreActivationOrder, weightedBagSelector };
+}
+
+declare global {
+  interface BattleframeGameNamespace {
+    rounds?: RoundsApi;
+  }
+}
+
+/**
+ * Installs onto the shared namespace at module top level (before any `init`).
+ * Idempotent -- a second call keeps the object already installed, the same
+ * guard the dice / measure / area installers use, so a consumer that captured
+ * `game.battleframe.rounds` never sees it swapped underneath it.
+ */
+export function installRoundsApi(): RoundsApi {
+  const namespace = battleframeNamespace();
+  namespace.rounds = namespace.rounds ?? createRoundsApi();
+  return namespace.rounds;
+}
+
+/**
+ * A `selectMain` that models a bag draw: each side's chance is proportional to
+ * how many un-activated units it still has (one token per unit), so a side with
+ * more units left acts more often. `rng` returns a float in [0, 1); inject a
+ * deterministic one in tests, pass `Math.random` in production.
+ */
+export function weightedBagSelector(rng: () => number): MainSelector {
+  return (sides, counts) => {
+    const total = sides.reduce((sum, sideId) => sum + counts[sideId], 0);
+    let pick = Math.floor(rng() * total);
+    for (const sideId of sides) {
+      pick -= counts[sideId];
+      if (pick < 0) {
+        return sideId;
+      }
+    }
+    return sides[sides.length - 1];
+  };
+}
+
+function orderedSides(units: readonly ActivationUnit[], firstSideId: string): string[] {
+  const seen = new Set<string>();
+  const order: string[] = [];
+  for (const unit of units) {
+    if (!seen.has(unit.sideId)) {
+      seen.add(unit.sideId);
+      order.push(unit.sideId);
+    }
+  }
+
+  // An empty round is legal: it is simply already complete. Only a non-empty
+  // round with a firstSideId that names no side is a caller bug worth throwing.
+  if (order.length === 0) {
+    return [];
+  }
+
+  const index = order.indexOf(firstSideId);
+  if (index < 0) {
+    throw new IllegalActivationError(
+      `firstSideId "${firstSideId}" controls none of the units in this round`
+    );
+  }
+
+  return index === 0 ? order : [...order.slice(index), ...order.slice(0, index)];
+}

@@ -1,0 +1,15 @@
+{
+  "name": "battleframe-simple-skirmish",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Simple Skirmish ruleset module for the BattleFrame system. Implements Simple Fantasy Skirmish by Peter Vodden (petervodden.blog), CC BY-NC 4.0. Free and non-commercial; ships no artwork.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0"
+  }
+}

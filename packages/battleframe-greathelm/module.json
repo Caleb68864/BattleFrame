@@ -1,0 +1,44 @@
+{
+  "id": "battleframe-greathelm",
+  "title": "BattleFrame: GREATHELM",
+  "description": "GREATHELM ruleset for the BattleFrame system. Implements only the mechanics of the game engine (dice pool, action selection, round loop) -- it ships no rules text, stat blocks, or artwork. Requires the official GREATHELM rulebook (Malev, greathelm QSR / full rulebook), obtained separately by the user; none of its content is redistributed here.",
+  "version": "0.1.0",
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "relationships": {
+    "systems": [
+      {
+        "id": "battleframe",
+        "type": "system"
+      }
+    ]
+  },
+  "esmodules": [
+    "dist/greathelm.js"
+  ],
+  "styles": [
+    "styles/greathelm.css"
+  ],
+  "languages": [
+    {
+      "lang": "en",
+      "name": "English",
+      "path": "lang/en.json"
+    }
+  ],
+  "documentTypes": {
+    "Actor": {
+      "knight": {}
+    }
+  },
+  "authors": [
+    {
+      "name": "BattleFrame Team"
+    }
+  ],
+  "url": "",
+  "manifest": "",
+  "download": ""
+}

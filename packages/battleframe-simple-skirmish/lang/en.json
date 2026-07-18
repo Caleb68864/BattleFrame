@@ -1,0 +1,49 @@
+{
+  "TYPES": {
+    "Actor": {
+      "battleframe-simple-skirmish.unit": "Unit"
+    }
+  },
+  "battleframe-simple-skirmish": {
+    "sheets": {
+      "unit": "Unit"
+    },
+    "fields": {
+      "models": "Models",
+      "move": "Move",
+      "attackMelee": "Melee Attack",
+      "attackRanged": "Ranged Attack",
+      "attackMagic": "Magic Attack",
+      "save": "Save",
+      "skill": "Skill"
+    },
+    "sections": {
+      "muster": "Muster",
+      "attacks": "Attacks",
+      "defence": "Defence"
+    },
+    "controls": {
+      "round": {
+        "title": "Simple Skirmish",
+        "tool": "Run Round",
+        "gmOnly": "Only the GM can run a Simple Skirmish round.",
+        "noApi": "BattleFrame's dice and measurement services are unavailable, so a round cannot be run.",
+        "noCombat": "Start a combat encounter before running a Simple Skirmish round.",
+        "noUnits": "No Simple Skirmish units on the canvas to run a round for.",
+        "started": "New round: {player} goes first. Select a unit and activate it.",
+        "inProgress": "A round is already in progress. Finish activating every unit before starting a new one."
+      },
+      "activate": {
+        "tool": "Activate Unit",
+        "noRound": "No round is in progress. Run a round first.",
+        "noSelection": "Select one of your units to activate.",
+        "noLegalAttack": "The targeted enemy is out of range for any of this unit's attacks."
+      }
+    },
+    "attackTypes": {
+      "melee": "Melee",
+      "ranged": "Ranged",
+      "magic": "Magic"
+    }
+  }
+}

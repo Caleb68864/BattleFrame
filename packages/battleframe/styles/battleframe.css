@@ -1,0 +1,76 @@
+.battleframe-setup-wizard {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 0.5rem;
+}
+
+.battleframe-setup-wizard .wizard-conflict {
+  border: 1px solid var(--color-border-highlight-alt, #a83232);
+  border-radius: 4px;
+  padding: 0.5rem;
+}
+
+.battleframe-setup-wizard .wizard-ruleset-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.battleframe-setup-wizard .wizard-ruleset-list li {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--color-border-light-tertiary, #ccc);
+  border-radius: 4px;
+}
+
+.battleframe-setup-wizard .ruleset-title {
+  font-weight: bold;
+  flex: 1;
+}
+
+.battleframe-setup-wizard .ruleset-version,
+.battleframe-setup-wizard .ruleset-compat {
+  font-size: 0.85em;
+  opacity: 0.8;
+}
+
+.battleframe-setup-wizard .wizard-empty {
+  text-align: center;
+  padding: 1rem;
+}
+
+#battleframe-hover-panel {
+  z-index: 100;
+  min-width: 120px;
+  max-width: 260px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, 0.85);
+  color: #f0f0e0;
+  border: 1px solid #888;
+  border-radius: 4px;
+  font-size: 12px;
+  line-height: 1.4;
+}
+#battleframe-hover-panel .bf-hover-name {
+  font-weight: bold;
+  margin-bottom: 2px;
+}
+#battleframe-hover-panel .bf-hover-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+#battleframe-hover-panel .bf-hover-label {
+  opacity: 0.8;
+}
+#battleframe-hover-panel .bf-hover-statuses {
+  margin-top: 4px;
+  display: flex;
+  gap: 3px;
+}

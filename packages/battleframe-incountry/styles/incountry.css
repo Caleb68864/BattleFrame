@@ -1,0 +1,214 @@
+/*
+ * INCOUNTRY — "Field Dossier" theme.
+ *
+ * A deliberately different visual language from the medieval rulesets: a dark
+ * gunmetal panel with khaki text and amber / olive-drab accents, hard edges (no
+ * radius), and condensed uppercase stencil headers. It reads as a modern
+ * tactical unit card, not a heraldic muster plate. Icon slots (the INX marks in
+ * vault/asset-library/incountry-marks.md) can be added once that art exists;
+ * the sheet is legible without them.
+ */
+
+.battleframe-incountry.sheet.unit {
+  --inx-panel: #23262a;
+  --inx-panel-2: #2b2f34;
+  --inx-line: #3c4148;
+  --inx-ink: #cfc9b4;      /* khaki text */
+  --inx-ink-dim: #8f8a76;
+  --inx-amber: #c8922a;    /* attack / highlight */
+  --inx-od: #7c894e;       /* olive drab — armor / friendly */
+  --inx-danger: #b4472f;   /* suppression / casualties */
+  --inx-mono: "DIN Condensed", "Oswald", "Roboto Condensed", "Arial Narrow", sans-serif;
+  --inx-body: "Roboto", "Segoe UI", system-ui, sans-serif;
+
+  padding: 0;
+  color: var(--inx-ink);
+  font-family: var(--inx-body);
+  background:
+    linear-gradient(180deg, var(--inx-panel-2) 0%, var(--inx-panel) 100%);
+  border: 1px solid #14161a;
+  box-shadow: inset 0 0 0 1px var(--inx-line);
+}
+
+/* ---- Header ---------------------------------------------------------- */
+
+.battleframe-incountry.sheet.unit .inx-dossier__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin: 0;
+  padding: 0.7rem 0.9rem;
+  background: repeating-linear-gradient(
+    45deg,
+    rgba(200, 146, 42, 0.10) 0 8px,
+    transparent 8px 16px
+  );
+  border-bottom: 2px solid var(--inx-amber);
+}
+
+.battleframe-incountry.sheet.unit .inx-dossier__name {
+  margin: 0;
+  border: 0;
+  font-family: var(--inx-mono);
+  font-size: 1.55rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--inx-ink);
+}
+
+.battleframe-incountry.sheet.unit .inx-dossier__tag {
+  font-family: var(--inx-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.28em;
+  color: var(--inx-panel);
+  background: var(--inx-amber);
+  padding: 0.1rem 0.5rem;
+}
+
+/* ---- Blocks ---------------------------------------------------------- */
+
+.battleframe-incountry.sheet.unit .inx-block {
+  padding: 0.6rem 0.9rem 0.75rem;
+  border-bottom: 1px solid var(--inx-line);
+}
+
+.battleframe-incountry.sheet.unit .inx-block__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 0.5rem;
+  border: 0;
+  font-family: var(--inx-mono);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--inx-ink-dim);
+}
+
+.battleframe-incountry.sheet.unit .inx-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+}
+
+.battleframe-incountry.sheet.unit .inx-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+  flex: 1 1 auto;
+  min-width: 4.5rem;
+}
+
+.battleframe-incountry.sheet.unit .inx-stat__label {
+  font-family: var(--inx-mono);
+  font-size: 0.66rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--inx-ink-dim);
+}
+
+.battleframe-incountry.sheet.unit .inx-stat__pair {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.battleframe-incountry.sheet.unit .inx-stat__sep {
+  color: var(--inx-ink-dim);
+}
+
+.battleframe-incountry.sheet.unit .inx-stat__rating {
+  align-self: flex-start;
+  margin-top: 0.15rem;
+  font-family: var(--inx-mono);
+  font-size: 0.85rem;
+  color: var(--inx-od);
+}
+
+.battleframe-incountry.sheet.unit input[type="number"],
+.battleframe-incountry.sheet.unit input[type="text"],
+.battleframe-incountry.sheet.unit select {
+  font-family: var(--inx-body);
+  color: var(--inx-ink);
+  background: #1a1d21;
+  border: 1px solid var(--inx-line);
+  border-radius: 0;
+  padding: 0.2rem 0.3rem;
+}
+
+.battleframe-incountry.sheet.unit .inx-stat--attack input {
+  color: var(--inx-amber);
+  font-weight: 700;
+}
+
+.battleframe-incountry.sheet.unit input:focus,
+.battleframe-incountry.sheet.unit select:focus {
+  outline: 1px solid var(--inx-amber);
+  outline-offset: 0;
+}
+
+.battleframe-incountry.sheet.unit .inx-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.6rem;
+  font-family: var(--inx-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--inx-danger);
+}
+
+/* ---- Weapons table --------------------------------------------------- */
+
+.battleframe-incountry.sheet.unit .inx-add,
+.battleframe-incountry.sheet.unit .inx-remove {
+  font-family: var(--inx-mono);
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--inx-ink);
+  background: var(--inx-line);
+  border: 0;
+  border-radius: 0;
+  cursor: pointer;
+  padding: 0.1rem 0.4rem;
+}
+
+.battleframe-incountry.sheet.unit .inx-add:hover,
+.battleframe-incountry.sheet.unit .inx-remove:hover {
+  background: var(--inx-amber);
+  color: var(--inx-panel);
+}
+
+.battleframe-incountry.sheet.unit .inx-weapons__head,
+.battleframe-incountry.sheet.unit .inx-weapon {
+  display: grid;
+  grid-template-columns: 1fr 2.2rem 2.2rem 2.2rem 2.2rem 1.6rem;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.battleframe-incountry.sheet.unit .inx-weapons__head {
+  font-family: var(--inx-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--inx-ink-dim);
+  padding-bottom: 0.25rem;
+  border-bottom: 1px solid var(--inx-line);
+  margin-bottom: 0.3rem;
+}
+
+.battleframe-incountry.sheet.unit .inx-weapon {
+  margin-bottom: 0.3rem;
+}
+
+.battleframe-incountry.sheet.unit .inx-weapons__empty {
+  margin: 0.3rem 0 0;
+  font-size: 0.8rem;
+  font-style: italic;
+  color: var(--inx-ink-dim);
+}
