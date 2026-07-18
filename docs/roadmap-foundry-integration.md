@@ -9,7 +9,7 @@ and the three ruleset modules.
 | Item | Status |
 |---|---|
 | **P0** round state on Combat doc | ✅ ALL THREE rulesets (Simple Skirmish, InCountry, GREATHELM) — round state on the Combat document, live-verified to survive a reload. GREATHELM also RESUMES an in-progress round (dice-pool session restored from the document) instead of re-rolling. |
-| **P1** status effects | ✅ focused slice: InCountry `suppressed` + `defeated`-on-wipe (live-verified). ⏳ broader rollout (GREATHELM removal/thresholds, InCountry engaged/injury/stun, token resource bars). |
+| **P1** status effects | ✅ native `defeated`-on-threshold for ALL THREE rulesets — InCountry `suppressed`+`defeated`-on-wipe, Simple Skirmish `models==0`, GREATHELM `damage==3`/fled (all live-verified: the skull shows/clears on real actors + drops the unit from the P0 turn order). ⏳ still deferred: InCountry `engaged/reaction/injury/stun` (unbuilt features — build native when built, no migration debt) and binding model count to a token resource bar. |
 | **P2** chat/dice | ✅ `dice.rollPool` — one Roll/one card per pool (live-verified). ⏳ combat OUTCOMES → ChatMessage cards. |
 | **P3** non-gridless guard | ✅ done. |
 | **P4** native swaps | ✅ generic-sheet form/submitOnChange/prose-mirror fixed. ⏳ minor nits (isNewerVersion, pool-panel actions map, DialogV2.confirm). |
