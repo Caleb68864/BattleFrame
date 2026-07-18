@@ -983,3 +983,27 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   is. The min-dice floor still applies after the filter, which is exactly where the
   Kickstarter floor is meant to bind (≤1 knight remaining).
 - Commit: fix(greathelm): size the initiative pool from knights in play, not the dead too
+
+## 2026-07-17 — Measurement gained a centre-to-centre mode, on the second witness, not a guess
+- Symptom: `measure.between` returned base-to-base only. A second ruleset
+  (Simple Skirmish) measures movement and line-of-sight **centre-to-centre**, base
+  sizes ignored, so core could not answer the distance it needs.
+- Fix: `between(a, b, mode?)` with `mode: "base-to-base" | "centre-to-centre"`,
+  default `base-to-base` so the existing ruleset is untouched. Centre-to-centre
+  returns the raw centre distance (no radius subtraction, no clamp -- a centre
+  distance is never negative); base-to-base is unchanged. The result reports the
+  mode it used.
+- Surfaces: `packages/battleframe/src/measurement/types.ts` (`MeasurementMode`,
+  `MeasurementApi.between` signature), `src/measurement/measure.ts` (`between`),
+  `tests/measure.test.ts` (centre-to-centre distance, symmetry, default).
+- Watch: this is the seam I **deliberately did not build** five commits earlier,
+  when only one ruleset existed and the standing rule -- "a primitive generalised
+  from one ruleset takes that ruleset's shape" -- said to wait. The restraint paid
+  off: the mode arrived from a real second witness pulling the opposite way, which
+  is the evidence the architecture requires, so it is a parameter shaped by two
+  needs rather than a guess shaped by one. The neutrality vocabulary test earned
+  its keep again -- the first draft of these comments named both rulesets in core
+  and the test failed the build until they were made generic. Centre-to-nearest-
+  *model* stays in the ruleset: "nearest model of a unit" is formation logic core
+  does not know.
+- Commit: feat(core): measurement gains a centre-to-centre mode for unit-based rulesets

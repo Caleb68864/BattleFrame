@@ -4,6 +4,7 @@ import { SYSTEM_ID } from "../constants";
 import type {
   MeasurableToken,
   MeasurementApi,
+  MeasurementMode,
   MeasurementResult
 } from "./types";
 
@@ -83,7 +84,8 @@ function assertSameMeasurementSpace(
  */
 export function between(
   tokenA: MeasurableToken,
-  tokenB: MeasurableToken
+  tokenB: MeasurableToken,
+  mode: MeasurementMode = "base-to-base"
 ): MeasurementResult {
   assertSameMeasurementSpace(tokenA, tokenB);
 
@@ -96,23 +98,27 @@ export function between(
   );
   const centreToCentreUnits = centreToCentrePx / pxPerUnit;
 
-  const radiusAUnits = radiusPx(tokenA, scene) / pxPerUnit;
-  const radiusBUnits = radiusPx(tokenB, scene) / pxPerUnit;
+  // Centre-to-centre stops here: base sizes are irrelevant, and a centre
+  // distance is never negative so it needs no clamp. Base-to-base subtracts
+  // both radii (summed before subtracting -- see the note above -- for exact
+  // commutativity) and clamps at 0 for overlapping bases.
+  let distance = centreToCentreUnits;
 
-  const distance = Math.max(
-    0,
-    centreToCentreUnits - (radiusAUnits + radiusBUnits)
-  );
+  if (mode === "base-to-base") {
+    const radiusAUnits = radiusPx(tokenA, scene) / pxPerUnit;
+    const radiusBUnits = radiusPx(tokenB, scene) / pxPerUnit;
+    distance = Math.max(0, centreToCentreUnits - (radiusAUnits + radiusBUnits));
+  }
 
   console.debug(
-    `${SYSTEM_ID} | measure.between centreToCentre=${centreToCentreUnits} ` +
-      `radiusA=${radiusAUnits} radiusB=${radiusBUnits} base-to-base=${distance}`
+    `${SYSTEM_ID} | measure.between mode=${mode} centreToCentre=${centreToCentreUnits} ` +
+      `distance=${distance}`
   );
 
   return {
     distance,
     units: scene.grid.units ?? "",
-    mode: "base-to-base"
+    mode
   };
 }
 
