@@ -5,13 +5,15 @@ mapped to where it is implemented, or to an explicit, honest deferral. ✅ = imp
 tested; 🟡 = mechanical primitive implemented, table/UI choice deferred; ⏳ = deferred (Advanced
 Game or needs a collision/UI layer this MVP does not build). Nothing is silently missing.
 
-> [!important] ✅ means "implemented and tested", NOT "reachable in a running Foundry world".
-> The combat / round / victory / range / movement logic below is proven in the test suite, but
-> **`main.ts` does not yet import any of it**, so it is tree-shaken out of `dist/simple-skirmish.js`.
-> The shipped module today contributes the Unit actor type and its sheet; the mechanics have no
-> caller a Foundry session reaches until the **in-canvas activation control** (the one remaining
-> ⏳ under "Foundry integration") wires them. The rules are correct and tested; the game is not
-> yet clickable. This is the single most important thing left to build.
+> [!note] The game logic is now wired into the bundle.
+> `main.ts` registers a scene control (`ui/round-control.ts`) whose handlers reach the combat /
+> round / victory / range logic, so it is no longer tree-shaken -- `dist/simple-skirmish.js` grew
+> from ~5 kB (data model + sheet only) to ~20 kB and a reachability grep finds `beginRound`,
+> `resolveActivation`, `performAttack`, `createSkirmishRound`, `checkVictory`, `nearestEnemy` in
+> the shipped file. The orchestration (initiative → activation → attack → victory) is unit-tested;
+> the **scene-control payload shape and the selected/targeted-token reads are UNVERIFIED against a
+> live Foundry v14** (feature-detected, both idioms accommodated) -- a GM starting and playing a
+> round in a live world is the remaining check.
 
 ## Order of Play
 | Rule | Status | Where |
@@ -72,7 +74,7 @@ Game or needs a collision/UI layer this MVP does not build). Nothing is silently
 | Unit sheet | ✅ | `sheets/unit-sheet.ts`, `templates/unit-sheet.hbs` |
 | Ruleset registration (fail-loud, load-order-independent) | ✅ | `main.ts` |
 | i18n completeness guard | ✅ | `tests/i18n.test.ts` |
-| An in-canvas "run the round" scene control | ⏳ | The clickable activation UI is the next build step; the round *logic* is complete and driven end-to-end by `tests/round-integration.test.ts` |
+| An in-canvas "run the round" scene control | 🟡 | `ui/round-control.ts` -- "Run Round" (initiative + round) and "Activate Unit" (attack the target/nearest enemy, advance, read victory) scene-control tools, wired at `init`. Orchestration unit-tested; scene-control shape UNVERIFIED against a live v14 |
 
 ## Summary
 

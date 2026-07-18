@@ -1,6 +1,13 @@
-import { ATTACK_TYPES, DEFAULT_RANGE_INCHES, MODULE_ID, type AttackType } from "../constants";
+import {
+  ATTACK_TYPES,
+  DEFAULT_RANGE_INCHES,
+  MODULE_ID,
+  UNIT_ACTOR_TYPE,
+  type AttackType
+} from "../constants";
 import { isUnitDestroyed, unitModels } from "../data/unit-state";
 import { attackTargetFor, performAttack, type AttackOutcome, type AttackUnit } from "../combat/attack";
+import { isInRange, nearestEnemy } from "../combat/range";
 import type { DiceApiLike } from "../combat/resolve";
 import {
   createSkirmishRound,
@@ -105,7 +112,7 @@ export function legalAttackTypes(attacker: RoundControlUnit, distance: number): 
     }
 
     const reach = type === "melee" ? meleeReach : DEFAULT_RANGE_INCHES;
-    return distance <= reach;
+    return isInRange(distance, reach);
   });
 }
 
@@ -195,4 +202,278 @@ function distinct(values: readonly string[]): string[] {
 /** Live model count of a unit, re-exported for the glue's target lists. */
 export function survivingModels(unit: RoundControlUnit): number {
   return unitModels(unit.actor);
+}
+
+/* ------------------------------------------------------------------------ *
+ * Foundry glue -- the canvas/UI half, kept apart from the testable core above.
+ *
+ * >>> UNVERIFIED against a live Foundry v14. <<< The scene-control payload shape
+ * and the selected/targeted-token reads are feature-detected and accommodate
+ * both known idioms, the same posture (and the same HUMAN REVIEW debt) as
+ * GREATHELM's round control. Nothing here is exercised by the unit suite; the
+ * check is a GM starting and playing a round in a live world.
+ * ------------------------------------------------------------------------ */
+
+const UNIT_TYPE = `${MODULE_ID}.${UNIT_ACTOR_TYPE}`;
+
+interface MeasureApiLike {
+  between(a: unknown, b: unknown, mode?: "base-to-base" | "centre-to-centre"): { distance: number };
+}
+
+function globalScope(): {
+  game?: {
+    user?: { isGM?: boolean; targets?: Set<{ id?: string; actor?: unknown }> };
+    battleframe?: { dice?: DiceApiLike; measure?: MeasureApiLike };
+  };
+  canvas?: { tokens?: { controlled?: unknown[]; placeables?: unknown[] }; scene?: unknown };
+  ui?: { notifications?: Record<string, ((m: string) => void) | undefined> };
+  Hooks?: { on: (event: string, cb: (...args: unknown[]) => void) => void };
+} {
+  return globalThis as never;
+}
+
+export function isGM(): boolean {
+  return globalScope().game?.user?.isGM === true;
+}
+
+function notifyUser(message: string, level: "info" | "warn" | "error" = "info"): void {
+  const notifications = globalScope().ui?.notifications;
+  if (typeof notifications?.[level] === "function") {
+    notifications[level]?.(message);
+    return;
+  }
+  console.log(`${MODULE_ID} | ${message}`);
+}
+
+/** Which side a unit fights for, from its token disposition -- Foundry's own two-sided split. */
+export function sideFromDisposition(disposition: number | undefined): string {
+  return (disposition ?? 0) < 0 ? "hostile" : "friendly";
+}
+
+interface CanvasTokenLike {
+  id?: string;
+  center?: { x: number; y: number };
+  scene?: unknown;
+  document?: { id?: string; disposition?: number };
+  actor?: (RoundControlUnit["actor"] & { id?: string; type?: string }) | null;
+}
+
+/** Builds a `RoundControlUnit` from a canvas token, or null if it is not one of our units. */
+function unitFromToken(placeable: CanvasTokenLike): RoundControlUnit | null {
+  const actor = placeable.actor;
+  if (!actor || actor.type !== UNIT_TYPE) {
+    return null;
+  }
+
+  const id = actor.id ?? placeable.document?.id ?? placeable.id;
+  if (!id) {
+    return null;
+  }
+
+  return {
+    id,
+    playerId: sideFromDisposition(placeable.document?.disposition),
+    // Centre-to-centre needs only the centre and the scene; no base flags.
+    token: { center: placeable.center, scene: placeable.scene ?? globalScope().canvas?.scene },
+    actor
+  };
+}
+
+export function gatherUnitsFromCanvas(): RoundControlUnit[] {
+  const placeables = (globalScope().canvas?.tokens?.placeables ?? []) as CanvasTokenLike[];
+  return placeables.map(unitFromToken).filter((unit): unit is RoundControlUnit => unit !== null);
+}
+
+/** Centre-to-centre distance between two units, in scene units, via the core measure service. */
+function distanceInches(a: RoundControlUnit, b: RoundControlUnit): number {
+  const measure = globalScope().game?.battleframe?.measure;
+  if (!measure) {
+    return Number.POSITIVE_INFINITY;
+  }
+  return measure.between(a.token, b.token, "centre-to-centre").distance;
+}
+
+// The round lives between control clicks. Module-scoped, GM-only, one per world.
+let activeRound: SkirmishRound | undefined;
+let activeUnits: RoundControlUnit[] = [];
+
+/** "Run Round": rolls initiative and opens a round for the GM to play unit by unit. */
+export async function runRoundControl(): Promise<void> {
+  if (!isGM()) {
+    notifyUser(localize("controls.round.gmOnly"), "warn");
+    return;
+  }
+
+  const dice = globalScope().game?.battleframe?.dice;
+  if (!dice) {
+    notifyUser(localize("controls.round.noApi"), "error");
+    return;
+  }
+
+  const units = gatherUnitsFromCanvas();
+  if (units.length === 0) {
+    notifyUser(localize("controls.round.noUnits"), "warn");
+    return;
+  }
+
+  try {
+    const { round, firstPlayerId } = await beginRound({ units, dice });
+    activeRound = round;
+    activeUnits = units;
+    notifyUser(format("controls.round.started", { player: firstPlayerId }));
+  } catch (error) {
+    notifyUser(error instanceof Error ? error.message : String(error), "error");
+  }
+}
+
+/**
+ * "Activate Unit": activates the selected friendly unit against the targeted
+ * enemy (Foundry targeting), with the first legal attack type. Movement is the
+ * GM's to apply on the canvas; this resolves the attack and advances the turn.
+ */
+export async function activateSelectedControl(): Promise<void> {
+  if (!isGM()) {
+    notifyUser(localize("controls.round.gmOnly"), "warn");
+    return;
+  }
+  if (!activeRound) {
+    notifyUser(localize("controls.activate.noRound"), "warn");
+    return;
+  }
+
+  const dice = globalScope().game?.battleframe?.dice;
+  if (!dice) {
+    notifyUser(localize("controls.round.noApi"), "error");
+    return;
+  }
+
+  const controlled = (globalScope().canvas?.tokens?.controlled ?? []) as CanvasTokenLike[];
+  const attacker = controlled.map(unitFromToken).find((u): u is RoundControlUnit => u !== null);
+  if (!attacker) {
+    notifyUser(localize("controls.activate.noSelection"), "warn");
+    return;
+  }
+
+  // Prefer the GM's explicit Foundry target; otherwise attack the nearest living
+  // enemy (QSR range is measured to the nearest enemy), so a bare activation
+  // still resolves against a sensible foe.
+  const targets = [...(globalScope().game?.user?.targets ?? [])] as CanvasTokenLike[];
+  let target = targets.map(unitFromToken).find((u): u is RoundControlUnit => u !== null) ?? null;
+
+  if (!target) {
+    const measure = globalScope().game?.battleframe?.measure;
+    const enemies = activeUnits.filter(
+      (u) => u.playerId !== attacker.playerId && !isUnitDestroyed(u.actor)
+    );
+    if (measure && enemies.length > 0) {
+      target = nearestEnemy(attacker, enemies, measure)?.enemy ?? null;
+    }
+  }
+
+  const type = target
+    ? legalAttackTypes(attacker, distanceInches(attacker, target))[0] ?? null
+    : null;
+
+  if (target && type === null) {
+    notifyUser(localize("controls.activate.noLegalAttack"), "warn");
+  }
+
+  try {
+    const result = await resolveActivation({
+      round: activeRound,
+      attacker,
+      target: type ? target : null,
+      type,
+      dice,
+      units: activeUnits,
+      notify: notifyUser
+    });
+
+    if (result.roundComplete) {
+      activeRound = undefined;
+      activeUnits = [];
+    }
+  } catch (error) {
+    notifyUser(error instanceof Error ? error.message : String(error), "warn");
+  }
+}
+
+function localize(suffix: string): string {
+  const g = globalThis as unknown as { game?: { i18n?: { localize?: (k: string) => string } } };
+  const key = `${MODULE_ID}.${suffix}`;
+  return g.game?.i18n?.localize?.(key) ?? key;
+}
+
+function format(suffix: string, data: Record<string, string | number>): string {
+  const g = globalThis as unknown as {
+    game?: { i18n?: { format?: (k: string, d: Record<string, string | number>) => string } };
+  };
+  const key = `${MODULE_ID}.${suffix}`;
+  return g.game?.i18n?.format?.(key, data) ?? key;
+}
+
+/**
+ * The scene-control entry. Accommodates both known `getSceneControlButtons`
+ * payload shapes (array of controls with array tools; keyed record of both) and
+ * asserts neither -- see the UNVERIFIED note at the top of the glue.
+ */
+export function addSceneControl(controls: unknown): void {
+  const gm = isGM();
+  const runTool = {
+    name: "simple-skirmish-run-round",
+    title: "battleframe-simple-skirmish.controls.round.tool",
+    icon: "fas fa-flag",
+    button: true,
+    visible: gm,
+    order: 0,
+    onClick: () => void runRoundControl(),
+    onChange: () => void runRoundControl()
+  };
+  const activateTool = {
+    name: "simple-skirmish-activate",
+    title: "battleframe-simple-skirmish.controls.activate.tool",
+    icon: "fas fa-hand-fist",
+    button: true,
+    visible: gm,
+    order: 1,
+    onClick: () => void activateSelectedControl(),
+    onChange: () => void activateSelectedControl()
+  };
+
+  const control = {
+    name: MODULE_ID,
+    title: "battleframe-simple-skirmish.controls.round.title",
+    icon: "fas fa-chess-board",
+    layer: "tokens",
+    visible: gm,
+    order: 0,
+    activeTool: runTool.name,
+    tools: {} as Record<string, unknown> | unknown[]
+  };
+
+  if (Array.isArray(controls)) {
+    control.tools = [runTool, activateTool];
+    controls.push(control);
+    return;
+  }
+
+  if (controls && typeof controls === "object") {
+    control.tools = { [runTool.name]: runTool, [activateTool.name]: activateTool };
+    (controls as Record<string, unknown>)[MODULE_ID] = control;
+  }
+}
+
+/** Registers the scene control. Needs nothing from core -- it answers Foundry's own hook. */
+export function registerRoundControl(): void {
+  const hooks = globalScope().Hooks;
+  if (!hooks) {
+    return;
+  }
+  hooks.on("getSceneControlButtons", (...args: unknown[]) => addSceneControl(args[0]));
+}
+
+/** Test-only: clears the module-scoped active round between cases. */
+export function _resetActiveRoundForTests(): void {
+  activeRound = undefined;
+  activeUnits = [];
 }

@@ -1,6 +1,7 @@
 import { MODULE_ID } from "./constants";
 import { registerUnitDataModel } from "./data/unit";
 import { registerUnitSheet } from "./sheets/unit-sheet";
+import { registerRoundControl } from "./ui/round-control";
 
 interface BattleframeRegisterResult {
   ok: boolean;
@@ -74,5 +75,9 @@ const globalHooks = (globalThis as unknown as {
 globalHooks?.once("init", () => {
   registerUnitDataModel();
   registerUnitSheet();
+  // The round trigger: a scene control answering Foundry's own hook. This is
+  // what makes the combat/round/victory logic reachable in the shipped bundle
+  // -- without it, all of it is tree-shaken out (see COVERAGE.md).
+  registerRoundControl();
   registerSimpleSkirmishRuleset();
 });

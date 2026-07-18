@@ -1243,3 +1243,32 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   control's own turn check is an earlier, clearer message, not a second copy of the
   rule.
 - Commit: feat(simple-skirmish): testable activation orchestration -- initiative, activation, attack, victory
+
+## 2026-07-17 — Simple Skirmish activation control: the game is now reachable in the bundle
+- Symptom: the combat/round/victory logic was correct and tested but tree-shaken
+  out of `dist/simple-skirmish.js` -- `main.ts` imported only the data model and
+  sheet, so a Foundry session could not reach any mechanic. The module gave a Unit
+  type and a sheet, no playable game.
+- Fix: the Foundry glue in `ui/round-control.ts` (kept apart from the testable
+  core) plus wiring `registerRoundControl()` into `init`. Two scene-control tools:
+  "Run Round" (gather units, roll initiative, open a round) and "Activate Unit"
+  (activate the selected unit against the targeted -- or nearest living -- enemy
+  with its first legal attack type, apply casualties, advance the turn, and read
+  the deathmatch victory on the last activation). Centre-to-centre distance via the
+  core measure service; sides from token disposition. The bundle grew ~5 kB -> ~20
+  kB and a reachability grep now finds `beginRound`, `resolveActivation`,
+  `performAttack`, `createSkirmishRound`, `checkVictory`, `nearestEnemy` in the
+  shipped file.
+- Surfaces: `packages/battleframe-simple-skirmish/src/ui/round-control.ts` (glue),
+  `src/main.ts` (init wiring), `lang/en.json` (control strings),
+  `tests/round-control.test.ts` (scene control + sideFromDisposition), `COVERAGE.md`.
+- Watch: wiring `nearestEnemy`/`isInRange` in was deliberate -- an earlier draft
+  used the GM's explicit target and a direct distance, which tree-shook `range.ts`
+  out; routing the no-target case through `nearestEnemy` and the reach check through
+  `isInRange` gives both a production caller (no computed-but-unconsumed helper). The
+  scene-control payload shape and the controlled/targeted-token reads are UNVERIFIED
+  against a live v14 -- feature-detected, both idioms accommodated, the same HUMAN
+  REVIEW debt GREATHELM's control carries. Range legality is the MVP model (melee =
+  charge within Move); per-unit ranges and the full advantage/champion/scenario tier
+  remain the documented Advanced Game.
+- Commit: feat(simple-skirmish): activation scene control -- the Basic Game is playable in Foundry

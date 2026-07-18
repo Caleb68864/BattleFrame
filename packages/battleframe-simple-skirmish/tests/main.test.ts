@@ -78,7 +78,8 @@ describe("entry point wiring (the init hook actually reaches every registration)
     vi.stubGlobal("Hooks", {
       once: (name: string, cb: () => void) => {
         if (name === "init") inits.push(cb);
-      }
+      },
+      on: () => {} // registerRoundControl answers getSceneControlButtons via Hooks.on
     });
     vi.stubGlobal("battleframe", { api: { registerRuleset } });
     vi.stubGlobal("CONFIG", CONFIG);

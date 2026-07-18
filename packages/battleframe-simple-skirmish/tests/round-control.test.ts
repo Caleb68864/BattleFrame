@@ -1,13 +1,21 @@
 import { describe, expect, it } from "vitest";
+import { afterEach, vi } from "vitest";
 import {
+  addSceneControl,
   beginRound,
   InitiativeUnresolvedError,
   legalAttackTypes,
   resolveActivation,
   rollInitiative,
+  sideFromDisposition,
   type RoundControlUnit
 } from "../src/ui/round-control";
 import type { DiceApiLike } from "../src/combat/resolve";
+import { MODULE_ID } from "../src/constants";
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 function scriptedDice(faces: readonly number[]): DiceApiLike {
   let i = 0;
@@ -123,5 +131,48 @@ describe("resolveActivation", () => {
     await expect(
       resolveActivation({ round, attacker: b1, target: null, type: null, dice: scriptedDice([]), units })
     ).rejects.toThrow(/turn to activate/);
+  });
+});
+
+describe("sideFromDisposition", () => {
+  it("splits the two sides on Foundry's own hostile/friendly disposition", () => {
+    expect(sideFromDisposition(-1)).toBe("hostile");
+    expect(sideFromDisposition(1)).toBe("friendly");
+    expect(sideFromDisposition(undefined)).toBe("friendly");
+  });
+});
+
+describe("addSceneControl -- GM-only, both payload shapes, both tools", () => {
+  it("appends a control with the run + activate tools to an array payload", () => {
+    vi.stubGlobal("game", { user: { isGM: true } });
+    const controls: Array<{ name: string; tools: Array<{ name: string }>; visible: boolean }> = [];
+
+    addSceneControl(controls);
+
+    expect(controls).toHaveLength(1);
+    expect(controls[0].visible).toBe(true);
+    expect(controls[0].tools.map((t) => t.name)).toEqual([
+      "simple-skirmish-run-round",
+      "simple-skirmish-activate"
+    ]);
+  });
+
+  it("keys the control and its tools into a record payload", () => {
+    vi.stubGlobal("game", { user: { isGM: true } });
+    const controls: Record<string, { tools?: Record<string, unknown>; visible?: boolean }> = {};
+
+    addSceneControl(controls);
+
+    expect(controls[MODULE_ID].tools).toHaveProperty("simple-skirmish-run-round");
+    expect(controls[MODULE_ID].tools).toHaveProperty("simple-skirmish-activate");
+  });
+
+  it("marks the control invisible to a non-GM and never throws on odd payloads", () => {
+    vi.stubGlobal("game", { user: { isGM: false } });
+    const controls: Record<string, { visible?: boolean }> = {};
+    addSceneControl(controls);
+    expect(controls[MODULE_ID].visible).toBe(false);
+
+    expect(() => addSceneControl(undefined)).not.toThrow();
   });
 });
