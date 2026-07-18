@@ -28,23 +28,40 @@ export interface RoundControlUnit {
   };
 }
 
+/** The serializable activation-order state persisted on the Combat document. */
+interface ActivationOrderStateLike {
+  firstSideId: string;
+  activatedIds: string[];
+  priorityPointer: number;
+  mainPointer: number;
+  cachedMainSide?: string;
+}
+
 /** Minimal structural view of the engine's rounds service (game.battleframe.rounds). */
 interface ActivationOrderLike {
   activeSideId(): string | undefined;
   activate(unitId: string): void;
   isComplete(): boolean;
+  serialize(): ActivationOrderStateLike;
+}
+
+interface ActivationUnitLike {
+  id: string;
+  sideId: string;
+  isResolved?: () => boolean;
+  hasPriority?: () => boolean;
 }
 
 interface RoundsApiLike {
   createActivationOrder(params: {
-    units: readonly {
-      id: string;
-      sideId: string;
-      isResolved?: () => boolean;
-      hasPriority?: () => boolean;
-    }[];
+    units: readonly ActivationUnitLike[];
     firstSideId: string;
     selectMain?: (sides: readonly string[], counts: Record<string, number>) => string;
+  }): ActivationOrderLike;
+  restoreActivationOrder(params: {
+    units: readonly ActivationUnitLike[];
+    selectMain?: (sides: readonly string[], counts: Record<string, number>) => string;
+    state: ActivationOrderStateLike;
   }): ActivationOrderLike;
   weightedBagSelector(
     rng: () => number
@@ -303,13 +320,20 @@ export function sideFromDisposition(disposition: number | undefined): string {
 
 interface CanvasTokenLike {
   id?: string;
+  scene?: { id?: string };
   document?: { id?: string; disposition?: number };
   actor?:
     | (RoundControlUnit["actor"] & { id?: string; name?: string; type?: string })
     | null;
 }
 
-function unitFromToken(placeable: CanvasTokenLike): RoundControlUnit | null {
+/** A gathered unit plus the token/scene ids needed to seat it as a Combatant. */
+interface CanvasUnit extends RoundControlUnit {
+  tokenId?: string;
+  sceneId?: string;
+}
+
+function unitFromToken(placeable: CanvasTokenLike): CanvasUnit | null {
   const actor = placeable.actor;
   if (!actor || actor.type !== UNIT_TYPE) {
     return null;
@@ -318,22 +342,118 @@ function unitFromToken(placeable: CanvasTokenLike): RoundControlUnit | null {
   if (!id) {
     return null;
   }
+  const scene = placeable.scene ?? (globalScope().canvas as { scene?: { id?: string } })?.scene;
   return {
     id,
     name: actor.name ?? id,
     sideId: sideFromDisposition(placeable.document?.disposition),
-    actor
+    actor,
+    tokenId: placeable.document?.id ?? placeable.id,
+    sceneId: scene?.id
   };
 }
 
-export function gatherUnitsFromCanvas(): RoundControlUnit[] {
+export function gatherUnitsFromCanvas(): CanvasUnit[] {
   const placeables = (globalScope().canvas?.tokens?.placeables ?? []) as CanvasTokenLike[];
-  return placeables.map(unitFromToken).filter((unit): unit is RoundControlUnit => unit !== null);
+  return placeables.map(unitFromToken).filter((unit): unit is CanvasUnit => unit !== null);
 }
 
-// The round lives between control clicks. Module-scoped, GM-only, one per world.
-let activeRound: ActivationOrderLike | undefined;
-let activeUnits: RoundControlUnit[] = [];
+/* ---- Combat-document-backed round state (roadmap P0) ------------------- */
+
+const FLAG_SCOPE = "battleframe";
+const ROUND_FLAG = "round";
+const ORDER_FLAG = "order";
+
+interface CombatantLike {
+  id?: string;
+  tokenId?: string;
+}
+
+interface CombatLike {
+  id?: string;
+  combatants: Iterable<CombatantLike> & { contents?: CombatantLike[] };
+  getFlag(scope: string, key: string): unknown;
+  setFlag(scope: string, key: string, value: unknown): Promise<unknown>;
+  unsetFlag(scope: string, key: string): Promise<unknown>;
+  createEmbeddedDocuments(name: string, data: Record<string, unknown>[]): Promise<CombatantLike[]>;
+  startCombat?(): Promise<unknown>;
+}
+
+function combatScope(): {
+  game?: { combat?: CombatLike | null; combats?: { active?: CombatLike | null; contents?: CombatLike[] } };
+  Combat?: { create(data: Record<string, unknown>): Promise<CombatLike> };
+  canvas?: { scene?: { id?: string } };
+} {
+  return globalThis as never;
+}
+
+function iterateCombatants(combat: CombatLike): CombatantLike[] {
+  if (Array.isArray(combat.combatants)) {
+    return combat.combatants as CombatantLike[];
+  }
+  const c = combat.combatants as { contents?: CombatantLike[] };
+  return c?.contents ?? [...(combat.combatants ?? [])];
+}
+
+function activeRoundCombat(): CombatLike | undefined {
+  const g = combatScope().game;
+  const candidates = [g?.combat, g?.combats?.active, ...(g?.combats?.contents ?? [])];
+  for (const c of candidates) {
+    if (c && c.getFlag?.(FLAG_SCOPE, ROUND_FLAG)) {
+      return c;
+    }
+  }
+  return undefined;
+}
+
+async function getOrCreateCombat(): Promise<CombatLike | undefined> {
+  const scope = combatScope();
+  const existing = scope.game?.combat ?? scope.game?.combats?.active ?? undefined;
+  if (existing) {
+    return existing;
+  }
+  return scope.Combat?.create ? scope.Combat.create({ scene: scope.canvas?.scene?.id }) : undefined;
+}
+
+async function ensureCombatants(combat: CombatLike, units: readonly CanvasUnit[]): Promise<void> {
+  const seated = new Set(iterateCombatants(combat).map((c) => c.tokenId).filter(Boolean) as string[]);
+  const toCreate = units
+    .filter((u) => u.tokenId && !seated.has(u.tokenId))
+    .map((u) => ({
+      tokenId: u.tokenId,
+      sceneId: u.sceneId,
+      actorId: (u.actor as { id?: string })?.id,
+      hidden: false
+    }));
+  if (toCreate.length > 0 && combat.createEmbeddedDocuments) {
+    await combat.createEmbeddedDocuments("Combatant", toCreate);
+  }
+}
+
+function orderFlag(combat: CombatLike, units: readonly CanvasUnit[]): string[] {
+  const byToken = new Map<string, string>();
+  for (const c of iterateCombatants(combat)) {
+    if (c.tokenId && c.id) {
+      byToken.set(c.tokenId, c.id);
+    }
+  }
+  return units
+    .map((u) => (u.tokenId ? byToken.get(u.tokenId) : undefined))
+    .filter((id): id is string => id !== undefined);
+}
+
+/** The engine activation-unit list (with live isResolved) the order needs. */
+function toActivationUnits(units: readonly RoundControlUnit[]): ActivationUnitLike[] {
+  return units.map((u) => ({
+    id: u.id,
+    sideId: u.sideId,
+    isResolved: () => isDestroyed(u.actor.system)
+  }));
+}
+
+function readRoundState(combat: CombatLike | undefined): ActivationOrderStateLike | undefined {
+  return combat?.getFlag(FLAG_SCOPE, ROUND_FLAG) as ActivationOrderStateLike | undefined;
+}
 
 async function applyStateToActor(
   unit: RoundControlUnit,
@@ -351,16 +471,27 @@ export async function runRoundControl(): Promise<void> {
     notifyUser(localize("controls.round.gmOnly"), "warn");
     return;
   }
-  if (activeRound && !activeRound.isComplete()) {
-    notifyUser(localize("controls.round.inProgress"), "warn");
-    return;
-  }
 
   const dice = globalScope().game?.battleframe?.dice;
   const roundsApi = globalScope().game?.battleframe?.rounds;
   if (!dice || !roundsApi) {
     notifyUser(localize("controls.round.noApi"), "error");
     return;
+  }
+
+  // "In progress" is read off the Combat document, so it survives a reload.
+  const existing = activeRoundCombat();
+  const existingState = readRoundState(existing);
+  if (existingState) {
+    const round = roundsApi.restoreActivationOrder({
+      units: toActivationUnits(gatherUnitsFromCanvas()),
+      selectMain: roundsApi.weightedBagSelector(Math.random),
+      state: existingState
+    });
+    if (!round.isComplete()) {
+      notifyUser(localize("controls.round.inProgress"), "warn");
+      return;
+    }
   }
 
   const units = gatherUnitsFromCanvas();
@@ -371,8 +502,21 @@ export async function runRoundControl(): Promise<void> {
 
   try {
     const { order, firstSideId } = await beginRound({ units, dice, roundsApi });
-    activeRound = order;
-    activeUnits = units;
+    const combat = existing ?? (await getOrCreateCombat());
+    if (!combat) {
+      notifyUser(localize("controls.round.noApi"), "error");
+      return;
+    }
+    await ensureCombatants(combat, units);
+    await combat.setFlag(FLAG_SCOPE, ORDER_FLAG, orderFlag(combat, units));
+    await combat.setFlag(FLAG_SCOPE, ROUND_FLAG, order.serialize());
+    if (combat.startCombat) {
+      try {
+        await combat.startCombat();
+      } catch {
+        /* already started -- fine */
+      }
+    }
     notifyUser(format("controls.round.started", { side: firstSideId }));
   } catch (error) {
     notifyUser(error instanceof Error ? error.message : String(error), "error");
@@ -385,7 +529,11 @@ export async function activateSelectedControl(): Promise<void> {
     notifyUser(localize("controls.round.gmOnly"), "warn");
     return;
   }
-  if (!activeRound) {
+
+  const roundsApi = globalScope().game?.battleframe?.rounds;
+  const combat = activeRoundCombat();
+  const state = readRoundState(combat);
+  if (!combat || !state || !roundsApi) {
     notifyUser(localize("controls.activate.noRound"), "warn");
     return;
   }
@@ -396,8 +544,9 @@ export async function activateSelectedControl(): Promise<void> {
     return;
   }
 
+  const units = gatherUnitsFromCanvas();
   const controlled = (globalScope().canvas?.tokens?.controlled ?? []) as CanvasTokenLike[];
-  const attacker = controlled.map(unitFromToken).find((u): u is RoundControlUnit => u !== null);
+  const attacker = controlled.map(unitFromToken).find((u): u is CanvasUnit => u !== null);
   if (!attacker) {
     notifyUser(localize("controls.activate.noSelection"), "warn");
     return;
@@ -405,26 +554,33 @@ export async function activateSelectedControl(): Promise<void> {
 
   const explicitTargets = ([...(globalScope().game?.user?.targets ?? [])] as CanvasTokenLike[])
     .map(unitFromToken)
-    .filter((u): u is RoundControlUnit => u !== null);
+    .filter((u): u is CanvasUnit => u !== null);
   const target =
     explicitTargets.find(
       (u) => u.sideId !== attacker.sideId && !isDestroyed(u.actor.system)
     ) ?? null;
 
+  const order = roundsApi.restoreActivationOrder({
+    units: toActivationUnits(units),
+    selectMain: roundsApi.weightedBagSelector(Math.random),
+    state
+  });
+
   try {
     const result = await resolveActivation({
-      order: activeRound,
+      order,
       attacker,
       target,
       dice,
-      units: activeUnits,
+      units,
       applyState: applyStateToActor,
       notify: notifyUser
     });
 
+    // Persist the advanced order back onto the Combat document.
+    await combat.setFlag(FLAG_SCOPE, ROUND_FLAG, order.serialize());
     if (result.roundComplete) {
-      activeRound = undefined;
-      activeUnits = [];
+      await combat.unsetFlag(FLAG_SCOPE, ROUND_FLAG);
     }
   } catch (error) {
     notifyUser(error instanceof Error ? error.message : String(error), "warn");
@@ -495,8 +651,10 @@ export function registerRoundControl(): void {
   hooks.on("getSceneControlButtons", (...args: unknown[]) => addSceneControl(args[0]));
 }
 
-/** Test-only: clears the module-scoped active round between cases. */
+/**
+ * Test-only, now a no-op: the round is no longer module-scoped state (it lives on
+ * the Combat document). Kept so existing tests' cleanup calls still resolve.
+ */
 export function _resetActiveRoundForTests(): void {
-  activeRound = undefined;
-  activeUnits = [];
+  /* round state lives on the Combat document now -- nothing module-scoped to clear */
 }

@@ -1589,3 +1589,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   algorithm is unchanged; only the storage moved. INX + GREATHELM P0 to follow
   (each has its own round machine to make serializable).
 - Commit: refactor(simple-skirmish): round state on the Combat document (P0)
+
+## 2026-07-18 — P0: InCountry round state on the Combat document (engine order made serializable)
+- Symptom: same as the SS P0 — InCountry held the round in module-scoped
+  `let activeRound`/`activeUnits`, lost on reload, unsynced.
+- Fix: made the ENGINE activation order serializable (`ActivationOrder#serialize`
+  + `restoreActivationOrder`, exposed on `game.battleframe.rounds`; the bag
+  selector is re-supplied on restore, and the cached main-tier pick is preserved
+  so the current turn is stable). Rewrote the InCountry glue to the same
+  Combat-document pattern as SS: create a Combat, seat Combatants, store the
+  serialized order on `combat.flags.battleframe.round`, reconstruct each click.
+- Surfaces: `packages/battleframe/src/rounds/activation.ts` (serialize/restore +
+  RoundsApi), `tests/activation.test.ts`; `packages/battleframe-incountry/src/ui/round-control.ts`.
+- Watch: live-verified — running the round via the real scene-control button
+  created a Combat with 2 Combatants + the round flag, and it SURVIVED A RELOAD.
+  Engine change is neutral (no ruleset vocabulary). GREATHELM P0 still to do (its
+  richer dice-pool RoundSession).
+- Commit: refactor(incountry): round state on the Combat document (P0)

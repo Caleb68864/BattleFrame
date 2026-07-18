@@ -4,6 +4,7 @@ import {
   createRoundsApi,
   IllegalActivationError,
   installRoundsApi,
+  restoreActivationOrder,
   weightedBagSelector,
   type ActivationUnit
 } from "../src/rounds/activation";
@@ -190,6 +191,42 @@ describe("createActivationOrder — empty, single-side, and bad-selector rounds"
       selectMain: () => "Z"
     });
     expect(() => order.activeSideId()).toThrow(IllegalActivationError);
+  });
+});
+
+describe("serialize / restoreActivationOrder — state for the Combat document", () => {
+  it("round-trips the order so it survives reconstruction", () => {
+    const roster = [unit("a1", "A"), unit("a2", "A"), unit("b1", "B")];
+    const order = createActivationOrder({ units: roster, firstSideId: "A" });
+    order.activate("a1"); // default alternating -> now B's turn
+
+    const state = order.serialize();
+    expect(state.firstSideId).toBe("A");
+    expect(state.activatedIds).toEqual(["a1"]);
+
+    const restored = restoreActivationOrder({ units: roster, state });
+    expect(restored.isActivated("a1")).toBe(true);
+    expect(restored.activeSideId()).toBe("B");
+    restored.activate("b1");
+    restored.activate("a2");
+    expect(restored.isComplete()).toBe(true);
+  });
+
+  it("preserves a cached bag pick across restore", () => {
+    const roster = [unit("a1", "A"), unit("a2", "A"), unit("b1", "B")];
+    const order = createActivationOrder({
+      units: roster,
+      firstSideId: "A",
+      selectMain: weightedBagSelector(() => 0.99) // picks the last side (B)
+    });
+    expect(order.activeSideId()).toBe("B"); // caches B
+    const restored = restoreActivationOrder({
+      units: roster,
+      selectMain: weightedBagSelector(() => 0), // a DIFFERENT rng
+      state: order.serialize()
+    });
+    // The cached pick (B) is preserved, not re-rolled by the new selector.
+    expect(restored.activeSideId()).toBe("B");
   });
 });
 

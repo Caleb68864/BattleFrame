@@ -62,6 +62,22 @@ export interface ActivationOrder {
   /** Activates `unitId`; throws on an out-of-turn, repeat, resolved, wrong-tier, or unknown activation. */
   activate(unitId: string): void;
   isComplete(): boolean;
+  /** The state to persist on the Combat document; restore with `restoreActivationOrder`. */
+  serialize(): ActivationOrderState;
+}
+
+/**
+ * A serializable snapshot of an activation order -- everything needed to rebuild
+ * it. Persist this on the Combat document (a flag) so a round survives a reload
+ * and syncs, instead of dying with a module-scoped variable. `selectMain` is NOT
+ * serialized (functions cannot be); pass it again on restore.
+ */
+export interface ActivationOrderState {
+  firstSideId: string;
+  activatedIds: string[];
+  priorityPointer: number;
+  mainPointer: number;
+  cachedMainSide?: string;
 }
 
 export class IllegalActivationError extends Error {
@@ -76,17 +92,19 @@ export interface CreateActivationOrderParams {
   firstSideId: string;
   /** Main-tier side picker. Defaults to alternation led by the first side. */
   selectMain?: MainSelector;
+  /** Seeds the order from persisted state (see `restoreActivationOrder`). */
+  initial?: Omit<ActivationOrderState, "firstSideId">;
 }
 
 export function createActivationOrder(params: CreateActivationOrderParams): ActivationOrder {
   const { units, firstSideId, selectMain } = params;
   const unitById = new Map(units.map((unit) => [unit.id, unit]));
   const sides = orderedSides(units, firstSideId);
-  const activated = new Set<string>();
+  const activated = new Set<string>(params.initial?.activatedIds ?? []);
 
-  let priorityPointer = 0;
-  let mainPointer = 0;
-  let cachedMainSide: string | undefined;
+  let priorityPointer = params.initial?.priorityPointer ?? 0;
+  let mainPointer = params.initial?.mainPointer ?? 0;
+  let cachedMainSide: string | undefined = params.initial?.cachedMainSide;
 
   const isResolved = (unit: ActivationUnit): boolean => unit.isResolved?.() === true;
   const isDone = (unit: ActivationUnit): boolean => activated.has(unit.id) || isResolved(unit);
@@ -216,8 +234,39 @@ export function createActivationOrder(params: CreateActivationOrderParams): Acti
       }
       // Force the main-tier side to be re-picked after any activation.
       cachedMainSide = undefined;
-    }
+    },
+    serialize: () => ({
+      firstSideId,
+      activatedIds: [...activated],
+      priorityPointer,
+      mainPointer,
+      cachedMainSide
+    })
   };
+}
+
+/**
+ * Rebuilds an activation order from the state persisted on the Combat document.
+ * The order machine is stateless between control clicks; its state lives on the
+ * document and is restored here each time. `selectMain` must be supplied again
+ * (it is not serializable) -- pass the same one the round was created with.
+ */
+export function restoreActivationOrder(
+  params: Omit<CreateActivationOrderParams, "firstSideId" | "initial"> & {
+    state: ActivationOrderState;
+  }
+): ActivationOrder {
+  const { state, ...rest } = params;
+  return createActivationOrder({
+    ...rest,
+    firstSideId: state.firstSideId,
+    initial: {
+      activatedIds: state.activatedIds,
+      priorityPointer: state.priorityPointer,
+      mainPointer: state.mainPointer,
+      cachedMainSide: state.cachedMainSide
+    }
+  });
 }
 
 /**
@@ -228,11 +277,16 @@ export function createActivationOrder(params: CreateActivationOrderParams): Acti
  */
 export interface RoundsApi {
   createActivationOrder(params: CreateActivationOrderParams): ActivationOrder;
+  restoreActivationOrder(
+    params: Omit<CreateActivationOrderParams, "firstSideId" | "initial"> & {
+      state: ActivationOrderState;
+    }
+  ): ActivationOrder;
   weightedBagSelector(rng: () => number): MainSelector;
 }
 
 export function createRoundsApi(): RoundsApi {
-  return { createActivationOrder, weightedBagSelector };
+  return { createActivationOrder, restoreActivationOrder, weightedBagSelector };
 }
 
 declare global {
