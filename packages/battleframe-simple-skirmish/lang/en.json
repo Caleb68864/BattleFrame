@@ -1,0 +1,30 @@
+{
+  "battleframe-simple-skirmish": {
+    "sheets": {
+      "unit": "Unit"
+    },
+    "fields": {
+      "models": "Models",
+      "move": "Move",
+      "attackMelee": "Melee Attack",
+      "attackRanged": "Ranged Attack",
+      "attackMagic": "Magic Attack",
+      "save": "Save",
+      "skill": "Skill"
+    },
+    "controls": {
+      "round": {
+        "title": "Simple Skirmish",
+        "tool": "Run Round",
+        "gmOnly": "Only the GM can run a Simple Skirmish round.",
+        "noApi": "BattleFrame's dice and measurement services are unavailable, so a round cannot be run.",
+        "noCombat": "Start a combat encounter before running a Simple Skirmish round."
+      }
+    },
+    "attackTypes": {
+      "melee": "Melee",
+      "ranged": "Ranged",
+      "magic": "Magic"
+    }
+  }
+}
