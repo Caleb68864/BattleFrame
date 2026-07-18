@@ -1321,3 +1321,22 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   glue is now a thin caller; the rule (`isAttackableEnemy`) has one definition and a
   regression test.
 - Commit: refactor(simple-skirmish): make the never-attack-yourself target rule testable
+
+## 2026-07-17 — Simple Skirmish glue: covered against a stubbed Foundry
+- Symptom: `runRoundControl`/`activateSelectedControl`/`gatherUnitsFromCanvas` -- the
+  canvas-bound wiring live verification exercised by hand -- had no automated
+  coverage. Its guards (no GM, no units, no active round) and the run->select->
+  attack path were only ever tested with a real browser.
+- Fix: a stubbed-Foundry test (game/canvas/ui doubles, a measure that returns
+  centre-to-centre = |dx|) drives the glue: gather picks up only unit tokens (a
+  greathelm knight token is ignored), the guards warn, and a full activation runs a
+  round, selects the controlled unit, resolves the attack against the targeted
+  enemy, and reports it with unit NAMES while casualties land on the defender.
+- Surfaces: `packages/battleframe-simple-skirmish/tests/round-control.test.ts`
+  (fake-Foundry helpers + glue tests).
+- Watch: this is the GREATHELM stubbed-globals pattern applied to the second
+  ruleset -- the glue is thin (it delegates to `beginRound`/`selectAttackTarget`/
+  `resolveActivation`, all unit-tested), so these tests guard the wiring, not the
+  rules. Still UNVERIFIED-against-live only for the `getSceneControlButtons` payload
+  shape and real token reads, which the live session already confirmed once.
+- Commit: test(simple-skirmish): cover the round-control glue against a stubbed Foundry

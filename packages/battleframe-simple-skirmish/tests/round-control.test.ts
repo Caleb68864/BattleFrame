@@ -1,14 +1,18 @@
 import { describe, expect, it } from "vitest";
 import { afterEach, vi } from "vitest";
 import {
+  activateSelectedControl,
   addSceneControl,
   beginRound,
+  gatherUnitsFromCanvas,
   InitiativeUnresolvedError,
   legalAttackTypes,
   resolveActivation,
   rollInitiative,
+  runRoundControl,
   selectAttackTarget,
   sideFromDisposition,
+  _resetActiveRoundForTests,
   type RoundControlUnit
 } from "../src/ui/round-control";
 import type { DiceApiLike } from "../src/combat/resolve";
@@ -16,6 +20,101 @@ import { MODULE_ID } from "../src/constants";
 
 afterEach(() => {
   vi.unstubAllGlobals();
+  _resetActiveRoundForTests();
+});
+
+const UNIT_TYPE = `${MODULE_ID}.unit`;
+
+/** A canvas token double as the round-control glue reads it. */
+function fakeToken(id: string, name: string, disposition: number, system: Record<string, unknown>, x = 0) {
+  const actor = {
+    id,
+    name,
+    type: UNIT_TYPE,
+    system: { models: 3, move: 6, ...system },
+    async update(data: Record<string, unknown>) {
+      const next = data["system.models"];
+      if (typeof next === "number") (actor.system as { models: number }).models = next;
+    }
+  };
+  return { id, actor, document: { id, disposition }, center: { x, y: 0 }, scene: { grid: { size: 100, distance: 1, units: "in" } } };
+}
+
+/** Stubs the smallest Foundry the glue needs: game/canvas/ui. */
+function stubFoundry(options: {
+  isGM?: boolean;
+  placeables?: ReturnType<typeof fakeToken>[];
+  controlled?: ReturnType<typeof fakeToken>[];
+  targets?: ReturnType<typeof fakeToken>[];
+  dice?: DiceApiLike;
+}) {
+  const notes: string[] = [];
+  const record = (lvl: string) => (m: string) => { notes.push(`${lvl}:${m}`); };
+  // measure returns centre-to-centre = |dx| in scene units (100px = 1").
+  const measure = {
+    between(a: unknown, b: unknown, mode?: string) {
+      if (mode !== "centre-to-centre") throw new Error("expected centre-to-centre");
+      const ax = (a as { center: { x: number } }).center.x, bx = (b as { center: { x: number } }).center.x;
+      return { distance: Math.abs(bx - ax) / 100 };
+    }
+  };
+  vi.stubGlobal("game", {
+    user: { isGM: options.isGM ?? true, targets: new Set(options.targets ?? []) },
+    battleframe: { dice: options.dice ?? scriptedDice([6, 1, 6, 1, 6, 1]), measure },
+    i18n: { localize: (k: string) => k, format: (k: string) => k }
+  });
+  vi.stubGlobal("canvas", {
+    tokens: { placeables: options.placeables ?? [], controlled: options.controlled ?? [] },
+    scene: { grid: { size: 100, distance: 1, units: "in" } }
+  });
+  vi.stubGlobal("ui", { notifications: { info: record("info"), warn: record("warn"), error: record("error") } });
+  return notes;
+}
+
+describe("the round-control glue against a stubbed Foundry", () => {
+  it("gathers only Simple Skirmish unit tokens from the canvas", () => {
+    const u = fakeToken("a1", "Blue", 1, {});
+    const notAUnit = { id: "x", actor: { id: "x", type: "battleframe-greathelm.knight" }, document: {} };
+    stubFoundry({ placeables: [u, notAUnit as never] });
+    const units = gatherUnitsFromCanvas();
+    expect(units.map((g) => g.id)).toEqual(["a1"]);
+    expect(units[0].name).toBe("Blue");
+    expect(units[0].playerId).toBe("friendly");
+  });
+
+  it("runRoundControl warns and starts no round for a non-GM", async () => {
+    const notes = stubFoundry({ isGM: false, placeables: [fakeToken("a1", "Blue", 1, {})] });
+    await runRoundControl();
+    expect(notes.some((n) => n.startsWith("warn"))).toBe(true);
+  });
+
+  it("runRoundControl warns when the canvas holds no units", async () => {
+    const notes = stubFoundry({ placeables: [] });
+    await runRoundControl();
+    expect(notes.some((n) => n.includes("noUnits"))).toBe(true);
+  });
+
+  it("activateSelectedControl warns when no round is in progress", async () => {
+    const notes = stubFoundry({ placeables: [fakeToken("a1", "Blue", 1, {})] });
+    await activateSelectedControl();
+    expect(notes.some((n) => n.includes("noRound"))).toBe(true);
+  });
+
+  it("plays a full activation through the glue: run round, select, attack, name the units", async () => {
+    const blue = fakeToken("a1", "Blue Spearmen", 1, { attackMelee: 4, models: 4 }, 0);
+    const red = fakeToken("b1", "Red Skeletons", -1, { save: 5, models: 3 }, 300); // 3" away
+    // Blue rolls initiative 6 vs Red 1 -> Blue first. Then 4 attack dice, 2 saves.
+    const dice = scriptedDice([6, 1, /*attack*/ 4, 4, 2, 6, /*saves*/ 3, 6]);
+    const notes = stubFoundry({ placeables: [blue, red], controlled: [blue], targets: [red], dice });
+
+    await runRoundControl();
+    expect(notes.some((n) => n.includes("started"))).toBe(true);
+
+    await activateSelectedControl();
+    // Attack resolved with unit NAMES, casualties applied to Red's models.
+    expect(notes.some((n) => n.includes("Blue Spearmen") && n.includes("Red Skeletons"))).toBe(true);
+    expect(red.actor.system.models).toBeLessThan(3);
+  });
 });
 
 function scriptedDice(faces: readonly number[]): DiceApiLike {
