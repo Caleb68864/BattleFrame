@@ -1050,3 +1050,22 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   face, and it is what keeps Dice So Nice animating. `null` Save is threaded as a
   distinct value, never conflated with 0.
 - Commit: feat(simple-skirmish): Basic Game combat resolution -- hits, saves, casualties
+
+## 2026-07-17 — Simple Skirmish: casualties remove models; range is centre-to-nearest-enemy
+- Symptom: n/a — new. Applying combat outcomes, and measuring range/charge.
+- Fix: `data/unit-state.ts` — `unitModels`, `isUnitDestroyed` (0 models), and
+  `applyCasualties` (decrement to a floor of 0, persisted via `update`, no write on
+  zero casualties). `combat/range.ts` — `nearestEnemy` walks the enemy units and
+  takes the minimum **centre-to-centre** distance (the new core mode), `isInRange`
+  is an inclusive boundary check.
+- Surfaces: `packages/battleframe-simple-skirmish/src/data/unit-state.ts`,
+  `src/combat/range.ts`, and their tests.
+- Watch: **Unit representation is one token per unit** for the MVP -- model count
+  is a stat, models are not placed individually -- so "unit centre to nearest enemy
+  model" (QSR) resolves to nearest enemy *unit* centre-to-centre. That is an
+  approximation the design doc already flagged (skirmish formation is not
+  enforced); a future per-model representation would move the "nearest model"
+  search without changing this seam, because the walk-and-min already lives in the
+  ruleset, not core. Casualty persistence mirrors GREATHELM writing wounds to the
+  document; a fresh battle will need a models reset, same open item as GREATHELM's.
+- Commit: feat(simple-skirmish): casualties remove models; range measures to the nearest enemy
