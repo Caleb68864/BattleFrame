@@ -1606,3 +1606,24 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   Engine change is neutral (no ruleset vocabulary). GREATHELM P0 still to do (its
   richer dice-pool RoundSession).
 - Commit: refactor(incountry): round state on the Combat document (P0)
+
+## 2026-07-18 — P3 + P4: non-gridless guard + generic-sheet form fix
+- Symptom: (P3) measure/areas assumed gridless everywhere and never checked
+  `grid.type`, so a square/hex scene returned plausible-but-wrong Euclidean
+  numbers that silently disagreed with Foundry's ruler. (P4) the engine's
+  generic-actor sheet had the same nested-`<form>` + missing-`submitOnChange`
+  bug we fixed on the ruleset sheets (its edits never persisted) plus a
+  V1-style editor `<div>`.
+- Fix: (P3) `assertGridlessScene` + `NonGridlessSceneError` in base-model, wired
+  into `measure.between` and `areas.contains`; a scene with no `grid.type` is
+  treated as gridless (plain-object callers/tests). (P4) generic-actor-sheet
+  template `<form>`→`<div>`, `form:{submitOnChange:true}`, and the editor div
+  replaced with a `<prose-mirror>` element.
+- Surfaces: `packages/battleframe/src/base/{base-model,types}.ts`,
+  `measurement/measure.ts`, `areas/area.ts`, `tests/measure.test.ts`;
+  `applications/generic-actor-sheet.ts` + `templates/generic-actor-sheet.hbs`.
+- Watch: the gridless-only scope is deliberate (square/hex backlogged with
+  BattleTech); the guard just makes the boundary loud instead of wrong. Remaining
+  minor P4 nits (isNewerVersion swap, pool-panel actions map, DialogV2.confirm)
+  are low-value and left for forge-converge to flag.
+- Commit: feat(engine): non-gridless guard (P3) + generic-sheet form fix (P4)

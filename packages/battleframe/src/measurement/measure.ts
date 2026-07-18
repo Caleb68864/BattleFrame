@@ -1,5 +1,5 @@
 import { battleframeNamespace } from "../api/index";
-import { radiusPx } from "../base/base-model";
+import { assertGridlessScene, radiusPx } from "../base/base-model";
 import { SYSTEM_ID } from "../constants";
 import type {
   MeasurableToken,
@@ -88,6 +88,7 @@ export function between(
   mode: MeasurementMode = "base-to-base"
 ): MeasurementResult {
   assertSameMeasurementSpace(tokenA, tokenB);
+  assertGridlessScene(tokenA.scene);
 
   const scene = tokenA.scene;
   const pxPerUnit = scene.grid.size / scene.grid.distance;

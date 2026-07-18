@@ -87,6 +87,9 @@ export function createGenericActorSheetClass(
       id: `${SYSTEM_ID}-generic-actor-sheet`,
       classes: [SYSTEM_ID, "sheet", "actor", GENERIC_ACTOR_TYPE],
       position: { width: 480, height: 520 },
+      // Save edits immediately (v14 DocumentSheetV2 defaults this false, which
+      // -- with no submit button -- meant field edits never persisted).
+      form: { submitOnChange: true },
     };
 
     static PARTS = {

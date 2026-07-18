@@ -57,6 +57,13 @@ export interface SceneGridLike {
   size: number;
   distance: number;
   /**
+   * The grid type, matching Foundry's `CONST.GRID_TYPES` (0 = gridless). Base-
+   * aware measurement/areas only make sense on a gridless scene; the geometry
+   * services refuse a square/hex scene rather than return a wrong number.
+   * Optional: plain-object callers and tests may omit it (treated as gridless).
+   */
+  type?: number;
+  /**
    * The scene's distance units, verbatim from Foundry (e.g. `"in"`, `"ft"`).
    * Optional because Foundry does not guarantee it is set; `radiusPx` refuses
    * to convert rather than assuming a unit when it is missing.

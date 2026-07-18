@@ -1,5 +1,5 @@
 import { battleframeNamespace } from "../api/index";
-import { radiusPx } from "../base/base-model";
+import { assertGridlessScene, radiusPx } from "../base/base-model";
 import { SYSTEM_ID } from "../constants";
 import type { MeasurableToken } from "../measurement/types";
 import type {
@@ -127,6 +127,7 @@ export function contains(
   mode: ContainmentMode = "base-overlap"
 ): boolean {
   const scene = token.scene;
+  assertGridlessScene(scene);
   const scale = pxPerUnit(scene);
   const baseRadiusPx = mode === "centre" ? 0 : radiusPx(token, scene);
 

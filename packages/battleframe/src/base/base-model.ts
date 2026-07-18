@@ -36,6 +36,34 @@ export const GRID_UNIT_MM: Readonly<Record<string, number>> = Object.freeze({
   m: 1000
 });
 
+/** Foundry's gridless grid type (`CONST.GRID_TYPES.GRIDLESS`). */
+const GRIDLESS = 0;
+
+export class NonGridlessSceneError extends Error {
+  constructor(gridType: number) {
+    super(
+      `${SYSTEM_ID} | base-aware geometry needs a gridless scene, but this scene's ` +
+        `grid type is ${gridType}. Square/hex measurement is out of scope (backlogged ` +
+        `with BattleTech); a wrong distance would silently disagree with the ruler.`
+    );
+    this.name = "NonGridlessSceneError";
+  }
+}
+
+/**
+ * Refuses a non-gridless scene. Base-to-base distance and disc containment are
+ * only correct on a gridless board; on a square/hex scene they return a
+ * plausible Euclidean number that disagrees with Foundry's own ruler. Loud
+ * failure over plausible output. A scene whose `grid.type` is absent is treated
+ * as gridless (plain-object callers and tests).
+ */
+export function assertGridlessScene(scene: SceneLike): void {
+  const type = (scene.grid as { type?: number }).type;
+  if (type !== undefined && type !== GRIDLESS) {
+    throw new NonGridlessSceneError(type);
+  }
+}
+
 export class InvalidBaseSizeError extends Error {
   constructor(dimension: "widthMm" | "heightMm", value: number) {
     super(

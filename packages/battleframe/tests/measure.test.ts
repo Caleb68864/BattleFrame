@@ -4,6 +4,7 @@ import {
   installMeasurementApi,
   SceneMismatchError
 } from "../src/measurement/measure";
+import { NonGridlessSceneError } from "../src/base/base-model";
 import type { MeasurementApi } from "../src/measurement/types";
 import {
   gridlessScene,
@@ -184,6 +185,22 @@ describe("measure.between", () => {
 
     expect(() => between(tokenA, tokenB)).toThrow(SceneMismatchError);
     expect(() => between(tokenB, tokenA)).toThrow(SceneMismatchError);
+  });
+
+  it("refuses a non-gridless scene rather than returning a wrong distance", () => {
+    const tokenA = makeFixtureToken({ x: 0, y: 0, widthMm: 25.4 });
+    const tokenB = makeFixtureToken({ x: 10 * PX_PER_UNIT, y: 0, widthMm: 25.4 });
+    // Both tokens on a SQUARE-grid scene (grid.type 1). Base-aware measurement
+    // would disagree with Foundry's ruler here, so it must fail loud.
+    tokenA.scene = { grid: { ...gridlessScene.grid, type: 1 } };
+    tokenB.scene = { grid: { ...gridlessScene.grid, type: 1 } };
+    expect(() => between(tokenA, tokenB)).toThrow(NonGridlessSceneError);
+  });
+
+  it("treats a scene with no grid.type as gridless (plain-object callers)", () => {
+    const tokenA = makeFixtureToken({ x: 0, y: 0, widthMm: 25.4 });
+    const tokenB = makeFixtureToken({ x: 10 * PX_PER_UNIT, y: 0, widthMm: 25.4 });
+    expect(() => between(tokenA, tokenB)).not.toThrow();
   });
 
   it("allows structurally identical scene objects", () => {
