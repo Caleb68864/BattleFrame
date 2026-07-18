@@ -158,17 +158,8 @@
   background-image: url("systems/battleframe/assets/heraldry/star.png");
 }
 
-/* Move has no dedicated mark — an inked glyph fills the slot so tiles stay
-   uniform. */
 .battleframe-simple-skirmish.sheet.unit .bf-device--move .bf-device__icon {
-  mix-blend-mode: normal;
-}
-
-.battleframe-simple-skirmish.sheet.unit .bf-device--move .bf-device__icon::before {
-  content: "\00BB"; /* » — the advance */
-  font-size: 1.8rem;
-  line-height: 1;
-  color: var(--bf-ink);
+  background-image: url("systems/battleframe/assets/heraldry/boot.png");
 }
 
 .battleframe-simple-skirmish.sheet.unit .bf-device__label {
