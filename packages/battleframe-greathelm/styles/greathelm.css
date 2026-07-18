@@ -69,7 +69,7 @@
   flex: 0 0 auto;
   width: 58px;
   height: 58px;
-  background: url("systems/battleframe/assets/heraldry/knight-meeple.png")
+  background: url("../../../systems/battleframe/assets/heraldry/knight-meeple.png")
     center / contain no-repeat;
   mix-blend-mode: multiply;
 }
@@ -118,11 +118,11 @@
 }
 
 .battleframe-greathelm.knight-sheet .bf-device--momentum .bf-device__icon {
-  background-image: url("systems/battleframe/assets/heraldry/momentum.png");
+  background-image: url("../../../systems/battleframe/assets/heraldry/momentum.png");
 }
 
 .battleframe-greathelm.knight-sheet .bf-device--damage .bf-device__icon {
-  background-image: url("systems/battleframe/assets/heraldry/cracked-helm.png");
+  background-image: url("../../../systems/battleframe/assets/heraldry/cracked-helm.png");
 }
 
 .battleframe-greathelm.knight-sheet .bf-device__label {

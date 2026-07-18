@@ -1,4 +1,9 @@
 {
+  "TYPES": {
+    "Actor": {
+      "battleframe-simple-skirmish.unit": "Unit"
+    }
+  },
   "battleframe-simple-skirmish": {
     "sheets": {
       "unit": "Unit"

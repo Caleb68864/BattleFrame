@@ -65,7 +65,7 @@
   flex: 0 0 auto;
   width: 58px;
   height: 58px;
-  background: url("systems/battleframe/assets/heraldry/meeple-spearman.png")
+  background: url("../../../systems/battleframe/assets/heraldry/meeple-spearman.png")
     center / contain no-repeat;
   mix-blend-mode: multiply;
 }
@@ -135,31 +135,31 @@
 }
 
 .battleframe-simple-skirmish.sheet.unit .bf-device--models .bf-device__icon {
-  background-image: url("systems/battleframe/assets/heraldry/knight-meeple.png");
+  background-image: url("../../../systems/battleframe/assets/heraldry/knight-meeple.png");
 }
 
 .battleframe-simple-skirmish.sheet.unit .bf-device--melee .bf-device__icon {
-  background-image: url("systems/battleframe/assets/heraldry/sword.png");
+  background-image: url("../../../systems/battleframe/assets/heraldry/sword.png");
 }
 
 .battleframe-simple-skirmish.sheet.unit .bf-device--ranged .bf-device__icon {
-  background-image: url("systems/battleframe/assets/heraldry/bow.png");
+  background-image: url("../../../systems/battleframe/assets/heraldry/bow.png");
 }
 
 .battleframe-simple-skirmish.sheet.unit .bf-device--magic .bf-device__icon {
-  background-image: url("systems/battleframe/assets/heraldry/wand.png");
+  background-image: url("../../../systems/battleframe/assets/heraldry/wand.png");
 }
 
 .battleframe-simple-skirmish.sheet.unit .bf-device--save .bf-device__icon {
-  background-image: url("systems/battleframe/assets/heraldry/shield.png");
+  background-image: url("../../../systems/battleframe/assets/heraldry/shield.png");
 }
 
 .battleframe-simple-skirmish.sheet.unit .bf-device--skill .bf-device__icon {
-  background-image: url("systems/battleframe/assets/heraldry/star.png");
+  background-image: url("../../../systems/battleframe/assets/heraldry/star.png");
 }
 
 .battleframe-simple-skirmish.sheet.unit .bf-device--move .bf-device__icon {
-  background-image: url("systems/battleframe/assets/heraldry/boot.png");
+  background-image: url("../../../systems/battleframe/assets/heraldry/boot.png");
 }
 
 .battleframe-simple-skirmish.sheet.unit .bf-device__label {

@@ -1,4 +1,9 @@
 {
+  "TYPES": {
+    "Actor": {
+      "battleframe-greathelm.knight": "Knight"
+    }
+  },
   "battleframe-greathelm": {
     "sheets": {
       "knight": "Knight"

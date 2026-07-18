@@ -1450,3 +1450,30 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   Foundry glue (scene control, token reads, actor.update) is UNVERIFIED against
   live v14 — the next step. Module ships NO INX content.
 - Commit: feat(incountry): complete loadable module on the engine rounds service
+
+## 2026-07-18 — Live verification caught two shipped bugs the unit suite could not
+- Symptom: driving the live world exposed two defects invisible to the 483-test
+  suite. (1) NO ruleset sheet actually saved edits — typing a stat and blurring
+  changed nothing; no `updateActor` fired. (2) The medieval theme icons 404'd in
+  the live sheets (`.../modules/battleframe-simple-skirmish/styles/systems/battleframe/assets/heraldry/sword.png`).
+- Fix: (1) each sheet template wrapped its content in its OWN `<form>`, but an
+  ApplicationV2 DocumentSheet's root element is ALREADY a `<form>`. The nested
+  form owned the inputs, so ApplicationV2's submit read an empty root form.
+  Proved live by unwrapping the inner form in the DOM (then edits saved), then
+  changed the wrapper `<form>`→`<div>` in all three templates (knight-sheet,
+  both unit-sheets). (2) CSS `url("systems/…")` resolves RELATIVE to the CSS
+  file (`modules/<id>/styles/`), not the Foundry root — changed to
+  `url("../../../systems/…")` in simple-skirmish.css and greathelm.css.
+- Surfaces: `packages/*/templates/*.hbs` (form→div ×3);
+  `simple-skirmish.css` + `greathelm.css` (11 url paths); plus polish — INX
+  armor-select localization, the `noApi` string wording, and `TYPES.Actor.*`
+  labels so window titles read "Unit"/"Knight" not the raw i18n key.
+- Watch: BOTH bugs were structurally invisible to unit tests — one is Foundry
+  form-ownership runtime behavior, the other is browser URL resolution. Neither
+  had ever been exercised: prior playtests only used programmatic `actor.update`
+  via the round controller, never sheet editing, and the theme icons were only
+  ever checked in a local preview server rooted differently than Foundry. This
+  is the case for live verification as a non-negotiable step, now logged. The
+  nested-`<form>` fix is the load-bearing one — it repaired sheet editing across
+  ALL THREE shipped rulesets, not just InCountry.
+- Commit: fix(sheets): unwrap nested form so edits save; fix theme icon paths

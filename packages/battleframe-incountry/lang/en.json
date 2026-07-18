@@ -1,4 +1,9 @@
 {
+  "TYPES": {
+    "Actor": {
+      "battleframe-incountry.unit": "Unit"
+    }
+  },
   "battleframe-incountry": {
     "sheets": {
       "unit": "Unit"
@@ -13,7 +18,7 @@
         "title": "INCOUNTRY",
         "tool": "Run Round",
         "gmOnly": "Only the GM can run an INCOUNTRY round.",
-        "noApi": "BattleFrame's dice and measurement services are unavailable, so a round cannot be run.",
+        "noApi": "BattleFrame's dice and round services are unavailable, so a round cannot be run.",
         "noCombat": "Start a combat encounter before running an INCOUNTRY round.",
         "noUnits": "No INCOUNTRY units on the canvas to run a round for.",
         "started": "New round: {side} takes initiative. Select one of your units and activate it.",

@@ -146,8 +146,12 @@ export function createUnitSheetClass(
 
       const armorType = (system.armorType as ArmorType) ?? "unarmored";
       context.armorRating = armorRating(armorType);
+      const i18n = (globalThis as unknown as {
+        game?: { i18n?: { localize?: (key: string) => string } };
+      }).game?.i18n;
       context.armorOptions = Object.keys(ARMOR_MODIFIER).map((value) => ({
         value,
+        label: i18n?.localize?.(`${MODULE_ID}.armor.${value}`) ?? value,
         selected: value === armorType
       }));
 

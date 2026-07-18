@@ -1,4 +1,4 @@
-<form class="battleframe-incountry sheet unit inx-dossier">
+<div class="battleframe-incountry sheet unit inx-dossier">
   <header class="inx-dossier__header">
     <h1 class="inx-dossier__name">{{actor.name}}</h1>
     <span class="inx-dossier__tag">INCOUNTRY</span>
@@ -41,7 +41,7 @@
         <span class="inx-stat__label">Armor</span>
         <select name="system.armorType">
           {{#each armorOptions}}
-          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.value}}</option>
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
           {{/each}}
         </select>
         <span class="inx-stat__rating" title="Destroyed by damage">{{armorRating}}</span>
@@ -76,4 +76,4 @@
       {{/each}}
     </div>
   </section>
-</form>
+</div>
