@@ -1,0 +1,34 @@
+{
+  "battleframe-incountry": {
+    "sheets": {
+      "unit": "Unit"
+    },
+    "armor": {
+      "unarmored": "Unarmored",
+      "body": "Body Armor",
+      "advanced": "Advanced Armor"
+    },
+    "controls": {
+      "round": {
+        "title": "INCOUNTRY",
+        "tool": "Run Round",
+        "gmOnly": "Only the GM can run an INCOUNTRY round.",
+        "noApi": "BattleFrame's dice and measurement services are unavailable, so a round cannot be run.",
+        "noCombat": "Start a combat encounter before running an INCOUNTRY round.",
+        "noUnits": "No INCOUNTRY units on the canvas to run a round for.",
+        "started": "New round: {side} takes initiative. Select one of your units and activate it.",
+        "tie": "Initiative is tied — roll off (both sides roll a d10, lower wins).",
+        "inProgress": "A round is already in progress. Finish activating every unit before starting a new one.",
+        "complete": "Round complete."
+      },
+      "activate": {
+        "tool": "Activate Unit",
+        "noRound": "No round is in progress. Run a round first.",
+        "noSelection": "Select one of your units to activate.",
+        "notYourTurn": "It is not this side's activation.",
+        "noTarget": "Target an enemy unit for this attack.",
+        "suppressedNoOrder": "A suppressed unit cannot receive a priority order."
+      }
+    }
+  }
+}

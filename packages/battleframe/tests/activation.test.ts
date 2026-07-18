@@ -1,7 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   createActivationOrder,
+  createRoundsApi,
   IllegalActivationError,
+  installRoundsApi,
+  weightedBagSelector,
   type ActivationUnit
 } from "../src/rounds/activation";
 
@@ -131,6 +134,55 @@ describe("createActivationOrder — main tier (injected bag selector)", () => {
     order.activeSideId();
     order.activeSideId();
     expect(calls).toBe(1);
+  });
+});
+
+describe("rounds API — exposed on the namespace for modules", () => {
+  it("createRoundsApi exposes the activation factory and bag selector", () => {
+    const api = createRoundsApi();
+    expect(typeof api.createActivationOrder).toBe("function");
+    expect(typeof api.weightedBagSelector).toBe("function");
+  });
+
+  it("installRoundsApi puts the service on globalThis.battleframe.rounds", () => {
+    installRoundsApi();
+    const ns = (globalThis as unknown as { battleframe?: { rounds?: unknown } }).battleframe;
+    expect(ns?.rounds).toBeDefined();
+  });
+});
+
+describe("weightedBagSelector — count-weighted random draw", () => {
+  it("maps the rng across each side's share, proportional to unit count", () => {
+    // A has 3 units, B has 1 -> total 4. rng*4 in [0,3) -> A, [3,4) -> B.
+    const select = weightedBagSelector((): number => 0.1); // 0.1*4=0.4 -> A
+    expect(select(["A", "B"], { A: 3, B: 1 })).toBe("A");
+
+    const selectB = weightedBagSelector((): number => 0.9); // 0.9*4=3.6 -> B
+    expect(selectB(["A", "B"], { A: 3, B: 1 })).toBe("B");
+  });
+
+  it("drives the main tier of an activation order deterministically under a stub rng", () => {
+    const rng = (() => {
+      const values = [0.9, 0.0, 0.0]; // B, then A, then A
+      let i = 0;
+      return () => values[i++];
+    })();
+    const order = createActivationOrder({
+      units: [
+        { id: "a1", sideId: "A" },
+        { id: "a2", sideId: "A" },
+        { id: "b1", sideId: "B" }
+      ],
+      firstSideId: "A",
+      selectMain: weightedBagSelector(rng)
+    });
+
+    expect(order.activeSideId()).toBe("B");
+    order.activate("b1");
+    expect(order.activeSideId()).toBe("A");
+    order.activate("a1");
+    order.activate("a2");
+    expect(order.isComplete()).toBe(true);
   });
 });
 

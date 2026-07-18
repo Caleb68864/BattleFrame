@@ -66,6 +66,7 @@ function main() {
   copyPackage("battleframe", systemsDir);
   copyPackage("battleframe-greathelm", modulesDir);
   copyPackage("battleframe-simple-skirmish", modulesDir);
+  copyPackage("battleframe-incountry", modulesDir);
 
   console.log(`deploy-local | done -- deployed to ${destRoot}`);
 }

@@ -1,0 +1,36 @@
+{
+  "id": "battleframe-incountry",
+  "title": "BattleFrame: InCountry",
+  "description": "InCountry (INX 2.0) ruleset for the BattleFrame system — a modern tactical skirmish engine by Echo Dark Studios (inxcountry.com). This module implements the game MECHANICS only; it ships no rulebook text, no artwork, and no proprietary unit stat blocks. You supply your own unit data. Free and non-commercial.",
+  "version": "0.1.0",
+  "authors": [
+    { "name": "BattleFrame Team" },
+    { "name": "Echo Dark Studios", "url": "https://inxcountry.com", "flags": { "role": "Original ruleset author (INCOUNTRY / INX 2.0)" } }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "relationships": {
+    "systems": [
+      { "id": "battleframe", "type": "system" }
+    ]
+  },
+  "esmodules": [
+    "dist/incountry.js"
+  ],
+  "styles": [
+    "styles/incountry.css"
+  ],
+  "languages": [
+    { "lang": "en", "name": "English", "path": "lang/en.json" }
+  ],
+  "documentTypes": {
+    "Actor": {
+      "unit": {}
+    }
+  },
+  "url": "",
+  "manifest": "",
+  "download": ""
+}

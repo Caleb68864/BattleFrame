@@ -1,3 +1,4 @@
+import { battleframeNamespace } from "../api/index";
 import { SYSTEM_ID } from "../constants";
 
 /**
@@ -211,6 +212,54 @@ export function createActivationOrder(params: CreateActivationOrderParams): Acti
       // Force the main-tier side to be re-picked after any activation.
       cachedMainSide = undefined;
     }
+  };
+}
+
+/**
+ * The rounds service exposed on the shared namespace, so ruleset modules reach
+ * the engine's activation order at runtime via `game.battleframe.rounds` -- the
+ * same pattern as `dice` / `measure` / `areas`. Modules never import engine
+ * internals; they consume this.
+ */
+export interface RoundsApi {
+  createActivationOrder(params: CreateActivationOrderParams): ActivationOrder;
+  weightedBagSelector(rng: () => number): MainSelector;
+}
+
+export function createRoundsApi(): RoundsApi {
+  return { createActivationOrder, weightedBagSelector };
+}
+
+declare global {
+  interface BattleframeGameNamespace {
+    rounds?: RoundsApi;
+  }
+}
+
+/** Installs onto the shared namespace at module top level (before any `init`). */
+export function installRoundsApi(): RoundsApi {
+  const namespace = battleframeNamespace();
+  namespace.rounds = createRoundsApi();
+  return namespace.rounds;
+}
+
+/**
+ * A `selectMain` that models a bag draw: each side's chance is proportional to
+ * how many un-activated units it still has (one token per unit), so a side with
+ * more units left acts more often. `rng` returns a float in [0, 1); inject a
+ * deterministic one in tests, pass `Math.random` in production.
+ */
+export function weightedBagSelector(rng: () => number): MainSelector {
+  return (sides, counts) => {
+    const total = sides.reduce((sum, sideId) => sum + counts[sideId], 0);
+    let pick = Math.floor(rng() * total);
+    for (const sideId of sides) {
+      pick -= counts[sideId];
+      if (pick < 0) {
+        return sideId;
+      }
+    }
+    return sides[sides.length - 1];
   };
 }
 

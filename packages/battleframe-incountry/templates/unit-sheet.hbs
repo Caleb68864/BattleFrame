@@ -1,0 +1,79 @@
+<form class="battleframe-incountry sheet unit inx-dossier">
+  <header class="inx-dossier__header">
+    <h1 class="inx-dossier__name">{{actor.name}}</h1>
+    <span class="inx-dossier__tag">INCOUNTRY</span>
+  </header>
+
+  <section class="inx-block">
+    <h2 class="inx-block__title">Muster</h2>
+    <div class="inx-stats">
+      <label class="inx-stat">
+        <span class="inx-stat__label">Models</span>
+        <span class="inx-stat__pair">
+          <input type="number" name="system.modelsRemaining" value="{{system.modelsRemaining}}" min="0" step="1" />
+          <span class="inx-stat__sep">/</span>
+          <input type="number" name="system.modelCount" value="{{system.modelCount}}" min="1" step="1" />
+        </span>
+      </label>
+      <label class="inx-stat">
+        <span class="inx-stat__label">Move&Prime;</span>
+        <input type="number" name="system.move" value="{{system.move}}" min="0" step="1" />
+      </label>
+      <label class="inx-stat">
+        <span class="inx-stat__label">Morale</span>
+        <input type="number" name="system.morale" value="{{system.morale}}" min="1" max="10" step="1" />
+      </label>
+    </div>
+  </section>
+
+  <section class="inx-block">
+    <h2 class="inx-block__title">Attack &amp; Armor</h2>
+    <div class="inx-stats">
+      <label class="inx-stat inx-stat--attack">
+        <span class="inx-stat__label">Clear</span>
+        <input type="number" name="system.attackClear" value="{{system.attackClear}}" min="1" max="10" step="1" />
+      </label>
+      <label class="inx-stat inx-stat--attack">
+        <span class="inx-stat__label">In Cover</span>
+        <input type="number" name="system.attackCover" value="{{system.attackCover}}" min="1" max="10" step="1" />
+      </label>
+      <label class="inx-stat inx-stat--armor">
+        <span class="inx-stat__label">Armor</span>
+        <select name="system.armorType">
+          {{#each armorOptions}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.value}}</option>
+          {{/each}}
+        </select>
+        <span class="inx-stat__rating" title="Destroyed by damage">{{armorRating}}</span>
+      </label>
+    </div>
+    <label class="inx-toggle">
+      <input type="checkbox" name="system.suppressed" {{#if system.suppressed}}checked{{/if}} />
+      <span>Suppressed</span>
+    </label>
+  </section>
+
+  <section class="inx-block">
+    <h2 class="inx-block__title">
+      Weapons
+      <button type="button" class="inx-add" data-action="addWeapon" title="Add a weapon">+ Add</button>
+    </h2>
+    <div class="inx-weapons">
+      <div class="inx-weapons__head">
+        <span>Weapon</span><span>#</span><span>DMG</span><span>Atk</span><span>O/W</span><span></span>
+      </div>
+      {{#each system.weapons as |weapon i|}}
+      <div class="inx-weapon">
+        <input type="text" name="system.weapons.{{i}}.name" value="{{weapon.name}}" />
+        <input type="number" name="system.weapons.{{i}}.count" value="{{weapon.count}}" min="0" step="1" />
+        <input type="number" name="system.weapons.{{i}}.dmg" value="{{weapon.dmg}}" min="0" step="1" />
+        <input type="number" name="system.weapons.{{i}}.attackDice" value="{{weapon.attackDice}}" min="0" step="1" title="Attack dice (d10)" />
+        <input type="number" name="system.weapons.{{i}}.owDice" value="{{weapon.owDice}}" min="0" step="1" title="Overwatch/react dice (0 = cannot react)" />
+        <button type="button" class="inx-remove" data-action="removeWeapon" data-index="{{i}}" title="Remove">&times;</button>
+      </div>
+      {{else}}
+      <p class="inx-weapons__empty">No weapons. Add one to arm this unit.</p>
+      {{/each}}
+    </div>
+  </section>
+</form>

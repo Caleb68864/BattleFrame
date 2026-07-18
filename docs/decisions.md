@@ -1421,3 +1421,32 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   data model, sheet, and round controller (and the engine's real use of the
   activation service) are the next TDD steps.
 - Commit: feat(incountry): engine activation service + INX core combat logic (TDD)
+
+## 2026-07-18 — InCountry: a complete, loadable module on the engine rounds service
+- Symptom: the pure INX logic existed but nothing made it a Foundry module — no
+  actor schema, sheet, registration, or round controller — and the engine's new
+  activation order was not reachable by a module (dice/measure/areas are on
+  `game.battleframe`, but the round service was not).
+- Fix: exposed a **rounds API** on the shared namespace
+  (`installRoundsApi` -> `game.battleframe.rounds = { createActivationOrder,
+  weightedBagSelector }`), the same top-level-install pattern as dice/measure,
+  so modules consume it at runtime and never import engine internals. Built the
+  module end to end: the unit data model (`data/unit.ts`, weapons as an
+  ArrayField), the tactical "Field Dossier" sheet (`sheets/unit-sheet.ts` +
+  hbs + css, with add/remove-weapon actions), and the round controller
+  (`ui/round-control.ts`) whose testable core — initiative roll-off, the engine
+  bag-draw order, `resolveUnitAttack`, casualty + suppression application, and an
+  elimination victory read — is exercised through the REAL engine rounds API
+  without a canvas. Registration, manifest, lang, NOTICE, and the deploy script
+  round it out.
+- Surfaces: `packages/battleframe/src/rounds/activation.ts` (rounds API) +
+  `src/battleframe.ts` (installer wiring); the whole
+  `packages/battleframe-incountry/` tree; `scripts/deploy-local.mjs`.
+- Watch: v0.1 stages the interactive shell honestly — initiative is a d10
+  roll-off standing in for the secret command-card reveal, all units activate in
+  the bag-draw main tier (priority orders + the CP economy are a later layer),
+  and attacks default to no-cover (LoS/cover detection deferred). None of that
+  touches the combat MATH, which is faithfully in `resolveUnitAttack`. The
+  Foundry glue (scene control, token reads, actor.update) is UNVERIFIED against
+  live v14 — the next step. Module ships NO INX content.
+- Commit: feat(incountry): complete loadable module on the engine rounds service
