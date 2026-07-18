@@ -1088,3 +1088,24 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   the standing honesty rule. This completes the pure game logic; orchestration
   (wire combat into an activation, apply casualties, read victory) and UI are next.
 - Commit: feat(simple-skirmish): alternating-activation round and deathmatch victory
+
+## 2026-07-17 — Simple Skirmish combat composes into a round; a destroyed unit drops out of activation
+- Symptom: n/a — new, but the end-to-end test surfaced a composition gap the unit
+  tests could not: a unit destroyed mid-round still appeared as un-activated, so
+  the round would never complete and would demand a turn from an empty side.
+- Fix: `combat/attack.ts` — `performAttack` reads the attacker's per-type Attack
+  and the defender's Save off their Actors, resolves the roll, applies casualties,
+  and reports destruction (or a `refused` reason with no document write). Then the
+  round session gained a live `isDestroyed?` on `SkirmishUnit`: a destroyed unit is
+  "resolved" (needs no turn, cannot be activated), so `activePlayerId`/`isComplete`
+  skip it -- the same live-predicate discipline as GREATHELM's `isRemoved`.
+  `tests/round-integration.test.ts` drives activate -> attack -> casualties ->
+  drop-out -> victory, and a second non-lethal case that keeps the round going.
+- Surfaces: `packages/battleframe-simple-skirmish/src/combat/attack.ts`,
+  `src/round/session.ts` (`isDestroyed`/`isResolved`), the integration test.
+- Watch: this is the Basic Game reaching **playable in logic** -- activate, attack,
+  remove, win. What remains is the Foundry UI (unit sheet, an activation control),
+  i18n, and the Advanced tier (advantage points, champions, skills). The destroyed-
+  skip is exactly the "correct pieces, broken whole" class the integration test
+  exists to catch, and it caught one on the first run.
+- Commit: feat(simple-skirmish): attacks compose into a round, end to end, with destroyed units dropping out
