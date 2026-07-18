@@ -146,21 +146,12 @@
   background-image: url("systems/battleframe/assets/heraldry/bow.png");
 }
 
+.battleframe-simple-skirmish.sheet.unit .bf-device--magic .bf-device__icon {
+  background-image: url("systems/battleframe/assets/heraldry/wand.png");
+}
+
 .battleframe-simple-skirmish.sheet.unit .bf-device--save .bf-device__icon {
   background-image: url("systems/battleframe/assets/heraldry/shield.png");
-}
-
-/* Magic has no dedicated mark yet — an inked sigil holds the slot so the
-   three attack tiles stay uniform. Swap for art when it arrives. */
-.battleframe-simple-skirmish.sheet.unit .bf-device--magic .bf-device__icon {
-  mix-blend-mode: normal;
-}
-
-.battleframe-simple-skirmish.sheet.unit .bf-device--magic .bf-device__icon::before {
-  content: "\2739"; /* ✹ — arcane sigil */
-  font-size: 1.6rem;
-  line-height: 1;
-  color: var(--bf-gules);
 }
 
 /* Abstract stats: an inked glyph fills the icon slot so tiles stay uniform. */
