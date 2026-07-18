@@ -1007,3 +1007,28 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   *model* stays in the ruleset: "nearest model of a unit" is formation logic core
   does not know.
 - Commit: feat(core): measurement gains a centre-to-centre mode for unit-based rulesets
+
+## 2026-07-17 — Second ruleset scaffolded (Simple Skirmish), core required no changes to host it
+- Symptom: n/a — new work. `packages/battleframe-simple-skirmish`, the first ruleset
+  whose rules are licensed to ship (CC BY-NC 4.0), scaffolded: package.json,
+  vite.config (own `simple-skirmish.js` bundle), module.json (attribution +
+  `documentTypes.Actor.unit`), constants, lang, styles, a `NOTICE.md`, a `unit`
+  Actor data model, and a load-order-independent, fail-loud registration.
+- Fix: registration mirrors GREATHELM's proven shape — resolve the api off
+  `globalThis.battleframe`/`game.battleframe`, `registerRuleset` last, notify-then-
+  throw on absence or rejection. The unit schema models the Basic Game: `models`
+  count, `move` inches, per-type `attackMelee/Ranged/Magic` and a `save`, all
+  nullable d6 targets defaulting to null — "cannot do that action", never 0 (a 0
+  would read as "hits on anything").
+- Surfaces: the whole new package; no change to `packages/battleframe/src` beyond
+  the centre-to-centre mode committed just before. That is the neutrality claim
+  holding for a second, structurally-different ruleset: the only core change this
+  ruleset drove was a measurement mode, wanted by two witnesses.
+- Watch: the nullable-vs-0 stance is the same "absent means absent, not zero"
+  lesson as GREATHELM's optional `isRemoved` — a stat's absence must be
+  representable distinctly from a stat of value 0, or "cannot attack" and "hits on
+  a 1+" collapse into one. Save uses the game's inverted sense (roll **< save** is a
+  casualty, so lower is better); the combat resolver (next) must encode that
+  direction exactly once. Per-type saves are folded to one `save` for the MVP; the
+  quick reference allows a save per attack type, deferred with the Advanced Game.
+- Commit: feat(simple-skirmish): scaffold the ruleset -- package, unit model, registration

@@ -1,0 +1,36 @@
+{
+  "id": "battleframe-simple-skirmish",
+  "title": "BattleFrame: Simple Skirmish",
+  "description": "Simple Skirmish ruleset for the BattleFrame system. An implementation of Simple Fantasy Skirmish by Peter Vodden (https://petervodden.blog), licensed CC BY-NC 4.0 (Attribution, Non-Commercial). This module is free and must not be sold. It implements the Basic Game mechanics; it ships no artwork.",
+  "version": "0.1.0",
+  "authors": [
+    { "name": "BattleFrame Team" },
+    { "name": "Peter Vodden", "url": "https://petervodden.blog", "flags": { "role": "Original ruleset author (Simple Fantasy Skirmish, CC BY-NC 4.0)" } }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "relationships": {
+    "systems": [
+      { "id": "battleframe", "type": "system" }
+    ]
+  },
+  "esmodules": [
+    "dist/simple-skirmish.js"
+  ],
+  "styles": [
+    "styles/simple-skirmish.css"
+  ],
+  "languages": [
+    { "lang": "en", "name": "English", "path": "lang/en.json" }
+  ],
+  "documentTypes": {
+    "Actor": {
+      "unit": {}
+    }
+  },
+  "url": "",
+  "manifest": "",
+  "download": ""
+}
