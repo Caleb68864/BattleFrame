@@ -1723,3 +1723,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   in later units and calls into these.
 - Watch: the engine names no field or type; rulesets supply both via the registry.
 - Commit: feat(core): hover-panel field registry (ruleset-neutral)
+
+## 2026-07-18 — Hover panel visibility: setting resolves through the provider
+- Symptom: the hover panel needs a GM-owned visibility choice that can also
+  defer to each ruleset's own default, and the "who may see this" test must run
+  without Foundry's `game.user`/`token` globals.
+- Fix: `resolveVisibility(setting, provider)` collapses the stored setting to a
+  concrete mode — an explicit `everyone`/`owners`/`gm` passes through, while
+  `ruleset` defers to `provider.defaultVisibility` and finally to `owners`.
+  `isVisibleTo(user, token, mode)` is a pure predicate over duck-typed
+  `{ isGM }` / `{ actor: { isOwner } }` shapes: everyone→always, GM→always,
+  gm→GM-only, owners→owner-only.
+- Surfaces: `packages/battleframe/src/ui/hover-visibility.ts`,
+  `packages/battleframe/tests/hover-visibility.test.ts`.
+- Watch: GM always sees the panel except when the mode is `everyone` (trivially
+  true anyway); the predicate never reads a Foundry global.
+- Commit: feat(core): hover-panel visibility resolution
