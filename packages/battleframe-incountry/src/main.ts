@@ -1,6 +1,7 @@
 import { MODULE_ID } from "./constants";
 import { registerUnitDataModel } from "./data/unit";
 import { registerUnitSheet } from "./sheets/unit-sheet";
+import { registerStatusEffects } from "./status";
 import { registerRoundControl } from "./ui/round-control";
 
 interface BattleframeRegisterResult {
@@ -65,6 +66,7 @@ const globalHooks = (globalThis as unknown as {
 globalHooks?.once("init", () => {
   registerUnitDataModel();
   registerUnitSheet();
+  registerStatusEffects();
   // The round trigger: a scene control answering Foundry's own hook. This is
   // what makes the round/combat logic reachable in the shipped bundle -- without
   // it, all of it is tree-shaken out.

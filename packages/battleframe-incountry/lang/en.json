@@ -13,6 +13,9 @@
       "body": "Body Armor",
       "advanced": "Advanced Armor"
     },
+    "status": {
+      "suppressed": "Suppressed"
+    },
     "controls": {
       "round": {
         "title": "INCOUNTRY",

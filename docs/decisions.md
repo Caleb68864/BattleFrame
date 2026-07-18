@@ -1644,3 +1644,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   GM-only toasts) is a larger cross-module change, still pending. P1 (status
   effects) and GREATHELM P0 also remain.
 - Commit: feat(engine): dice.rollPool -- one Roll per pool (P2)
+
+## 2026-07-18 — P1 (focused): InCountry suppression as a Foundry status effect
+- Symptom: no token showed any game state -- CONFIG.statusEffects was used
+  nowhere, so suppression/removal were invisible `system` booleans (roadmap P1).
+- Fix: register a `battleframe-incountry-suppressed` status effect at init
+  (`status.ts`, a core SVG icon -- ships no artwork), and in the attack-flow's
+  `applyStateToActor` toggle it via `actor.toggleStatusEffect` alongside the
+  system field, plus the core `defeated` skull when a unit is wiped
+  (modelsRemaining <= 0). State now shows on the token, syncs, and persists.
+- Surfaces: `packages/battleframe-incountry/src/status.ts` + `tests/status.test.ts`,
+  `main.ts` (register at init), `ui/round-control.ts` (toggle), `lang/en.json`.
+- Watch: live-verified -- the status registers on CONFIG.statusEffects and
+  toggling puts it in `actor.statuses`. This is the focused slice; the broader P1
+  (GREATHELM momentum/damage-threshold -> defeated, InCountry engaged/injury/stun,
+  token resource bars) follows the same pattern and remains. Numeric counters stay
+  NumberFields by design.
+- Commit: feat(incountry): suppression as a Foundry status effect (P1)

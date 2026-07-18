@@ -2,6 +2,7 @@ import { INX_DIE_SIZE, MODULE_ID, UNIT_ACTOR_TYPE } from "../constants";
 import type { DiceApiLike } from "../combat/resolve";
 import { isDestroyed, type UnitSystemData } from "../data/unit-state";
 import { resolveUnitAttack, type AttackFlowResult } from "../round/attack-flow";
+import { SUPPRESSED_STATUS } from "../status";
 
 /**
  * The activation control's testable core (top of file) plus the Foundry glue
@@ -463,6 +464,18 @@ async function applyStateToActor(
     "system.modelsRemaining": state.modelsRemaining,
     "system.suppressed": state.suppressed
   });
+
+  // Surface the state on the token via Foundry status effects: a suppressed
+  // marker, and the core "defeated" skull when the unit is wiped. This makes
+  // battlefield state visible + synced instead of an invisible system boolean.
+  const actor = unit.actor as {
+    toggleStatusEffect?: (id: string, opts?: { active?: boolean }) => Promise<unknown>;
+  };
+  const defeated =
+    (globalThis as unknown as { CONFIG?: { specialStatusEffects?: { DEFEATED?: string } } }).CONFIG
+      ?.specialStatusEffects?.DEFEATED ?? "dead";
+  await actor.toggleStatusEffect?.(SUPPRESSED_STATUS, { active: state.suppressed });
+  await actor.toggleStatusEffect?.(defeated, { active: state.modelsRemaining <= 0 });
 }
 
 /** "Run Round": rolls initiative and opens a round for the GM to play unit by unit. */
