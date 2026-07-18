@@ -15,9 +15,11 @@ import {
 import { type ActorLike, type CombatLike, type ResolvedDie } from "../round/loop";
 import {
   createRoundSession,
+  restoreRoundSession,
   type PoolDie,
   type RoundSession,
   type RoundSessionKnight,
+  type SerializedRoundSession,
 } from "../round/session";
 import { checkVictory } from "../round/victory";
 import type { CheckVictoryKnight } from "../round/victory-types";
@@ -33,6 +35,9 @@ import {
   type PoolPanelKnight,
 } from "./pool-panel";
 import { isBaseContactDistance, type DiceApiLike, type MeasureApiLike } from "../combat/clash";
+
+/** The Combat-document flag key holding a round's serialized in-progress state. */
+const ROUND_FLAG = "round";
 
 /**
  * The affordance that starts a round. Everything below the Foundry glue at
@@ -116,6 +121,8 @@ export interface RoundKnight {
  */
 export interface CombatDocumentLike extends CombatLike {
   setFlag: (scope: string, key: string, value: unknown) => Promise<unknown>;
+  getFlag: (scope: string, key: string) => unknown;
+  unsetFlag: (scope: string, key: string) => Promise<unknown>;
 }
 
 /** What a movement die bought, after measuring and capping. */
@@ -524,41 +531,75 @@ export async function beginRoundFromControl(
     measure,
   });
 
-  const emit = options.notify ?? ((): void => undefined);
+  const session = wrapRoundSession(baseSession, {
+    combat,
+    knights,
+    measure,
+    firstPlayerId,
+    tieRerolls: initiative.rerolls,
+    emit: options.notify ?? ((): void => undefined),
+  });
+
+  // Persist the freshly-opened round so a reload before the first spend still
+  // resumes it (state lives on the document, not the PoolPanel).
+  await combat.setFlag("battleframe", ROUND_FLAG, baseSession.serialize());
+
+  return { session, firstPlayerId, tieRerolls: initiative.rerolls, poolSizes };
+}
+
+interface WrapRoundContext {
+  combat: CombatDocumentLike;
+  knights: readonly RoundKnight[];
+  measure: MeasureApiLike;
+  firstPlayerId: string;
+  tieRerolls: number;
+  emit: (message: string) => void;
+}
+
+/**
+ * Wraps a base round session with the Foundry-glue concerns: movement
+ * notifications, the completed-round order flag, and -- for reload survival --
+ * persisting the serialized round onto the Combat document after every
+ * spend/discard. Shared by a fresh round and a resumed one.
+ */
+function wrapRoundSession(baseSession: RoundSession, ctx: WrapRoundContext): RoundSession {
+  const { combat, knights, measure, firstPlayerId, tieRerolls, emit } = ctx;
   const byId = new Map(knights.map((knight) => [knight.id, knight]));
   const persistedOrder: string[] = [];
   let persisted = false;
 
-  // Turn order is persisted via the document's own setFlag, once the session
-  // reports complete. An earlier loop.ts helper assigned to a plain `flags`
-  // object instead, which on a real Combat document never reaches the
-  // database; it has since been deleted as dead code, and this setFlag is the
-  // only writer of round order now.
   async function maybeFinish(): Promise<void> {
     if (persisted || !baseSession.isComplete()) {
       return;
     }
-
     persisted = true;
     await combat.setFlag("battleframe", "order", persistedOrder);
     emit(
       `${localize("battleframe-greathelm.controls.round.complete")} ` +
         `(${persistedOrder.length} dice, first: ${firstPlayerId}` +
-        `${initiative.rerolls > 0 ? `, tie re-rolls: ${initiative.rerolls}` : ""})`
+        `${tieRerolls > 0 ? `, tie re-rolls: ${tieRerolls}` : ""})`
     );
   }
 
-  const session: RoundSession = {
+  // Persists the live round onto the Combat document after every spend/discard,
+  // so a GM reload mid-round keeps it. Cleared once complete -- the order flag is
+  // the durable record of a finished round.
+  async function persistRound(): Promise<void> {
+    if (baseSession.isComplete()) {
+      await combat.unsetFlag("battleframe", ROUND_FLAG);
+    } else {
+      await combat.setFlag("battleframe", ROUND_FLAG, baseSession.serialize());
+    }
+  }
+
+  return {
     remainingDice: () => baseSession.remainingDice(),
     legalTargetsFor: (dieId) => baseSession.legalTargetsFor(dieId),
     isOfferable: (dieId) => baseSession.isOfferable(dieId),
     async spendDie(dieId, knightId, choices) {
-      // Movement (Sprint/Encircle/Shift) is reported here, never applied to
-      // the token -- see planMovement's own comment: auto-sliding a model
-      // could silently violate the "cannot move through models/terrain/
-      // narrower gaps" rule the vault confirms and this codebase has no
-      // collision for. The session itself never measures movement; that
-      // stays Foundry-glue, same as every other notification.
+      // Movement (Sprint/Encircle/Shift) is reported here, never applied to the
+      // token -- see planMovement's own comment. The session never measures
+      // movement; that stays Foundry-glue, like every other notification.
       const die = baseSession.remainingDice().find((candidate) => candidate.id === dieId);
       const mover = byId.get(knightId);
       const action = die ? actionForFace(die.face) : undefined;
@@ -578,18 +619,54 @@ export async function beginRoundFromControl(
 
       await baseSession.spendDie(dieId, knightId, choices);
       persistedOrder.push(knightId);
+      await persistRound();
       await maybeFinish();
     },
     async discardDie(dieId, reason) {
       await baseSession.discardDie(dieId, reason);
+      await persistRound();
       await maybeFinish();
     },
     isComplete: () => baseSession.isComplete(),
     activePlayerId: () => baseSession.activePlayerId(),
     courageOutcomes: () => baseSession.courageOutcomes(),
+    serialize: () => baseSession.serialize(),
   };
+}
 
-  return { session, firstPlayerId, tieRerolls: initiative.rerolls, poolSizes };
+export interface ResumeRoundFromControlOptions {
+  knights: readonly RoundKnight[];
+  combat: CombatDocumentLike;
+  dice: DiceApiLike;
+  measure: MeasureApiLike;
+  notify?: (message: string) => void;
+}
+
+/**
+ * Rebuilds an in-progress round from the state persisted on the Combat document
+ * (roadmap P0 reload survival). No fresh initiative -- the state supplies the
+ * unspent pools and whose turn it is.
+ */
+export function resumeRoundFromControl(
+  options: ResumeRoundFromControlOptions,
+  state: SerializedRoundSession
+): RoundSession {
+  const baseSession = restoreRoundSession(
+    {
+      knights: options.knights.map(toSessionKnight),
+      dice: options.dice,
+      measure: options.measure,
+    },
+    state
+  );
+  return wrapRoundSession(baseSession, {
+    combat: options.combat,
+    knights: options.knights,
+    measure: options.measure,
+    firstPlayerId: state.firstPlayerId,
+    tieRerolls: 0,
+    emit: options.notify ?? ((): void => undefined),
+  });
 }
 
 /* ------------------------------------------------------------------------ *
@@ -855,6 +932,30 @@ export async function onRoundControlActivated(
   const settings = game?.settings as WorldSettingsLike | undefined;
 
   try {
+    const panelKnights: PoolPanelKnight[] = knights.map((knight) => ({
+      id: knight.id,
+      playerId: knight.playerId,
+      name: knight.name ?? knight.id,
+      token: knight.placeable,
+    }));
+
+    // A round already in progress on the Combat document (e.g. after a reload)
+    // is RESUMED -- reopen the panel on the restored session -- rather than
+    // thrown away and re-rolled. The state lives on the document, so this
+    // survives a GM refresh mid-round.
+    const roundState = combat.getFlag?.("battleframe", ROUND_FLAG) as
+      | SerializedRoundSession
+      | undefined;
+    if (roundState && !roundState.complete) {
+      const session = resumeRoundFromControl(
+        { knights, combat, dice, measure, notify: (message) => notifyUser(message) },
+        roundState
+      );
+      return openPoolPanel(session, panelKnights, () =>
+        resolveRoundEnd(knights, roundNumber)
+      );
+    }
+
     const { session } = await beginRoundFromControl({
       knights,
       combat,
@@ -864,13 +965,6 @@ export async function onRoundControlActivated(
       notify: (message) => notifyUser(message),
       chooseOrder: (outcome) => promptFirstOrSecond({ outcome, settings }),
     });
-
-    const panelKnights: PoolPanelKnight[] = knights.map((knight) => ({
-      id: knight.id,
-      playerId: knight.playerId,
-      name: knight.name ?? knight.id,
-      token: knight.placeable,
-    }));
 
     return openPoolPanel(session, panelKnights, () =>
       resolveRoundEnd(knights, roundNumber)

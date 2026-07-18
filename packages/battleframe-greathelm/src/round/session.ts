@@ -49,6 +49,20 @@ export interface RoundSessionDie {
   face: DieFace;
 }
 
+/**
+ * A round's serializable in-progress state -- the unspent dice pools, whose turn
+ * it is, and whether it has completed. Persisted on the `Combat` document (a
+ * flag) so a round survives a reload and syncs, instead of dying with the
+ * PoolPanel that held it. The courage `outcomes` are omitted: they exist only
+ * once complete, and a complete round is not resumed.
+ */
+export interface SerializedRoundSession {
+  firstPlayerId: string;
+  turnPointer: number;
+  complete: boolean;
+  unspent: Record<string, RoundSessionDie[]>;
+}
+
 export type IllegalTargetReason = "knight-removed" | "no-enemy-in-base-contact";
 
 export interface LegalTarget {
@@ -97,6 +111,8 @@ export interface RoundSession {
   isOfferable(dieId: string): boolean;
   /** The courage phase's outcomes, once `isComplete()` -- undefined until then. */
   courageOutcomes(): Map<string, CourageTestOutcome> | undefined;
+  /** The in-progress state to persist on the Combat document; restore with `restoreRoundSession`. */
+  serialize(): SerializedRoundSession;
 }
 
 function rotateToFirst(playerIds: readonly string[], firstPlayerId: string): string[] {
@@ -162,23 +178,36 @@ function findDefenderInContact(
  * `runCouragePhase` still runs the courage phase; this module only decides
  * *when* a die may be offered and *whether* a spend is legal.
  */
-export function createRoundSession(options: CreateRoundSessionOptions): RoundSession {
+export function createRoundSession(
+  options: CreateRoundSessionOptions,
+  restore?: SerializedRoundSession
+): RoundSession {
   const { knights, pools, firstPlayerId, dice, measure } = options;
 
-  const playerIds = rotateToFirst([...pools.keys()], firstPlayerId);
+  // A restored round seeds its unspent pools + turn from the persisted state; a
+  // fresh round rolls them from the initiative pools. Everything else is the
+  // same live machine.
+  const effectiveFirstPlayerId = restore?.firstPlayerId ?? firstPlayerId;
+  const playerKeys = restore ? Object.keys(restore.unspent) : [...pools.keys()];
+  const playerIds = rotateToFirst(playerKeys, effectiveFirstPlayerId);
   const unspent = new Map<string, RoundSessionDie[]>(
-    [...pools.entries()].map(([playerId, faces]) => [
-      playerId,
-      faces.map((rolled, index) => ({
-        id: `${playerId}-d${index + 1}`,
-        playerId,
-        face: rolled.face,
-      })),
-    ])
+    restore
+      ? Object.entries(restore.unspent).map(([playerId, dice_]) => [
+          playerId,
+          dice_.map((die) => ({ ...die })),
+        ])
+      : [...pools.entries()].map(([playerId, faces]) => [
+          playerId,
+          faces.map((rolled, index) => ({
+            id: `${playerId}-d${index + 1}`,
+            playerId,
+            face: rolled.face,
+          })),
+        ])
   );
 
-  let turnPointer = 0;
-  let complete = false;
+  let turnPointer = restore?.turnPointer ?? 0;
+  let complete = restore?.complete ?? false;
   let outcomes: Map<string, CourageTestOutcome> | undefined;
 
   function findDie(dieId: string): RoundSessionDie | undefined {
@@ -457,5 +486,32 @@ export function createRoundSession(options: CreateRoundSessionOptions): RoundSes
     activePlayerId,
     isOfferable,
     courageOutcomes: () => outcomes,
+    serialize: () => ({
+      firstPlayerId: effectiveFirstPlayerId,
+      turnPointer,
+      complete,
+      unspent: Object.fromEntries(
+        [...unspent.entries()].map(([playerId, dice_]) => [
+          playerId,
+          dice_.map((die) => ({ ...die })),
+        ])
+      ),
+    }),
   };
+}
+
+/**
+ * Rebuilds a round session from the state persisted on the Combat document. The
+ * inverse of `RoundSession#serialize`; the session is stateless between control
+ * clicks and is restored here each time. `pools`/`firstPlayerId` are ignored --
+ * the state supplies them.
+ */
+export function restoreRoundSession(
+  options: Omit<CreateRoundSessionOptions, "pools" | "firstPlayerId">,
+  state: SerializedRoundSession
+): RoundSession {
+  return createRoundSession(
+    { ...options, pools: new Map(), firstPlayerId: state.firstPlayerId },
+    state
+  );
 }

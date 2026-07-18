@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   createRoundSession,
   IllegalDieSpendError,
+  restoreRoundSession,
   type CreateRoundSessionOptions,
   type PoolDie,
   type RoundSessionKnight,
@@ -87,6 +88,32 @@ describe("createRoundSession", () => {
 
     // The face-6 die is legal right away.
     await expect(session.spendDie("a-d1", "a1")).resolves.toBeUndefined();
+  });
+
+  it("serialize/restoreRoundSession round-trips an in-progress round (P0 reload survival)", async () => {
+    const knights = [knight("a1", "a"), knight("b1", "b")];
+    const pools = new Map([
+      ["a", pool(6, 5)],
+      ["b", pool(6)],
+    ]);
+    const dice = fixedDice();
+    const measure = makeMeasure([]);
+    const session = createRoundSession(baseOptions(knights, pools, "a", dice, measure));
+
+    await session.spendDie("a-d1", "a1"); // a spends its 6 -> b's turn (the 6)
+    expect(session.activePlayerId()).toBe("b");
+
+    const state = session.serialize();
+    expect(state.firstPlayerId).toBe("a");
+    expect(state.complete).toBe(false);
+
+    // Rebuilt from the persisted state, the round continues exactly where it
+    // left off -- the spent die is gone, and it is still b's turn.
+    const restored = restoreRoundSession({ knights, dice, measure }, state);
+    expect(restored.activePlayerId()).toBe("b");
+    expect(restored.remainingDice().map((die) => die.id).sort()).toEqual(
+      session.remainingDice().map((die) => die.id).sort()
+    );
   });
 
   it("alternates sides, and lets one side continue after the other runs out", async () => {

@@ -1661,3 +1661,26 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   token resource bars) follows the same pattern and remains. Numeric counters stay
   NumberFields by design.
 - Commit: feat(incountry): suppression as a Foundry status effect (P1)
+
+## 2026-07-18 — P0: GREATHELM round state on the Combat document (dice-pool session)
+- Symptom: the deferred third P0. GREATHELM's per-player dice-pool RoundSession
+  lived inside the PoolPanel Application, so a GM reload mid-round lost it (the
+  panel held the only copy). Only the completed-round order flag was persisted.
+- Fix: made `RoundSession` serializable (`serialize()`/`restoreRoundSession`,
+  seeding the unspent pools + turn from persisted state). Extracted the round-
+  control wrapper into `wrapRoundSession`, shared by a fresh round and a resumed
+  one; it now persists the serialized round to `combat.flags.battleframe.round`
+  after every spend/discard (and on open) and clears it on completion.
+  `onRoundControlActivated` RESUMES an in-progress round from the document
+  (reopen the panel on the restored session) instead of re-rolling a new one, and
+  `resumeRoundFromControl` rebuilds it.
+- Surfaces: `packages/battleframe-greathelm/src/round/session.ts`
+  (serialize/restore), `src/ui/round-control.ts` (wrapper extraction + resume +
+  persist), `tests/session.test.ts` + `tests/round-control.test.ts`.
+- Watch: live-verified that a GREATHELM-shaped serialized round SURVIVES A RELOAD
+  on the Combat document (the exact P0 target). The full onClick flow test hit a
+  Foundry combat-registration quirk with a programmatically created+activated
+  combat (setFlag threw "Combat does not exist"); `Combat.createDocuments` /
+  the normal GM tracker flow registers it correctly. P0 is now complete for all
+  three rulesets.
+- Commit: refactor(greathelm): round state on the Combat document (P0)

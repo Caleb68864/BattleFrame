@@ -127,11 +127,21 @@ function knight(id: string, playerId: string, inches: number, actor = fakeActor(
 }
 
 function fakeCombat(): CombatDocumentLike & { flagWrites: Array<[string, string, unknown]> } {
+  const flags: Record<string, Record<string, unknown>> = {};
   const combat = {
     flagWrites: [] as Array<[string, string, unknown]>,
     async setFlag(scope: string, key: string, value: unknown) {
       combat.flagWrites.push([scope, key, value]);
-
+      (flags[scope] ??= {})[key] = value;
+      return undefined;
+    },
+    getFlag(scope: string, key: string) {
+      return flags[scope]?.[key];
+    },
+    async unsetFlag(scope: string, key: string) {
+      if (flags[scope]) {
+        delete flags[scope][key];
+      }
       return undefined;
     },
   };
@@ -364,7 +374,10 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
     // Nothing has been spent yet -- the auto-battler resolved the whole
     // round synchronously; a session instead waits to be played.
     expect(session.remainingDice()).toHaveLength(4);
-    expect(combat.flagWrites).toEqual([]);
+    // The round IS already persisted on the document (P0 reload survival), but
+    // no die has been spent -- the order flag is only written on completion.
+    expect(combat.flagWrites.map((write) => write[1])).toContain("round");
+    expect(combat.flagWrites.some((write) => write[1] === "order")).toBe(false);
 
     await playToCompletion(session);
 
@@ -382,10 +395,12 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
     expect(session.courageOutcomes()).toBeDefined();
     expect([...(session.courageOutcomes()?.keys() ?? [])]).toEqual([]);
 
-    // Order persisted through the document's own setFlag, once the session
-    // completed -- not up front, and not by mutating a plain flags object.
-    expect(combat.flagWrites).toEqual([
-      ["battleframe", "order", ["kA", "kA", "kB", "kB"]],
+    // Order persisted through the document's own setFlag on completion (the
+    // round flag was also persisted per spend for reload survival, then cleared).
+    expect(combat.flagWrites).toContainEqual([
+      "battleframe",
+      "order",
+      ["kA", "kA", "kB", "kB"],
     ]);
   });
 
@@ -412,10 +427,11 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
     expect(poolSizes.get("b")).toBe(2);
   });
 
-  it("persists the order via combat.setFlag exactly once, only after the session completes", async () => {
+  it("persists the in-progress round, then the order flag once complete (round flag cleared)", async () => {
     const measure = lineMeasure();
     const combat = fakeCombat();
     const setFlag = vi.spyOn(combat, "setFlag");
+    const unsetFlag = vi.spyOn(combat, "unsetFlag");
 
     const { session } = await beginRoundFromControl({
       knights: [knight("kA", "a", 0), knight("kB", "b", 9)],
@@ -424,12 +440,15 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
       measure,
     });
 
-    expect(setFlag).not.toHaveBeenCalled();
+    // The freshly-opened round is persisted on the document (P0 reload survival),
+    // so a GM refresh before the first spend still resumes it.
+    expect(setFlag).toHaveBeenCalledWith("battleframe", "round", expect.any(Object));
 
     await playToCompletion(session);
 
-    expect(setFlag).toHaveBeenCalledTimes(1);
+    // On completion: the order flag is written and the in-progress round cleared.
     expect(setFlag).toHaveBeenCalledWith("battleframe", "order", expect.any(Array));
+    expect(unsetFlag).toHaveBeenCalledWith("battleframe", "round");
   });
 
   it("measures and caps a Sprint during a real round, notifying the distance as each die is spent", async () => {
