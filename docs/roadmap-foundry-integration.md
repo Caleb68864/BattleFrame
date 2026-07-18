@@ -4,6 +4,19 @@
 UI/apps, geometry, effects/dice) across the vault's Foundry-API research, the engine,
 and the three ruleset modules.
 
+## Execution status (2026-07-18)
+
+| Item | Status |
+|---|---|
+| **P0** round state on Combat doc | ✅ Simple Skirmish + InCountry (live-verified, survives reload). ⏳ GREATHELM deferred (its dice-pool RoundSession is a large refactor; least-played module). |
+| **P1** status effects | ✅ focused slice: InCountry `suppressed` + `defeated`-on-wipe (live-verified). ⏳ broader rollout (GREATHELM removal/thresholds, InCountry engaged/injury/stun, token resource bars). |
+| **P2** chat/dice | ✅ `dice.rollPool` — one Roll/one card per pool (live-verified). ⏳ combat OUTCOMES → ChatMessage cards. |
+| **P3** non-gridless guard | ✅ done. |
+| **P4** native swaps | ✅ generic-sheet form/submitOnChange/prose-mirror fixed. ⏳ minor nits (isNewerVersion, pool-panel actions map, DialogV2.confirm). |
+
+The done items are committed, tested (514 passing), and verified in the live world.
+Remaining ⏳ items are documented follow-ups below.
+
 ## Executive summary
 
 The concern — "are we recreating Foundry instead of building on it?" — is **valid but
