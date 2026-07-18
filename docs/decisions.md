@@ -1178,3 +1178,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   the new ruleset's terms (unit, champion, casualty) are too generic to add without
   false positives, so the import guard -- now ruleset-agnostic -- is the strong one.
 - Commit: test(core): neutrality guard catches core importing ANY ruleset, not just greathelm
+
+## 2026-07-17 — Simple Skirmish init hook was untested; the functions were proven, the wiring was not
+- Symptom: `main.test.ts` tested `registerSimpleSkirmishRuleset`/`registerUnitDataModel`
+  in isolation -- proving they *can* register -- but nothing fired the `init` hook to
+  prove main.ts actually *calls* them (and `registerUnitSheet`). That is exactly how a
+  ruleset ships wired-but-unreachable, the class that bit GREATHELM more than once.
+- Fix: an entry-point test stands up a fake Foundry (Hooks capturing init, a system api,
+  CONFIG, foundry.abstract/data/applications), imports the entry point, fires init, and
+  asserts all three registrations landed -- data model on CONFIG, sheet registered,
+  ruleset registered via the api.
+- Surfaces: `packages/battleframe-simple-skirmish/tests/main.test.ts`.
+- Watch: mutation-verified -- dropping `registerUnitSheet()` from the init hook fails it.
+  The same "assert at the reachable seam, not only the unit" rule the core entry-point
+  suite follows, now applied to the second ruleset from the start rather than after a
+  live-world surprise.
+- Commit: test(simple-skirmish): prove the init hook wires the data model, sheet, and ruleset
