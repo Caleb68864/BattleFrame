@@ -40,6 +40,39 @@ function configStatusResolver(): StatusResolver {
   };
 }
 
+/** Escapes the five HTML-significant characters so interpolated values can't inject markup. */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/**
+ * Builds the panel's inner HTML from a model. Pure + testable: every dynamic
+ * value is escaped, and field/status labels are localized via the injected
+ * `localize` (the actor NAME is escaped but never localized -- it is data, not
+ * an i18n key). Kept out of renderPanel so the escaping is unit-tested without a DOM.
+ */
+export function buildPanelHtml(model: PanelModel, localize: (key: string) => string): string {
+  const name = `<div class="bf-hover-name">${escapeHtml(model.name)}</div>`;
+  const rows = model.rows
+    .map((r) => `<div class="bf-hover-row"><span class="bf-hover-label">${escapeHtml(localize(r.label))}</span><span class="bf-hover-value">${escapeHtml(r.text)}</span></div>`)
+    .join("");
+  const statuses = model.statuses.length
+    ? `<div class="bf-hover-statuses">${model.statuses.map((s) => `<img src="${escapeHtml(s.img)}" title="${escapeHtml(localize(s.label))}" width="18" height="18">`).join("")}</div>`
+    : "";
+  return `${name}${rows}${statuses}`;
+}
+
+/** Foundry i18n with a safe fallback so import/tests don't need a global. */
+function localize(key: string): string {
+  const i18n = (globalThis as { game?: { i18n?: { localize?: (k: string) => string } } }).game?.i18n;
+  return i18n?.localize?.(key) ?? key;
+}
+
 let panelEl: HTMLElement | undefined;
 
 function ensurePanel(): HTMLElement {
@@ -56,24 +89,20 @@ function ensurePanel(): HTMLElement {
 
 function renderPanel(model: PanelModel, token: TokenLike): void {
   const el = ensurePanel();
-  const rows = model.rows.map((r) => `<div class="bf-hover-row"><span class="bf-hover-label">${r.label}</span><span class="bf-hover-value">${r.text}</span></div>`).join("");
-  const statuses = model.statuses.length
-    ? `<div class="bf-hover-statuses">${model.statuses.map((s) => `<img src="${s.img}" title="${s.label}" width="18" height="18">`).join("")}</div>`
-    : "";
-  el.innerHTML = `<div class="bf-hover-name">${model.name}</div>${rows}${statuses}`;
+  el.innerHTML = buildPanelHtml(model, localize);
   position(el, token);
   el.style.display = "";
 }
 
 /** Places the panel just right of the token, in screen space. Read defensively. */
 function position(el: HTMLElement, token: TokenLike): void {
-  const canvas = (globalThis as { canvas?: { stage?: { worldTransform?: DOMMatrix } } }).canvas;
+  const canvas = (globalThis as { canvas?: { stage?: { worldTransform?: { a: number; b: number; c: number; d: number; tx: number; ty: number } } } }).canvas;
   const t = canvas?.stage?.worldTransform;
   const c = token.center;
   if (!t || !c) return;
-  const screenX = t.a * c.x + t.c * c.y + t.e;
-  const screenY = t.b * c.x + t.d * c.y + t.f;
-  el.style.left = `${screenX + ((token.w ?? 0) / 2) * (t.a ?? 1) + 8}px`;
+  const screenX = t.a * c.x + t.c * c.y + t.tx;
+  const screenY = t.b * c.x + t.d * c.y + t.ty;
+  el.style.left = `${screenX + ((token.w ?? 0) / 2) * t.a + 8}px`;
   el.style.top = `${screenY}px`;
 }
 
@@ -81,10 +110,14 @@ function hidePanel(): void {
   if (panelEl) panelEl.style.display = "none";
 }
 
+let registered = false;
+
 /** Registers the hoverToken hook. Side-effect at import (see ../battleframe.ts). */
 export function registerHoverPanel(): void {
+  if (registered) return;
   const hooks = (globalThis as { Hooks?: { on: (e: string, cb: (...a: unknown[]) => void) => void } }).Hooks;
   if (!hooks) return;
+  registered = true;
   const registry = installHoverApi();
 
   hooks.on("hoverToken", (...args: unknown[]) => {

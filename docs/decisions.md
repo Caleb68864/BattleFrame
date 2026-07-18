@@ -1806,3 +1806,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Surfaces: `packages/battleframe/styles/battleframe.css`,
   `packages/battleframe/lang/en.json`.
 - Commit: feat(core): hover panel styles + statVisibility i18n
+
+## 2026-07-18 — escape hover panel HTML + correct PIXI matrix positioning
+- Symptom: `renderPanel` interpolated the user-editable actor name and stringified
+  system fields straight into `innerHTML` — a cross-client stored XSS on a shared
+  world. Separately, `position` read `.e`/`.f` off `canvas.stage.worldTransform`,
+  which is a PIXI.Matrix (translation is `.tx`/`.ty`), so positions were `NaN`.
+- Fix: Extracted pure, unit-tested `escapeHtml` and `buildPanelHtml(model,
+  localize)` — every dynamic value is HTML-escaped; field/status labels are
+  localized via injected Foundry i18n (with a fallback), the actor name is escaped
+  but never localized (it is data, not an i18n key). `renderPanel` now delegates to
+  `buildPanelHtml`. Corrected `position` to read `.tx`/`.ty` with a typed matrix.
+  Added a `registered` guard so the exported + self-invoked `registerHoverPanel`
+  can't double-bind hooks.
+- Surfaces: `packages/battleframe/src/ui/hover-panel.ts`,
+  `packages/battleframe/tests/hover-panel-glue.test.ts`.
+- Commit: fix(core): escape hover panel HTML + correct PIXI matrix positioning
