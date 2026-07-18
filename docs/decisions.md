@@ -1032,3 +1032,21 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   direction exactly once. Per-type saves are folded to one `save` for the MVP; the
   quick reference allows a save per attack type, deferred with the Advanced Game.
 - Commit: feat(simple-skirmish): scaffold the ruleset -- package, unit model, registration
+
+## 2026-07-17 — Simple Skirmish combat: hits >= Attack, casualties < Save, saves skipped when moot
+- Symptom: n/a — new. The Basic Game's whole combat resolution.
+- Fix: `combat/resolve.ts`. `countHits` (roll >= Attack) and `countUnsaved`
+  (save roll < Save; lower Save is better) are pure. `resolveAttack` rolls one
+  `1d6` per model through the shared dice API, counts hits, then rolls one save
+  per hit and counts casualties -- but skips the save roll entirely when the
+  defender has no Save (every hit lands) or when there were no hits (nothing to
+  save against).
+- Surfaces: `packages/battleframe-simple-skirmish/src/combat/resolve.ts`,
+  `tests/combat.test.ts`.
+- Watch: the Save direction is inverted from most systems (below the number is
+  worse, not better) and is encoded in exactly one place, `countUnsaved` -- every
+  caller goes through it, so the inversion cannot be re-derived wrong elsewhere.
+  Per-die `1d6` rolls (not `Nd6` summed) are load-bearing: the result is read by
+  face, and it is what keeps Dice So Nice animating. `null` Save is threaded as a
+  distinct value, never conflated with 0.
+- Commit: feat(simple-skirmish): Basic Game combat resolution -- hits, saves, casualties
