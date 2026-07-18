@@ -36,6 +36,12 @@ export interface AttackRefused {
 }
 
 export interface AttackApplied extends AttackResult {
+  /**
+   * Models actually removed -- `casualties` clamped to the defender's size. A
+   * unit of 2 taking 5 unsaved hits loses 2, not 5; `casualties` stays the raw
+   * combat figure (failed saves), `modelsRemoved` is what a card should report.
+   */
+  modelsRemoved: number;
   destroyed: boolean;
 }
 
@@ -68,6 +74,8 @@ export async function performAttack(params: PerformAttackParams): Promise<Attack
     return { refused: `no-${type}-attack` };
   }
 
+  const modelsBefore = unitModels(defender.actor);
+
   const result = await resolveAttack({
     dice,
     models: unitModels(attacker.actor),
@@ -78,6 +86,7 @@ export async function performAttack(params: PerformAttackParams): Promise<Attack
   });
 
   await applyCasualties(defender.actor, result.casualties);
+  const modelsRemoved = modelsBefore - unitModels(defender.actor);
 
-  return { ...result, destroyed: isUnitDestroyed(defender.actor) };
+  return { ...result, modelsRemoved, destroyed: isUnitDestroyed(defender.actor) };
 }

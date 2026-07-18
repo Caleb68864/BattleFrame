@@ -144,5 +144,15 @@ function orderedPlayers(units: readonly SkirmishUnit[], firstPlayerId: string): 
 
   const index = order.indexOf(firstPlayerId);
 
-  return index <= 0 ? order : [...order.slice(index), ...order.slice(0, index)];
+  // Fail loud rather than silently starting with the wrong side: a `firstPlayerId`
+  // that names no unit's player (a typo, or a stale initiative winner from a
+  // prior round) is a caller bug, and `indexOf` returning -1 would otherwise be
+  // treated identically to index 0 -- a plausible-but-wrong turn order.
+  if (index < 0) {
+    throw new IllegalActivationError(
+      `firstPlayerId "${firstPlayerId}" controls none of the units in this round`
+    );
+  }
+
+  return index === 0 ? order : [...order.slice(index), ...order.slice(0, index)];
 }

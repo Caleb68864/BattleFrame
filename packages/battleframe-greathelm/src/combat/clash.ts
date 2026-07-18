@@ -145,8 +145,9 @@ export function baseContactToleranceUnits(token: unknown): number {
  * definition of "touching" in the ruleset, not four.
  *
  * `token` is only ever read for its scene scale; pass either side of the pair
- * (core's `assertSameMeasurementSpace` has already refused any pair whose grid
- * parameters differ, so both sides give the same answer).
+ * (core's `assertSameMeasurementSpace` has already refused any pair not in the
+ * same measurement space -- by scene id, or grid parameters as a fallback -- so
+ * both sides share a scale and give the same answer).
  */
 export function isBaseContactDistance(distance: number, token?: unknown): boolean {
   return distance <= baseContactToleranceUnits(token);

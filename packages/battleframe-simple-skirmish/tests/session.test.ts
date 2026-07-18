@@ -55,6 +55,12 @@ describe("createSkirmishRound -- alternating activation", () => {
     expect(() => round.activate("ghost")).toThrow(IllegalActivationError); // unknown
   });
 
+  it("fails loud when the first player controls no unit, rather than starting the wrong side", () => {
+    expect(() => createSkirmishRound(units(["a1", "a"], ["b1", "b"]), "ghost")).toThrow(
+      IllegalActivationError
+    );
+  });
+
   it("lists a player's un-activated units", () => {
     const round = createSkirmishRound(units(["a1", "a"], ["a2", "a"], ["b1", "b"]), "a");
     expect(round.unactivated("a").sort()).toEqual(["a1", "a2"]);

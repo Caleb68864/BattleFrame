@@ -61,7 +61,7 @@ describe("performAttack", () => {
       dice: scriptedDice([4, 4, 2, 3, 3])
     });
 
-    expect(outcome).toMatchObject({ hits: 2, casualties: 2, destroyed: false });
+    expect(outcome).toMatchObject({ hits: 2, casualties: 2, modelsRemoved: 2, destroyed: false });
     expect(defender.actor.system.models).toBe(1);
   });
 
@@ -78,7 +78,9 @@ describe("performAttack", () => {
       dice: scriptedDice([2, 5, 6])
     });
 
-    expect(outcome).toMatchObject({ hits: 3, casualties: 3, destroyed: true });
+    // 3 unsaved hits, but only 2 models to remove: casualties is the raw combat
+    // figure, modelsRemoved is what actually left the table.
+    expect(outcome).toMatchObject({ hits: 3, casualties: 3, modelsRemoved: 2, destroyed: true });
     expect(defender.actor.system.models).toBe(0);
   });
 });

@@ -5,6 +5,14 @@ mapped to where it is implemented, or to an explicit, honest deferral. ✅ = imp
 tested; 🟡 = mechanical primitive implemented, table/UI choice deferred; ⏳ = deferred (Advanced
 Game or needs a collision/UI layer this MVP does not build). Nothing is silently missing.
 
+> [!important] ✅ means "implemented and tested", NOT "reachable in a running Foundry world".
+> The combat / round / victory / range / movement logic below is proven in the test suite, but
+> **`main.ts` does not yet import any of it**, so it is tree-shaken out of `dist/simple-skirmish.js`.
+> The shipped module today contributes the Unit actor type and its sheet; the mechanics have no
+> caller a Foundry session reaches until the **in-canvas activation control** (the one remaining
+> ⏳ under "Foundry integration") wires them. The rules are correct and tested; the game is not
+> yet clickable. This is the single most important thing left to build.
+
 ## Order of Play
 | Rule | Status | Where |
 |---|---|---|

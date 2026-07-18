@@ -1194,3 +1194,30 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   suite follows, now applied to the second ruleset from the start rather than after a
   live-world surprise.
 - Commit: test(simple-skirmish): prove the init hook wires the data model, sheet, and ruleset
+
+## 2026-07-17 — Review of the new ruleset: mechanics sound; three honest fixes
+- Symptom: an independent review of `battleframe-simple-skirmish` confirmed the
+  arithmetic is correct (hit >= Attack, casualty < Save with the right inversion,
+  range <=, die clamp, null never coerced to 0 -- no off-by-one), and surfaced
+  three real items.
+- Fix: (1) `performAttack` reported `casualties` = raw unsaved hits, which a card
+  would over-report (5 "casualties" on a 2-model unit); added `modelsRemoved` =
+  the count actually removed (before - after), leaving `casualties` as the combat
+  figure. (2) `orderedPlayers` treated an unknown `firstPlayerId` (`indexOf` -1)
+  the same as index 0 -- a silent wrong turn order; now throws, matching the
+  module's fail-loud posture. (3) A GREATHELM comment still said core refuses a
+  pair "whose grid parameters differ"; after the scene-id change the primary check
+  is identity, grid is the fallback -- corrected.
+- Surfaces: `packages/battleframe-simple-skirmish/src/combat/attack.ts`
+  (`modelsRemoved`), `src/round/session.ts` (`orderedPlayers` guard),
+  `packages/battleframe-greathelm/src/combat/clash.ts` (comment),
+  `COVERAGE.md` (accuracy note), tests.
+- Watch: the review's headline is not a code bug but a **documentation
+  overstatement**: `main.ts` imports only the data model + sheet, so all combat/
+  round/victory logic is tree-shaken out of the shipped bundle -- correct and
+  tested, but unreachable in a running world until the in-canvas activation control
+  wires it. COVERAGE.md now states this in bold at the top: ✅ means "implemented
+  and tested", not "clickable in Foundry". Advantage/champion/`dieSize` remain
+  computed-but-unconsumed, the documented Advanced-Game deferral. The activation
+  control is the one thing left to make the Basic Game playable in-app.
+- Commit: fix(simple-skirmish): report models actually removed; fail loud on an unknown first player
