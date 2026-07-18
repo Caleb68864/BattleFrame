@@ -1739,3 +1739,18 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Watch: GM always sees the panel except when the mode is `everyone` (trivially
   true anyway); the predicate never reads a Foundry global.
 - Commit: feat(core): hover-panel visibility resolution
+
+## 2026-07-18 — Hover panel model builder is pure and never throws
+- Symptom: rendering the hover panel from a live actor risks throwing on missing
+  `system` fields and would otherwise reach into Foundry `CONFIG.statusEffects`
+  for status icons — untestable and fragile.
+- Fix: `buildPanelModel(actor, provider, resolveStatus)` maps each provider field
+  to a `{ label, text }` row, rendering a missing/null value as an em dash (and
+  `—/max` when the field declares a max) so it never throws. Active statuses are
+  mapped through an injected `resolveStatus` and silently dropped when it returns
+  undefined, keeping the CONFIG lookup out of core.
+- Surfaces: `packages/battleframe/src/ui/hover-panel-model.ts`,
+  `packages/battleframe/tests/hover-panel-model.test.ts`.
+- Watch: values are stringified via `String(value)`; unresolvable statuses are
+  omitted rather than shown icon-less.
+- Commit: feat(core): hover-panel content model builder
