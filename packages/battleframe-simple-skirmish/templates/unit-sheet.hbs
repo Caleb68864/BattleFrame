@@ -25,19 +25,19 @@
   <section class="bf-section">
     <h2 class="bf-section__title">{{localize "battleframe-simple-skirmish.sections.attacks"}}</h2>
     <div class="bf-devices">
-      <label class="bf-device bf-device--attack">
+      <label class="bf-device bf-device--attack bf-device--melee">
         <span class="bf-device__icon" aria-hidden="true"></span>
         <span class="bf-device__label">{{localize "battleframe-simple-skirmish.attackTypes.melee"}}</span>
         <input class="bf-device__value" type="number" name="system.attackMelee"
                value="{{system.attackMelee}}" min="1" max="6" step="1" />
       </label>
-      <label class="bf-device bf-device--attack">
+      <label class="bf-device bf-device--attack bf-device--ranged">
         <span class="bf-device__icon" aria-hidden="true"></span>
         <span class="bf-device__label">{{localize "battleframe-simple-skirmish.attackTypes.ranged"}}</span>
         <input class="bf-device__value" type="number" name="system.attackRanged"
                value="{{system.attackRanged}}" min="1" max="6" step="1" />
       </label>
-      <label class="bf-device bf-device--attack">
+      <label class="bf-device bf-device--attack bf-device--magic">
         <span class="bf-device__icon" aria-hidden="true"></span>
         <span class="bf-device__label">{{localize "battleframe-simple-skirmish.attackTypes.magic"}}</span>
         <input class="bf-device__value" type="number" name="system.attackMagic"
