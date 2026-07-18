@@ -12,6 +12,11 @@
       "save": "Save",
       "skill": "Skill"
     },
+    "sections": {
+      "muster": "Muster",
+      "attacks": "Attacks",
+      "defence": "Defence"
+    },
     "controls": {
       "round": {
         "title": "Simple Skirmish",

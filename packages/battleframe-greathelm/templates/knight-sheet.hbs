@@ -1,19 +1,27 @@
 {{!-- GREATHELM's knight sheet. Knights have no stat line (see
      vault/greathelm/knights-have-no-stat-line.md) -- momentum and damage
      markers, both capped at 3, are the only per-knight numbers the QSR
-     evidences (see src/data/knight.ts). --}}
-<form class="battleframe-greathelm knight-sheet">
-  <header class="knight-sheet__header">
-    <h1 class="knight-sheet__name">{{actor.name}}</h1>
+     evidences (see src/data/knight.ts). Each marker is struck as a heraldic
+     device: the pennant for momentum, the cracked great-helm for damage. --}}
+<form class="battleframe-greathelm knight-sheet bf-plate">
+  <header class="bf-plate__header">
+    <span class="bf-crest" aria-hidden="true"></span>
+    <h1 class="bf-plate__name">{{actor.name}}</h1>
   </header>
 
-  <div class="form-group">
-    <label>{{localize "battleframe-greathelm.fields.momentum"}}</label>
-    <input type="number" name="system.momentum" value="{{system.momentum}}" min="0" max="3" step="1">
-  </div>
+  <div class="bf-devices">
+    <label class="bf-device bf-device--momentum">
+      <span class="bf-device__icon" aria-hidden="true"></span>
+      <span class="bf-device__label">{{localize "battleframe-greathelm.fields.momentum"}}</span>
+      <input class="bf-device__value" type="number" name="system.momentum"
+             value="{{system.momentum}}" min="0" max="3" step="1">
+    </label>
 
-  <div class="form-group">
-    <label>{{localize "battleframe-greathelm.fields.damage"}}</label>
-    <input type="number" name="system.damage" value="{{system.damage}}" min="0" max="3" step="1">
+    <label class="bf-device bf-device--damage">
+      <span class="bf-device__icon" aria-hidden="true"></span>
+      <span class="bf-device__label">{{localize "battleframe-greathelm.fields.damage"}}</span>
+      <input class="bf-device__value" type="number" name="system.damage"
+             value="{{system.damage}}" min="0" max="3" step="1">
+    </label>
   </div>
 </form>
