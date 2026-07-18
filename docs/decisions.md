@@ -1568,3 +1568,24 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   moving live state onto documents + the canvas, not undoing those. P0 is a
   significant architecture change; get sign-off before executing.
 - Commit: docs: Foundry-integration audit + prioritized roadmap
+
+## 2026-07-18 — P0: Simple Skirmish round state moved onto the Combat document
+- Symptom: the round lived in module-scoped `let activeRound`/`activeUnits`, so a
+  GM reload mid-round wiped it, no other client saw it, and the registered
+  BattleframeCombat tracker rendered empty (roadmap P0).
+- Fix: made `SkirmishRound` serializable (`serialize()`/`restoreSkirmishRound`),
+  and rewrote the round-control glue to (a) create/get a `Combat`, (b) seat each
+  unit token as a `Combatant`, (c) store the serialized round on
+  `combat.flags.battleframe.round` + the tracker order on `.order`, and (d)
+  reconstruct the round from the document on every control click. Retired the
+  module globals; `_resetActiveRoundForTests` is now a no-op.
+- Surfaces: `packages/battleframe-simple-skirmish/src/round/session.ts`
+  (serialize/restore), `src/ui/round-control.ts` (the glue), `tests/session.test.ts`
+  + `tests/round-control.test.ts` (a `fakeCombat` double; asserts state lands on
+  the combat).
+- Watch: live-verified — running the round via the real scene-control button
+  created a Combat with 6 Combatants and the round flag, and the state SURVIVED A
+  FULL PAGE RELOAD (the property the JS-variable model lost). The activation
+  algorithm is unchanged; only the storage moved. INX + GREATHELM P0 to follow
+  (each has its own round machine to make serializable).
+- Commit: refactor(simple-skirmish): round state on the Combat document (P0)

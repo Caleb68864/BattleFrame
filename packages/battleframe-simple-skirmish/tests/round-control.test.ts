@@ -40,7 +40,32 @@ function fakeToken(id: string, name: string, disposition: number, system: Record
   return { id, actor, document: { id, disposition }, center: { x, y: 0 }, scene: { grid: { size: 100, distance: 1, units: "in" } } };
 }
 
-/** Stubs the smallest Foundry the glue needs: game/canvas/ui. */
+/** An in-memory Combat document double: flags + combatants, the round's new home. */
+function fakeCombat() {
+  const flags: Record<string, Record<string, unknown>> = {};
+  const combatants: { id: string; tokenId: string }[] = [];
+  let n = 0;
+  return {
+    combatants,
+    getFlag: (scope: string, key: string) => flags[scope]?.[key],
+    async setFlag(scope: string, key: string, value: unknown) {
+      (flags[scope] ??= {})[key] = value;
+    },
+    async unsetFlag(scope: string, key: string) {
+      if (flags[scope]) delete flags[scope][key];
+    },
+    async createEmbeddedDocuments(_name: string, data: Record<string, unknown>[]) {
+      const created = data.map((d) => ({ id: `c${n++}`, tokenId: d.tokenId as string }));
+      combatants.push(...created);
+      return created;
+    },
+    async startCombat() {
+      /* no-op */
+    }
+  };
+}
+
+/** Stubs the smallest Foundry the glue needs: game/canvas/ui/Combat. */
 function stubFoundry(options: {
   isGM?: boolean;
   placeables?: ReturnType<typeof fakeToken>[];
@@ -50,6 +75,7 @@ function stubFoundry(options: {
 }) {
   const notes: string[] = [];
   const record = (lvl: string) => (m: string) => { notes.push(`${lvl}:${m}`); };
+  const combat = fakeCombat();
   // measure returns centre-to-centre = |dx| in scene units (100px = 1").
   const measure = {
     between(a: unknown, b: unknown, mode?: string) {
@@ -61,14 +87,17 @@ function stubFoundry(options: {
   vi.stubGlobal("game", {
     user: { isGM: options.isGM ?? true, targets: new Set(options.targets ?? []) },
     battleframe: { dice: options.dice ?? scriptedDice([6, 1, 6, 1, 6, 1]), measure },
-    i18n: { localize: (k: string) => k, format: (k: string) => k }
+    i18n: { localize: (k: string) => k, format: (k: string) => k },
+    combat,
+    combats: { active: combat, contents: [combat] }
   });
+  vi.stubGlobal("Combat", { create: async () => combat });
   vi.stubGlobal("canvas", {
     tokens: { placeables: options.placeables ?? [], controlled: options.controlled ?? [] },
-    scene: { grid: { size: 100, distance: 1, units: "in" } }
+    scene: { id: "scene1", grid: { size: 100, distance: 1, units: "in" } }
   });
   vi.stubGlobal("ui", { notifications: { info: record("info"), warn: record("warn"), error: record("error") } });
-  return notes;
+  return { notes, combat };
 }
 
 describe("the round-control glue against a stubbed Foundry", () => {
@@ -83,19 +112,19 @@ describe("the round-control glue against a stubbed Foundry", () => {
   });
 
   it("runRoundControl warns and starts no round for a non-GM", async () => {
-    const notes = stubFoundry({ isGM: false, placeables: [fakeToken("a1", "Blue", 1, {})] });
+    const { notes } = stubFoundry({ isGM: false, placeables: [fakeToken("a1", "Blue", 1, {})] });
     await runRoundControl();
     expect(notes.some((n) => n.startsWith("warn"))).toBe(true);
   });
 
   it("runRoundControl warns when the canvas holds no units", async () => {
-    const notes = stubFoundry({ placeables: [] });
+    const { notes } = stubFoundry({ placeables: [] });
     await runRoundControl();
     expect(notes.some((n) => n.includes("noUnits"))).toBe(true);
   });
 
   it("activateSelectedControl warns when no round is in progress", async () => {
-    const notes = stubFoundry({ placeables: [fakeToken("a1", "Blue", 1, {})] });
+    const { notes } = stubFoundry({ placeables: [fakeToken("a1", "Blue", 1, {})] });
     await activateSelectedControl();
     expect(notes.some((n) => n.includes("noRound"))).toBe(true);
   });
@@ -103,7 +132,7 @@ describe("the round-control glue against a stubbed Foundry", () => {
   it("refuses to restart a round that is still in progress", async () => {
     const blue = fakeToken("a1", "Blue", 1, {}, 0);
     const red = fakeToken("b1", "Red", -1, {}, 300);
-    const notes = stubFoundry({ placeables: [blue, red], dice: scriptedDice([6, 1]) });
+    const { notes } = stubFoundry({ placeables: [blue, red], dice: scriptedDice([6, 1]) });
 
     await runRoundControl(); // opens a round (2 units un-activated)
     notes.length = 0;
@@ -113,12 +142,25 @@ describe("the round-control glue against a stubbed Foundry", () => {
     expect(notes.some((n) => n.includes("started"))).toBe(false);
   });
 
+  it("persists the round state + combatants on the Combat document (not a module variable)", async () => {
+    const blue = fakeToken("a1", "Blue", 1, {}, 0);
+    const red = fakeToken("b1", "Red", -1, {}, 300);
+    const { combat } = stubFoundry({ placeables: [blue, red], dice: scriptedDice([6, 1]) });
+
+    await runRoundControl();
+
+    const state = combat.getFlag("battleframe", "round") as { firstPlayerId: string } | undefined;
+    expect(state?.firstPlayerId).toBe("friendly"); // Blue (disposition 1) won initiative
+    expect(combat.combatants.length).toBe(2); // both units seated as Combatants
+    expect(combat.getFlag("battleframe", "order")).toHaveLength(2); // tracker order flag
+  });
+
   it("plays a full activation through the glue: run round, select, attack, name the units", async () => {
     const blue = fakeToken("a1", "Blue Spearmen", 1, { attackMelee: 4, models: 4 }, 0);
     const red = fakeToken("b1", "Red Skeletons", -1, { save: 5, models: 3 }, 300); // 3" away
     // Blue rolls initiative 6 vs Red 1 -> Blue first. Then 4 attack dice, 2 saves.
     const dice = scriptedDice([6, 1, /*attack*/ 4, 4, 2, 6, /*saves*/ 3, 6]);
-    const notes = stubFoundry({ placeables: [blue, red], controlled: [blue], targets: [red], dice });
+    const { notes } = stubFoundry({ placeables: [blue, red], controlled: [blue], targets: [red], dice });
 
     await runRoundControl();
     expect(notes.some((n) => n.includes("started"))).toBe(true);

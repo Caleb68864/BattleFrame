@@ -46,6 +46,19 @@ export function determineFirstPlayer(rolls: readonly InitiativeRoll[]): string |
   return best && !tied ? best.playerId : null;
 }
 
+/**
+ * A round's serializable state -- everything needed to reconstruct the round
+ * machine. This is what lives on the `Combat` document (a flag), so a round
+ * survives a reload and syncs to other clients instead of dying with a
+ * module-scoped variable.
+ */
+export interface SkirmishRoundState {
+  firstPlayerId: string;
+  activatedIds: string[];
+  /** Index into the ordered sides -- whose turn is next. */
+  turnPointer: number;
+}
+
 export interface SkirmishRound {
   /** Whose turn it is to activate a unit, or undefined once every unit is activated. */
   activePlayerId(): string | undefined;
@@ -56,6 +69,8 @@ export interface SkirmishRound {
   unactivated(playerId: string): string[];
   /** True once every unit has been activated (the round is over). */
   isComplete(): boolean;
+  /** The state to persist on the Combat document; restore with `restoreSkirmishRound`. */
+  serialize(): SkirmishRoundState;
 }
 
 /**
@@ -67,12 +82,13 @@ export interface SkirmishRound {
  */
 export function createSkirmishRound(
   allUnits: readonly SkirmishUnit[],
-  firstPlayerId: string
+  firstPlayerId: string,
+  initial?: { activatedIds?: readonly string[]; turnPointer?: number }
 ): SkirmishRound {
   const playerIds = orderedPlayers(allUnits, firstPlayerId);
   const unitById = new Map(allUnits.map((unit) => [unit.id, unit]));
-  const activated = new Set<string>();
-  let turnPointer = 0;
+  const activated = new Set<string>(initial?.activatedIds ?? []);
+  let turnPointer = initial?.turnPointer ?? 0;
 
   const isDestroyed = (unit: SkirmishUnit): boolean => unit.isDestroyed?.() === true;
 
@@ -127,8 +143,28 @@ export function createSkirmishRound(
       activated.add(unitId);
       // Advance to the other side; activePlayerId() skips a side with nothing left.
       turnPointer = (playerIds.indexOf(unit.playerId) + 1) % playerIds.length;
-    }
+    },
+    serialize: () => ({
+      firstPlayerId,
+      activatedIds: [...activated],
+      turnPointer
+    })
   };
+}
+
+/**
+ * Rebuilds a round from the state persisted on the Combat document. The inverse
+ * of `SkirmishRound#serialize` -- the round machine is stateless between control
+ * clicks; its state lives on the document and is restored here each time.
+ */
+export function restoreSkirmishRound(
+  allUnits: readonly SkirmishUnit[],
+  state: SkirmishRoundState
+): SkirmishRound {
+  return createSkirmishRound(allUnits, state.firstPlayerId, {
+    activatedIds: state.activatedIds,
+    turnPointer: state.turnPointer
+  });
 }
 
 function orderedPlayers(units: readonly SkirmishUnit[], firstPlayerId: string): string[] {

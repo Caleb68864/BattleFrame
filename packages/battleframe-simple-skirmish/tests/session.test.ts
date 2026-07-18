@@ -3,6 +3,7 @@ import {
   createSkirmishRound,
   determineFirstPlayer,
   IllegalActivationError,
+  restoreSkirmishRound,
   type SkirmishUnit
 } from "../src/round/session";
 
@@ -17,6 +18,40 @@ describe("determineFirstPlayer", () => {
 
   it("returns null on a tie, so the caller can re-roll", () => {
     expect(determineFirstPlayer([{ playerId: "a", roll: 4 }, { playerId: "b", roll: 4 }])).toBeNull();
+  });
+});
+
+describe("serialize / restoreSkirmishRound -- round state on a document", () => {
+  it("round-trips the activation state so the round survives reconstruction", () => {
+    const roster = units(["a1", "A"], ["a2", "A"], ["b1", "B"]);
+    const round = createSkirmishRound(roster, "A");
+    round.activate("a1"); // A goes, now B's turn
+
+    const state = round.serialize();
+    expect(state.firstPlayerId).toBe("A");
+    expect(state.activatedIds).toEqual(["a1"]);
+    expect(typeof state.turnPointer).toBe("number");
+
+    const restored = restoreSkirmishRound(roster, state);
+    expect(restored.isActivated("a1")).toBe(true);
+    expect(restored.activePlayerId()).toBe("B");
+    expect(restored.isComplete()).toBe(false);
+
+    // The restored round continues correctly, alternating from where it left off.
+    restored.activate("b1");
+    expect(restored.activePlayerId()).toBe("A");
+    restored.activate("a2");
+    expect(restored.isComplete()).toBe(true);
+  });
+
+  it("preserves whose turn it is even when the last activation exhausted a side", () => {
+    const roster = units(["a1", "A"], ["b1", "B"], ["b2", "B"]);
+    const round = createSkirmishRound(roster, "A");
+    round.activate("a1"); // A exhausted; B continues twice
+    const restored = restoreSkirmishRound(roster, round.serialize());
+    expect(restored.activePlayerId()).toBe("B");
+    restored.activate("b1");
+    expect(restored.activePlayerId()).toBe("B"); // A has nothing left, stays B
   });
 });
 

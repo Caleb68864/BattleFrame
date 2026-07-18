@@ -12,7 +12,10 @@ import type { DiceApiLike } from "../combat/resolve";
 import {
   createSkirmishRound,
   determineFirstPlayer,
-  type SkirmishRound
+  restoreSkirmishRound,
+  type SkirmishRound,
+  type SkirmishRoundState,
+  type SkirmishUnit
 } from "../round/session";
 import { checkVictory, type VictoryOutcome } from "../round/victory";
 
@@ -287,8 +290,14 @@ interface CanvasTokenLike {
   actor?: (RoundControlUnit["actor"] & { id?: string; name?: string; type?: string }) | null;
 }
 
-/** Builds a `RoundControlUnit` from a canvas token, or null if it is not one of our units. */
-function unitFromToken(placeable: CanvasTokenLike): RoundControlUnit | null {
+/** A gathered unit plus the token/scene ids needed to seat it as a Combatant. */
+interface CanvasUnit extends RoundControlUnit {
+  tokenId?: string;
+  sceneId?: string;
+}
+
+/** Builds a `CanvasUnit` from a canvas token, or null if it is not one of our units. */
+function unitFromToken(placeable: CanvasTokenLike): CanvasUnit | null {
   const actor = placeable.actor;
   if (!actor || actor.type !== UNIT_TYPE) {
     return null;
@@ -299,19 +308,22 @@ function unitFromToken(placeable: CanvasTokenLike): RoundControlUnit | null {
     return null;
   }
 
+  const scene = (placeable.scene ?? globalScope().canvas?.scene) as { id?: string } | undefined;
   return {
     id,
     name: actor.name ?? id,
     playerId: sideFromDisposition(placeable.document?.disposition),
     // Centre-to-centre needs only the centre and the scene; no base flags.
-    token: { center: placeable.center, scene: placeable.scene ?? globalScope().canvas?.scene },
-    actor
+    token: { center: placeable.center, scene },
+    actor,
+    tokenId: placeable.document?.id ?? placeable.id,
+    sceneId: scene?.id
   };
 }
 
-export function gatherUnitsFromCanvas(): RoundControlUnit[] {
+export function gatherUnitsFromCanvas(): CanvasUnit[] {
   const placeables = (globalScope().canvas?.tokens?.placeables ?? []) as CanvasTokenLike[];
-  return placeables.map(unitFromToken).filter((unit): unit is RoundControlUnit => unit !== null);
+  return placeables.map(unitFromToken).filter((unit): unit is CanvasUnit => unit !== null);
 }
 
 /** Centre-to-centre distance between two units, in scene units, via the core measure service. */
@@ -323,9 +335,113 @@ function distanceInches(a: RoundControlUnit, b: RoundControlUnit): number {
   return measure.between(a.token, b.token, "centre-to-centre").distance;
 }
 
-// The round lives between control clicks. Module-scoped, GM-only, one per world.
-let activeRound: SkirmishRound | undefined;
-let activeUnits: RoundControlUnit[] = [];
+/* ---- Combat-document-backed round state -------------------------------- *
+ * The round is NOT a module variable. It lives on the `Combat` document: the
+ * serialized round state as a flag, the units as real `Combatant`s. It is
+ * reconstructed on every control click, so a GM reload mid-round keeps the
+ * round, other clients see it, and the native tracker renders the roster. See
+ * docs/roadmap-foundry-integration.md P0.
+ * ----------------------------------------------------------------------- */
+
+const FLAG_SCOPE = "battleframe";
+const ROUND_FLAG = "round";
+const ORDER_FLAG = "order";
+
+interface CombatantLike {
+  id?: string;
+  tokenId?: string;
+}
+
+interface CombatLike {
+  id?: string;
+  combatants: Iterable<CombatantLike> & { contents?: CombatantLike[] };
+  getFlag(scope: string, key: string): unknown;
+  setFlag(scope: string, key: string, value: unknown): Promise<unknown>;
+  unsetFlag(scope: string, key: string): Promise<unknown>;
+  createEmbeddedDocuments(name: string, data: Record<string, unknown>[]): Promise<CombatantLike[]>;
+  startCombat?(): Promise<unknown>;
+}
+
+function combatScope(): {
+  game?: { combat?: CombatLike | null; combats?: { active?: CombatLike | null; contents?: CombatLike[] } };
+  Combat?: { create(data: Record<string, unknown>): Promise<CombatLike> };
+  canvas?: { scene?: { id?: string } };
+} {
+  return globalThis as never;
+}
+
+function iterateCombatants(combat: CombatLike): CombatantLike[] {
+  const c = combat.combatants as { contents?: CombatantLike[] };
+  if (Array.isArray(combat.combatants)) {
+    return combat.combatants as CombatantLike[];
+  }
+  return c?.contents ?? [...(combat.combatants ?? [])];
+}
+
+/** The combat currently holding one of our rounds, or undefined. */
+function activeRoundCombat(): CombatLike | undefined {
+  const g = combatScope().game;
+  const candidates = [g?.combat, g?.combats?.active, ...(g?.combats?.contents ?? [])];
+  for (const c of candidates) {
+    if (c && c.getFlag?.(FLAG_SCOPE, ROUND_FLAG)) {
+      return c;
+    }
+  }
+  return undefined;
+}
+
+/** The active combat, or a new one created on the current scene. */
+async function getOrCreateCombat(): Promise<CombatLike | undefined> {
+  const scope = combatScope();
+  const existing = scope.game?.combat ?? scope.game?.combats?.active ?? undefined;
+  if (existing) {
+    return existing;
+  }
+  return scope.Combat?.create ? scope.Combat.create({ scene: scope.canvas?.scene?.id }) : undefined;
+}
+
+/** Seats each unit token as a Combatant (skipping tokens already in the combat). */
+async function ensureCombatants(combat: CombatLike, units: readonly CanvasUnit[]): Promise<void> {
+  const seated = new Set(iterateCombatants(combat).map((c) => c.tokenId).filter(Boolean) as string[]);
+  const toCreate = units
+    .filter((u) => u.tokenId && !seated.has(u.tokenId))
+    .map((u) => ({
+      tokenId: u.tokenId,
+      sceneId: u.sceneId,
+      actorId: (u.actor as { id?: string })?.id,
+      hidden: false
+    }));
+  if (toCreate.length > 0 && combat.createEmbeddedDocuments) {
+    await combat.createEmbeddedDocuments("Combatant", toCreate);
+  }
+}
+
+/** Combatant ids in unit order, for the tracker's `order` flag. */
+function orderFlag(combat: CombatLike, units: readonly CanvasUnit[]): string[] {
+  const byToken = new Map<string, string>();
+  for (const c of iterateCombatants(combat)) {
+    if (c.tokenId && c.id) {
+      byToken.set(c.tokenId, c.id);
+    }
+  }
+  return units
+    .map((u) => (u.tokenId ? byToken.get(u.tokenId) : undefined))
+    .filter((id): id is string => id !== undefined);
+}
+
+/** The SkirmishUnit list (with live isDestroyed) the round machine needs. */
+function toSkirmishUnits(units: readonly RoundControlUnit[]): SkirmishUnit[] {
+  return units.map((u) => ({
+    id: u.id,
+    playerId: u.playerId,
+    isDestroyed: () => isUnitDestroyed(u.actor)
+  }));
+}
+
+/** Reads the persisted round state off the combat, if any. */
+function readRoundState(combat: CombatLike | undefined): SkirmishRoundState | undefined {
+  return combat?.getFlag(FLAG_SCOPE, ROUND_FLAG) as SkirmishRoundState | undefined;
+}
 
 /** "Run Round": rolls initiative and opens a round for the GM to play unit by unit. */
 export async function runRoundControl(): Promise<void> {
@@ -334,14 +450,17 @@ export async function runRoundControl(): Promise<void> {
     return;
   }
 
-  // A round in progress is not silently thrown away. Clicking "Run Round" again
-  // mid-round would abandon the current one (units still to activate) and start
-  // over with fresh initiative -- a footgun a GM hits by reflex. A round clears
-  // itself the moment its last unit activates, so once it is finished this guard
-  // is gone and the next round starts normally.
-  if (activeRound && !activeRound.isComplete()) {
-    notifyUser(localize("controls.round.inProgress"), "warn");
-    return;
+  // A round in progress is not silently thrown away (a footgun a GM hits by
+  // reflex). The check now reads the persisted state off the Combat document, so
+  // it survives a reload -- a round is "in progress" until its last unit acts.
+  const existing = activeRoundCombat();
+  const existingState = readRoundState(existing);
+  if (existingState) {
+    const round = restoreSkirmishRound(toSkirmishUnits(gatherUnitsFromCanvas()), existingState);
+    if (!round.isComplete()) {
+      notifyUser(localize("controls.round.inProgress"), "warn");
+      return;
+    }
   }
 
   const dice = globalScope().game?.battleframe?.dice;
@@ -358,8 +477,21 @@ export async function runRoundControl(): Promise<void> {
 
   try {
     const { round, firstPlayerId } = await beginRound({ units, dice });
-    activeRound = round;
-    activeUnits = units;
+    const combat = existing ?? (await getOrCreateCombat());
+    if (!combat) {
+      notifyUser(localize("controls.round.noApi"), "error");
+      return;
+    }
+    await ensureCombatants(combat, units);
+    await combat.setFlag(FLAG_SCOPE, ORDER_FLAG, orderFlag(combat, units));
+    await combat.setFlag(FLAG_SCOPE, ROUND_FLAG, round.serialize());
+    if (combat.startCombat) {
+      try {
+        await combat.startCombat();
+      } catch {
+        /* already started -- fine */
+      }
+    }
     notifyUser(format("controls.round.started", { player: firstPlayerId }));
   } catch (error) {
     notifyUser(error instanceof Error ? error.message : String(error), "error");
@@ -368,15 +500,18 @@ export async function runRoundControl(): Promise<void> {
 
 /**
  * "Activate Unit": activates the selected friendly unit against the targeted
- * enemy (Foundry targeting), with the first legal attack type. Movement is the
- * GM's to apply on the canvas; this resolves the attack and advances the turn.
+ * enemy (Foundry targeting), with the first legal attack type. The round is
+ * reconstructed from the Combat document, advanced, and persisted back.
  */
 export async function activateSelectedControl(): Promise<void> {
   if (!isGM()) {
     notifyUser(localize("controls.round.gmOnly"), "warn");
     return;
   }
-  if (!activeRound) {
+
+  const combat = activeRoundCombat();
+  const state = readRoundState(combat);
+  if (!combat || !state) {
     notifyUser(localize("controls.activate.noRound"), "warn");
     return;
   }
@@ -387,23 +522,21 @@ export async function activateSelectedControl(): Promise<void> {
     return;
   }
 
+  const units = gatherUnitsFromCanvas();
   const controlled = (globalScope().canvas?.tokens?.controlled ?? []) as CanvasTokenLike[];
-  const attacker = controlled.map(unitFromToken).find((u): u is RoundControlUnit => u !== null);
+  const attacker = controlled.map(unitFromToken).find((u): u is CanvasUnit => u !== null);
   if (!attacker) {
     notifyUser(localize("controls.activate.noSelection"), "warn");
     return;
   }
 
-  // The GM's explicit Foundry target (if a living enemy), else the nearest
-  // enemy. `selectAttackTarget` owns that rule -- and the never-attack-yourself
-  // guard the live self-attack exposed.
   const explicitTargets = ([...(globalScope().game?.user?.targets ?? [])] as CanvasTokenLike[])
     .map(unitFromToken)
-    .filter((u): u is RoundControlUnit => u !== null);
+    .filter((u): u is CanvasUnit => u !== null);
   const target = selectAttackTarget(
     attacker,
     explicitTargets,
-    activeUnits,
+    units,
     globalScope().game?.battleframe?.measure
   );
 
@@ -415,20 +548,23 @@ export async function activateSelectedControl(): Promise<void> {
     notifyUser(localize("controls.activate.noLegalAttack"), "warn");
   }
 
+  const round = restoreSkirmishRound(toSkirmishUnits(units), state);
+
   try {
     const result = await resolveActivation({
-      round: activeRound,
+      round,
       attacker,
       target: type ? target : null,
       type,
       dice,
-      units: activeUnits,
+      units,
       notify: notifyUser
     });
 
+    // Persist the advanced round back onto the Combat document.
+    await combat.setFlag(FLAG_SCOPE, ROUND_FLAG, round.serialize());
     if (result.roundComplete) {
-      activeRound = undefined;
-      activeUnits = [];
+      await combat.unsetFlag(FLAG_SCOPE, ROUND_FLAG);
     }
   } catch (error) {
     notifyUser(error instanceof Error ? error.message : String(error), "warn");
@@ -509,8 +645,10 @@ export function registerRoundControl(): void {
   hooks.on("getSceneControlButtons", (...args: unknown[]) => addSceneControl(args[0]));
 }
 
-/** Test-only: clears the module-scoped active round between cases. */
+/**
+ * Test-only, now a no-op: the round is no longer module-scoped state (it lives on
+ * the Combat document). Kept so existing tests' `beforeEach` calls still resolve.
+ */
 export function _resetActiveRoundForTests(): void {
-  activeRound = undefined;
-  activeUnits = [];
+  /* round state lives on the Combat document now -- nothing module-scoped to clear */
 }
