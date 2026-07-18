@@ -42,6 +42,26 @@ export function isKnightRemoved(actor: ActorLike): boolean {
   return hasFled(actor) || (actor.system?.damage ?? 0) >= DAMAGE_LIMIT;
 }
 
+/** Foundry's core "defeated" status id (the skull overlay), or its documented `"dead"` fallback. */
+function defeatedStatusId(): string {
+  const config = (globalThis as unknown as {
+    CONFIG?: { specialStatusEffects?: { DEFEATED?: string } };
+  }).CONFIG;
+  return config?.specialStatusEffects?.DEFEATED ?? "dead";
+}
+
+/**
+ * Surfaces removal on the token via Foundry's native "defeated" status,
+ * matching `isKnightRemoved`: a knight downed (3 damage) or fled shows a skull
+ * that syncs to every client and persists on the document, instead of only an
+ * invisible marker count (roadmap P1). Damage/momentum stay `NumberField`s;
+ * only the threshold/flag condition goes native. Idempotent, and a no-op on an
+ * actor with no `toggleStatusEffect` (tests, plain objects).
+ */
+export async function syncKnightDefeatedStatus(actor: ActorLike): Promise<void> {
+  await actor.toggleStatusEffect?.(defeatedStatusId(), { active: isKnightRemoved(actor) });
+}
+
 /**
  * Records that a knight fled, on the Actor, so the removal survives a reload
  * for the same reason `applyClashDamage` writes wounds to the document rather
@@ -57,6 +77,8 @@ export async function markFled(actor: ActorLike): Promise<void> {
   }
 
   await actor.update({ [`flags.${MODULE_ID}.${FLED_FLAG}`]: true });
+  // Fleeing removes a knight from play immediately (QSR p2) -- show it.
+  await syncKnightDefeatedStatus(actor);
 }
 
 /**
@@ -81,4 +103,6 @@ export async function resetKnight(actor: ActorLike): Promise<void> {
     "system.momentum": 0,
     [`flags.${MODULE_ID}.-=${FLED_FLAG}`]: null,
   });
+  // A reset knight is back in play -- clear the skull the removal put on it.
+  await syncKnightDefeatedStatus(actor);
 }

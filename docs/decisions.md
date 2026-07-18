@@ -1684,3 +1684,26 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   the normal GM tracker flow registers it correctly. P0 is now complete for all
   three rulesets.
 - Commit: refactor(greathelm): round state on the Combat document (P0)
+
+## 2026-07-18 — P1: defeated-on-threshold for Simple Skirmish + GREATHELM
+- Symptom: a wiped Simple Skirmish unit (models == 0) and a removed GREATHELM
+  knight (3 damage, or fled a courage test) sat on the canvas identical to a
+  live one. The condition was an invisible number/flag; nothing showed on the
+  token. (InCountry's suppressed/defeated slice already did this; these two were
+  the remaining P1 gap.)
+- Fix: a small co-located `sync…DefeatedStatus(actor)` helper in each module
+  toggles Foundry's native "defeated" status (`CONFIG.specialStatusEffects.DEFEATED`,
+  the skull) to match the ruleset's own removal predicate — `isUnitDestroyed`
+  (SS) / `isKnightRemoved` (GH, either QSR route). Wired into the exact write
+  sites: SS `applyCasualties`; GH `applyClashDamage`, `markFled`, and `resetKnight`
+  (which clears it). The count/marker stays a `NumberField`; only the threshold
+  condition goes native. The turn-order drop already worked (both read removal
+  live), so this is purely making the state visible + synced + persisted.
+- Surfaces: `battleframe-simple-skirmish/src/data/unit-state.ts`,
+  `battleframe-greathelm/src/round/{removal,loop}.ts`, plus tests in
+  `tests/unit-state.test.ts` and `tests/removal.test.ts`.
+- Watch: live-verified on the shared world — `CONFIG.specialStatusEffects.DEFEATED`
+  is `"dead"` (matches the fallback), and `toggleStatusEffect("dead", {active})`
+  sets/clears `actor.statuses` on real SS-unit and GH-knight actors (temp actors
+  deleted, no debris). 526 tests green; typecheck + build clean.
+- Commit: feat(ss,greathelm): native defeated status on threshold (P1)

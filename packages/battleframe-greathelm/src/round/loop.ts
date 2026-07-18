@@ -1,5 +1,6 @@
 import { MODULE_ID, type ActionId, type DieFace } from "../constants";
 import { requiresClashTest } from "./actions";
+import { syncKnightDefeatedStatus } from "./removal";
 import {
   isInBaseContact,
   resolveClashTest,
@@ -33,6 +34,8 @@ export interface ActorLike {
   /** Foundry's per-document flag bag, namespaced by package id. Read via round/removal.ts, never directly. */
   flags?: Record<string, Record<string, unknown> | undefined>;
   update: (data: Record<string, unknown>) => Promise<unknown>;
+  /** Foundry's native status toggler -- present on real Actors, optional for tests/plain objects. */
+  toggleStatusEffect?: (id: string, options?: { active?: boolean }) => Promise<unknown>;
 }
 
 /**
@@ -48,6 +51,9 @@ export async function applyClashDamage(defenderActor: ActorLike, damage: number)
   const current = defenderActor.system?.damage ?? 0;
   const next = Math.min(3, current + damage);
   await defenderActor.update({ "system.damage": next });
+  // The wound that reaches the damage limit is exactly when the knight is
+  // removed from play -- surface that on the token (roadmap P1).
+  await syncKnightDefeatedStatus(defenderActor);
 }
 
 export interface ClashParticipantRef extends ClashParticipant {

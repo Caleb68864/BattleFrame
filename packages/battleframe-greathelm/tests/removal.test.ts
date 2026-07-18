@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { MODULE_ID } from "../src/constants";
 import {
   DAMAGE_LIMIT,
@@ -7,6 +7,7 @@ import {
   isKnightRemoved,
   markFled,
   resetKnight,
+  syncKnightDefeatedStatus,
 } from "../src/round/removal";
 import { checkVictory } from "../src/round/victory";
 import { toVictoryKnights } from "../src/ui/round-control";
@@ -16,10 +17,16 @@ function actor(overrides: Partial<ActorLike> = {}): ActorLike {
   return {
     system: { damage: 0 },
     flags: {},
+    toggleStatusEffect: vi.fn(async () => undefined),
     update: vi.fn(async () => undefined),
     ...overrides,
   };
 }
+
+afterEach(() => {
+  // CONFIG is a live global in Foundry; tests that stub it must not leak.
+  delete (globalThis as { CONFIG?: unknown }).CONFIG;
+});
 
 describe("isKnightRemoved", () => {
   it("treats a knight at the damage limit as removed", () => {
@@ -64,12 +71,66 @@ describe("markFled", () => {
 
     expect(knight.update).not.toHaveBeenCalled();
   });
+
+  it("surfaces the defeated skull on the token when a knight flees", async () => {
+    const knight = actor();
+    // Simulate Foundry applying the fled flag the write sets.
+    knight.update = vi.fn(async () => {
+      knight.flags = { [MODULE_ID]: { fled: true } };
+      return undefined;
+    });
+
+    await markFled(knight);
+
+    expect(knight.toggleStatusEffect).toHaveBeenCalledWith("dead", { active: true });
+  });
 });
 
 describe("hasFled", () => {
   it("is false by default and true once flagged", () => {
     expect(hasFled(actor())).toBe(false);
     expect(hasFled(actor({ flags: { [MODULE_ID]: { fled: true } } }))).toBe(true);
+  });
+});
+
+/**
+ * Roadmap P1: removal must be visible on the token, not just an invisible
+ * marker count. syncKnightDefeatedStatus matches Foundry's native "defeated"
+ * status (the skull) to isKnightRemoved -- either QSR route. The damage marker
+ * stays a NumberField; only the threshold/flag condition goes native.
+ */
+describe("syncKnightDefeatedStatus", () => {
+  it("marks a knight at the damage limit defeated on the token", async () => {
+    const knight = actor({ system: { damage: DAMAGE_LIMIT } });
+    await syncKnightDefeatedStatus(knight);
+    expect(knight.toggleStatusEffect).toHaveBeenCalledWith("dead", { active: true });
+  });
+
+  it("marks a fled knight defeated even when undamaged", async () => {
+    const knight = actor({ system: { damage: 0 }, flags: { [MODULE_ID]: { fled: true } } });
+    await syncKnightDefeatedStatus(knight);
+    expect(knight.toggleStatusEffect).toHaveBeenCalledWith("dead", { active: true });
+  });
+
+  it("clears the status for a knight still in play", async () => {
+    const knight = actor({ system: { damage: DAMAGE_LIMIT - 1 } });
+    await syncKnightDefeatedStatus(knight);
+    expect(knight.toggleStatusEffect).toHaveBeenCalledWith("dead", { active: false });
+  });
+
+  it("honours Foundry's configured DEFEATED status id", async () => {
+    (globalThis as { CONFIG?: unknown }).CONFIG = {
+      specialStatusEffects: { DEFEATED: "defeated" },
+    };
+    const knight = actor({ system: { damage: DAMAGE_LIMIT } });
+    await syncKnightDefeatedStatus(knight);
+    expect(knight.toggleStatusEffect).toHaveBeenCalledWith("defeated", { active: true });
+  });
+
+  it("is a no-op when the actor cannot toggle statuses", async () => {
+    await expect(
+      syncKnightDefeatedStatus({ update: vi.fn(async () => undefined) })
+    ).resolves.toBeUndefined();
   });
 });
 
@@ -113,6 +174,22 @@ describe("resetKnight", () => {
     await resetKnight(knight);
 
     expect(isKnightRemoved(knight)).toBe(false);
+  });
+
+  it("clears the defeated skull from the token when a knight resets", async () => {
+    const knight = actor({
+      system: { damage: DAMAGE_LIMIT },
+      flags: { [MODULE_ID]: { fled: true } },
+    });
+    knight.update = vi.fn(async () => {
+      knight.system = { damage: 0 };
+      knight.flags = {};
+      return undefined;
+    });
+
+    await resetKnight(knight);
+
+    expect(knight.toggleStatusEffect).toHaveBeenCalledWith("dead", { active: false });
   });
 });
 
