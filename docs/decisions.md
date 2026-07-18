@@ -1850,3 +1850,17 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Registry resolved defensively (`globalThis.battleframe.hover` ??
   `game.battleframe.hover`); a miss is a no-op.
 - Commit: this commit.
+
+## 2026-07-18 — Ruleset hover stat registrations (InCountry)
+- What: InCountry advertises its unit hover stat fields via
+  `registerInCountryHoverFields()`, called from init. Only `modelsRemaining`
+  registers (no `max`), `defaultVisibility: "everyone"`. Suppression is
+  deliberately NOT a hover field -- it is a battlefield condition surfaced
+  through the engine's status-icon row (status.ts), per the reimplementation
+  smell test.
+- New i18n key: `battleframe-incountry.fields.modelsRemaining` = "Models" added
+  to lang/en.json (the only new label this feature needed; GH and SS reused
+  existing keys). The engine localizes it at render time.
+- Registry resolved defensively (`globalThis.battleframe.hover` ??
+  `game.battleframe.hover`); a miss is a no-op.
+- Commit: this commit.

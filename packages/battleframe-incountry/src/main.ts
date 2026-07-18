@@ -1,4 +1,4 @@
-import { MODULE_ID } from "./constants";
+import { MODULE_ID, UNIT_ACTOR_TYPE } from "./constants";
 import { registerUnitDataModel } from "./data/unit";
 import { registerUnitSheet } from "./sheets/unit-sheet";
 import { registerStatusEffects } from "./status";
@@ -36,6 +36,41 @@ function failRegistration(reason: string): never {
   throw new Error(message);
 }
 
+/**
+ * Resolves the engine's hover stat registry defensively -- it may live on
+ * `globalThis.battleframe` or the bound `game.battleframe`, same shape as the
+ * api resolution.
+ */
+function hoverRegistry(): { register: (t: string, p: unknown) => void } | undefined {
+  const g = globalThis as {
+    battleframe?: { hover?: { register: (t: string, p: unknown) => void } };
+    game?: { battleframe?: { hover?: { register: (t: string, p: unknown) => void } } };
+  };
+  return g.battleframe?.hover ?? g.game?.battleframe?.hover;
+}
+
+/**
+ * Registers the unit hover stat fields with the engine's hover registry.
+ * `modelsRemaining` is the only hover number -- suppression is a battlefield
+ * condition surfaced through the engine's status-icon row (see status.ts), not
+ * a stat field. No `max`: a unit's live model count has no fixed ceiling on the
+ * card. Label reuses the `battleframe-incountry.fields.modelsRemaining` i18n
+ * key. No-op when the registry is absent.
+ */
+export function registerInCountryHoverFields(): void {
+  const registry = hoverRegistry();
+  if (!registry) {
+    return;
+  }
+
+  registry.register(`${MODULE_ID}.${UNIT_ACTOR_TYPE}`, {
+    fields: [
+      { key: "modelsRemaining", label: `${MODULE_ID}.fields.modelsRemaining` },
+    ],
+    defaultVisibility: "everyone",
+  });
+}
+
 /** Registers InCountry as a ruleset via the system's public API. */
 export function registerInCountryRuleset(): void {
   const api = resolveBattleframeApi();
@@ -67,6 +102,8 @@ globalHooks?.once("init", () => {
   registerUnitDataModel();
   registerUnitSheet();
   registerStatusEffects();
+  // Advertise the unit's hover stat fields to the engine's hover registry.
+  registerInCountryHoverFields();
   // The round trigger: a scene control answering Foundry's own hook. This is
   // what makes the round/combat logic reachable in the shipped bundle -- without
   // it, all of it is tree-shaken out.

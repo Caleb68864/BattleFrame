@@ -8,6 +8,9 @@
     "sheets": {
       "unit": "Unit"
     },
+    "fields": {
+      "modelsRemaining": "Models"
+    },
     "armor": {
       "unarmored": "Unarmored",
       "body": "Body Armor",
