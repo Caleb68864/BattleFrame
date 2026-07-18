@@ -1357,3 +1357,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   code and only felt wrong once a human kept clicking. The round-completion clear is
   what makes the guard self-releasing rather than a mode the GM has to exit.
 - Commit: harden(simple-skirmish): Run Round refuses to restart a round already in progress
+
+## 2026-07-17 — Simple Skirmish: removed a dead export
+- Symptom: `survivingModels` in `ui/round-control.ts` was exported "for the glue's
+  target lists" but used nowhere -- not in the glue (which calls `unitModels`/
+  `isUnitDestroyed` directly), not in tests. Dead code, the class this project treats
+  as a hazard.
+- Fix: removed `survivingModels` and the now-unused `unitModels` import. Verified the
+  Advanced-tier modules (champion/advantage/movement) are NOT dead in the same sense
+  -- they are documented, tested deferrals awaiting their wiring (COVERAGE.md), and
+  stay.
+- Surfaces: `packages/battleframe-simple-skirmish/src/ui/round-control.ts`.
+- Watch: the distinction that matters -- `survivingModels` was an accidental unused
+  export (delete it), whereas `netAdvantage`/`championDieSize`/`effectiveMoveInches`
+  are intentional Advanced-Game primitives with tests and a named deferral (keep
+  them). Dead-because-forgotten is not the same as dead-because-not-yet-wired.
+- Commit: chore(simple-skirmish): remove the unused survivingModels export

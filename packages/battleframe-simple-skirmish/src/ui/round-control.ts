@@ -5,7 +5,7 @@ import {
   UNIT_ACTOR_TYPE,
   type AttackType
 } from "../constants";
-import { isUnitDestroyed, unitModels } from "../data/unit-state";
+import { isUnitDestroyed } from "../data/unit-state";
 import { attackTargetFor, performAttack, type AttackOutcome, type AttackUnit } from "../combat/attack";
 import { isInRange, nearestEnemy, type MeasureApiLike } from "../combat/range";
 import type { DiceApiLike } from "../combat/resolve";
@@ -235,11 +235,6 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
 
 function distinct(values: readonly string[]): string[] {
   return [...new Set(values)];
-}
-
-/** Live model count of a unit, re-exported for the glue's target lists. */
-export function survivingModels(unit: RoundControlUnit): number {
-  return unitModels(unit.actor);
 }
 
 /* ------------------------------------------------------------------------ *
