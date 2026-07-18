@@ -21,12 +21,14 @@ import {
 //   ./applications/generic-actor-sheet -> generic Actor sheet at "init"
 //   ./rulesets/orphan-check        -> orphan warning at "ready"
 //   ./applications/setup-wizard    -> openWizardIfNeeded() at "ready"
+//   ./ui/hover-panel               -> registerHoverPanel() (hoverToken panel) at module scope
 import "./hooks";
 import "./combat/tracker";
 import "./data/generic-actor";
 import "./applications/generic-actor-sheet";
 import "./rulesets/orphan-check";
 import "./applications/setup-wizard";
+import "./ui/hover-panel";
 
 // The namespace, built at MODULE TOP LEVEL -- the dnd5e trick, verbatim in
 // spirit (vault/foundry-systems/settings-and-api-namespace-conventions.md):

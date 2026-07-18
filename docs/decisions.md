@@ -1778,3 +1778,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   `packages/battleframe/src/battleframe.ts`,
   `packages/battleframe/tests/hover-registry.test.ts`.
 - Commit: feat(core): expose game.battleframe.hover registry
+
+## 2026-07-18 — hoverToken panel glue wires pure pieces to a reused div
+- Symptom: The hover registry, visibility rules, and panel model are pure and
+  tested, but nothing binds them to Foundry's `hoverToken` hook or paints a panel.
+- Fix: Added `packages/battleframe/src/ui/hover-panel.ts` — thin glue that
+  registers `hoverToken`/`canvasPan`/`deleteToken` at module scope, stamps
+  `buildPanelModel` output into one reused `#battleframe-hover-panel` div, and
+  positions it in screen space off `canvas.stage.worldTransform`. The single
+  testable decision, `shouldRender`, is unit-tested; DOM/positioning is
+  live-verified. Guards on `globalThis.Hooks`/`document` keep import safe under
+  vitest (Hooks absent → `registerHoverPanel` returns early). Side-effect imported
+  from `battleframe.ts` alongside the other module-scope registrations.
+- Surfaces: `packages/battleframe/src/ui/hover-panel.ts`,
+  `packages/battleframe/src/battleframe.ts`,
+  `packages/battleframe/tests/hover-panel-glue.test.ts`.
+- Commit: feat(core): hoverToken panel glue
