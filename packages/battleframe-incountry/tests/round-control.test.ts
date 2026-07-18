@@ -122,6 +122,43 @@ describe("beginRound + resolveActivation — a played round to victory", () => {
     expect(result.victory).toEqual({ result: "winner", sideId: "A" });
   });
 
+  it("an attack that kills one of two models suppresses the survivor; the round continues", async () => {
+    const a1 = unit("a1", "A", system({ modelsRemaining: 2, attackClear: 6 }));
+    const b1 = unit(
+      "b1",
+      "B",
+      system({ modelsRemaining: 2, morale: 4, armorType: "unarmored", attackClear: 6 })
+    );
+    const units = [a1, b1];
+    const apply = (
+      u: RoundControlUnit,
+      s: { modelsRemaining: number; suppressed: boolean }
+    ) => {
+      u.actor.system.modelsRemaining = s.modelsRemaining;
+      u.actor.system.suppressed = s.suppressed;
+    };
+
+    // init A=2,B=8 -> A first.
+    // a1 -> b1: faces 3,4 hit vs 6 -> total 7 +2 = 9; armor 1 -> 5 <= 9 -> one model
+    //   dies (b1 -> 1, survives); suppression 7 > morale 4 -> suppressed.
+    // b1 -> a1: faces 6,5 hit vs 6 -> total 11 +2 = 13; armor 2 -> 6 <= 13 -> a1 -> 1;
+    //   suppression 8 > morale 6 -> suppressed. Both sides keep a model -> continue.
+    const dice = fakeDice([2, 8, 3, 4, 1, 7, 6, 5, 2, 8]);
+
+    const { order } = await beginRound({ units, dice, roundsApi, rng: () => 0 });
+
+    const r1 = await resolveActivation({ order, attacker: a1, target: b1, dice, units, applyState: apply });
+    expect(r1.attack?.targetDestroyed).toBe(false);
+    expect(b1.actor.system.modelsRemaining).toBe(1);
+    expect(b1.actor.system.suppressed).toBe(true);
+    expect(r1.roundComplete).toBe(false);
+
+    const r2 = await resolveActivation({ order, attacker: b1, target: a1, dice, units, applyState: apply });
+    expect(a1.actor.system.modelsRemaining).toBe(1);
+    expect(r2.roundComplete).toBe(true);
+    expect(r2.victory).toEqual({ result: "continue" });
+  });
+
   it("throws when a side activates out of turn", async () => {
     const a1 = unit("a1", "A", system());
     const b1 = unit("b1", "B", system());

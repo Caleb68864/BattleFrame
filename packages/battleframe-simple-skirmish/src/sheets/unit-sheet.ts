@@ -83,7 +83,10 @@ export function createUnitSheetClass(
     static DEFAULT_OPTIONS = {
       id: `${MODULE_ID}-unit-sheet`,
       classes: [MODULE_ID, "sheet", "actor", UNIT_ACTOR_TYPE],
-      position: { width: 460, height: 380 }
+      position: { width: 460, height: 380 },
+      // Save edits immediately (v14 DocumentSheetV2 defaults this to false, which
+      // -- combined with no submit button -- meant field edits never persisted).
+      form: { submitOnChange: true }
     };
 
     static PARTS = {

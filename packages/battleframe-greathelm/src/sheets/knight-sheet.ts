@@ -87,6 +87,9 @@ export function createKnightSheetClass(
       id: `${MODULE_ID}-knight-sheet`,
       classes: [MODULE_ID, "sheet", "actor", KNIGHT_ACTOR_TYPE],
       position: { width: 420, height: 360 },
+      // Save edits immediately (v14 DocumentSheetV2 defaults this to false, which
+      // -- combined with no submit button -- meant field edits never persisted).
+      form: { submitOnChange: true },
     };
 
     static PARTS = {

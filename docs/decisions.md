@@ -1502,3 +1502,23 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   worth surfacing; the shipped `weightedBagSelector` can never trigger it. 488
   tests green; typecheck clean; no regression to the two shipped rulesets.
 - Commit: harden(engine): idempotent rounds installer + empty-round handling
+
+## 2026-07-18 — Sheet save fix needed submitOnChange too (SS + GREATHELM)
+- Symptom: after the nested-`<form>`→`<div>` fix, InCountry saved edits (it set
+  `form:{submitOnChange:true}`), but Simple Skirmish and GREATHELM STILL did not
+  — a live regression check showed their edits persisted neither on change nor on
+  close. Their sheets inherit v14 DocumentSheetV2's `submitOnChange: false`, and
+  with no submit button that means no save path at all.
+- Fix: added `form: { submitOnChange: true }` to both sheets' DEFAULT_OPTIONS,
+  matching InCountry. Verified live: editing a field now persists immediately for
+  all three rulesets. The form→div fix was necessary but not sufficient; this is
+  the other half.
+- Surfaces: `packages/battleframe-simple-skirmish/src/sheets/unit-sheet.ts`,
+  `packages/battleframe-greathelm/src/sheets/knight-sheet.ts`.
+- Watch: this is the second live-only bug in the same subsystem — sheet editing
+  had never actually worked in any shipped ruleset, because every prior playtest
+  drove state programmatically (round controller / new-battle), never the sheet.
+  Also added durable coverage the unit suite lacked: an InCountry i18n
+  key-completeness test and an end-to-end round test where an attack suppresses a
+  surviving unit and the game continues.
+- Commit: fix(sheets): submitOnChange so SS + GREATHELM edits persist; add tests
