@@ -1864,3 +1864,25 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Registry resolved defensively (`globalThis.battleframe.hover` ??
   `game.battleframe.hover`); a miss is a no-op.
 - Commit: this commit.
+
+## 2026-07-18 — Actor stats on hover (engine UI panel) — feature complete + live-verified
+- What: hovering a token shows a small themed panel of the actor's stats + active
+  status icons. Engine owns the mechanism (`hoverToken` hook, a reused positioned
+  `<div>`, a `game.battleframe.hover` registry, the `statVisibility` world setting);
+  each ruleset registers its fields (GH: momentum/damage; SS: models/move/attacks/
+  save/skill; INX: modelsRemaining). Ruleset-neutral — the neutrality test passes.
+- Design/plan: docs/plans/2026-07-18-hover-stat-panel-design.md + -hover-stat-panel.md.
+- Review catches (subagent code review): (1) CRITICAL stored XSS — actor/token
+  names are user-editable, so the panel now HTML-escapes every interpolated value
+  via a pure, unit-tested `escapeHtml`/`buildPanelHtml`; (2) `position()` read
+  DOMMatrix `e`/`f` off a PIXI matrix (→ NaN) — fixed to `tx`/`ty`.
+- Live-verified on the shared world (Build 363): `hoverToken` is the correct hook;
+  panel renders with localized labels + value/max (Momentum 2/3, Damage 3/3), the
+  defeated skull in the status row (ties to P1), real pixel positioning (no NaN),
+  hides on leave; a malicious token name (`<img onerror>`) is entity-encoded and
+  does NOT execute (our escaping, confirmed with the payload actually reaching the
+  panel). Owners/GM visibility modes are exhaustively unit-tested; GM-sees path
+  confirmed live (non-GM path needs a second user session, not exercised live).
+- Watch: field labels must be existing i18n keys (the glue localizes them); the
+  panel is read-only; no per-player/per-token visibility overrides (YAGNI).
+- Commits: ec09403..a2cb833 (design, plan, 11 feature commits).
