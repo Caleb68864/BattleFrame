@@ -5,6 +5,7 @@ import { installAreaApi } from "./areas/area";
 import { installDiceApi } from "./dice/dice";
 import { installMeasurementApi } from "./measurement/measure";
 import { installRoundsApi } from "./rounds/activation";
+import { installLosApi } from "./vision/los";
 import { registerBattleframeSettings } from "./settings";
 import {
   createSetupWizardClass,
@@ -44,6 +45,7 @@ installMeasurementApi();
 installDiceApi();
 installAreaApi();
 installRoundsApi();
+installLosApi();
 
 function hooksAvailable(): boolean {
   return typeof Hooks !== "undefined";

@@ -1522,3 +1522,27 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   key-completeness test and an end-to-end round test where an attack suppresses a
   surviving unit and the game continues.
 - Commit: fix(sheets): submitOnChange so SS + GREATHELM edits persist; add tests
+
+## 2026-07-18 — Line-of-sight is a thin engine service over Foundry's walls, not a reimplementation
+- Symptom: the engine had dice / measure / areas / rounds services but no
+  line-of-sight, so a ruleset that needs LoS or cover (InCountry) had nothing to
+  call. Question raised: wrap Foundry's wall system, or reimplement?
+- Fix: added `game.battleframe.los` (`src/vision/los.ts`) that DELEGATES to
+  Foundry's `ClockwiseSweepPolygon.testCollision` /
+  `CONFIG.Canvas.polygonBackends[type]` -- it reimplements no geometry. It adds
+  only the ruleset-neutral layer worth sharing: `isClear(a, b, type?)`,
+  `between(tokenA, tokenB, {sample:"corners"})` for base-aware "can I see any
+  part of that model", and a fail-open default (clear) when there is no canvas
+  so tests/headless don't explode. Pure decision helpers take an injected
+  backend and test without Foundry (11 tests); the adapter feature-detects the
+  collision entry point.
+- Surfaces: `packages/battleframe/src/vision/los.ts` + `tests/los.test.ts`;
+  installer wired in `src/battleframe.ts`.
+- Watch: same wrap-not-reimplement judgement as `measure`/`areas` -- Foundry
+  owns the hard geometry (walls, terrain/limited-sight, doors), the engine owns
+  the base-aware token sampling on top. Verified live against a real wall: a
+  sight line crossing it is blocked, a line on one side is clear, token-to-token
+  across it is blocked. NOT yet consumed by InCountry -- wiring cover/LoS gating
+  into the round controller (INX cover = the line passing through terrain walls)
+  is the follow-up; the primitive is ready.
+- Commit: feat(engine): line-of-sight service delegating to Foundry's walls
