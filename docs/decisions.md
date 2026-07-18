@@ -1159,3 +1159,22 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   (the net, the alteration, the die), never the table choices, the same line
   GREATHELM draws.
 - Commit: feat(simple-skirmish): advantage points, champion dice, movement modifiers
+
+## 2026-07-17 — Neutrality import guard generalised to every ruleset, not just the first
+- Symptom: the neutrality test hardcoded `battleframe-greathelm` -- with a second
+  ruleset shipped, core could import `battleframe-simple-skirmish` (or any future
+  one) and the guard would not notice. The load-bearing "core depends on no
+  ruleset" proof only covered one ruleset.
+- Fix: match any *bare* `battleframe-<name>` import specifier. The bare-specifier
+  anchor is load-bearing: a first draft matched `battleframe-<any>` anywhere in the
+  path and tripped on core's own relative import of `./combat/battleframe-combat`
+  -- caught because the test went red on the current tree before any mutation. The
+  final pattern requires the specifier to START with `battleframe-`, so a package
+  dependency matches and a relative import of a same-named file does not.
+- Surfaces: `packages/battleframe/tests/integration/neutrality.test.ts`.
+- Watch: mutation-verified twice -- a bare `import ... from "battleframe-simple-
+  skirmish"` in core fails it, and the `./combat/battleframe-combat` relative
+  import does not. The vocabulary check still lists only GREATHELM proper nouns;
+  the new ruleset's terms (unit, champion, casualty) are too generic to add without
+  false positives, so the import guard -- now ruleset-agnostic -- is the strong one.
+- Commit: test(core): neutrality guard catches core importing ANY ruleset, not just greathelm

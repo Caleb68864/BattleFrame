@@ -24,17 +24,19 @@ function listFiles(dir: string): string[] {
   return files;
 }
 
-// Built from parts so this checker file itself doesn't trip its own scan.
-const RULESET_PACKAGE_NAME = ["battleframe", "greathelm"].join("-");
-
-// Matches only actual import/require specifiers pointing at the ruleset
-// package, not incidental prose mentions of its name in a comment.
-const RULESET_IMPORT_PATTERN = new RegExp(
-  `(?:from|require\\()\\s*["'][^"']*${RULESET_PACKAGE_NAME}[^"']*["']`
-);
+// Matches an import/require of ANY sibling ruleset package -- a *bare*
+// specifier `battleframe-<name>` (optionally with a subpath). Generalised from a
+// single hardcoded `battleframe-greathelm`: with a second ruleset shipped, core
+// importing `battleframe-simple-skirmish` -- or any future ruleset -- must fail
+// here too. The specifier must START with `battleframe-`, so core's own relative
+// imports of files that merely contain the string (e.g.
+// `./combat/battleframe-combat`) do NOT match -- only a package dependency does.
+// The `(?:from|require\()` prefix keeps an incidental comment mention from
+// tripping it, so this checker file naming the packages is safe.
+const RULESET_IMPORT_PATTERN = /(?:from|require\()\s*["']battleframe-[a-z][a-z0-9-]*(?:\/[^"']*)?["']/;
 
 describe("neutrality", () => {
-  it("no file under packages/battleframe/src imports from packages/battleframe-greathelm", () => {
+  it("no file under packages/battleframe/src imports from any ruleset package", () => {
     const offenders = listFiles(CORE_SRC)
       .filter((path) => path.endsWith(".ts"))
       .filter((path) => RULESET_IMPORT_PATTERN.test(readFileSync(path, "utf8")));
