@@ -84,6 +84,17 @@ function fakeDice(faces: number[]): DiceApiLike & { rolled: string[] } {
         throw new Error("fakeDice ran out of faces");
       }
       return { total: value };
+    },
+    async rollPool(count: number, dieSize: number) {
+      if (count <= 0) {
+        return [];
+      }
+      rolled.push(`${count}d${dieSize}`);
+      const out = queue.splice(0, count);
+      if (out.length < count) {
+        throw new Error("fakeDice ran out of faces");
+      }
+      return out;
     }
   };
 }
@@ -126,8 +137,8 @@ describe("resolveAttack — full attack against one target model", () => {
     expect(result.damage).toBe(0);
     expect(result.armorFaces).toEqual([]);
     expect(result.destroyed).toBe(false);
-    // Only the two attack dice were rolled; no armor die.
-    expect(dice.rolled).toEqual(["1d10", "1d10"]);
+    // One pool roll for the two attack dice; no armor pool (nothing hit).
+    expect(dice.rolled).toEqual(["2d10"]);
   });
 
   it("rolls zero attack dice as an automatic miss (0D10 weapons)", async () => {

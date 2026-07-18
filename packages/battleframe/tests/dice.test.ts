@@ -4,6 +4,7 @@ import { createDiceApi, installDiceApi } from "../src/dice/dice";
 class MockRoll {
   formula: string;
   total = 0;
+  dice?: Array<{ results: Array<{ result: number; active: boolean }> }>;
 
   constructor(formula: string, public data?: Record<string, unknown>) {
     this.formula = formula;
@@ -11,6 +12,14 @@ class MockRoll {
 
   async evaluate(): Promise<this> {
     this.total = 7;
+    // For a dice formula "Nd..", also expose N faces (1,2,3,...) so pool reads work.
+    const match = /^(\d+)d\d+/.exec(this.formula);
+    if (match) {
+      const count = Number(match[1]);
+      this.dice = [
+        { results: Array.from({ length: count }, (_v, i) => ({ result: i + 1, active: true })) }
+      ];
+    }
     return this;
   }
 }
@@ -23,6 +32,30 @@ beforeEach(() => {
   });
   vi.stubGlobal("ChatMessage", { create: vi.fn(async () => undefined) });
   vi.stubGlobal("game", undefined);
+});
+
+describe("dice.rollPool", () => {
+  it("rolls the whole pool as ONE Roll and ONE chat card, returning each face", async () => {
+    const dice = createDiceApi();
+    const faces = await dice.rollPool(5, 10, { rulesetId: "inx" });
+
+    expect(faces).toEqual([1, 2, 3, 4, 5]); // five faces, not five rolls
+
+    const chatMessage = (globalThis as unknown as {
+      ChatMessage: { create: ReturnType<typeof vi.fn> };
+    }).ChatMessage;
+    expect(chatMessage.create).toHaveBeenCalledTimes(1); // one card, not five
+  });
+
+  it("rolls nothing (and posts nothing) for an empty pool", async () => {
+    const dice = createDiceApi();
+    const faces = await dice.rollPool(0, 10);
+    expect(faces).toEqual([]);
+    const chatMessage = (globalThis as unknown as {
+      ChatMessage: { create: ReturnType<typeof vi.fn> };
+    }).ChatMessage;
+    expect(chatMessage.create).not.toHaveBeenCalled();
+  });
 });
 
 describe("dice.roll", () => {

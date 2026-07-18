@@ -10,6 +10,12 @@ export interface DiceApiLike {
     data?: Record<string, unknown>,
     options?: { rulesetId?: string; flavor?: string }
   ): Promise<DiceRollResult>;
+  /** Rolls a whole d-pool as ONE Roll/one chat card and returns the faces. */
+  rollPool(
+    count: number,
+    dieSize: number,
+    options?: { rulesetId?: string; flavor?: string }
+  ): Promise<number[]>;
 }
 
 /**
@@ -118,10 +124,7 @@ async function rollPool(
   count: number,
   flavor: string
 ): Promise<number[]> {
-  const faces: number[] = [];
-  for (let index = 0; index < count; index += 1) {
-    const result = await dice.roll(`1d${INX_DIE_SIZE}`, {}, { rulesetId: MODULE_ID, flavor });
-    faces.push(result.total);
-  }
-  return faces;
+  // One Roll for the whole pool -- one chat card, one Dice So Nice animation --
+  // instead of N separate 1d10 rolls. The engine dice service reads the faces.
+  return dice.rollPool(Math.max(0, count), INX_DIE_SIZE, { rulesetId: MODULE_ID, flavor });
 }

@@ -32,6 +32,16 @@ function fakeDice(faces: number[]): DiceApiLike {
         throw new Error("fakeDice ran out of faces");
       }
       return { total: value };
+    },
+    async rollPool(count: number) {
+      if (count <= 0) {
+        return [];
+      }
+      const out = queue.splice(0, count);
+      if (out.length < count) {
+        throw new Error("fakeDice ran out of faces");
+      }
+      return out;
     }
   };
 }

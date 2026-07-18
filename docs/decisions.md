@@ -1627,3 +1627,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   minor P4 nits (isNewerVersion swap, pool-panel actions map, DialogV2.confirm)
   are low-value and left for forge-converge to flag.
 - Commit: feat(engine): non-gridless guard (P3) + generic-sheet form fix (P4)
+
+## 2026-07-18 — P2 (part): dice pools roll as ONE Roll / one chat card
+- Symptom: InCountry rolled each pool die as a separate `1d10` Roll, so one
+  5-die attack posted ~6 chat messages and fired ~6 Dice So Nice animations
+  (roadmap P2, the most visible day-to-day defect).
+- Fix: added `dice.rollPool(count, dieSize, opts)` to the engine dice API -- one
+  `Nd{size}` Roll, one chat card, returns the individual faces (read off
+  `roll.dice[0].results`). InCountry's `resolve.ts` pool helper now delegates to
+  it instead of looping `dice.roll`.
+- Surfaces: `packages/battleframe/src/dice/dice.ts` + `tests/dice.test.ts`;
+  `packages/battleframe-incountry/src/combat/resolve.ts` + the three INX test
+  doubles (now provide `rollPool`).
+- Watch: live-verified -- `rollPool(5,10)` returns 5 faces and posts exactly ONE
+  message. The remaining P2 half (combat OUTCOMES as ChatMessage cards instead of
+  GM-only toasts) is a larger cross-module change, still pending. P1 (status
+  effects) and GREATHELM P0 also remain.
+- Commit: feat(engine): dice.rollPool -- one Roll per pool (P2)
