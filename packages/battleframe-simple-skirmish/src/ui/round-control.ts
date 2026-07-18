@@ -7,7 +7,7 @@ import {
 } from "../constants";
 import { isUnitDestroyed, unitModels } from "../data/unit-state";
 import { attackTargetFor, performAttack, type AttackOutcome, type AttackUnit } from "../combat/attack";
-import { isInRange, nearestEnemy } from "../combat/range";
+import { isInRange, nearestEnemy, type MeasureApiLike } from "../combat/range";
 import type { DiceApiLike } from "../combat/resolve";
 import {
   createSkirmishRound,
@@ -123,6 +123,37 @@ export function legalAttackTypes(attacker: RoundControlUnit, distance: number): 
   });
 }
 
+/** Whether `unit` is a living enemy of `attacker` -- a legal thing to attack. */
+export function isAttackableEnemy(attacker: RoundControlUnit, unit: RoundControlUnit): boolean {
+  return unit.playerId !== attacker.playerId && unit.id !== attacker.id && !isUnitDestroyed(unit.actor);
+}
+
+/**
+ * The unit `attacker` will attack: the GM's explicit target if it is a living
+ * enemy, otherwise the nearest living enemy. Never the attacker itself or a
+ * friendly unit, however the GM's Foundry targeting happens to be set -- a stale
+ * self-target made a unit attack itself live, and this is the guard, now
+ * testable outside a canvas. Returns null when no enemy is available.
+ */
+export function selectAttackTarget(
+  attacker: RoundControlUnit,
+  explicitTargets: readonly RoundControlUnit[],
+  allUnits: readonly RoundControlUnit[],
+  measure: MeasureApiLike | undefined
+): RoundControlUnit | null {
+  const explicit = explicitTargets.find((u) => isAttackableEnemy(attacker, u));
+  if (explicit) {
+    return explicit;
+  }
+
+  const enemies = allUnits.filter((u) => isAttackableEnemy(attacker, u));
+  if (measure && enemies.length > 0) {
+    return nearestEnemy(attacker, enemies, measure)?.enemy ?? null;
+  }
+
+  return null;
+}
+
 export class IllegalActivationError extends Error {
   constructor(message: string) {
     super(`${MODULE_ID} | ${message}`);
@@ -222,10 +253,6 @@ export function survivingModels(unit: RoundControlUnit): number {
  * ------------------------------------------------------------------------ */
 
 const UNIT_TYPE = `${MODULE_ID}.${UNIT_ACTOR_TYPE}`;
-
-interface MeasureApiLike {
-  between(a: unknown, b: unknown, mode?: "base-to-base" | "centre-to-centre"): { distance: number };
-}
 
 function globalScope(): {
   game?: {
@@ -362,24 +389,18 @@ export async function activateSelectedControl(): Promise<void> {
     return;
   }
 
-  // Prefer the GM's explicit Foundry target, but ONLY if it is a living enemy --
-  // a unit never attacks its own side or itself, however the GM's targeting
-  // happens to be set (found live: a stale self-target resolved a unit attacking
-  // itself). Otherwise attack the nearest living enemy, so a bare activation
-  // still resolves against a sensible foe.
-  const isEnemy = (u: RoundControlUnit): boolean =>
-    u.playerId !== attacker.playerId && u.id !== attacker.id && !isUnitDestroyed(u.actor);
-
-  const targets = [...(globalScope().game?.user?.targets ?? [])] as CanvasTokenLike[];
-  let target = targets.map(unitFromToken).find((u): u is RoundControlUnit => u !== null && isEnemy(u)) ?? null;
-
-  if (!target) {
-    const measure = globalScope().game?.battleframe?.measure;
-    const enemies = activeUnits.filter(isEnemy);
-    if (measure && enemies.length > 0) {
-      target = nearestEnemy(attacker, enemies, measure)?.enemy ?? null;
-    }
-  }
+  // The GM's explicit Foundry target (if a living enemy), else the nearest
+  // enemy. `selectAttackTarget` owns that rule -- and the never-attack-yourself
+  // guard the live self-attack exposed.
+  const explicitTargets = ([...(globalScope().game?.user?.targets ?? [])] as CanvasTokenLike[])
+    .map(unitFromToken)
+    .filter((u): u is RoundControlUnit => u !== null);
+  const target = selectAttackTarget(
+    attacker,
+    explicitTargets,
+    activeUnits,
+    globalScope().game?.battleframe?.measure
+  );
 
   const type = target
     ? legalAttackTypes(attacker, distanceInches(attacker, target))[0] ?? null

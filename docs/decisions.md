@@ -1301,3 +1301,23 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   scenario the orphan check is for, which is why its crashing there was the sharpest
   finding.
 - Commit: fix: three live-found bugs -- orphan-check crash, self-target attack, id-not-name notifications
+
+## 2026-07-17 — Simple Skirmish: the self-target guard is now testable, not buried in canvas glue
+- Symptom: the live self-attack bug (a unit attacking itself off a stale Foundry
+  target) had NO unit test, because the target-selection logic lived inside the
+  canvas-bound `activateSelectedControl` where a test cannot reach it.
+- Fix: extracted `selectAttackTarget(attacker, explicitTargets, allUnits, measure)`
+  and `isAttackableEnemy` into the testable core -- prefer the explicit target if
+  it is a living enemy, else the nearest living enemy, never the attacker itself or
+  a friendly. The glue now calls it. Six tests cover: explicit enemy, self-target
+  rejected (the live bug), friendly rejected, destroyed-enemy skipped, nearest
+  fallback, and no-enemy -> null. Also removed a duplicate `MeasureApiLike`
+  interface the glue declared alongside the imported one.
+- Surfaces: `packages/battleframe-simple-skirmish/src/ui/round-control.ts`
+  (`selectAttackTarget`, `isAttackableEnemy`), `tests/round-control.test.ts`.
+- Watch: the pattern the live-verification session drove home -- a bug found in a
+  canvas-bound handler should be fixed by extracting the decision into a pure
+  function and testing THAT, not by patching in place where it stays untestable. The
+  glue is now a thin caller; the rule (`isAttackableEnemy`) has one definition and a
+  regression test.
+- Commit: refactor(simple-skirmish): make the never-attack-yourself target rule testable

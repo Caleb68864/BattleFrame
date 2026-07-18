@@ -7,6 +7,7 @@ import {
   legalAttackTypes,
   resolveActivation,
   rollInitiative,
+  selectAttackTarget,
   sideFromDisposition,
   type RoundControlUnit
 } from "../src/ui/round-control";
@@ -131,6 +132,46 @@ describe("resolveActivation", () => {
     await expect(
       resolveActivation({ round, attacker: b1, target: null, type: null, dice: scriptedDice([]), units })
     ).rejects.toThrow(/turn to activate/);
+  });
+});
+
+describe("selectAttackTarget -- never yourself or a friend; prefer the explicit enemy, else the nearest", () => {
+  const enemyDist = (distances: Record<string, number>) => ({
+    between(_a: unknown, b: unknown, mode?: string) {
+      if (mode !== "centre-to-centre") throw new Error("range must be centre-to-centre");
+      return { distance: distances[(b as { id: string }).id] };
+    }
+  });
+
+  it("uses an explicit enemy target", () => {
+    const a1 = unit("a1", "a", {}), b1 = unit("b1", "b", {});
+    expect(selectAttackTarget(a1, [b1], [a1, b1], enemyDist({ b1: 5 }))?.id).toBe("b1");
+  });
+
+  it("never targets the attacker itself, even if it is the explicit target", () => {
+    const a1 = unit("a1", "a", {}), b1 = unit("b1", "b", {});
+    // a1 explicitly targeted (a stale self-target, the live bug) -> falls through to the enemy.
+    expect(selectAttackTarget(a1, [a1], [a1, b1], enemyDist({ b1: 9 }))?.id).toBe("b1");
+  });
+
+  it("never targets a friendly unit", () => {
+    const a1 = unit("a1", "a", {}), a2 = unit("a2", "a", {}), b1 = unit("b1", "b", {});
+    expect(selectAttackTarget(a1, [a2], [a1, a2, b1], enemyDist({ b1: 3 }))?.id).toBe("b1");
+  });
+
+  it("skips a destroyed enemy and finds a living one", () => {
+    const a1 = unit("a1", "a", {}), b1 = unit("b1", "b", { models: 0 }), b2 = unit("b2", "b", {});
+    expect(selectAttackTarget(a1, [b1], [a1, b1, b2], enemyDist({ b1: 1, b2: 7 }))?.id).toBe("b2");
+  });
+
+  it("falls to the nearest enemy when no explicit target is set", () => {
+    const a1 = unit("a1", "a", {}), b1 = unit("b1", "b", {}), b2 = unit("b2", "b", {});
+    expect(selectAttackTarget(a1, [], [a1, b1, b2], enemyDist({ b1: 8, b2: 4 }))?.id).toBe("b2");
+  });
+
+  it("returns null when there is no living enemy", () => {
+    const a1 = unit("a1", "a", {}), b1 = unit("b1", "b", { models: 0 });
+    expect(selectAttackTarget(a1, [b1], [a1, b1], enemyDist({ b1: 2 }))).toBeNull();
   });
 });
 
