@@ -1373,3 +1373,23 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   are intentional Advanced-Game primitives with tests and a named deferral (keep
   them). Dead-because-forgotten is not the same as dead-because-not-yet-wired.
 - Commit: chore(simple-skirmish): remove the unused survivingModels export
+
+## 2026-07-17 — Simple Skirmish: a multi-round game is covered end to end
+- Symptom: the integration tests played a single round; nothing verified the round
+  loop across MULTIPLE rounds -- that an indecisive round yields "continue", a fresh
+  round starts, and a later round that wipes a side yields the winner. This is what
+  live verification did by hand, clicking Run Round repeatedly.
+- Fix: a deterministic two-round test through the real orchestrator
+  (`beginRound` + `resolveActivation`): round 1 both sides trade and survive
+  (`{result: "continue"}`); round 2 the first side wipes the other's last model and
+  the activation returns `{result: "winner", playerId: "a"}`. Scripted dice make
+  every roll (initiative, attack, save) deterministic.
+- Surfaces: `packages/battleframe-simple-skirmish/tests/round-control.test.ts`.
+- Watch: at the orchestrator level `playerId` is the raw side id ("a"/"b"); the
+  "friendly"/"hostile" mapping is only `gatherUnitsFromCanvas`'s disposition read, so
+  the test asserts "a", not "friendly" (the first draft got this wrong and failed
+  loudly -- a useful reminder of where that translation lives). Together with the
+  single-round integration and the stubbed-Foundry glue tests, the full game --
+  initiative, alternating activation, attack, casualties, round completion, and
+  multi-round victory -- is now covered without a browser.
+- Commit: test(simple-skirmish): cover a multi-round game to a decisive victory

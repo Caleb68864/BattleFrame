@@ -287,6 +287,47 @@ describe("selectAttackTarget -- never yourself or a friend; prefer the explicit 
   });
 });
 
+describe("a multi-round game plays to a decisive victory", () => {
+  it("continues after an indecisive round, then wins once a side is wiped", async () => {
+    const blue = unit("a1", "a", { models: 2, attackMelee: 4, save: 5 });
+    const red = unit("b1", "b", { models: 2, attackMelee: 5, save: 6 });
+    const units = [blue, red];
+    const initFriendlyFirst = () => scriptedDice([6, 1]); // friendly rolls 6, hostile 1
+
+    // --- Round 1: both sides trade, neither is wiped ---
+    const r1 = await beginRound({ units, dice: initFriendlyFirst() });
+    expect(r1.firstPlayerId).toBe("a");
+
+    // Blue: 2 melee dice [4,4] -> 2 hits; Red save [3,6] -> 1 casualty (Red 2->1).
+    let step = await resolveActivation({
+      round: r1.round, attacker: blue, target: red, type: "melee",
+      dice: scriptedDice([4, 4, 3, 6]), units
+    });
+    expect(step.roundComplete).toBe(false);
+    expect(red.actor.system.models).toBe(1);
+
+    // Red (now 1 model) attacks Blue and misses: 1 die [1], needs 5+.
+    step = await resolveActivation({
+      round: r1.round, attacker: red, target: blue, type: "melee",
+      dice: scriptedDice([1]), units
+    });
+    expect(step.roundComplete).toBe(true);
+    expect(step.victory).toEqual({ result: "continue" });
+    expect(blue.actor.system.models).toBe(2);
+
+    // --- Round 2: Blue wipes Red's last model and wins ---
+    const r2 = await beginRound({ units, dice: initFriendlyFirst() });
+    const finish = await resolveActivation({
+      round: r2.round, attacker: blue, target: red, type: "melee",
+      dice: scriptedDice([4, 4, 3]), units // 2 hits; Red's last model saves on [3] < 6 -> casualty
+    });
+
+    expect(red.actor.system.models).toBe(0);
+    expect(finish.roundComplete).toBe(true);
+    expect(finish.victory).toEqual({ result: "winner", playerId: "a" });
+  });
+});
+
 describe("sideFromDisposition", () => {
   it("splits the two sides on Foundry's own hostile/friendly disposition", () => {
     expect(sideFromDisposition(-1)).toBe("hostile");
