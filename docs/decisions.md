@@ -1393,3 +1393,31 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   initiative, alternating activation, attack, casualties, round completion, and
   multi-round victory -- is now covered without a browser.
 - Commit: test(simple-skirmish): cover a multi-round game to a decisive victory
+
+## 2026-07-18 — InCountry: engine activation service + INX core combat logic
+- Symptom: a third ruleset (INCOUNTRY / INX 2.0) is being built, and it needs a
+  turn structure the engine did not offer: a privileged first pass of "priority"
+  units, then a count-weighted random "bag" draw of the rest. The two shipped
+  rulesets each hand-roll their own alternating round; nothing reusable existed,
+  and INX's is materially more complex.
+- Fix: a ruleset-neutral `createActivationOrder` in the engine
+  (`packages/battleframe/src/rounds/activation.ts`) — priority tier alternates
+  (first side leading, skipping a side with no priority unit), then a main tier
+  whose next side comes from a pluggable `selectMain` (defaults to alternation;
+  INX will inject a count-weighted bag). Plus the INX-specific pure logic in the
+  new module: d10 roll-under combat (attack total = SUM of hitting faces, armor
+  survives on strict >), suppression-as-morale, low-wins initiative, and the
+  counterattack ordering (highest total first, discard-on-death, equal =
+  simultaneous). All dependency-injected and unit-tested without Foundry.
+- Surfaces: `packages/battleframe/src/rounds/activation.ts` + `tests/activation.test.ts`;
+  `packages/battleframe-incountry/src/{combat/resolve,round/command,round/suppression,round/reactions}.ts`
+  + their tests; `src/constants.ts`.
+- Watch: the neutrality guard caught the first draft naming GREATHELM in an
+  engine comment — the engine service must describe the *shape* (priority tier,
+  bag selector) without knowing which ruleset uses it, so all ruleset names were
+  scrubbed from the engine file. The module ships NO INX content (mechanics +
+  numbers only, user supplies unit data), same clean-room stance as Simple
+  Skirmish. Still UNVERIFIED against live Foundry — this is pure logic; the
+  data model, sheet, and round controller (and the engine's real use of the
+  activation service) are the next TDD steps.
+- Commit: feat(incountry): engine activation service + INX core combat logic (TDD)
