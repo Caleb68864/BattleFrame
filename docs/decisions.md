@@ -1340,3 +1340,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   rules. Still UNVERIFIED-against-live only for the `getSceneControlButtons` payload
   shape and real token reads, which the live session already confirmed once.
 - Commit: test(simple-skirmish): cover the round-control glue against a stubbed Foundry
+
+## 2026-07-17 — Simple Skirmish: "Run Round" no longer silently abandons a round in progress
+- Symptom: `runRoundControl` always created a fresh round, overwriting `activeRound`
+  even mid-round. A GM clicking "Run Round" again by reflex would throw away the
+  current round (units still to activate) and re-roll initiative -- a footgun I hit
+  repeatedly while driving the live world.
+- Fix: guard -- if a round exists and is not complete, warn and do nothing. A round
+  clears itself the instant its last unit activates (the glue sets `activeRound =
+  undefined` on `roundComplete`), so once finished the guard is gone and the next
+  round starts normally. New i18n key `controls.round.inProgress`.
+- Surfaces: `packages/battleframe-simple-skirmish/src/ui/round-control.ts`
+  (`runRoundControl`), `lang/en.json`, `tests/round-control.test.ts` (refuses to
+  restart mid-round).
+- Watch: found by play, not by reading -- the "start over" behaviour looked fine in
+  code and only felt wrong once a human kept clicking. The round-completion clear is
+  what makes the guard self-releasing rather than a mode the GM has to exit.
+- Commit: harden(simple-skirmish): Run Round refuses to restart a round already in progress

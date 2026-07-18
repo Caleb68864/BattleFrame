@@ -20,7 +20,8 @@
         "noApi": "BattleFrame's dice and measurement services are unavailable, so a round cannot be run.",
         "noCombat": "Start a combat encounter before running a Simple Skirmish round.",
         "noUnits": "No Simple Skirmish units on the canvas to run a round for.",
-        "started": "New round: {player} goes first. Select a unit and activate it."
+        "started": "New round: {player} goes first. Select a unit and activate it.",
+        "inProgress": "A round is already in progress. Finish activating every unit before starting a new one."
       },
       "activate": {
         "tool": "Activate Unit",

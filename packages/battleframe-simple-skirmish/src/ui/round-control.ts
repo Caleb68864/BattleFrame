@@ -339,6 +339,16 @@ export async function runRoundControl(): Promise<void> {
     return;
   }
 
+  // A round in progress is not silently thrown away. Clicking "Run Round" again
+  // mid-round would abandon the current one (units still to activate) and start
+  // over with fresh initiative -- a footgun a GM hits by reflex. A round clears
+  // itself the moment its last unit activates, so once it is finished this guard
+  // is gone and the next round starts normally.
+  if (activeRound && !activeRound.isComplete()) {
+    notifyUser(localize("controls.round.inProgress"), "warn");
+    return;
+  }
+
   const dice = globalScope().game?.battleframe?.dice;
   if (!dice) {
     notifyUser(localize("controls.round.noApi"), "error");

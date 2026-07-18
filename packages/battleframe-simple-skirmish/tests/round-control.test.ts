@@ -100,6 +100,19 @@ describe("the round-control glue against a stubbed Foundry", () => {
     expect(notes.some((n) => n.includes("noRound"))).toBe(true);
   });
 
+  it("refuses to restart a round that is still in progress", async () => {
+    const blue = fakeToken("a1", "Blue", 1, {}, 0);
+    const red = fakeToken("b1", "Red", -1, {}, 300);
+    const notes = stubFoundry({ placeables: [blue, red], dice: scriptedDice([6, 1]) });
+
+    await runRoundControl(); // opens a round (2 units un-activated)
+    notes.length = 0;
+    await runRoundControl(); // clicking again must not silently start over
+
+    expect(notes.some((n) => n.includes("inProgress"))).toBe(true);
+    expect(notes.some((n) => n.includes("started"))).toBe(false);
+  });
+
   it("plays a full activation through the glue: run round, select, attack, name the units", async () => {
     const blue = fakeToken("a1", "Blue Spearmen", 1, { attackMelee: 4, models: 4 }, 0);
     const red = fakeToken("b1", "Red Skeletons", -1, { save: 5, models: 3 }, 300); // 3" away
