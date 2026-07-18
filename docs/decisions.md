@@ -1069,3 +1069,22 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   ruleset, not core. Casualty persistence mirrors GREATHELM writing wounds to the
   document; a fresh battle will need a models reset, same open item as GREATHELM's.
 - Commit: feat(simple-skirmish): casualties remove models; range measures to the nearest enemy
+
+## 2026-07-17 — Simple Skirmish game structure: alternating activation and deathmatch victory
+- Symptom: n/a — new. The turn loop and the win condition.
+- Fix: `round/session.ts` — `createSkirmishRound` alternates activation, one unit
+  per turn, continuous (a side out of un-activated units is skipped, the other
+  continues), refusing an out-of-turn/repeat/unknown activation loudly.
+  `determineFirstPlayer` gives the first turn to the highest initiative roll and
+  returns null on a tie (unresolved by the QSR -> re-roll, never a guessed winner).
+  `round/victory.ts` — `checkVictory` is the Basic Game deathmatch: last side with
+  a surviving unit wins, both-wiped is an honest draw.
+- Surfaces: `packages/battleframe-simple-skirmish/src/round/{session,victory}.ts`
+  and tests.
+- Watch: the continuous alternation is deliberately the same shape as GREATHELM's
+  battle phase (which this session just pinned as continuous, not per-step-restart)
+  minus the descending dice steps -- one activation model, learned once. Tie and
+  simultaneous-wipe are both left unresolved-and-labelled rather than invented,
+  the standing honesty rule. This completes the pure game logic; orchestration
+  (wire combat into an activation, apply casualties, read victory) and UI are next.
+- Commit: feat(simple-skirmish): alternating-activation round and deathmatch victory
