@@ -3,6 +3,14 @@ import { MODULE_ID } from "../constants";
 export interface SkirmishUnit {
   id: string;
   playerId: string;
+  /**
+   * Live query -- true once the unit is destroyed (0 models). A destroyed unit
+   * neither needs activation nor can be activated, so the round treats it as
+   * already resolved. Optional; absent means "still on the table", the shape the
+   * pure activation tests use. Re-read every call, never snapshotted, the same
+   * discipline as GREATHELM's `isRemoved`.
+   */
+  isDestroyed?: () => boolean;
 }
 
 export interface InitiativeRoll {
@@ -66,9 +74,14 @@ export function createSkirmishRound(
   const activated = new Set<string>();
   let turnPointer = 0;
 
+  const isDestroyed = (unit: SkirmishUnit): boolean => unit.isDestroyed?.() === true;
+
+  /** A unit is "resolved" once activated OR destroyed -- either way it needs no turn. */
+  const isResolved = (unit: SkirmishUnit): boolean => activated.has(unit.id) || isDestroyed(unit);
+
   function unactivated(playerId: string): string[] {
     return allUnits
-      .filter((unit) => unit.playerId === playerId && !activated.has(unit.id))
+      .filter((unit) => unit.playerId === playerId && !isResolved(unit))
       .map((unit) => unit.id);
   }
 
@@ -87,7 +100,7 @@ export function createSkirmishRound(
     activePlayerId,
     isActivated: (unitId) => activated.has(unitId),
     unactivated,
-    isComplete: () => activated.size === unitById.size,
+    isComplete: () => allUnits.every(isResolved),
     activate(unitId) {
       const unit = unitById.get(unitId);
 
@@ -97,6 +110,10 @@ export function createSkirmishRound(
 
       if (activated.has(unitId)) {
         throw new IllegalActivationError(`unit ${unitId} is already activated this round`);
+      }
+
+      if (isDestroyed(unit)) {
+        throw new IllegalActivationError(`unit ${unitId} is destroyed and cannot be activated`);
       }
 
       const expected = activePlayerId();
