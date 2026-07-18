@@ -154,9 +154,13 @@
   background-image: url("systems/battleframe/assets/heraldry/shield.png");
 }
 
-/* Abstract stats: an inked glyph fills the icon slot so tiles stay uniform. */
-.battleframe-simple-skirmish.sheet.unit .bf-device--move .bf-device__icon,
 .battleframe-simple-skirmish.sheet.unit .bf-device--skill .bf-device__icon {
+  background-image: url("systems/battleframe/assets/heraldry/star.png");
+}
+
+/* Move has no dedicated mark — an inked glyph fills the slot so tiles stay
+   uniform. */
+.battleframe-simple-skirmish.sheet.unit .bf-device--move .bf-device__icon {
   mix-blend-mode: normal;
 }
 
@@ -165,13 +169,6 @@
   font-size: 1.8rem;
   line-height: 1;
   color: var(--bf-ink);
-}
-
-.battleframe-simple-skirmish.sheet.unit .bf-device--skill .bf-device__icon::before {
-  content: "\2726"; /* ✦ — prowess */
-  font-size: 1.5rem;
-  line-height: 1;
-  color: var(--bf-azure);
 }
 
 .battleframe-simple-skirmish.sheet.unit .bf-device__label {
