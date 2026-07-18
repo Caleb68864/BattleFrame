@@ -1546,3 +1546,25 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   into the round controller (INX cover = the line passing through terrain walls)
   is the follow-up; the primitive is ready.
 - Commit: feat(engine): line-of-sight service delegating to Foundry's walls
+
+## 2026-07-18 — Foundry-integration audit → roadmap (five scanning passes)
+- Symptom: concern that the project reimplements Foundry functionality instead of
+  building on it.
+- Fix: five focused scanning passes (combat/turns, data/documents, UI/apps,
+  geometry, effects/dice) across the vault's Foundry-API research + engine + three
+  modules, synthesized into `docs/roadmap-foundry-integration.md`. Verdict: most
+  of the stack is correctly built ON Foundry; the reimplementation clusters into
+  three gaps, all "state Foundry would persist/sync/display that we hold in
+  private JS and never surface": (P0) round/turn state in module `let` variables
+  instead of on the `Combat` document — the engine already registered the correct
+  `BattleframeCombat` seam but every module bypasses it (zero callers); (P1) no
+  token shows game state — `CONFIG.statusEffects` unused, markers are invisible
+  `system` booleans; (P2) outcomes go to GM-only toasts and dice pools roll N
+  separate Rolls instead of chat cards + one Roll.
+- Surfaces: `docs/roadmap-foundry-integration.md` (the deliverable).
+- Watch: the passes confirmed the deliberate divergences are justified and should
+  be KEPT (no numeric initiative, bespoke tracker/pool-panel, base-to-base
+  measurement, exact-arithmetic areas vs Region#testPoint) — the roadmap is about
+  moving live state onto documents + the canvas, not undoing those. P0 is a
+  significant architecture change; get sign-off before executing.
+- Commit: docs: Foundry-integration audit + prioritized roadmap
