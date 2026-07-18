@@ -1,8 +1,10 @@
 import { SYSTEM_ID } from "../constants";
+import type { VisibilitySetting } from "../ui/hover-visibility";
 
 export const SETTING_ACTIVE_RULESET_ID = "activeRulesetId";
 export const SETTING_SETUP_COMPLETED = "setupCompleted";
 export const SETTING_DEFAULT_GRID_UNIT = "defaultGridUnit";
+export const SETTING_STAT_VISIBILITY = "statVisibility";
 export const SETTING_MENU_SETUP_WIZARD = "setupWizardMenu";
 
 /**
@@ -93,6 +95,14 @@ export function getDefaultGridUnit(): string {
     : DEFAULT_GRID_UNIT;
 }
 
+/** The GM's stat-visibility policy; "ruleset" defers to each ruleset's declared default. */
+export function getStatVisibilitySetting(): VisibilitySetting {
+  const settings = resolveSettings();
+  if (!settings) return "ruleset";
+  const value = settings.get(SYSTEM_ID, SETTING_STAT_VISIBILITY);
+  return value === "everyone" || value === "owners" || value === "gm" ? value : "ruleset";
+}
+
 export async function setDefaultGridUnit(unit: string): Promise<void> {
   const settings = resolveSettings();
   if (!settings) {
@@ -144,6 +154,21 @@ export function registerBattleframeSettings(
     config: true,
     type: String,
     default: DEFAULT_GRID_UNIT,
+  });
+
+  settings.register(SYSTEM_ID, SETTING_STAT_VISIBILITY, {
+    name: "battleframe.settings.statVisibility.name",
+    hint: "battleframe.settings.statVisibility.hint",
+    scope: "world",
+    config: true,
+    type: String,
+    choices: {
+      ruleset: "battleframe.settings.statVisibility.choices.ruleset",
+      everyone: "battleframe.settings.statVisibility.choices.everyone",
+      owners: "battleframe.settings.statVisibility.choices.owners",
+      gm: "battleframe.settings.statVisibility.choices.gm",
+    },
+    default: "ruleset",
   });
 
   if (wizardApplicationClass) {

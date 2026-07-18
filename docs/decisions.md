@@ -1754,3 +1754,15 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Watch: values are stringified via `String(value)`; unresolvable statuses are
   omitted rather than shown icon-less.
 - Commit: feat(core): hover-panel content model builder
+
+## 2026-07-18 — statVisibility world setting defaults to "ruleset"
+- Symptom: The hover panel needs a GM-level policy for who sees actor stats, but
+  each ruleset also declares its own per-provider default (`defaultVisibility`).
+- Fix: Added `SETTING_STAT_VISIBILITY` ("statVisibility"), a `config: true` world
+  setting with choices ruleset/everyone/owners/gm defaulting to `"ruleset"`, plus
+  `getStatVisibilitySetting()` mirroring `getDefaultGridUnit()`'s fallback shape.
+  The `"ruleset"` sentinel defers to the provider default via `resolveVisibility`,
+  so the GM opts into an override only deliberately.
+- Surfaces: `packages/battleframe/src/settings/index.ts`,
+  `packages/battleframe/tests/settings-stat-visibility.test.ts`.
+- Commit: feat(core): statVisibility world setting
