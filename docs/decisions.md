@@ -1138,3 +1138,24 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   module yet (the exhaustive-Record trick from GREATHELM is the answer if one is
   added). All 8 referenced keys currently resolve.
 - Commit: test(simple-skirmish): assert en.json carries every referenced i18n key
+
+## 2026-07-17 — Simple Skirmish: advantage points, champions, and movement modifiers
+- Symptom: n/a — new. The remaining rule pieces beyond core combat.
+- Fix: three small, pure modules. `combat/advantage.ts` -- `netAdvantage` (both
+  sides' points cancel; the remainder is net) and `alterDie` (one point alters one
+  die by one, clamped to its faces). `combat/champion.ts` -- `championDieSize`
+  (item die d8/d10/d12, else d6); `resolveAttack` gained a `dieSize` param so a
+  champion attack is just the same resolution on a bigger die (hit/save targets are
+  face-count-agnostic). `round/movement.ts` -- `effectiveMoveInches` (terrain and
+  vertical each halve) and `moveSpeedInches`.
+- Surfaces: `packages/battleframe-simple-skirmish/src/combat/{advantage,champion}.ts`,
+  `src/combat/resolve.ts` (`dieSize`), `src/round/movement.ts`, tests.
+- Watch: two honesty flags. (1) Terrain+vertical stacking to a quarter is the
+  *literal* reading of two independent "half" rules; the QSR does not say they
+  stack, so it is flagged for the full rulebook, not presented as settled. (2)
+  Which dice a player alters with net advantage, and the champion's attach/detach
+  and casualty-order rules, are player-choice / Advanced-Game orchestration
+  deferred with that tier -- these modules own only the mechanical primitives
+  (the net, the alteration, the die), never the table choices, the same line
+  GREATHELM draws.
+- Commit: feat(simple-skirmish): advantage points, champion dice, movement modifiers

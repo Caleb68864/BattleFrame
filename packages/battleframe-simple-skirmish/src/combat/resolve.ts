@@ -46,6 +46,13 @@ export interface ResolveAttackParams {
   /** Roll < this to be a casualty; null = no save, so every hit is a casualty. */
   saveTarget: number | null;
   type: AttackType;
+  /**
+   * Die faces to roll (default `BASIC_DIE_SIZE` = 6). Champions roll larger dice
+   * (d8/d10/d12) for magical items -- the hit/save logic is unchanged, only the
+   * die grows, because `countHits`/`countUnsaved` compare to a target regardless
+   * of face count.
+   */
+  dieSize?: number;
   /** Prefixed onto the chat flavor so a played round reads as a sequence. */
   flavorPrefix?: string;
 }
@@ -61,9 +68,10 @@ export interface ResolveAttackParams {
  */
 export async function resolveAttack(params: ResolveAttackParams): Promise<AttackResult> {
   const { dice, models, attackTarget, saveTarget, type } = params;
+  const dieSize = params.dieSize ?? BASIC_DIE_SIZE;
   const prefix = params.flavorPrefix ? `${params.flavorPrefix} ` : "";
 
-  const attackerRolls = await rollDice(dice, Math.max(0, models), `${prefix}${type} attack`);
+  const attackerRolls = await rollDice(dice, Math.max(0, models), dieSize, `${prefix}${type} attack`);
   const hits = countHits(attackerRolls, attackTarget);
 
   // No save means the roll is skipped entirely and every hit lands (QSR:
@@ -73,17 +81,22 @@ export async function resolveAttack(params: ResolveAttackParams): Promise<Attack
     return { attackerRolls, hits, defenderRolls: [], casualties: saveTarget === null ? hits : 0 };
   }
 
-  const defenderRolls = await rollDice(dice, hits, `${prefix}${type} save`);
+  const defenderRolls = await rollDice(dice, hits, dieSize, `${prefix}${type} save`);
   const casualties = countUnsaved(defenderRolls, saveTarget);
 
   return { attackerRolls, hits, defenderRolls, casualties };
 }
 
-async function rollDice(dice: DiceApiLike, count: number, flavor: string): Promise<number[]> {
+async function rollDice(
+  dice: DiceApiLike,
+  count: number,
+  dieSize: number,
+  flavor: string
+): Promise<number[]> {
   const rolls: number[] = [];
 
   for (let index = 0; index < count; index += 1) {
-    const result = await dice.roll(`1d${BASIC_DIE_SIZE}`, {}, { rulesetId: MODULE_ID, flavor });
+    const result = await dice.roll(`1d${dieSize}`, {}, { rulesetId: MODULE_ID, flavor });
     rolls.push(result.total);
   }
 
