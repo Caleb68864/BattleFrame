@@ -1,5 +1,6 @@
 import { MODULE_ID } from "./constants";
 import { registerUnitDataModel } from "./data/unit";
+import { registerUnitSheet } from "./sheets/unit-sheet";
 
 interface BattleframeRegisterResult {
   ok: boolean;
@@ -72,5 +73,6 @@ const globalHooks = (globalThis as unknown as {
 
 globalHooks?.once("init", () => {
   registerUnitDataModel();
+  registerUnitSheet();
   registerSimpleSkirmishRuleset();
 });

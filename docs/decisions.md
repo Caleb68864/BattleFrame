@@ -1109,3 +1109,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   skip is exactly the "correct pieces, broken whole" class the integration test
   exists to catch, and it caught one on the first run.
 - Commit: feat(simple-skirmish): attacks compose into a round, end to end, with destroyed units dropping out
+
+## 2026-07-17 — Simple Skirmish unit sheet
+- Symptom: n/a — new. The Foundry sheet for the unit Actor subtype.
+- Fix: `sheets/unit-sheet.ts` mirrors GREATHELM's knight sheet -- ApplicationV2 via
+  `HandlebarsApplicationMixin(ActorSheetV2)`, registered through
+  `DocumentSheetConfig.registerSheet` scoped to this module's id, default for the
+  namespaced `battleframe-simple-skirmish.unit` subtype. Template renders the Basic
+  Game stats (models, move, per-type Attack, Save; Skill carried for the Advanced
+  tier). Wired into `main.ts` init.
+- Surfaces: `packages/battleframe-simple-skirmish/src/sheets/unit-sheet.ts`,
+  `templates/unit-sheet.hbs`, `src/main.ts`, `tests/unit-sheet.test.ts`.
+- Watch: `registerUnitSheet` and the template path are both present in the built
+  bundle (reachability grep), so this is not dead UI. Same UNVERIFIED-against-live
+  caveat as GREATHELM's sheet: the ApplicationV2 shape is feature-detected, and a
+  live world is still the check that the sheet actually renders.
+- Commit: feat(simple-skirmish): unit sheet for the Basic Game stats
