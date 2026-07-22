@@ -78,8 +78,11 @@ in a live Foundry.
     (`newTurnAction`), and (2026-07-22, live-verified) a **visible fire-phase turn tracker** —
     `firePhaseStatusLine`/`sideLabel` post a persistent "Friendly/Hostile to fire — N ships left"
     chat card on begin + each activation, plus a "Phase Status" tool to re-post on demand. Still to
-    do: a full "New Battle" reset and fully localized chat cards.
-13. **[qol] Friendlier plot entry** (click-to-set thrust/turn) alongside the raw `+4,P2` text.
+    do: fully localized chat cards. **"New Battle" reset DONE (2026-07-22)** — a GM tool (with a
+    confirm) restores every ship's damage + clears plots/fire phase/in-flight missiles.
+13. ~~**[qol] Friendlier plot entry.**~~ ✅ **DONE 2026-07-22.** The Plot dialog gains thrust +/-
+    steppers and P2/P1/0/S1/S2 turn buttons that build the `+4,P2` order string into the still-
+    editable raw input, with the live path preview updating as you click.
 
 ## P2 — Advanced rules (need new math)
 
