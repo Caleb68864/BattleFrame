@@ -45,6 +45,22 @@
   padding: 1rem;
 }
 
+/* Neutral outcome chat-card container (game.battleframe.chat.card). One base look
+   every ruleset shares; a module adds its own class for accents (e.g. .ft-fire-report). */
+.battleframe-card {
+  border: 1px solid var(--color-border-light-tertiary, #999);
+  border-radius: 4px;
+  padding: 0.5rem;
+  font-size: 13px;
+}
+.battleframe-card__title {
+  margin: 0 0 0.25rem;
+  font-size: 14px;
+}
+.battleframe-card p {
+  margin: 0.15rem 0;
+}
+
 #battleframe-hover-panel {
   z-index: 100;
   min-width: 120px;

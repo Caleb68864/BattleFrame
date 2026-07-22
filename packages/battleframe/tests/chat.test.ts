@@ -6,10 +6,12 @@
  * outcome-card builder stays a ruleset's until a second module posts chat.
  */
 
-import { describe, expect, it } from "vitest";
-import { createChatApi } from "../src/ui/chat";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { createChatApi, card, postCard } from "../src/ui/chat";
 
 const api = createChatApi();
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("chat.escapeHtml", () => {
   it("escapes the five HTML-significant characters", () => {
@@ -20,5 +22,78 @@ describe("chat.escapeHtml", () => {
 
   it("leaves ordinary text unchanged", () => {
     expect(api.escapeHtml("RNS Lion 3")).toBe("RNS Lion 3");
+  });
+});
+
+describe("chat.card", () => {
+  it("wraps a title and body lines in the neutral card container", () => {
+    expect(card({ title: "A &rarr; B", lines: ["<p>one</p>", "<p>two</p>"] })).toBe(
+      '<div class="battleframe-card">' +
+        '<h3 class="battleframe-card__title">A &rarr; B</h3>' +
+        "<p>one</p><p>two</p>" +
+        "</div>"
+    );
+  });
+
+  it("omits the title element when no title is given", () => {
+    expect(card({ lines: ["<p>only body</p>"] })).toBe(
+      '<div class="battleframe-card"><p>only body</p></div>'
+    );
+  });
+
+  it("renders an empty container when given neither title nor lines", () => {
+    expect(card({})).toBe('<div class="battleframe-card"></div>');
+  });
+
+  it("appends a ruleset cssClass so a module can theme its own cards", () => {
+    expect(card({ cssClass: "ft-fire-report", lines: [] })).toBe(
+      '<div class="battleframe-card ft-fire-report"></div>'
+    );
+  });
+
+  it("passes title and lines through verbatim (the CALLER escapes dynamic text)", () => {
+    // card() is a container, not a sanitizer: a caller that forgets to escape gets
+    // raw markup, exactly as its own hand-built wrapper would have.
+    expect(card({ title: "<b>x</b>", lines: ["<i>y</i>"] })).toBe(
+      '<div class="battleframe-card"><h3 class="battleframe-card__title"><b>x</b></h3><i>y</i></div>'
+    );
+  });
+});
+
+describe("chat.postCard", () => {
+  it("creates a ChatMessage whose content is the rendered card, defaulting the speaker", async () => {
+    const created: Record<string, unknown>[] = [];
+    vi.stubGlobal("ChatMessage", {
+      create: (data: Record<string, unknown>) => {
+        created.push(data);
+        return Promise.resolve(data);
+      },
+      getSpeaker: () => ({ alias: "GM" })
+    });
+    await postCard({ title: "Hit", lines: ["<p>3 damage</p>"] });
+    expect(created).toHaveLength(1);
+    expect(created[0].content).toBe(card({ title: "Hit", lines: ["<p>3 damage</p>"] }));
+    expect(created[0].speaker).toEqual({ alias: "GM" });
+    expect(created[0].rolls).toBeUndefined();
+  });
+
+  it("attaches rolls only when supplied, and honours an explicit speaker", async () => {
+    const created: Record<string, unknown>[] = [];
+    vi.stubGlobal("ChatMessage", {
+      create: (data: Record<string, unknown>) => {
+        created.push(data);
+        return Promise.resolve(data);
+      },
+      getSpeaker: () => ({ alias: "default" })
+    });
+    const roll = { total: 7 };
+    await postCard({ lines: ["<p>x</p>"], speaker: { alias: "RNS Lion" }, rolls: [roll] });
+    expect(created[0].speaker).toEqual({ alias: "RNS Lion" });
+    expect(created[0].rolls).toEqual([roll]);
+  });
+
+  it("no-ops when ChatMessage is unavailable (the no-Foundry path)", async () => {
+    vi.stubGlobal("ChatMessage", undefined);
+    await expect(postCard({ title: "x" })).resolves.toBeUndefined();
   });
 });

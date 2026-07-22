@@ -2974,3 +2974,33 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - 1172 tests pass (was 1167); typecheck clean. Foundry-facing wiring (#3) still
   needs live-verify in a world.
 - Commit: this commit.
+
+## 2026-07-22 — Neutral chat-card builder (chat.card/postCard); do NOT build a templating engine
+- Question raised: build our own chat-card module with a templating system? The
+  Foundry-ecosystem sweep (internal-docs/foundry-ecosystem-research.md, finding #5)
+  answered it: Foundry already ships the templating system (Handlebars .hbs +
+  `foundry.applications.handlebars.renderTemplate`). Building our own would be the
+  exact reinvention CLAUDE.md forbids.
+- What WAS missing: a shared card CONTAINER. Every FT report hand-concatenated
+  `<div class="ft-fire-report"><h3>…`; the other three rulesets post no cards at
+  all. `ui/chat.ts` had deferred `card()` for a second witness — the "chat cards in
+  all games" directive is that witness.
+- Change: `chat.card({title, lines, cssClass})` returns the neutral
+  `<div class="battleframe-card [cssClass]">` container (optional h3 + body joined
+  VERBATIM). Deliberately NOT a sanitizer — a card mixes safe markup (`<strong>`,
+  `&rarr;`) with dynamic text, so the CALLER escapes dynamic parts, same contract as
+  the hand-built wrappers. `postCard` is thin glue (render + ChatMessage.create,
+  default speaker via getSpeaker, conditional rolls). Base `.battleframe-card` CSS
+  lives in the engine stylesheet so one look themes all rulesets.
+- FT adoption (witness 1): `wrapReport` delegates to `api()?.chat?.card()` when the
+  runtime engine is present, inlining the identical markup as the no-engine unit
+  path — the same live/fallback split `tr()` uses. `ft-fire-report` rides along as a
+  second class so FT's accent CSS still matches. FT report tests use `toContain`, so
+  the container change did not touch a single assertion.
+- Pending: GREATHELM / InCountry / Simple Skirmish have no cards yet — the "all
+  games" rollout adds outcome cards there via this primitive (witnesses 2-4). Those
+  are Foundry-facing and need live-verify.
+- Surfaces: packages/battleframe/src/ui/chat.ts (card, postCard), styles/battleframe.css
+  (.battleframe-card), packages/battleframe-full-thrust/src/ui/round-control.ts
+  (RoundControlApi.chat, wrapReport). +8 tests; 1193 pass.
+- Commit: this commit.

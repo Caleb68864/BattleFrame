@@ -126,9 +126,20 @@ function reportBodyLines(
   return lines;
 }
 
-/** Wraps a report's heading + body lines in the card container. */
+/**
+ * Wraps a report's heading + body lines in the outcome-card container. Delegates
+ * to the engine's neutral `chat.card()` when the runtime services are present (so
+ * all rulesets share one card shape + stylesheet), falling back to the engine
+ * card's markup inline for the no-engine unit-test path -- the same live/fallback
+ * split `tr()` uses for i18n. The `ft-fire-report` class rides along so Full
+ * Thrust's own accent CSS still applies.
+ */
 function wrapReport(heading: string, bodyLines: string[]): string {
-  return `<div class="ft-fire-report"><h3>${heading}</h3>${bodyLines.join("")}</div>`;
+  const card = api()?.chat?.card;
+  if (card) {
+    return card({ title: heading, lines: bodyLines, cssClass: "ft-fire-report" });
+  }
+  return `<div class="battleframe-card ft-fire-report"><h3 class="battleframe-card__title">${heading}</h3>${bodyLines.join("")}</div>`;
 }
 
 /** Builds the chat-card HTML summarising one ship's fire at a target. */
@@ -359,6 +370,10 @@ export interface RoundControlApi {
   dice: FireContext["dice"];
   /** The engine's activation-order service (game.battleframe.rounds). */
   rounds?: RoundsApiLike;
+  /** The engine's neutral chat-card builder (game.battleframe.chat). */
+  chat?: {
+    card: (spec: { title?: string; lines?: readonly string[]; cssClass?: string }) => string;
+  };
 }
 
 /** Resolves one ship firing at another and returns the report + its HTML. */
