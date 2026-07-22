@@ -56,7 +56,8 @@ deferred. Nothing is silently missing.
 | Submunition packs: dice by band, ignore screens, one-shot | ✅ | `combat/weapons.ts`, `combat/fire.ts` |
 | Needle beams: 9mu, knock a nominated system on a 6, ignore screens/armour | ✅ | `combat/needle.ts` `fireNeedleAtSystem` + "Needle Beam" scene tool with a system-type picker |
 | Salvo missiles: salvo of 6, PDS interception, per-missile damage | ✅ | `combat/salvo.ts` `resolveSalvoAtTarget` + "salvo" weapon kind + "Fire Salvo" tool (direct-target; point-of-aim counter deferred) |
-| Independent (More Thrust) missiles: one-shot craft, own phase, 18mu + mid-point 2-pt turn, 3-turn life, strike ≤6mu & not in rear arc, PDS kills on a 6; Normal / EMP / Needle warheads | 🟡 | `combat/missile.ts` `missileCanAttack`/`resolveMissileAttack` (`warhead` param: Normal 2d6 screens-ignored; EMP scrambles systems via a screen-reduced effect die; Needle snipes a nominated system) + `movement/missile-path.ts` `plotMissilePath` — all pure + tested. Missile-phase launch/track/remove-after-3-turns UI (a Foundry token orchestrator) deferred |
+| Independent (More Thrust) missiles: one-shot craft, own phase, 18mu + mid-point 2-pt turn, 3-turn life, strike ≤6mu & not in rear arc, PDS kills on a 6; Normal / EMP / Needle warheads | ✅ | `combat/missile.ts` (`warhead` param: Normal 2d6; EMP scrambles systems; Needle snipes) + `movement/missile-path.ts` + `combat/missile-phase.ts` (`advanceMissile`/`missileExpired`) + `ui/missile-overlay.ts` markers + "Launch Missile" / "Missile Phase" tools (scene-flag state, synthetic-token strike). Live-verified: launch → 18mu advance → strike + destroy → removed. EMP/Needle picker deferred |
+| Kra'Vak kinetic weapons: K-gun railgun, MKP packs, scatterguns, K-1 PD (armour-piercing, screens ignored) | 🟡 | `combat/kravak.ts` `kgunToHit`/`kgunDamageForFace`/`applyKgunHit`/`mkpHits`/`scattergun*`/`kgunK1PointDefenceKills` (Fleet Book 2, pure + tested); a Kra'Vak weapon kind + scene wiring deferred; Sa'Vasku / Phalon not built |
 | Spinal-mount Nova Cannon: 3-turn forward sweep (6/4/2 D6, 2"/4"/6" template), damage = die score, screens ignored | 🟡 | `combat/spinal.ts` `novaCannonDamage`/`novaCannonDiceForTurn`/`novaCannonTemplateInches`/`novaCannonSweep` (pure math + tests); template geometry, arming bookkeeping, and a scene tool deferred |
 | Wave Gun: 36mu expanding template (4/3/2 D6, 2"/3"/4"), charge-then-fire, knock-out feedback, damage = die score, screens/armour ignored | 🟡 | `combat/spinal.ts` `waveGunDamage`/`waveGunDiceAtRange`/`waveGunTemplateInches`/`waveGunIsCharged`/`waveGunChargeAfterTurn`/`waveGunChargeAfterFiring`/`waveGunFeedbackDamage` (pure math + tests); template geometry, charge state on a Document, and a scene tool deferred |
 | K-guns / xeno (Kra'Vak / Sa'Vasku / Phalon) weapons | ⏳ | Not yet built |
@@ -65,7 +66,7 @@ deferred. Nothing is silently missing.
 | Rule | Status | Where |
 |---|---|---|
 | Screens (level 1–3) downgrade each beam die | ✅ | `combat/beam.ts` `beamDamageForFace` |
-| Armour absorbs point-for-point before hull | ✅ | `ship/damage.ts` `applyDamageWithArmour` |
+| Armour absorbs point-for-point before hull | ✅ | `ship/damage.ts` `applyDamageWithArmour`; clickable armour track on the sheet (`prepareArmourBoxes`/`onToggleArmourBox`) |
 | Fire control: lost all FCS = cannot fire | ✅ | `combat/fire-ship.ts` refuses fire (`refused: "no-fcs"`) when `fcs < 1` |
 | Fire control: 1 FCS = 1 target / multi-FCS fire-splitting | ✅ | `combat/fcs-allocation.ts` `allocateFcsFire` + `combat/fire-ship-split.ts` `fireShipSplit` split weapons across ≤ N targets (N = working FCS); a GM "Split Fire" tool fires every targeted ship in one action (live-verified: 2 FCS, per-target card + threshold). Reuses `previewTargeting` for bears/range |
 | Point defence (PDAF/ADAF) vs fighters and missiles | 🟡 | `combat/fighters.ts` (math); PDS interception step in the fire UI deferred |
@@ -96,7 +97,7 @@ deferred. Nothing is silently missing.
 | Specialised types: Fast (18mu) / Torpedo (one-shot run, spent-mode dogfight) | 🟡 | `combat/fighter-types.ts` `fighterMoveForType`/`torpedoHitCount`/`torpedoRunDamage`/`attackFighterDogfightKills` (pure + tested); the token movement + spent-marking orchestrator is deferred |
 | Pilot quality: Ace / Turkey / average (attack, morale, dogfight, initiative) | ✅ | `combat/pilot.ts` (1D6/group: 6=Ace, 1=Turkey) WIRED into `fire-fighters.ts` (Ace +1 attack die, Ace/Turkey morale mod, Turkey 2-fail break) + `dogfight.ts` (Turkey −1/die, Ace extra die); optional `pilotQuality` field on the group model + sheet. Fighter-fire UI live-unverified |
 | Fighter movement (flat move any direction, 12mu / 18mu Fast, close to strike) | 🟡 | `movement/fighter-move.ts` `fighterMaxMove`/`moveToward`/`canReachToAttack` (pure + tested); the token-mover orchestrator is deferred (as ship `path.ts` defers its token move) |
-| Carrier launch/recover | ⏳ | Not yet built |
+| Carrier launch/recover + endurance return-to-carrier | 🟡 | `combat/carrier.ts` `bayCapacity`/`launchLimit`/`canLaunch`/`canRecover`/`enduranceAfterTurn`/`mustReturn`/`isLost`/`recover` (pure + tested); the launch/recover token orchestrator is deferred |
 
 ## Ship Design
 | Rule | Status | Where |

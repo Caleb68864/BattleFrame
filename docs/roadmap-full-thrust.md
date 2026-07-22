@@ -65,7 +65,9 @@ in a live Foundry.
     (`prepareHullBoxes` + `onToggleHullBox`) with FT2 threshold-row separators replaces the bare
     number input. The **arc/range diagram** is delivered as an on-canvas fire-arc ring overlay on
     the token (`ui/arc-overlay.ts`, live-verified — 6 labelled arcs + beam rings, hover + "Fire
-    Arcs" pin tool). Still to do: clickable boxes for armour/systems too.
+    Arcs" pin tool). Clickable ARMOUR boxes now match the hull track
+    (`prepareArmourBoxes`/`onToggleArmourBox`). Still to do: clickable pips for the design-count
+    systems (FCS/PDS/screens — deferred; their damage counter has no sheet fallback yet).
 11. ~~**[qol] Pre-fire targeting feedback.**~~ ✅ **DONE 2026-07-22.** `combat/targeting.ts`
     `previewTargeting` returns a per-weapon row (bears? / in-range? / dice or to-hit) WITHOUT
     rolling, mirroring `resolveWeaponFire`'s precedence exactly so it never disagrees with the
@@ -88,7 +90,10 @@ in a live Foundry.
     (Heavy/Interceptor/Long-range already done). Pilot quality is now WIRED into `fire-fighters.ts`
     (Ace +1 attack die, Ace/Turkey morale mods, Turkey 2-fail break) and `dogfight.ts` (Turkey −1
     die, Ace extra die), with an optional `pilotQuality` field on the fighter-group model + sheet.
-    Still to do: carrier launch/recover, endurance return-to-carrier orchestration, and a fighter
+    Carrier operations now have a pure core `combat/carrier.ts` (`bayCapacity`/`launchLimit`/
+    `canLaunch`/`canRecover`/`enduranceAfterTurn`/`mustReturn`/`isLost`/`recover` — bay capacity by
+    class, 2 groups/turn launch, 1/turn recover, endurance depletion + return-or-lost; +16 tests).
+    Still to do: the Foundry orchestrator that launches/recovers fighter-group tokens, and a fighter
     MOVEMENT orchestrator that uses `fighterMoveForType` (#16).
 15. **[build] Independent (More Thrust) missiles** — 🟡 PARTIAL (2026-07-22). Pure combat +
     movement built + tested: `movement/missile-path.ts` `plotMissilePath` (18mu with one mid-point
@@ -99,6 +104,12 @@ in a live Foundry.
     `warhead` param: EMP scrambles systems via a screen-reduced effect die, Needle snipes a
     nominated system — both pure + tested). Still to do: the dedicated missile-phase launch + a
     Foundry token orchestrator that moves/tracks the craft and removes it after the 3-turn life.
+    ✅ **DONE 2026-07-22 (live-verified).** The missile PHASE is built: `combat/missile-phase.ts`
+    (`advanceMissile`/`missileExpired`) + `ui/missile-overlay.ts` (PIXI markers) + a "Launch
+    Missile" and "Missile Phase" scene tool. Missiles are scene-flag state drawn as markers; a
+    synthetic token-like object lets `resolveMissileAttack` strike a real ship. Live-verified: launch
+    → advance 18mu → strike a ship in the fore arc (Normal warhead, damage + threshold + destroy) →
+    removed. Remaining: an EMP/Needle warhead + mid-turn picker (Normal only for now).
 16. **[build] Fighter movement + dogfights** — 🟡 PARTIAL (2026-07-22). Dogfights are wired
     (`resolveDogfight` + the Fire tool). Fighter MOVEMENT now has a pure core `movement/fighter-move.ts`
     (`fighterMaxMove`, `moveToward`, `canReachToAttack` — flat move any direction, 12mu / 18mu Fast,
@@ -130,8 +141,10 @@ in a live Foundry.
     spinal-mount Nova Cannon (3-turn forward sweep, 6/4/2 D6, 2"/4"/6" template) and the More
     Thrust Wave Gun (36mu expanding template, 4/3/2 D6, charge-then-fire + knock-out feedback) as
     pure math (+22 tests); damage = die score, screens ignored. Still to do: template canvas
-    geometry, arming/charge bookkeeping on a Document, scene tools; K-guns + the Kra'Vak /
-    Sa'Vasku / Phalon races (different design/damage systems) not yet built.
+    geometry, arming/charge bookkeeping on a Document, scene tools. **K-guns are now built**:
+    `combat/kravak.ts` (K-gun railgun to-hit/damage/armour-pierce, MKP packs, scatterguns vs
+    fighters/plasma/ships, K-1 point-defence — Fleet Book 2 baseline, +18 tests). Still to do: the
+    spinal scene tools + templates, and the Sa'Vasku / Phalon races (different design/damage systems).
 
 ## P3 — Live-verification debt
 
