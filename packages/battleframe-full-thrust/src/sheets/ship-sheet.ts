@@ -1,5 +1,53 @@
 import { MODULE_ID, SHIP_ACTOR_TYPE, FIRE_ARCS, WEAPON_KINDS } from "../constants";
 import { addWeaponTo, removeWeaponAt, type WeaponMountData } from "./weapon-edit";
+import { rowBoundaries } from "../ship/hull";
+
+/** One rendered hull box: its 1-based number, whether it is crossed off, and
+ * whether a threshold-row separator follows it. */
+export interface HullBoxView {
+  number: number;
+  damaged: boolean;
+  rowEnd: boolean;
+}
+
+/**
+ * The clickable hull track for the SSD (roadmap #10): `boxes` boxes, the first
+ * `damage` of them crossed off, with a separator flagged after each threshold
+ * row's last box (except the final box, which is destruction, not a threshold).
+ * Pure so the sheet view-model is unit-tested without Foundry.
+ */
+export function prepareHullBoxes(boxes: number, damage: number, rows: number): HullBoxView[] {
+  const total = Math.max(0, Math.floor(boxes));
+  const crossed = Math.max(0, Math.min(total, Math.floor(damage)));
+  // Row boundaries mark where a threshold row completes; the last equals `total`
+  // (destruction), which gets no separator.
+  const boundaries = new Set(rowBoundaries(total, rows).filter((b) => b < total));
+  const view: HullBoxView[] = [];
+  for (let i = 0; i < total; i++) {
+    const number = i + 1;
+    view.push({ number, damaged: number <= crossed, rowEnd: boundaries.has(number) });
+  }
+  return view;
+}
+
+/**
+ * Action handler: a click on hull box N sets `system.hull.damage`. Clicking an
+ * intact box fills damage through it (damage = N); clicking an already-damaged
+ * box unfills it and everything beyond (damage = N-1). `this` is the sheet app.
+ */
+export async function onToggleHullBox(this: any, _event: unknown, target: any): Promise<void> {
+  const actor = this?.actor;
+  if (!actor?.update) {
+    return;
+  }
+  const number = Number(target?.dataset?.number);
+  if (!Number.isInteger(number) || number < 1) {
+    return;
+  }
+  const current = actor.system?.hull?.damage ?? 0;
+  const next = number <= current ? number - 1 : number;
+  await actor.update({ "system.hull.damage": next });
+}
 
 /** Action handler: append a default weapon to the ship. `this` is the sheet app. */
 export async function onAddWeapon(this: any): Promise<void> {
@@ -115,7 +163,7 @@ export function createShipSheetClass(
       classes: [MODULE_ID, "sheet", "actor", SHIP_ACTOR_TYPE],
       position: { width: 560, height: 620 },
       form: { submitOnChange: true },
-      actions: { addWeapon: onAddWeapon, removeWeapon: onRemoveWeapon }
+      actions: { addWeapon: onAddWeapon, removeWeapon: onRemoveWeapon, toggleHullBox: onToggleHullBox }
     };
 
     static PARTS = {
@@ -130,6 +178,9 @@ export function createShipSheetClass(
       context.system = actor?.system ?? {};
       // Editable weapon rows: kind/arc options with selected flags for the template.
       context.weapons = prepareWeaponRows(actor?.system?.weapons);
+      // Clickable hull damage track (visual SSD).
+      const hull = actor?.system?.hull ?? {};
+      context.hullBoxes = prepareHullBoxes(hull.boxes ?? 0, hull.damage ?? 0, hull.rows ?? 1);
 
       return context;
     }

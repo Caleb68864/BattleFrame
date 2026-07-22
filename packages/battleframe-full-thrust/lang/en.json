@@ -6,6 +6,7 @@
   "battleframe-full-thrust.fields.mass": "Mass",
   "battleframe-full-thrust.fields.thrust": "Thrust",
   "battleframe-full-thrust.fields.hull": "Hull",
+  "battleframe-full-thrust.hull.trackHint": "Click a box to set hull damage; gaps mark threshold rows",
   "battleframe-full-thrust.fields.armour": "Armour",
   "battleframe-full-thrust.fields.fcs": "Fire Control",
   "battleframe-full-thrust.fields.screens": "Screens",

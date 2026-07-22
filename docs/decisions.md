@@ -2325,3 +2325,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   points premiums — pure predicates/numbers only here. +25 tests (pilot 19, fighter-types
   6); 905 passing; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: visual SSD clickable hull track (roadmap P1 #10)
+- Symptom/gap: the ship sheet showed hull as a bare "damage / boxes" number input; the roadmap
+  asked for a visual SSD with clickable damage boxes + threshold-row separators.
+- Fix: `sheets/ship-sheet.ts` gains pure `prepareHullBoxes(boxes, damage, rows)` (view-model: one
+  box per hull point, first `damage` crossed off, a separator flagged after each threshold row's
+  last box via `ship/hull.ts` `rowBoundaries`, none after the final/destruction box) and an
+  `onToggleHullBox` action (click an intact box → damage = its number; click a damaged box →
+  damage = number−1, unfilling it and beyond). Rendered in `templates/ship-sheet.hbs` as
+  `data-action="toggleHullBox"` buttons above the retained number inputs; styled in
+  `styles/full-thrust.css`. The number inputs stay as an exact fallback.
+- Surfaces: ship-sheet.ts, ship-sheet.hbs, full-thrust.css, lang/en.json (trackHint).
+- Watch: ApplicationV2 `submitOnChange` + a `data-action` button — the click handler updates the
+  actor directly (not via form submit), so it must live-verify in Foundry (sheet render + click →
+  hull.damage persists). Arc/range diagram (the other half of #10) still deferred.
+- +6 tests (ship-sheet-hull.test.ts); 949 passing; typecheck clean.
+- Commit: this commit.

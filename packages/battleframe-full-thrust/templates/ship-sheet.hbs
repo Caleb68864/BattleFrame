@@ -43,6 +43,14 @@
       <input type="number" name="system.armour.boxes" value="{{system.armour.boxes}}" min="0" step="1" />
     </div>
     <h3>{{localize "battleframe-full-thrust.fields.hull"}}</h3>
+    <div class="ft-hull-track" title="{{localize "battleframe-full-thrust.hull.trackHint"}}">
+      {{#each hullBoxes}}
+        <button type="button" class="ft-hull-box{{#if this.damaged}} ft-damaged{{/if}}"
+          data-action="toggleHullBox" data-number="{{this.number}}"
+          aria-label="hull box {{this.number}}"></button>
+        {{#if this.rowEnd}}<span class="ft-threshold-sep" aria-hidden="true"></span>{{/if}}
+      {{/each}}
+    </div>
     <div class="ft-boxes">
       <input type="number" name="system.hull.damage" value="{{system.hull.damage}}" min="0" step="1" />
       <span>/</span>

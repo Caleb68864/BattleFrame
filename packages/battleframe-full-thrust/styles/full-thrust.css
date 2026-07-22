@@ -42,6 +42,46 @@
   gap: 0.35rem;
 }
 
+/* Clickable hull damage track (visual SSD). */
+.ft-ship-sheet .ft-hull-track {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 3px;
+  margin: 0.2rem 0 0.35rem;
+}
+
+.ft-ship-sheet .ft-hull-box {
+  width: 16px;
+  height: 16px;
+  padding: 0;
+  border: 1px solid #555;
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.65);
+  cursor: pointer;
+  flex: 0 0 auto;
+  line-height: 1;
+  transition: background 0.1s ease;
+}
+
+.ft-ship-sheet .ft-hull-box:hover {
+  border-color: #c0392b;
+}
+
+.ft-ship-sheet .ft-hull-box.ft-damaged {
+  background: #c0392b;
+  border-color: #7b241c;
+}
+
+/* A gap marking where an FT2 threshold row ends. */
+.ft-ship-sheet .ft-threshold-sep {
+  width: 2px;
+  height: 18px;
+  background: #333;
+  flex: 0 0 auto;
+  margin: 0 2px;
+}
+
 .ft-ship-sheet .ft-weapons ol {
   list-style: none;
   margin: 0;
