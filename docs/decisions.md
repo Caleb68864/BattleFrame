@@ -2757,3 +2757,28 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - +11 tests (fire.test.ts K-gun path, apply-damage.test.ts pierce integration, targeting.test.ts
   K-gun preview); 1127 passing (was 1116); typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: clickable design-count pips for FCS/PDS/screens (roadmap P1 #10 remainder)
+- Finished the visual SSD: FCS, PDS, and screens now render a small row of clickable pips on the
+  ship sheet, matching the hull + armour tracks already there. Design count = total pips, first
+  `…Lost` of them crossed off (same "first N damaged" reading as the hull track, so all four tracks
+  tell one story). The fallback number inputs stay put.
+- ONE pure helper `prepareSystemPips(design, lost)` → `{ index, lost }[]` is reused for all three
+  systems (mirrors `prepareArmourBoxes`). ONE click handler `onToggleSystemPip` reads `data-system`
+  (fcs/pds/screens) + `data-number`, maps it through `SYSTEM_PIP_FIELDS` to the matching
+  `system.fcsLost`/`pdsLost`/`screensLost` path, and fills/unfills exactly like `onToggleHullBox`
+  (click intact → lost through N; click lost → lost = N-1). Unknown system or bad number → no-op.
+- The write lands on the actor Document (`actor.update({ "system.…Lost": next })`), never a JS
+  variable — persists + syncs like hull/armour. State stays on the design/`…Lost` NumberFields that
+  already existed in ship/systems.ts; no new model surface.
+- Surfaces: sheets/ship-sheet.ts (`prepareSystemPips`, `onToggleSystemPip`, `SYSTEM_PIP_FIELDS`,
+  wired into `DEFAULT_OPTIONS.actions.toggleSystemPip` + `_prepareContext` as
+  `fcsPips`/`pdsPips`/`screenPips`), templates/ship-sheet.hbs (three labelled `.ft-pip-track` rows),
+  styles/full-thrust.css (`.ft-pip`/`.ft-pip-track`, reusing `.ft-hull-box`/`.ft-damaged` with a
+  warm tint), lang/en.json (`systems.pipHint`).
+- TDD: tests/ship-sheet-systems.test.ts written first, watched fail, then implemented. +8 tests;
+  1149 passing (was 1141); typecheck clean.
+- Sheet render + click persistence want live-verify in a real world (the fill/unfill and the actor
+  write are Foundry-facing) — the pure helper + the handler's field mapping are what these unit
+  tests lock down.
+- Commit: this commit.

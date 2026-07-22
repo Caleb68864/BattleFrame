@@ -9,6 +9,7 @@
   "battleframe-full-thrust.hull.trackHint": "Click a box to set hull damage; gaps mark threshold rows",
   "battleframe-full-thrust.fields.armour": "Armour",
   "battleframe-full-thrust.armour.trackHint": "Click a box to set armour damage",
+  "battleframe-full-thrust.systems.pipHint": "Click a pip to mark systems lost (design − lost)",
   "battleframe-full-thrust.fields.fcs": "Fire Control",
   "battleframe-full-thrust.fields.screens": "Screens",
   "battleframe-full-thrust.fields.velocity": "Velocity",

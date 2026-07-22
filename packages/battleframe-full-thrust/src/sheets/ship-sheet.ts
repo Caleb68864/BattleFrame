@@ -91,6 +91,62 @@ export async function onToggleArmourBox(this: any, _event: unknown, target: any)
   await actor.update({ "system.armour.damage": next });
 }
 
+/** One rendered system pip: its 1-based index and whether it is lost (knocked
+ * out). Shared by the FCS / PDS / screen design-count rows. */
+export interface SystemPipView {
+  index: number;
+  lost: boolean;
+}
+
+/**
+ * The clickable pip row for a design-count system (roadmap #10 remainder): `design`
+ * pips, the first `lost` of them crossed off — the same "first N damaged" reading
+ * as the hull track, so FCS/PDS/screens tell the same visual story. Pure so the
+ * view-model is unit-tested without Foundry; one helper reused for all three.
+ */
+export function prepareSystemPips(design: number, lost: number): SystemPipView[] {
+  const total = Math.max(0, Math.floor(design));
+  const crossed = Math.max(0, Math.min(total, Math.floor(lost)));
+  const view: SystemPipView[] = [];
+  for (let i = 0; i < total; i++) {
+    const index = i + 1;
+    view.push({ index, lost: index <= crossed });
+  }
+  return view;
+}
+
+/** Maps a `data-system` attribute to the actor's design + `…Lost` field paths. */
+const SYSTEM_PIP_FIELDS: Record<string, { lostField: string; lostPath: string }> = {
+  fcs: { lostField: "fcsLost", lostPath: "system.fcsLost" },
+  pds: { lostField: "pdsLost", lostPath: "system.pdsLost" },
+  screens: { lostField: "screensLost", lostPath: "system.screensLost" }
+};
+
+/**
+ * Action handler: a click on system pip N sets the matching `…Lost` counter for the
+ * system named in `data-system` (fcs/pds/screens). Clicking an intact pip fills lost
+ * through it (lost = N); clicking an already-lost pip unfills it and everything
+ * beyond (lost = N-1) — mirroring `onToggleHullBox` exactly. `this` is the sheet app.
+ */
+export async function onToggleSystemPip(this: any, _event: unknown, target: any): Promise<void> {
+  const actor = this?.actor;
+  if (!actor?.update) {
+    return;
+  }
+  const systemName = String(target?.dataset?.system ?? "");
+  const fields = SYSTEM_PIP_FIELDS[systemName];
+  if (!fields) {
+    return;
+  }
+  const number = Number(target?.dataset?.number);
+  if (!Number.isInteger(number) || number < 1) {
+    return;
+  }
+  const current = actor.system?.[fields.lostField] ?? 0;
+  const next = number <= current ? number - 1 : number;
+  await actor.update({ [fields.lostPath]: next });
+}
+
 /** Action handler: append a default weapon to the ship. `this` is the sheet app. */
 export async function onAddWeapon(this: any): Promise<void> {
   const actor = this?.actor;
@@ -209,7 +265,8 @@ export function createShipSheetClass(
         addWeapon: onAddWeapon,
         removeWeapon: onRemoveWeapon,
         toggleHullBox: onToggleHullBox,
-        toggleArmourBox: onToggleArmourBox
+        toggleArmourBox: onToggleArmourBox,
+        toggleSystemPip: onToggleSystemPip
       }
     };
 
@@ -231,6 +288,11 @@ export function createShipSheetClass(
       // Clickable armour damage track (no threshold rows).
       const armour = actor?.system?.armour ?? {};
       context.armourBoxes = prepareArmourBoxes(armour.boxes ?? 0, armour.damage ?? 0);
+      // Clickable design-count pip rows for FCS / PDS / screens (design − lost).
+      const sys = actor?.system ?? {};
+      context.fcsPips = prepareSystemPips(sys.fcs ?? 0, sys.fcsLost ?? 0);
+      context.pdsPips = prepareSystemPips(sys.pds ?? 0, sys.pdsLost ?? 0);
+      context.screenPips = prepareSystemPips(sys.screens ?? 0, sys.screensLost ?? 0);
 
       return context;
     }

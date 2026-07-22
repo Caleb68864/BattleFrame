@@ -83,6 +83,24 @@
   border-color: #2471a3;
 }
 
+/* Design-count system pips (FCS / PDS / screens) reuse the hull-box shape at a
+ * smaller size, with a warm intact tint to distinguish them from hull/armour. The
+ * lost state stays the shared red via .ft-damaged. */
+.ft-ship-sheet .ft-pip-track {
+  margin: 0.15rem 0 0;
+  gap: 2px;
+}
+
+.ft-ship-sheet .ft-pip {
+  width: 12px;
+  height: 12px;
+  background: rgba(244, 208, 63, 0.65);
+}
+
+.ft-ship-sheet .ft-pip:hover {
+  border-color: #b7950b;
+}
+
 /* A gap marking where an FT2 threshold row ends. */
 .ft-ship-sheet .ft-threshold-sep {
   width: 2px;

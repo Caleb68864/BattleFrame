@@ -14,16 +14,37 @@
       <label>{{localize "battleframe-full-thrust.fields.fcs"}}</label>
       <input type="number" name="system.fcs" value="{{system.fcs}}" min="0" step="1" />
       <span class="ft-track-now" title="remaining / design">{{system.fcsTrack}}</span>
+      <div class="ft-hull-track ft-pip-track" title="{{localize "battleframe-full-thrust.systems.pipHint"}}">
+        {{#each fcsPips}}
+          <button type="button" class="ft-hull-box ft-pip{{#if this.lost}} ft-damaged{{/if}}"
+            data-action="toggleSystemPip" data-system="fcs" data-number="{{this.index}}"
+            aria-label="fire control {{this.index}}"></button>
+        {{/each}}
+      </div>
     </div>
     <div class="ft-field">
       <label>{{localize "battleframe-full-thrust.fields.screens"}}</label>
       <input type="number" name="system.screens" value="{{system.screens}}" min="0" max="3" step="1" />
       <span class="ft-track-now" title="remaining / design">{{system.screensTrack}}</span>
+      <div class="ft-hull-track ft-pip-track" title="{{localize "battleframe-full-thrust.systems.pipHint"}}">
+        {{#each screenPips}}
+          <button type="button" class="ft-hull-box ft-pip{{#if this.lost}} ft-damaged{{/if}}"
+            data-action="toggleSystemPip" data-system="screens" data-number="{{this.index}}"
+            aria-label="screen {{this.index}}"></button>
+        {{/each}}
+      </div>
     </div>
     <div class="ft-field">
       <label>{{localize "battleframe-full-thrust.fields.pds"}}</label>
       <input type="number" name="system.pds" value="{{system.pds}}" min="0" step="1" />
       <span class="ft-track-now" title="remaining / design">{{system.pdsTrack}}</span>
+      <div class="ft-hull-track ft-pip-track" title="{{localize "battleframe-full-thrust.systems.pipHint"}}">
+        {{#each pdsPips}}
+          <button type="button" class="ft-hull-box ft-pip{{#if this.lost}} ft-damaged{{/if}}"
+            data-action="toggleSystemPip" data-system="pds" data-number="{{this.index}}"
+            aria-label="point defence {{this.index}}"></button>
+        {{/each}}
+      </div>
     </div>
     <div class="ft-field">
       <label>{{localize "battleframe-full-thrust.fields.ftl"}}</label>
