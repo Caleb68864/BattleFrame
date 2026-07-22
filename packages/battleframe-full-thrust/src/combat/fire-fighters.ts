@@ -31,6 +31,7 @@ import {
   pilotRequiresMoraleCheck
 } from "./pilot";
 import { arcForBearing } from "./arcs";
+import { remainingScreens } from "../ship/systems";
 import { applyDamageAndThreshold } from "./apply-damage";
 import type { ShipActorLike } from "../data/ship-state";
 
@@ -148,7 +149,8 @@ export async function fireFighterGroupAtTarget(
   const rolled = await context.dice.rollPool(pilotAttackDice(remaining, quality), DIE_SIZE);
   // An Attack-type group adds +1 to each attack die versus ships.
   const faces = group.system?.fighterType === "attack" ? rolled.map((f) => f + 1) : rolled;
-  const screenLevel = (target.system?.screens as number | undefined) ?? 0;
+  // REMAINING screen level (design − knocked-out generators), as beams score.
+  const screenLevel = remainingScreens(target.system ?? {});
   const damage = fighterAttackDamage(faces, screenLevel);
 
   const outcome = await applyDamageAndThreshold(target, damage, context.dice);

@@ -120,6 +120,33 @@ describe("fireShipSplit", () => {
     expect(result.unassigned).toHaveLength(0);
   });
 
+  it("scores against a target's REMAINING screen level, not its design level", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const attacker = fakeShip({
+      screens: 0,
+      fcs: 1,
+      weapons: [{ kind: "beam", weaponClass: 1, arcs: ["F"], destroyed: false, spent: false }]
+    });
+    // Target designed at screen level 2 but both generators knocked out.
+    const target = fakeShip(
+      {
+        __id: "A",
+        screens: 2,
+        screensLost: 2,
+        thrust: 0, fcs: 0, pds: 0,
+        armour: { boxes: 0, damage: 0 },
+        hull: { boxes: 18, damage: 0, rows: 3 },
+        weapons: []
+      },
+      { name: "A" }
+    );
+    const ctx = splitContext({ A: { distance: 1, bearing: 0 } }, scriptedDice([[6]]));
+
+    const result = await fireShipSplit({ attacker, targets: [target], context: ctx });
+    const repA = result.perTarget.find((r) => r.targetId === "A")!;
+    expect(repA.totalDamage).toBe(2); // unscreened 6 = 2, not the level-2 value of 1
+  });
+
   it("refuses to fire when the attacker has lost all fire control", async () => {
     vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
     const attacker = fakeShip({
