@@ -32,6 +32,7 @@ import {
   type FireSessionState
 } from "../round/fire-session";
 import { fireShipAtTarget, type FireContext, type FireReport, type FiringShip } from "../combat/fire-ship";
+import { fireShipSplit, type FireShipSplitReport } from "../combat/fire-ship-split";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
 import { plotMovementPath, type MovementPath } from "../movement/path";
 import { usableThrust } from "../ship/systems";
@@ -193,6 +194,32 @@ export function buildTargetingReportHtml(
   return wrapReport(heading, [range, `<ul class="ft-targeting">${items}</ul>`]);
 }
 
+/**
+ * Builds the multi-FCS split-fire card (roadmap P2 #18): one block per engaged
+ * target (its range + damage + threshold/destruction), the FCS count, and a note
+ * of any weapons that could not be assigned (every slot committed elsewhere).
+ * Rows come from the pure `fireShipSplit` orchestrator.
+ */
+export function buildSplitFireReportHtml(report: FireShipSplitReport, attackerName: string): string {
+  const attacker = escapeHtml(attackerName);
+  if (report.refused === "no-fcs") {
+    return wrapReport(`${attacker} split fire`, [`<p>No fire control (cannot fire).</p>`]);
+  }
+  const blocks: string[] = [];
+  if (report.perTarget.length === 0) {
+    blocks.push(`<p><em>No target in arc/range to engage.</em></p>`);
+  }
+  for (const t of report.perTarget) {
+    const name = escapeHtml(t.targetName ?? "Target");
+    blocks.push(`<p>&rarr; <strong>${name}</strong></p>`);
+    blocks.push(...reportBodyLines(t, name));
+  }
+  if (report.unassigned.length > 0) {
+    blocks.push(`<p class="ft-unassigned">${report.unassigned.length} weapon(s) unassigned (no free FCS / out of arc).</p>`);
+  }
+  return wrapReport(`${attacker} splits fire (${report.fcsCount} FCS)`, blocks);
+}
+
 // --- Injectable actions (testable core) -------------------------------------
 
 export interface RoundControlApi {
@@ -311,6 +338,19 @@ function targetedToken(): any | undefined {
   return first;
 }
 
+/** All of the user's targeted tokens (the Set), for multi-target split fire. */
+function targetedTokens(): any[] {
+  const targets = g().game?.user?.targets;
+  if (!targets) {
+    return [];
+  }
+  // Foundry's TargetSet is a Set; fall back to array-likes for test doubles.
+  if (typeof (targets as any)[Symbol.iterator] === "function") {
+    return Array.from(targets as Iterable<any>);
+  }
+  return Array.isArray(targets) ? targets : [];
+}
+
 function toFiringShip(token: any): (FiringShip & { name?: string }) | undefined {
   const actor = token?.actor;
   if (!actor) {
@@ -400,6 +440,61 @@ export async function fireAction(): Promise<void> {
 
   const { html } = await resolveFireBetween(attacker, target, services);
   await g().ChatMessage?.create({ content: html });
+
+  if (order) {
+    await advanceFireOrder(order, attackerToken.id);
+  }
+}
+
+/**
+ * Split-fire tool: a multi-FCS ship divides its weapons across every ship the
+ * GM has targeted (up to N = working FCS), firing each group in one action
+ * (roadmap P2 #18). Falls back to the same initiative/alternation gate as Fire.
+ */
+export async function splitFireAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM resolves fire`);
+    return;
+  }
+  const services = api();
+  if (!services) {
+    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+    return;
+  }
+  const attackerToken = controlledToken();
+  if (!attackerToken) {
+    return;
+  }
+  const targetTokens = targetedTokens();
+  if (targetTokens.length === 0) {
+    notify("warn", `${MODULE_ID} | target one or more enemy ships (T over each) first`);
+    return;
+  }
+  const attacker = toFiringShip(attackerToken);
+  if (!attacker) {
+    notify("warn", `${MODULE_ID} | the attacker needs a ship actor`);
+    return;
+  }
+  const targets = targetTokens.map(toFiringShip).filter(Boolean) as (FiringShip & { name?: string })[];
+  if (targets.length === 0) {
+    notify("warn", `${MODULE_ID} | the targets need ship actors`);
+    return;
+  }
+
+  const order = activeFireOrder();
+  if (order && !canShipFire(order, shipSideOf(attackerToken), attackerToken.id)) {
+    notify("warn", `${MODULE_ID} | it is side ${order.activeSideId()}'s turn to fire (pick one of its ships)`);
+    return;
+  }
+
+  const report = await fireShipSplit({
+    attacker,
+    targets,
+    context: { measure: services.measure, facing: services.facing, dice: services.dice }
+  });
+  await g().ChatMessage?.create({
+    content: buildSplitFireReportHtml(report, attackerToken?.name ?? "Attacker")
+  });
 
   if (order) {
     await advanceFireOrder(order, attackerToken.id);
@@ -913,6 +1008,16 @@ export function addSceneControl(controls: unknown): void {
     order: 1,
     onClick: () => void fireAction(),
   };
+  // Multi-FCS split fire: divide weapons across every targeted ship -- GM only.
+  const splitFireTool = {
+    name: "full-thrust-split-fire",
+    title: "battleframe-full-thrust.controls.splitFire",
+    icon: "fas fa-arrows-split-up-and-left",
+    button: true,
+    visible: gm,
+    order: 1,
+    onClick: () => void splitFireAction(),
+  };
   // Pre-fire targeting check: which weapons bear + their range band -- any player
   // (it only reads their own ship's reach; the card is whispered to them).
   const targetingTool = {
@@ -1003,7 +1108,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, fireTool, targetingTool, needleTool, salvoTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
+  const tools = [initiativeTool, fireTool, splitFireTool, targetingTool, needleTool, salvoTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);

@@ -11,6 +11,8 @@ import {
   newTurnAction
 } from "../src/ui/round-control";
 import type { TargetingRow } from "../src/combat/targeting";
+import { buildSplitFireReportHtml } from "../src/ui/round-control";
+import type { FireShipSplitReport } from "../src/combat/fire-ship-split";
 import type { FireReport } from "../src/combat/fire-ship";
 import type { FighterFireReport } from "../src/combat/fire-fighters";
 
@@ -161,6 +163,44 @@ describe("buildTargetingReportHtml", () => {
   });
 });
 
+describe("buildSplitFireReportHtml", () => {
+  const report: FireShipSplitReport = {
+    fcsCount: 2,
+    perTarget: [
+      { targetId: "t1", targetName: "Enemy DD", distance: 8, bearing: 0, totalDamage: 4, shots: [], destroyed: false, thresholdsCrossed: [], systemsKnockedOut: 0 },
+      { targetId: "t2", targetName: "Enemy CA", distance: 20, bearing: 120, totalDamage: 2, shots: [], destroyed: true, thresholdsCrossed: [1], systemsKnockedOut: 1 }
+    ],
+    unassigned: [{ index: 3, reason: "fcs-cap" }]
+  };
+
+  it("lists each engaged target with its damage + the FCS count", () => {
+    const html = buildSplitFireReportHtml(report, "RNS Lion");
+    expect(html).toContain("RNS Lion");
+    expect(html).toContain("Enemy DD");
+    expect(html).toContain("Enemy CA");
+    expect(html).toContain("2 FCS");
+    expect(html.toLowerCase()).toContain("destroyed");
+    expect(html.toLowerCase()).toContain("unassigned");
+  });
+
+  it("reports a no-FCS refusal", () => {
+    const refused: FireShipSplitReport = { fcsCount: 0, perTarget: [], unassigned: [], refused: "no-fcs" };
+    const html = buildSplitFireReportHtml(refused, "A");
+    expect(html.toLowerCase()).toContain("fire control");
+  });
+
+  it("escapes target names", () => {
+    const evil: FireShipSplitReport = {
+      fcsCount: 1,
+      perTarget: [{ targetId: "x", targetName: "<img src=x>", distance: 5, bearing: 0, totalDamage: 1, shots: [], destroyed: false, thresholdsCrossed: [], systemsKnockedOut: 0 }],
+      unassigned: []
+    };
+    const html = buildSplitFireReportHtml(evil, "A");
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img");
+  });
+});
+
 describe("addSceneControl", () => {
   it("adds a Full Thrust control with fire and plot tools (array payload)", () => {
     vi.stubGlobal("game", { user: { isGM: true } });
@@ -173,6 +213,7 @@ describe("addSceneControl", () => {
     expect(toolNames).toContain("full-thrust-initiative");
     expect(toolNames).toContain("full-thrust-fire");
     expect(toolNames).toContain("full-thrust-targeting");
+    expect(toolNames).toContain("full-thrust-split-fire");
     expect(toolNames).toContain("full-thrust-needle");
     expect(toolNames).toContain("full-thrust-salvo");
     expect(toolNames).toContain("full-thrust-plot");

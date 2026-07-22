@@ -2414,3 +2414,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   with source-quote comments. +9 tests (tests/missile-warheads.test.ts); 952 passing; typecheck
   clean. COVERAGE.md / roadmap-full-thrust.md left untouched per task scope.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: Split Fire scene tool wires the multi-FCS orchestrator (P2 #18)
+- Symptom/gap: `fireShipSplit` (the multi-FCS split orchestrator) + `allocateFcsFire` were pure +
+  tested but had no way to invoke them in Foundry — a ship still fired all weapons at one target.
+- Fix: added `splitFireAction` + a "Split Fire" GM scene tool. It reads the controlled attacker and
+  EVERY targeted token (new `targetedTokens()` reads the whole `game.user.targets` Set, vs the
+  single-target `targetedToken()`), runs `fireShipSplit`, and posts a per-target chat card via the
+  new pure `buildSplitFireReportHtml`. Honors the same initiative/alternation gate as Fire and
+  advances the fire order after.
+- Surfaces: ui/round-control.ts (builder + action + tool registration + `targetedTokens`),
+  lang/en.json (controls.splitFire), tests/round-control.test.ts.
+- Watch: multi-target read depends on Foundry's `user.targets` being an iterable Set — live-verify
+  targeting 2+ tokens then Split Fire produces one card with a block per engaged target. The
+  target-priority order is currently the Set's iteration order (no explicit picker UI yet).
+- +4 tests (buildSplitFireReportHtml 3, split-fire tool registration 1); 970 passing; typecheck
+  clean.
+- Commit: this commit.
