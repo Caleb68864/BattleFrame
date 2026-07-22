@@ -832,7 +832,6 @@ export function addSceneControl(controls: unknown): void {
     visible: gm,
     order: 0,
     onClick: () => void beginFirePhaseAction(),
-    onChange: () => void beginFirePhaseAction()
   };
   const fireTool = {
     name: "full-thrust-fire",
@@ -842,7 +841,6 @@ export function addSceneControl(controls: unknown): void {
     visible: gm,
     order: 1,
     onClick: () => void fireAction(),
-    onChange: () => void fireAction()
   };
   const needleTool = {
     name: "full-thrust-needle",
@@ -852,7 +850,6 @@ export function addSceneControl(controls: unknown): void {
     visible: gm,
     order: 2,
     onClick: () => void needleAction(),
-    onChange: () => void needleAction()
   };
   const salvoTool = {
     name: "full-thrust-salvo",
@@ -862,7 +859,6 @@ export function addSceneControl(controls: unknown): void {
     visible: gm,
     order: 3,
     onClick: () => void salvoAction(),
-    onChange: () => void salvoAction()
   };
   const plotTool = {
     name: "full-thrust-plot",
@@ -872,7 +868,6 @@ export function addSceneControl(controls: unknown): void {
     visible: true,
     order: 2,
     onClick: () => void plotAction(),
-    onChange: () => void plotAction()
   };
   // End-of-turn damage control repair -- GM only.
   const damageControlTool = {
@@ -883,7 +878,6 @@ export function addSceneControl(controls: unknown): void {
     visible: gm,
     order: 5,
     onClick: () => void damageControlAction(),
-    onChange: () => void damageControlAction()
   };
   // Execute reveals every ship's secretly-plotted move at once -- GM only.
   const executeTool = {
@@ -894,7 +888,6 @@ export function addSceneControl(controls: unknown): void {
     visible: gm,
     order: 3,
     onClick: () => void executeManeuversAction(),
-    onChange: () => void executeManeuversAction()
   };
   // Start a fresh turn: clear leftover plots + end the fire phase -- GM only.
   const newTurnTool = {
@@ -905,7 +898,6 @@ export function addSceneControl(controls: unknown): void {
     visible: gm,
     order: 7,
     onClick: () => void newTurnAction(),
-    onChange: () => void newTurnAction()
   };
   // Import a fleet from JSON -- any player (subject to Foundry's create-actor perm).
   const importTool = {
@@ -916,7 +908,6 @@ export function addSceneControl(controls: unknown): void {
     visible: true,
     order: 4,
     onClick: () => void importFleetAction(),
-    onChange: () => void importFleetAction()
   };
 
   const control = {

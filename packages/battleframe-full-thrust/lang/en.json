@@ -1,4 +1,6 @@
 {
+  "TYPES.Actor.battleframe-full-thrust.ship": "Ship",
+  "TYPES.Actor.battleframe-full-thrust.fighter-group": "Fighter Group",
   "battleframe-full-thrust.sheets.ship": "Full Thrust Ship",
   "battleframe-full-thrust.sheets.fighterGroup": "Full Thrust Fighter Group",
   "battleframe-full-thrust.fields.mass": "Mass",
