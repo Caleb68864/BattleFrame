@@ -3067,3 +3067,38 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   glue), styles/simple-skirmish.css (.ss-combat-report/.ss-victory),
   tests/chat-cards.test.ts. +11 tests; 1193 → 1204 pass; typecheck green.
 - Commit: this commit.
+
+## 2026-07-22 — GREATHELM adopts the chat-card primitive (clash-outcome card, witness 2)
+- Directive: chat cards across ALL rulesets. GREATHELM (witness 2) surfaced clash
+  resolution only through transient `notify` toasts — GM-only, gone on refresh, the
+  exact anti-pattern CLAUDE.md's dice/results rule names ("not GM-only toasts").
+- Problem the seam solves: a clash resolves INSIDE the pure `round/session.ts`
+  `spendDie` (via `resolveDieAction`), and its `ClashResult` was dropped on the
+  floor — the round-control glue (where `notify` is wired) never saw it, so there
+  was nothing to render. Re-deriving the roll-off in the glue is impossible (dice
+  already rolled).
+- Change: added an `onClashResolved(outcome)` seam to `CreateRoundSessionOptions`
+  (default no-op, so every headless caller + unit test is byte-for-byte unchanged —
+  it parallels the existing `chooseAttackTarget`/`notify` seams). `spendDie` now
+  captures the `ClashResult` and, for a real clash, hands out a `ClashResolvedOutcome`
+  (attacker/defender ids+names, roll-off, damage, defender's post-clash wound total,
+  removed?). The total + removal are read AFTER `resolveDieAction` applied the damage.
+- Glue: `buildClashReportHtml(outcome)` is a PURE, unit-tested builder — same
+  live/fallback split as Full Thrust's `wrapReport` (delegates to `chat.card` when
+  the engine is present, inlines identical `battleframe-card gh-clash-report` markup
+  for the no-engine test path). `clashReportParts` is shared by the builder and the
+  live poster so they cannot drift. `beginRoundFromControl`/`resumeRoundFromControl`
+  gained a `postClashCard` option; `advanceRoundCore` wires it to the real
+  `game.battleframe.chat.postCard` (both fresh + resumed branches).
+- Escaping: knight names go through a LOCAL `escapeHtml` (copy of the engine's), the
+  same reason FT keeps its own — the pure builder must escape with no runtime engine.
+- CSS: `.gh-clash-report` is accent-only (heraldic gules edge + reddened, bolded
+  "removed" line); the base card look stays in the engine stylesheet. Colour is not
+  the only signal (the removal line is bold and says "removed").
+- Live-verification DEFERRED — parent batch-deploys; this is Foundry-facing (postCard
+  + a live round) and must be checked in a world before it counts as done.
+- Surfaces: packages/battleframe-greathelm/src/round/session.ts (ClashResolvedOutcome,
+  onClashResolved seam), src/ui/round-control.ts (buildClashReportHtml, clashReportParts,
+  escapeHtml, postClashCardToChat, postClashCard wiring), styles/greathelm.css
+  (.gh-clash-report). +5 tests; 1198 pass. Engine (packages/battleframe/src) untouched.
+- Commit: this commit.

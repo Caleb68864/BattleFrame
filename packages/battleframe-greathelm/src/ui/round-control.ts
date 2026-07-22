@@ -16,6 +16,7 @@ import { type ActorLike, type CombatLike, type ResolvedDie } from "../round/loop
 import {
   createRoundSession,
   restoreRoundSession,
+  type ClashResolvedOutcome,
   type PoolDie,
   type RoundSession,
   type RoundSessionKnight,
@@ -23,7 +24,7 @@ import {
 } from "../round/session";
 import { checkVictory } from "../round/victory";
 import type { CheckVictoryKnight } from "../round/victory-types";
-import { isKnightRemoved, resetKnight } from "../round/removal";
+import { DAMAGE_LIMIT, isKnightRemoved, resetKnight } from "../round/removal";
 import {
   promptAttackTarget,
   promptFirstOrSecond,
@@ -431,6 +432,133 @@ export function formatInches(inches: number): string {
   return `${Number((Math.round(inches * factor) / factor).toFixed(DISPLAY_DECIMAL_PLACES))}`;
 }
 
+/* ------------------------------------------------------------------------ *
+ * Pure clash-report card (unit-tested, no running Foundry/engine)
+ * ------------------------------------------------------------------------ */
+
+/**
+ * HTML-entity escape for user-editable knight/token names.
+ *
+ * A local copy of the engine's `chat.escapeHtml` on purpose: the card builder
+ * below is PURE and unit-tested with no `game.battleframe` present, so it cannot
+ * reach the runtime escaper -- the same reason Full Thrust's round-control keeps
+ * its own copy. The live poster still routes through this identical function, so
+ * the escaping a test sees is byte-for-byte what gets posted.
+ */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** The engine's neutral chat service (`game.battleframe.chat`), resolved without a load-order dependency. */
+interface ChatApiLike {
+  card?: (spec: { title?: string; lines?: readonly string[]; cssClass?: string }) => string;
+  postCard?: (spec: {
+    title?: string;
+    lines?: readonly string[];
+    cssClass?: string;
+    speaker?: Record<string, unknown>;
+  }) => Promise<void>;
+}
+
+function chatApi(): ChatApiLike | undefined {
+  const scope = globalThis as unknown as {
+    game?: { battleframe?: { chat?: ChatApiLike } };
+    battleframe?: { chat?: ChatApiLike };
+  };
+
+  return scope.game?.battleframe?.chat ?? scope.battleframe?.chat;
+}
+
+/** Human labels for the three clash actions. Bash/Light/Heavy are the only faces that clash. */
+const CLASH_ACTION_LABELS: Readonly<Record<string, string>> = {
+  bash: "Bash",
+  light: "Light Melee",
+  heavy: "Heavy Melee",
+};
+
+/**
+ * The clash card's heading + body lines, dynamic text already escaped. Shared by
+ * `buildClashReportHtml` (the tested full-card artifact) and the live poster, so
+ * the two cannot drift: the same title/lines feed the engine's `card()` either way.
+ */
+function clashReportParts(outcome: ClashResolvedOutcome): { title: string; lines: string[] } {
+  const attacker = escapeHtml(outcome.attackerName ?? outcome.attackerId);
+  const defender = escapeHtml(outcome.defenderName ?? outcome.defenderId);
+  const label = CLASH_ACTION_LABELS[outcome.action] ?? escapeHtml(outcome.action);
+
+  const lines: string[] = [
+    `<p>${label} clash: <strong>${outcome.attackerRoll}</strong> vs ${outcome.defenderRoll} &mdash; ` +
+      `${outcome.attackerWins ? "attacker wins" : "defender holds"}.</p>`,
+  ];
+
+  if (outcome.attackerWins && outcome.damage > 0) {
+    lines.push(
+      `<p><strong>${outcome.damage}</strong> damage ` +
+        `(${outcome.defenderDamageTotal}/${DAMAGE_LIMIT} wounds).</p>`
+    );
+  } else {
+    lines.push(`<p>No damage.</p>`);
+  }
+
+  if (outcome.defenderRemoved) {
+    lines.push(
+      `<p class="gh-defeated"><strong>${defender} removed from play.</strong></p>`
+    );
+  }
+
+  return { title: `${attacker} &rarr; ${defender}`, lines };
+}
+
+/**
+ * Wraps the clash heading + body in the outcome-card container. Delegates to the
+ * engine's neutral `chat.card()` when the runtime service is present (so every
+ * ruleset shares one card shape + stylesheet), falling back to the engine card's
+ * markup inline for the no-engine unit-test path -- the same live/fallback split
+ * Full Thrust's `wrapReport` uses. `gh-clash-report` rides along for GREATHELM's
+ * own accent CSS.
+ */
+function wrapClashReport(title: string, lines: readonly string[]): string {
+  const card = chatApi()?.card;
+
+  if (card) {
+    return card({ title, lines, cssClass: "gh-clash-report" });
+  }
+
+  return (
+    `<div class="battleframe-card gh-clash-report">` +
+    `<h3 class="battleframe-card__title">${title}</h3>${lines.join("")}</div>`
+  );
+}
+
+/** Builds the chat-card HTML summarising one resolved clash between two knights. */
+export function buildClashReportHtml(outcome: ClashResolvedOutcome): string {
+  const { title, lines } = clashReportParts(outcome);
+
+  return wrapClashReport(title, lines);
+}
+
+/**
+ * Posts the clash-outcome card as a persistent ChatMessage via the engine's
+ * `game.battleframe.chat.postCard` -- the CLAUDE.md-mandated surface for results,
+ * not a transient GM-only toast. No-ops when the chat service is absent (no
+ * engine / early boot), mirroring the engine's own `postCard`.
+ */
+async function postClashCardToChat(outcome: ClashResolvedOutcome): Promise<void> {
+  const chat = chatApi();
+
+  if (!chat?.postCard) {
+    return;
+  }
+
+  const { title, lines } = clashReportParts(outcome);
+  await chat.postCard({ title, lines, cssClass: "gh-clash-report" });
+}
+
 export interface BeginRoundFromControlOptions {
   knights: readonly RoundKnight[];
   combat: CombatDocumentLike;
@@ -443,6 +571,12 @@ export interface BeginRoundFromControlOptions {
   /** World settings, forwarded to the session so the attack-target prompt honours its toggle. */
   settings?: WorldSettingsLike;
   notify?: (message: string) => void;
+  /**
+   * Seam for posting a persistent clash-outcome chat card when a clash resolves.
+   * Default no-op keeps the pure resolution UI-free; the Foundry glue wires the
+   * real `game.battleframe.chat.postCard`, exactly like `notify`.
+   */
+  postClashCard?: (outcome: ClashResolvedOutcome) => void | Promise<void>;
 }
 
 export interface BeginRoundFromControlResult {
@@ -537,6 +671,9 @@ export async function beginRoundFromControl(
     // is asked which to hit (honouring SETTING_PROMPT_ATTACK_TARGET), instead of
     // silently taking the nearest.
     chooseAttackTarget: (promptOptions) => promptAttackTarget(promptOptions),
+    // Post a persistent clash-outcome card when a clash resolves (default no-op
+    // in the pure session; the glue below wires the real chat.postCard).
+    onClashResolved: options.postClashCard,
   });
 
   const session = wrapRoundSession(baseSession, {
@@ -650,6 +787,8 @@ export interface ResumeRoundFromControlOptions {
   /** World settings, forwarded to the session so the attack-target prompt honours its toggle. */
   settings?: WorldSettingsLike;
   notify?: (message: string) => void;
+  /** Seam for posting a persistent clash-outcome chat card; see BeginRoundFromControlOptions. */
+  postClashCard?: (outcome: ClashResolvedOutcome) => void | Promise<void>;
 }
 
 /**
@@ -670,6 +809,8 @@ export function resumeRoundFromControl(
       // Same attack-target wiring as a fresh round -- a resumed round must offer
       // the picker too, not silently fall back to nearest.
       chooseAttackTarget: (promptOptions) => promptAttackTarget(promptOptions),
+      // A resumed round posts clash cards too (default no-op without the glue seam).
+      onClashResolved: options.postClashCard,
     },
     state
   );
@@ -1018,7 +1159,17 @@ export async function advanceRoundCore(
       | undefined;
     if (roundState && !roundState.complete) {
       const session = resumeRoundFromControl(
-        { knights, combat, dice, measure, settings, notify: (message) => notifyUser(message) },
+        {
+          knights,
+          combat,
+          dice,
+          measure,
+          settings,
+          notify: (message) => notifyUser(message),
+          postClashCard: (outcome) => {
+            void postClashCardToChat(outcome);
+          },
+        },
         roundState
       );
       return openPoolPanel(session, panelKnights, () =>
@@ -1035,6 +1186,9 @@ export async function advanceRoundCore(
       notify: (message) => notifyUser(message),
       chooseOrder: (outcome) => promptFirstOrSecond({ outcome, settings }),
       settings,
+      postClashCard: (outcome) => {
+        void postClashCardToChat(outcome);
+      },
     });
 
     return openPoolPanel(session, panelKnights, () =>

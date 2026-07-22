@@ -306,3 +306,20 @@
   font-size: 0.85em;
   opacity: 0.8;
 }
+
+/* ---- Clash-outcome chat card ----------------------------------------- */
+/*
+ * Accent only: the base .battleframe-card look (frame, title, spacing) ships in
+ * the engine stylesheet so one card shape themes every ruleset. This adds the
+ * heraldic gules edge that marks a card as a GREATHELM clash, and reddens the
+ * "removed from play" line so a defeat reads at a glance. Colour is never the
+ * only signal — the removal line is also bold and carries the word "removed".
+ */
+.battleframe-card.gh-clash-report {
+  border-left: 3px solid #7c2020; /* --bf-gules, heraldic red */
+}
+
+.battleframe-card.gh-clash-report .gh-defeated {
+  color: #7c2020;
+  font-weight: 700;
+}

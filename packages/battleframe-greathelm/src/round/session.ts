@@ -1,4 +1,4 @@
-import { MODULE_ID, type DieFace } from "../constants";
+import { MODULE_ID, type ActionId, type DieFace } from "../constants";
 import { actionForFace, requiresClashTest } from "./actions";
 import {
   isBaseContactDistance,
@@ -7,7 +7,7 @@ import {
 } from "../combat/clash";
 import { resolveDieAction, type ActorLike, type ClashParticipantRef, type ResolvedDie } from "./loop";
 import { runCouragePhase, type CourageKnight, type CourageTestOutcome } from "./courage";
-import { markFled } from "./removal";
+import { isKnightRemoved, markFled } from "./removal";
 
 /**
  * A knight as the session sees it. Deliberately narrower than round-control's
@@ -49,6 +49,14 @@ export interface CreateRoundSessionOptions {
    * and any headless caller -- keeps the old silent "nearest" behaviour.
    */
   chooseAttackTarget?: ChooseAttackTarget;
+  /**
+   * Notified when a clash die resolves, carrying the roll-off + damage + removal
+   * so the glue layer (ui/round-control.ts) can post a persistent chat card.
+   * Default no-op keeps the pure session UI-free -- a headless caller and every
+   * unit test behave exactly as before this seam existed, exactly like the
+   * `notify`/`emit` movement seam it parallels.
+   */
+  onClashResolved?: (outcome: ClashResolvedOutcome) => void | Promise<void>;
 }
 
 /** A die as the session tracks it: no knight assigned until `spendDie` says so. */
@@ -83,6 +91,30 @@ export interface LegalTarget {
 /** Lets a player declare which of several touching enemies a clash die hits. */
 export interface SpendChoices {
   defenderKnightId?: string;
+}
+
+/**
+ * The result of one resolved clash die (Bash / Light / Heavy), as the glue layer
+ * needs it to post a persistent outcome card: who struck whom, the clash roll-off,
+ * the damage dealt, and the defender's resulting wound total + whether the wound
+ * removed it from play. Produced here because the clash resolves inside `spendDie`
+ * (via `resolveDieAction`), which is the only place all of it is known at once; the
+ * pure session hands it to the injected `onClashResolved` seam and stays UI-free.
+ */
+export interface ClashResolvedOutcome {
+  action: ActionId;
+  attackerId: string;
+  attackerName?: string;
+  defenderId: string;
+  defenderName?: string;
+  attackerRoll: number;
+  defenderRoll: number;
+  attackerWins: boolean;
+  damage: number;
+  /** The defender's total damage AFTER this clash was applied (0..DAMAGE_LIMIT). */
+  defenderDamageTotal: number;
+  /** Whether that damage (or a prior removal) has taken the defender out of play. */
+  defenderRemoved: boolean;
 }
 
 /** A defender the attack-target prompt can offer. Structural, so ui/choice-prompts.ts AttackTargetCandidate assigns to it without this pure module importing the UI. */
@@ -244,6 +276,9 @@ export function createRoundSession(
   // ui/choice-prompts.ts promptAttackTarget here.
   const chooseAttackTarget: ChooseAttackTarget =
     options.chooseAttackTarget ?? (async ({ candidates }) => candidates[0]);
+  // Default no-op so a headless session posts no card; the live path injects the
+  // chat-card poster from ui/round-control.ts.
+  const onClashResolved = options.onClashResolved ?? ((): void => undefined);
 
   /**
    * The defender for a clash die: the nearest touching enemy when only one is in
@@ -544,11 +579,30 @@ export function createRoundSession(
         action,
       };
 
-      await resolveDieAction(resolved, toParticipant(knight), {
+      const clash = await resolveDieAction(resolved, toParticipant(knight), {
         measure,
         dice,
         defender: toParticipant(defender),
       });
+
+      // Surface the resolved clash to the glue so it can post a persistent card.
+      // Read AFTER resolveDieAction, which has already applied the damage, so the
+      // wound total + removal reflect this clash's effect.
+      if (clash) {
+        await onClashResolved({
+          action,
+          attackerId: knight.id,
+          attackerName: knight.name,
+          defenderId: defender.id,
+          defenderName: defender.name,
+          attackerRoll: clash.attackerRoll,
+          defenderRoll: clash.defenderRoll,
+          attackerWins: clash.attackerWins,
+          damage: clash.damage,
+          defenderDamageTotal: defender.actor.system?.damage ?? 0,
+          defenderRemoved: isKnightRemoved(defender.actor),
+        });
+      }
     }
 
     consumeDie(playerIndex, die);

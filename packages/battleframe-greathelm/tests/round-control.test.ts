@@ -5,6 +5,7 @@ import {
   WrongSideCountError,
   addRoundSceneControl,
   beginRoundFromControl,
+  buildClashReportHtml,
   determineInitiativeWithRerolls,
   findDefenderInBaseContact,
   formatInches,
@@ -17,6 +18,7 @@ import {
   type CombatDocumentLike,
   type RoundKnight,
 } from "../src/ui/round-control";
+import type { ClashResolvedOutcome } from "../src/round/session";
 import { SPRINT_MOVE_INCHES } from "../src/constants";
 import type { ResolvedDie } from "../src/round/loop";
 import type { RoundSession } from "../src/round/session";
@@ -734,5 +736,71 @@ describe("resetBattleFromControl -- confirm before you clear the board", () => {
         "flags.battleframe-greathelm.-=fled": null,
       });
     }
+  });
+});
+
+/**
+ * The persistent clash-outcome card (buildClashReportHtml) is a PURE builder:
+ * it takes the resolved clash outcome and returns the card HTML with no running
+ * Foundry/engine, so it is asserted directly the way Full Thrust asserts its
+ * fire-report cards. The live posting is wired to game.battleframe.chat.postCard
+ * in the Foundry glue (advanceRoundCore); this covers the markup contract.
+ */
+function clashOutcome(overrides: Partial<ClashResolvedOutcome> = {}): ClashResolvedOutcome {
+  return {
+    action: "heavy",
+    attackerId: "a",
+    attackerName: "Sir Bedwyr",
+    defenderId: "d",
+    defenderName: "Black Knight",
+    attackerRoll: 5,
+    defenderRoll: 3,
+    attackerWins: true,
+    damage: 2,
+    defenderDamageTotal: 2,
+    defenderRemoved: false,
+    ...overrides,
+  };
+}
+
+describe("buildClashReportHtml", () => {
+  it("names both knights and carries the base + accent card classes", () => {
+    const html = buildClashReportHtml(clashOutcome());
+
+    expect(html).toContain("Sir Bedwyr");
+    expect(html).toContain("Black Knight");
+    expect(html).toContain("battleframe-card");
+    expect(html).toContain("gh-clash-report");
+  });
+
+  it("shows the clash roll-off and the damage dealt", () => {
+    const html = buildClashReportHtml(
+      clashOutcome({ attackerRoll: 6, defenderRoll: 1, damage: 2, defenderDamageTotal: 3 })
+    );
+
+    expect(html).toContain("6"); // attacker roll
+    expect(html).toContain("1"); // defender roll
+    expect(html).toContain("2"); // damage dealt
+  });
+
+  it("reports when the attacker fails to wound", () => {
+    const html = buildClashReportHtml(
+      clashOutcome({ attackerWins: false, damage: 0, defenderDamageTotal: 0 })
+    );
+
+    expect(html.toLowerCase()).toContain("no damage");
+  });
+
+  it("notes removal when the defender is taken out of play", () => {
+    const html = buildClashReportHtml(clashOutcome({ defenderRemoved: true, defenderDamageTotal: 3 }));
+
+    expect(html.toLowerCase()).toContain("removed");
+  });
+
+  it("escapes knight names (never injects raw HTML)", () => {
+    const html = buildClashReportHtml(clashOutcome({ attackerName: "<img src=x onerror=alert(1)>" }));
+
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img");
   });
 });
