@@ -14,3 +14,7 @@ system.svg           cog              Lorc
 crippled.svg         despair          Lorc
 
 Used unmodified aside from renaming and runtime recoloring. Attribution required by CC BY 3.0.
+
+---
+
+Like what I'm building? Support me on Buy Me a Coffee: https://buymeacoffee.com/plainsprepper

@@ -104,3 +104,8 @@ neutrality contract every ruleset must honor.
 ## License
 
 [MIT](LICENSE).
+
+## Support
+
+☕ Like what I'm building? Help fuel my next project (or my next coffee)!
+Support me on [Buy Me a Coffee](https://buymeacoffee.com/plainsprepper) 💻🧵🔥

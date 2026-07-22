@@ -28,3 +28,7 @@ or army list you own).
 fan-made, free, non-commercial implementation and is not affiliated with or
 endorsed by Echo Dark Studios. Support the creators by buying the rules at
 inxcountry.com.
+
+## Support
+
+☕ Like what I'm building? Support me on [Buy Me a Coffee](https://buymeacoffee.com/plainsprepper) 💻🧵🔥
