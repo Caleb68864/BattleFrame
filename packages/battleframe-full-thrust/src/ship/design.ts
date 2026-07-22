@@ -9,7 +9,7 @@
  * the Ship Design cheat sheet.
  */
 
-import type { ShipClass } from "./hull";
+import { shipClass, type ShipClass } from "./hull";
 
 /** Warship hull cost in points: 2 x MASS. */
 export function hullCost(mass: number): number {
@@ -121,4 +121,50 @@ export function designPoints(spec: DesignSpec): number {
   }
 
   return total;
+}
+
+interface ShipSystemForPoints {
+  mass?: number;
+  thrust?: number;
+  ftl?: boolean;
+  screens?: number;
+  pds?: number;
+  fcs?: number;
+  weapons?: Array<{ kind?: string; weaponClass?: number | null; arcs?: unknown[] }>;
+}
+
+/**
+ * The Points value of a ship from its live in-play systems (mass, thrust, ftl,
+ * screens, pds, fcs, weapon mounts) -- mapping the play model onto a `DesignSpec`
+ * and running `designPoints`. Beams become batteries (class + arc count); PDS are
+ * costed as PDAF; FCS beyond the free class allowance is charged. An informative
+ * FT2 estimate, not a full designer.
+ */
+export function shipPointsFromSystem(system: ShipSystemForPoints): number {
+  const mass = system.mass ?? 0;
+  const cls = shipClass(mass);
+  const weapons = system.weapons ?? [];
+
+  const batteries = weapons
+    .filter((w) => w.kind === "beam" && (w.weaponClass ?? 0) >= 1)
+    .map((w) => ({ cls: w.weaponClass as number, arcs: (w.arcs ?? []).length, count: 1 }));
+
+  const countKind = (kind: string): number => weapons.filter((w) => w.kind === kind).length;
+
+  const spec: DesignSpec = {
+    mass,
+    shipClass: cls,
+    thrust: system.thrust ?? 0,
+    ftl: system.ftl ?? false,
+    // designPoints only prices screen levels 1 and 2; treat level 3 as 2 for cost.
+    screens: Math.min(2, system.screens ?? 0),
+    pdaf: system.pds ?? 0,
+    torpedoes: countKind("torpedo"),
+    submunitions: countKind("submunition"),
+    needles: countKind("needle"),
+    extraFcs: Math.max(0, (system.fcs ?? 0) - freeFcs(cls)),
+    batteries
+  };
+
+  return designPoints(spec);
 }

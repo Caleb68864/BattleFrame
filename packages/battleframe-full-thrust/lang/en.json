@@ -10,6 +10,8 @@
   "battleframe-full-thrust.fields.velocity": "Velocity",
   "battleframe-full-thrust.fields.course": "Course",
   "battleframe-full-thrust.fields.pds": "PDS",
+  "battleframe-full-thrust.fields.ftl": "FTL drive",
+  "battleframe-full-thrust.fields.points": "Points",
   "battleframe-full-thrust.fields.size": "Fighters",
   "battleframe-full-thrust.status.crippled": "Crippled (drives dead)",
   "battleframe-full-thrust.status.weaponsOffline": "Weapons offline (no fire control)",

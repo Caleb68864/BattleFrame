@@ -34,8 +34,11 @@ in a live Foundry.
 4. **[wire] Salvo missiles.** `salvoIntercepted/salvoDamage/salvoSurvivors` done; no launch
    flow (point-of-aim counter, move, resolve with PDS).
 5. **[wire] Damage control.** `damageControlRepairs` done; no end-of-turn repair phase.
-6. **[wire] Ship-design builder.** `designPoints` + component costs done (verified vs the worked
-   example); no builder UI. `pointsValue` on a ship is never populated.
+6. ~~**[wire] Ship-design points.**~~ ✅ **DONE 2026-07-22.** `shipPointsFromSystem` maps a ship's
+   live systems onto a `DesignSpec` and runs `designPoints` (reproduces the worked example, 267);
+   `prepareDerivedData` populates `pointsValue`, shown on the sheet, plus a new `ftl` field. (A
+   full interactive *design builder* app is still a possible future, but you now see any ship's
+   Points and can build via the editable sheet + import.)
 
 ## P1 — QoL / UX
 

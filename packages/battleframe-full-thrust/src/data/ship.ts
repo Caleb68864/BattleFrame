@@ -10,6 +10,7 @@
  */
 
 import { SHIP_ACTOR_TYPE, FIRE_ARCS, WEAPON_KINDS, MAX_SCREEN_LEVEL, MAX_THRUST, COURSES } from "../constants";
+import { shipPointsFromSystem } from "../ship/design";
 import {
   type TypeDataModelBaseConstructor,
   resolveTypeDataModelBase,
@@ -38,6 +39,8 @@ export function createShipDataClass(
       schema.thrust = new NumberField({
         required: true, nullable: false, integer: true, min: 0, max: MAX_THRUST, initial: 4
       });
+      // Whether the ship carries an FTL drive (affects its Points value).
+      schema.ftl = new BooleanField({ required: true, initial: true });
       // Set once the drives take their first threshold hit (thrust halved); a
       // second drive hit then kills them outright.
       schema.driveCrippled = new BooleanField({ required: true, initial: false });
@@ -95,10 +98,13 @@ export function createShipDataClass(
       const self = this as unknown as {
         hull?: { boxes?: number; damage?: number };
         hullTrack?: string;
+        pointsValue?: number;
       };
       const boxes = self.hull?.boxes ?? 0;
       const damage = self.hull?.damage ?? 0;
       self.hullTrack = `${Math.max(0, boxes - damage)}/${boxes}`;
+      // Points value derived from the ship's systems (FT2 Mass/Points estimate).
+      self.pointsValue = shipPointsFromSystem(self as Record<string, any>);
     }
   }
 

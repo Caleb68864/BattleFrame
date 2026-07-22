@@ -96,6 +96,20 @@ describe("prepareDerivedData", () => {
     instance.prepareDerivedData();
     expect(instance.hullTrack).toBe("0/6");
   });
+
+  it("derives a Points value from the ship's systems", () => {
+    stubFoundryFields();
+    const ShipData = createShipDataClass() as unknown as new () => any;
+    const instance = new ShipData();
+    Object.assign(instance, {
+      mass: 10, thrust: 4, ftl: false, screens: 0, pds: 0, fcs: 1,
+      hull: { boxes: 5, damage: 0 },
+      weapons: [{ kind: "beam", weaponClass: 1, arcs: ["F"] }]
+    });
+    instance.prepareDerivedData();
+    // hull 20 + drive (10*4/4=10) + battery cls1 1-arc (2+1=3) = 33.
+    expect(instance.pointsValue).toBe(33);
+  });
 });
 
 describe("registerShipDataModel", () => {

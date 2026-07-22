@@ -98,6 +98,7 @@ function parseShip(raw: any, errors: string[]): ShipCreateData | null {
     system: {
       mass,
       thrust: clampInt(raw.thrust, 0, MAX_THRUST, 4),
+      ftl: raw.ftl === undefined ? true : raw.ftl !== false,
       driveCrippled: false,
       hull,
       armour,

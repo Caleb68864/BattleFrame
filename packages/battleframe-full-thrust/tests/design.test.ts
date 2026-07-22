@@ -7,7 +7,8 @@ import {
   freeFcs,
   beamBatteryCost,
   beamBatteryMass,
-  designPoints
+  designPoints,
+  shipPointsFromSystem
 } from "../src/ship/design";
 
 describe("FT2 hull / drive costs", () => {
@@ -60,5 +61,44 @@ describe("designPoints (worked FT2 example -> 267)", () => {
       ]
     });
     expect(total).toBe(267);
+  });
+});
+
+describe("shipPointsFromSystem (points from a ship's live systems)", () => {
+  it("reproduces the worked example from an in-play ship system", () => {
+    const points = shipPointsFromSystem({
+      mass: 36,
+      thrust: 4,
+      ftl: true,
+      screens: 1,
+      pds: 3,
+      fcs: 2, // cruiser free allowance -> no extra FCS cost
+      weapons: [
+        { kind: "beam", weaponClass: 3, arcs: ["F", "FS", "FP"] },
+        { kind: "beam", weaponClass: 3, arcs: ["F", "AS", "AP"] },
+        { kind: "beam", weaponClass: 2, arcs: ["F", "FS", "FP"] },
+        { kind: "beam", weaponClass: 2, arcs: ["F", "AS", "AP"] },
+        { kind: "beam", weaponClass: 2, arcs: ["A", "AS", "AP"] }
+      ]
+    });
+    expect(points).toBe(267);
+  });
+
+  it("charges extra FCS beyond the free allowance and non-beam weapons", () => {
+    const points = shipPointsFromSystem({
+      mass: 10,
+      thrust: 4,
+      ftl: false,
+      screens: 0,
+      pds: 0,
+      fcs: 2, // escort free 1 -> 1 extra FCS at 10
+      weapons: [
+        { kind: "torpedo", arcs: ["F"] },
+        { kind: "submunition", arcs: ["F"] },
+        { kind: "needle", arcs: ["F"] }
+      ]
+    });
+    // hull 20 + drive (10*4/4=10) + extraFcs 10 + torpedo 15 + submunition 3 + needle 6 = 64
+    expect(points).toBe(64);
   });
 });

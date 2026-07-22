@@ -21,6 +21,14 @@
       <label>{{localize "battleframe-full-thrust.fields.pds"}}</label>
       <input type="number" name="system.pds" value="{{system.pds}}" min="0" step="1" />
     </div>
+    <div class="ft-field">
+      <label>{{localize "battleframe-full-thrust.fields.ftl"}}</label>
+      <input type="checkbox" name="system.ftl" {{#if system.ftl}}checked{{/if}} />
+    </div>
+    <div class="ft-field ft-points">
+      <label>{{localize "battleframe-full-thrust.fields.points"}}</label>
+      <span>{{system.pointsValue}}</span>
+    </div>
   </section>
 
   <section class="ft-track">

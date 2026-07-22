@@ -88,7 +88,7 @@ deferred. Nothing is silently missing.
 ## Ship Design
 | Rule | Status | Where |
 |---|---|---|
-| FT2 Mass/Points: hull, drives, FCS, batteries, systems | ✅ | `ship/design.ts` (verified vs worked example → 267 pts) |
+| FT2 Mass/Points: hull, drives, FCS, batteries, systems | ✅ | `ship/design.ts` (verified vs worked example → 267 pts); `shipPointsFromSystem` derives a ship's Points from its live systems, shown on the sheet |
 | Fleet Book variable-hull design system | ⏳ | Not modelled (not balance-compatible with FT2) |
 
 ## Status effects (Foundry-native)

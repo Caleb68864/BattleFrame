@@ -2103,4 +2103,14 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   enumerateSurvivingSystems + applySystemKnockouts), ignoring screens/armour and dealing no hull
   damage; then syncs the token status. A "Needle Beam" scene tool picks the system type
   (fcs/drive/screen/pds/weapon) via a dialog and posts a chat report. Core unit-tested (790 total).
+- Commit: 3148e46.
+
+## 2026-07-22 — Full Thrust: derive ship Points from systems (roadmap P0 #6)
+- ship/design.ts `shipPointsFromSystem(system)` maps a ship's live play-model (mass/thrust/ftl/
+  screens/pds/fcs + weapon mounts) onto a DesignSpec and runs designPoints -- beams become
+  batteries (class + arc count), PDS costed as PDAF, FCS beyond the free class allowance charged.
+  Reproduces the worked example (267) from an in-play system. A new `ftl` boolean field feeds it.
+- prepareDerivedData populates `pointsValue`; the sheet shows Points + an FTL checkbox; fleet
+  import parses `ftl` (default true). It's an informative FT2 estimate, not a standalone designer.
+- 793 tests passing.
 - Commit: this commit.
