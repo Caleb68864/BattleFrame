@@ -1914,3 +1914,24 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   the bundle — same COVERAGE caveat as Simple Skirmish), the turn/initiative loop,
   movement-order validation, fighters/missiles/PDS/needle, ship-design helpers.
 - Commit: this commit (first milestone: skeleton + facing primitive + combat math).
+
+## 2026-07-22 — Full Thrust: firing pipeline + turn structure + reachable scene control
+- What: the playable combat loop. resolveWeaponFire (pure) rolls a ship's weapons
+  (beam/torpedo/submunition) against one target given range/bearing/screen;
+  fireShipAtTarget (orchestrator, engine services injected) measures range
+  centre-to-centre, reads bearing off game.battleframe.facing, buckets it into a
+  fire arc, rolls via game.battleframe.dice, applies damage armour->hull, and runs
+  the threshold check (enumerate surviving systems, roll per system, knock out
+  FCS/PDS/screens/weapons/drives). Movement: parseOrder/applyOrder validate an
+  order against the thrust budget (turning <= half, up) and compute velocity/course.
+  Turn: determineInitiative + createFirePhase (winner fires one, strict alternation).
+- Reachability: a "Full Thrust" scene control (ui/round-control.ts) with Fire and
+  Plot tools, using Foundry native token control + targeting, posting an
+  HTML-escaped fire report to chat. Pulls combat/movement into the bundle
+  (7.5kB/4 modules -> 25kB/16 modules).
+- Drives simplification (documented): a drive threshold-hit halves thrust (floor)
+  rather than FT2's exact "first half, second dead".
+- 678 tests passing. Live-unverified (no browser here): scene-control glue, sheet
+  render, DialogV2 order prompt -- flagged for the user. Advanced systems
+  (fighters, missiles, PDS-vs-fighters, needle, ship-design helpers) still to come.
+- Commit: this commit.

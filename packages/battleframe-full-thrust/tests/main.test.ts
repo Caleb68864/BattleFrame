@@ -50,11 +50,12 @@ describe("entry point wiring (the init hook actually reaches every registration)
       Actor: { documentClass: class {}, dataModels: {} }
     };
 
+    const on = vi.fn();
     vi.stubGlobal("Hooks", {
       once: (name: string, cb: () => void) => {
         if (name === "init") inits.push(cb);
       },
-      on: () => {}
+      on
     });
     vi.stubGlobal("battleframe", {
       api: { registerRuleset },
@@ -89,5 +90,7 @@ describe("entry point wiring (the init hook actually reaches every registration)
     expect(registerSheet).toHaveBeenCalledTimes(1);
     expect(hoverRegister).toHaveBeenCalledTimes(1);
     expect(registerRuleset).toHaveBeenCalledTimes(1);
+    // The scene control was registered -- the trigger that keeps combat reachable.
+    expect(on).toHaveBeenCalledWith("getSceneControlButtons", expect.any(Function));
   });
 });

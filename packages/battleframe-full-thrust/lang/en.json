@@ -12,5 +12,8 @@
   "battleframe-full-thrust.fields.pds": "PDS",
   "battleframe-full-thrust.fields.size": "Fighters",
   "battleframe-full-thrust.status.crippled": "Crippled",
-  "battleframe-full-thrust.status.destroyed": "Destroyed"
+  "battleframe-full-thrust.status.destroyed": "Destroyed",
+  "battleframe-full-thrust.controls.title": "Full Thrust",
+  "battleframe-full-thrust.controls.fire": "Fire selected ship at target",
+  "battleframe-full-thrust.controls.plot": "Plot movement order"
 }

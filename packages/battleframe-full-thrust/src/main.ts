@@ -1,6 +1,7 @@
 import { MODULE_ID, SHIP_ACTOR_TYPE } from "./constants";
 import { registerShipDataModel } from "./data/ship";
 import { registerShipSheet } from "./sheets/ship-sheet";
+import { registerRoundControl } from "./ui/round-control";
 
 interface BattleframeRegisterResult {
   ok: boolean;
@@ -110,5 +111,8 @@ globalHooks?.once("init", () => {
   registerShipDataModel();
   registerShipSheet();
   registerFullThrustHoverFields();
+  // The reachable trigger: a scene control answering Foundry's own hook. Without
+  // it the fire/movement code is tree-shaken out (see COVERAGE.md).
+  registerRoundControl();
   registerFullThrustRuleset();
 });
