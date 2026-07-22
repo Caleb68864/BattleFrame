@@ -2363,3 +2363,26 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   constants — every pilot-quality rules number already lived at the end of `constants.ts`.
 - +5 tests (fire-fighters 4, dogfight 1); 948 passing; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Multi-FCS fire-splitting orchestrator (P2 #18): sub-list index remap
+- Added `combat/fire-ship-split.ts` (`fireShipSplit`), the testable orchestrator that
+  ties the existing allocator (`allocateFcsFire`) to the existing per-target pipeline
+  (`resolveWeaponFire` + `applyDamageAndThreshold`). It mirrors `fireShipAtTarget` but
+  fans one ship's weapons across up to N targets, one per working FCS. PURE over the
+  injected `FireContext` (measure/facing/dice) — no Foundry/scene glue here (that is the
+  main session's part).
+- Key correctness point: `resolveWeaponFire` indexes its `shots[].index` and `spent[]`
+  against the WEAPON SUB-LIST it is handed, not the attacker's real mounts. The
+  orchestrator builds each target's sub-list from `assignment.weaponIndexes` and remaps
+  both back through `weaponIndexes[...]` so every report shot and the spent-write carry
+  the TRUE mount index. Spent one-shots are accumulated across all targets into ONE
+  `attacker.update({...})`, keyed by real index, exactly like `fireShipAtTarget`.
+- Edge decision: a target that ends up with zero assigned weapons is OMITTED from
+  `perTarget` — the allocator never emits an empty assignment, so there is no empty report
+  to surface; `perTarget` contains only engaged targets, in engage order. `fcsCount`
+  follows `fireShipAtTarget`'s convention (missing `fcs` defaults to 1; `< 1` refuses with
+  `refused: "no-fcs"` and empty perTarget/unassigned).
+- Tests reuse fire-ship.test.ts's fake-ship/scripted-dice builder shape. +4 tests
+  (split-by-arc, no-fcs refusal, spent-index remap, centre-to-centre measure); 947 passing;
+  typecheck clean.
+- Commit: this commit.
