@@ -104,6 +104,7 @@
     <ol>
       {{#each weapons as |weapon|}}
         <li class="ft-weapon {{#if weapon.destroyed}}ft-destroyed{{/if}}">
+          {{#if weapon.icon}}<img class="ft-weapon-icon" src="{{weapon.icon}}" title="{{weapon.type}}">{{/if}}
           <select name="system.weapons.{{weapon.index}}.kind" class="ft-weapon-kind">
             {{#each weapon.kinds as |k|}}
               <option value="{{k.value}}" {{#if k.selected}}selected{{/if}}>{{k.value}}</option>

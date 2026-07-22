@@ -165,6 +165,12 @@
   align-items: center;
 }
 
+.ft-ship-sheet .ft-weapon-icon {
+  flex: 0 0 auto;
+  width: 16px;
+  height: 16px;
+  vertical-align: middle;
+}
 .ft-ship-sheet .ft-weapon-kind { flex: 0 0 6.5rem; }
 .ft-ship-sheet .ft-weapon-class { width: 3rem; }
 .ft-ship-sheet .ft-weapon-arcs { flex: 1 1 auto; min-width: 6rem; height: 1.6rem; }

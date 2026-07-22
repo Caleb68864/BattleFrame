@@ -3545,3 +3545,31 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   + FT ship-sheet weapon-type icons land in follow-up commits.
 - Engine tests: +3 (token-defaults); neutrality green (no ruleset vocab in the service).
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust adopts the token-defaults registry + wires idle game-icons as weapon markers
+- Task 1 (default token images): FT registers its actor subtypes with the engine's
+  neutral token-defaults service at `init`, mirroring the status/hover adoption
+  pattern — a new `src/tokens.ts` resolves `game.battleframe.tokens ?? battleframe.tokens`
+  with a safe fallback and calls `registerDefaultImage`: `${MODULE_ID}.ship` ->
+  `ship.svg`, `${MODULE_ID}.fighter-group` -> `fighter.svg` (both already shipped).
+  `main.ts` init calls `registerShipTokenDefaults()`. Module code only — the engine
+  service (`packages/battleframe/src/ui/token-defaults.ts`) was untouched.
+- Task 2 (weapon-type icons on the SSD): eight shipped game-icons were unreferenced.
+  Added a PURE `weaponTypeIcon(type)` (`src/ship/weapon-icons.ts`) mapping weapon
+  KIND (the model's field; the task's "type") to a shipped icon: beam->beam.svg,
+  torpedo->rocket.svg (pulse torpedo = launched projectile), salvo->missiles.svg,
+  needle->system.svg (surgically kills one system), submunition->explosion.svg
+  (bursting flak cloud). kgun (Kra'Vak kinetic railgun) has no icon that reads as
+  it, so it maps to `undefined` — no marker beats a misleading one. The ship sheet's
+  `prepareWeaponRows` now attaches `type` + `icon` per row; the hbs renders
+  `{{#if weapon.icon}}<img class="ft-weapon-icon" ...>{{/if}}` and a 16px
+  `.ft-weapon-icon` CSS rule was added. destroyed/screens/power.svg stay unused —
+  none is a weapon-FIRE type, and the task explicitly allows leaving no-fit types
+  unmapped.
+- TDD: failing tests first for both — `tests/weapon-icons.test.ts` (mapping, incl.
+  kgun/unknown -> undefined) and `tests/token-defaults.test.ts` (fake tokens API,
+  asserts both type->img pairs + game.battleframe fallback + absent-registry no-op);
+  plus a weapon-row assertion in `tests/ship-sheet-weapons.test.ts`.
+- Gates: vitest 1456 green, typecheck 0, build 0. Live-verify (icon paths, sheet
+  render) deferred to the parent per the project's Foundry-facing rule.
+- Commit: this commit.

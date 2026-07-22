@@ -1,6 +1,7 @@
 import { MODULE_ID, SHIP_ACTOR_TYPE, FIRE_ARCS, WEAPON_KINDS } from "../constants";
 import { addWeaponTo, removeWeaponAt, type WeaponMountData } from "./weapon-edit";
 import { rowBoundaries } from "../ship/hull";
+import { weaponTypeIcon } from "../ship/weapon-icons";
 
 /** One rendered hull box: its 1-based number, whether it is crossed off, and
  * whether a threshold-row separator follows it. */
@@ -170,6 +171,8 @@ export async function onRemoveWeapon(this: any, _event: unknown, target: any): P
 export function prepareWeaponRows(weapons: readonly WeaponMountData[] | undefined): unknown[] {
   return (weapons ?? []).map((weapon, index) => ({
     index,
+    type: weapon.kind,
+    icon: weaponTypeIcon(weapon.kind),
     weaponClass: weapon.weaponClass ?? null,
     destroyed: weapon.destroyed,
     kinds: WEAPON_KINDS.map((k) => ({ value: k, selected: k === weapon.kind })),
