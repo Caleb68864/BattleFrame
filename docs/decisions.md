@@ -3219,4 +3219,22 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   state the glue persists alongside the round state at wiring time.
 - Surfaces: `packages/battleframe-stargrunt-ii/src/round/session.ts`, `tests/session.test.ts`.
   +15 tests (59 total); typecheck clean.
+- Commit: 7b380a9.
+
+## 2026-07-22 — SG2 unit data model: figures[] is the casualty surface; vehicle deferred to Phase 3
+- Decision: built the `battleframe-stargrunt-ii.unit` TypeDataModel test-first, copying
+  InCountry's resolver shape verbatim (`resolveTypeDataModelBase`/`resolveFieldsNamespace`/the
+  `intField` helper) so the schema builds against injected `foundry.data.fields` in unit tests.
+  Schema follows the plan's §2.1: `quality` (die string, drives band size + firer die + morale),
+  `leadership` (LV 1..3), `figures[]` (per-figure armour die + wounds + status — the roster is
+  BOTH the dice thrown and the casualty surface, matching B8), user-defined `weapons[]` (no
+  stats shipped — neutrality), and the live counters `confidence` 0..4 / `suppression` 0..3 plus
+  the posture booleans and scenario background. Die values are ALWAYS strings so shifts stay
+  WYSIWYG.
+- Deferred: the `stargrunt-ii.vehicle` model (plan §2.2) is Phase 3 — it consumes the shared
+  `battleframe-gzg-vehicle-core` damage lib (not built yet). Trimmed `module.json` +
+  `lang/en.json` back to declaring only the `unit` subtype so no Actor subtype is advertised
+  without a registered data model.
+- Surfaces: `packages/battleframe-stargrunt-ii/src/data/unit.ts`, `tests/unit-data.test.ts`,
+  `module.json`, `lang/en.json`. +6 tests (65 SG2 / 1285 repo total); typecheck clean.
 - Commit: this commit.

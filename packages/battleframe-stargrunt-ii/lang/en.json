@@ -1,14 +1,12 @@
 {
   "TYPES": {
     "Actor": {
-      "battleframe-stargrunt-ii.unit": "Unit",
-      "battleframe-stargrunt-ii.vehicle": "Vehicle"
+      "battleframe-stargrunt-ii.unit": "Unit"
     }
   },
   "battleframe-stargrunt-ii": {
     "sheets": {
-      "unit": "Unit",
-      "vehicle": "Vehicle"
+      "unit": "Unit"
     },
     "fields": {
       "quality": "Quality",

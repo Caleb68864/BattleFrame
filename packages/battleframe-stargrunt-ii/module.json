@@ -27,8 +27,7 @@
   ],
   "documentTypes": {
     "Actor": {
-      "unit": {},
-      "vehicle": {}
+      "unit": {}
     }
   },
   "url": "",
