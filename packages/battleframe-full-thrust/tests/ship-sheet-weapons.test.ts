@@ -12,6 +12,18 @@ describe("prepareWeaponRows", () => {
     expect(rows[0].arcs.find((a: any) => a.value === "F").selected).toBe(true);
     expect(rows[0].arcs.find((a: any) => a.value === "A").selected).toBe(false);
   });
+
+  it("attaches the weapon-type icon path and raw type per row", () => {
+    const rows = prepareWeaponRows([
+      { kind: "beam", weaponClass: 2, arcs: [], destroyed: false, spent: false },
+      { kind: "kgun", weaponClass: 3, arcs: [], destroyed: false, spent: false }
+    ]) as any[];
+    expect(rows[0].type).toBe("beam");
+    expect(rows[0].icon).toBe("modules/battleframe-full-thrust/icons/beam.svg");
+    // kgun has no sensible icon fit -> no marker rendered.
+    expect(rows[1].type).toBe("kgun");
+    expect(rows[1].icon).toBeUndefined();
+  });
 });
 
 describe("weapon action handlers", () => {

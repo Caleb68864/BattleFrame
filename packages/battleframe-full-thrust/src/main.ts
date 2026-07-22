@@ -8,6 +8,7 @@ import { registerOwnershipWarning } from "./ui/ownership-warning";
 import { registerArcOverlay } from "./ui/arc-overlay";
 import { registerMissileOverlay } from "./ui/missile-overlay";
 import { registerShipStatusEffects } from "./status";
+import { registerShipTokenDefaults } from "./tokens";
 
 interface BattleframeRegisterResult {
   ok: boolean;
@@ -125,6 +126,8 @@ globalHooks?.once("init", () => {
   registerShipSheet();
   registerFighterSheet();
   registerShipStatusEffects();
+  // Give FT actor subtypes their shipped default token icons (ship / fighter).
+  registerShipTokenDefaults();
   registerFullThrustHoverFields();
   // The reachable trigger: a scene control answering Foundry's own hook. Without
   // it the fire/movement code is tree-shaken out (see COVERAGE.md).
