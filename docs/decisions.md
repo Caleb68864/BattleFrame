@@ -1950,3 +1950,13 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - 708 tests passing; build 31kB/21 modules. Deferred: full fighter ops, moving
   missiles, damage control, vector movement, live Foundry verification.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: fighter morale/endurance + damage-control math
+- Added pure, tested rule math: fighter morale (More Thrust: a depleted group
+  passes on a d6 <= remaining fighters), endurance spend/exhaustion, and damage
+  control (each DCP rolls, a 6 repairs a threshold-lost system; free DCPs by
+  class). combat/fighters.ts + combat/damage-control.ts. 715 tests passing.
+- These are rule primitives not yet wired to a reachable trigger (they tree-shake
+  from the bundle until a repair/morale UI calls them) -- COVERAGE.md marks them
+  🟡 with file locations, honestly, rather than claiming full integration.
+- Commit: this commit.

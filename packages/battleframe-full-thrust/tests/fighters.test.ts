@@ -3,7 +3,10 @@ import {
   fighterAttackDamage,
   pdsKillsVsFighters,
   pdsKillsVsMissiles,
-  dogfightKills
+  dogfightKills,
+  fighterMoralePasses,
+  enduranceAfterActiveTurn,
+  enduranceExhausted
 } from "../src/combat/fighters";
 
 describe("fighterAttackDamage (vs ships: beam table, screens apply)", () => {
@@ -31,5 +34,26 @@ describe("pdsKillsVsMissiles (only a 6 kills; one per system)", () => {
 describe("dogfightKills (universal kill table)", () => {
   it("scores fighter kills like the anti-fighter table", () => {
     expect(dogfightKills([6, 5, 4, 1])).toBe(2 + 1 + 1 + 0);
+  });
+});
+
+describe("fighterMoralePasses (More Thrust: roll <= fighters remaining = attack)", () => {
+  it("passes when the die is at or under the group size", () => {
+    expect(fighterMoralePasses(3, 4)).toBe(true);
+    expect(fighterMoralePasses(4, 4)).toBe(true);
+  });
+  it("fails (aborts the attack) when the die exceeds the group size", () => {
+    expect(fighterMoralePasses(5, 4)).toBe(false);
+  });
+});
+
+describe("fighter endurance (More Thrust)", () => {
+  it("spends one endurance per active turn, floored at zero", () => {
+    expect(enduranceAfterActiveTurn(3)).toBe(2);
+    expect(enduranceAfterActiveTurn(0)).toBe(0);
+  });
+  it("is exhausted at zero endurance", () => {
+    expect(enduranceExhausted(0)).toBe(true);
+    expect(enduranceExhausted(1)).toBe(false);
   });
 });

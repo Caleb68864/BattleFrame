@@ -67,7 +67,7 @@ deferred. Nothing is silently missing.
 | Threshold check on row completion (FT2 rolls high 6/5-6/4-6) | ✅ | `ship/threshold.ts`, `ship/systems.ts` |
 | Multi-threshold in one attack: worst reached, worsened per extra | ✅ | `ship/threshold.ts` `thresholdKillOn` |
 | Drives special (half then dead) | 🟡 | Modelled as halving thrust per hit (documented simplification) |
-| Damage control (More Thrust end-of-turn repair) | ⏳ | Not yet built |
+| Damage control (More Thrust end-of-turn repair) | 🟡 | `combat/damage-control.ts` (repair-count + free-DCP math); the end-of-turn repair-assignment UI is deferred |
 
 ## Fighters
 | Rule | Status | Where |
@@ -75,7 +75,8 @@ deferred. Nothing is silently missing.
 | Fighter group (1–6), type, endurance, morale | ✅ | `data/fighter-group.ts` + sheet |
 | Attack a ship in fore arc within 6mu; die per fighter; screens apply | ✅ | `combat/fire-fighters.ts` |
 | PDS thins the group; dogfights; universal kill die | 🟡 | `combat/fighters.ts` (math); dogfight/PDS-order session deferred |
-| Carrier launch/recover, endurance spend, morale rolls | ⏳ | Not yet built |
+| Morale (depleted group rolls ≤ size) and endurance spend | 🟡 | `combat/fighters.ts` (`fighterMoralePasses`, `enduranceAfterActiveTurn`); the pre-attack morale prompt in the fire flow is deferred |
+| Carrier launch/recover | ⏳ | Not yet built |
 
 ## Ship Design
 | Rule | Status | Where |

@@ -41,3 +41,22 @@ export function pdsKillsVsMissiles(faces: readonly number[]): number {
 export function dogfightKills(faces: readonly number[]): number {
   return poolBeamDamage(faces, 0);
 }
+
+/**
+ * Fighter-group morale (More Thrust): a depleted group rolls 1D6 before
+ * attacking; it attacks if the roll is at or under the number of fighters
+ * remaining, and aborts (no fire) if the roll is higher.
+ */
+export function fighterMoralePasses(roll: number, size: number): boolean {
+  return roll <= size;
+}
+
+/** Endurance after an active (combat) turn: one spent, floored at zero. */
+export function enduranceAfterActiveTurn(endurance: number): number {
+  return Math.max(0, endurance - 1);
+}
+
+/** A group is out of fuel once endurance reaches zero (must return to a carrier). */
+export function enduranceExhausted(endurance: number): boolean {
+  return endurance <= 0;
+}
