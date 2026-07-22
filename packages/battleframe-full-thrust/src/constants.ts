@@ -518,3 +518,131 @@ export const SCATTERGUN_SHIP_TWO_DP = 6;
  * defended ship for 1 DP."
  */
 export const SCATTERGUN_FRIENDLY_FIRE_ON = 1;
+
+// --- Sa'Vasku bio-systems (Fleet Book 2 — Xeno File 2; roadmap P2 #20) -------
+
+/**
+ * The Sa'Vasku power pool itself needs no numeric constant: its size is just the
+ * summed MASS of the ship's still-functioning Power Generators. Source (user's
+ * "Sa'Vasku Power Points" note): "A Sa'Vasku ship's total power each turn is the
+ * sum of its still-functioning Power Generators (each generator's value = its
+ * MASS; 1 MASS = 1 point)." "Power not spent by end of turn is wasted; there is
+ * no storage." Generators die automatically when their damage-track row is gone
+ * (no threshold roll), which simply removes their MASS from the sum next turn.
+ */
+
+/**
+ * Movement pool: powering the Main Drive Node. Source ("Sa'Vasku Power Points"):
+ * "Thrust cost = 2% x thrust x ship MASS (rounded up); a damaged drive costs
+ * double (4%)." (FTL jump cost = the FTL node's MASS, so it needs no constant.)
+ */
+export const SAVASKU_THRUST_COST_PERCENT = 2;
+export const SAVASKU_DAMAGED_DRIVE_MULTIPLIER = 2;
+
+/**
+ * Defence pool: energising a Screen Node. Source ("Sa'Vasku Systems"): "cost =
+ * node MASS = 5% ship MASS, min 3 MASS; max two effective at once, as with human
+ * Screens." ASSUMPTION: the note gives no rounding for the 5% figure; modelled as
+ * rounded UP (as the other Sa'Vasku percentage cost, thrust, is), then floored at
+ * 3 MASS — a one-line change if the intent was round-to-nearest.
+ */
+export const SAVASKU_SCREEN_NODE_MASS_PERCENT = 5;
+export const SAVASKU_SCREEN_NODE_MIN_MASS = 3;
+export const SAVASKU_MAX_EFFECTIVE_SCREENS = 2;
+
+/**
+ * Attack pool: Spicule point-defence. Source ("Sa'Vasku Systems"): "Spicules:
+ * the Sa'Vasku Point Defence System — 1 PP (from A pool) per shot, all-arc ...
+ * rolls exactly like a PDS." The roll itself reuses the shared PDS die table
+ * (PDS_FIGHTER_* / PDS_MISSILE_KILL_ON above); only the per-shot cost is new.
+ */
+export const SAVASKU_SPICULE_COST = 1;
+
+/**
+ * Stinger beam node: output scales with the Attack power spent, the power needed
+ * per hit-die doubling each 12mu band. Source ("Sa'Vasku Systems"): "Power per
+ * hit-die by range: 0-12mu 1 PP, 12-24 2, 24-36 4, 36-48 8, 48-60 16, 60-72 32
+ * (doubling each band)." The dice themselves "read as standard Beam Weapons ...
+ * Screens (and Phalon shrouds) apply normally", so per-die damage reuses beam.ts
+ * (`poolBeamDamage`); this block only adds the power->dice conversion.
+ */
+export const SAVASKU_STINGER_BAND_MU = 12;
+export const SAVASKU_STINGER_MAX_RANGE_MU = 72;
+export const SAVASKU_STINGER_POWER_PER_DIE_BY_BAND = [1, 2, 4, 8, 16, 32] as const;
+
+/**
+ * Pod Launcher munitions each cost Attack power PLUS one consumed biomass to fire
+ * one munition/turn. Source ("Sa'Vasku Systems"): "Single-arc launchers that
+ * consume 1 biomass plus Attack-pool power ... Lance Pod (3 PP) ... Leech Pod
+ * (3 PP) ... Interceptor Pod (3 PP)."
+ */
+export const SAVASKU_POD_BIOMASS_COST = 1;
+export const SAVASKU_LANCE_POD_COST = 3;
+export const SAVASKU_LEECH_POD_COST = 3;
+export const SAVASKU_INTERCEPTOR_POD_COST = 3;
+
+/**
+ * Lance Pod: the carapace/armour-piercer. Source ("Sa'Vasku Systems"): "Hit
+ * 0-6mu 3+, 6-12 4+, 12-18 5+, 18-24 6; damage = second die roll, only the first
+ * DP taken on armour, rest to hull. No rerolls." The pierce rule ("first DP on
+ * armour, rest to hull") is exactly the K-gun rule, so the applier reuses
+ * applyKgunHit; damage per hit is simply the rolled face.
+ */
+export const SAVASKU_LANCE_POD_MAX_RANGE_MU = 24;
+export const SAVASKU_LANCE_POD_BAND_MU = 6;
+export const SAVASKU_LANCE_POD_TO_HIT_BY_BAND = [3, 4, 5, 6] as const;
+export const SAVASKU_LANCE_POD_ARMOUR_PIERCE_DP = 1;
+
+/**
+ * Leech Pod: burns on turn after turn until cleared. Source ("Sa'Vasku Systems"):
+ * "2 DP on impact, then 2 more DP every following turn until killed off
+ * (damage-control roll for crewed ships; 1-3 R-pool points for Sa'Vasku).
+ * Non-penetrating (spreads over armour first)." Non-penetrating means both the
+ * impact and the ongoing damage go through the ordinary armour-first applier
+ * (applyDamageWithArmour), not the pierce applier.
+ */
+export const SAVASKU_LEECH_POD_IMPACT_DP = 2;
+export const SAVASKU_LEECH_POD_ONGOING_DP = 2;
+export const SAVASKU_LEECH_CLEAR_MIN = 1;
+export const SAVASKU_LEECH_CLEAR_MAX = 3;
+
+/**
+ * Interceptor Pod: area point-defence. Source ("Sa'Vasku Systems"): "area-
+ * defence, 12mu, hits any fighter/missile/plasma-bolt within range (need not be
+ * in arc). Effect = a Kra'Vak scattergun." The effect reuses the scattergun
+ * functions in kravak.ts (scattergunFighterKills / scattergunPlasmaReduction);
+ * only the range is new here.
+ */
+export const SAVASKU_INTERCEPTOR_POD_RANGE_MU = 12;
+
+/**
+ * Repair pool: a system-repair attempt. Source ("Sa'Vasku Power Points"):
+ * "system-repair attempts (points = MASS of the system, plus a 4+ roll)" and
+ * ("Sa'Vasku Systems"): "regrown via Repair-pool power (points = node MASS, plus
+ * a 4+ roll, consuming 1 biomass on success)."
+ */
+export const SAVASKU_REPAIR_SUCCESS_MIN = 4;
+export const SAVASKU_REPAIR_BIOMASS_ON_SUCCESS = 1;
+
+/**
+ * Drone Wombs: grow fighter-equivalent Drones. Source ("Sa'Vasku Systems"):
+ * "groups of 6. 1 biomass + 1 R-pool point per drone; 1 turn to grow, 1 to
+ * launch ... Standard multirole drones: 24mu move, 1 die/drone, no morale
+ * checks." Drone COMBAT reuses the standard fighter mechanics; only these growth
+ * costs and stats are Sa'Vasku-specific.
+ */
+export const SAVASKU_DRONES_PER_GROUP = 6;
+export const SAVASKU_DRONE_POWER_PER = 1;
+export const SAVASKU_DRONE_BIOMASS_PER = 1;
+export const SAVASKU_DRONE_MOVE_MU = 24;
+export const SAVASKU_DRONE_DICE_PER = 1;
+
+/**
+ * Biomass: the living-hull damage track. Source ("Sa'Vasku" / "Sa'Vasku
+ * Systems"): "biomass damage boxes (1 MASS, 2 pts). Consumed biomass does not
+ * trigger threshold checks; only inflicted damage does. When consumed and
+ * damaged boxes meet, the ship is dead." Carapace is "dead-biomass armour (1
+ * MASS, 2 pts) ... behaves like Armour", so it reuses the ordinary armour path.
+ */
+export const SAVASKU_BIOMASS_MASS_PER_BOX = 1;
+export const SAVASKU_BIOMASS_POINTS_PER_BOX = 2;

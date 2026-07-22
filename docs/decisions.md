@@ -2647,3 +2647,33 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Watch: live-verify firing each at a targeted ship posts a damage/threshold card.
 - +3 tests (buildSpinalReportHtml); 1064 passing; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: Sa'Vasku bio-ship pure math (roadmap P2 #20, xeno subset)
+- Ask: build PURE, tested math for the Sa'Vasku living ships — their per-turn Power Point pool +
+  four-pool (Move/Attack/Defence/Repair) allocation, bio-weapon resolution, and biomass
+  regeneration/self-consumption; NEW file, no Foundry code. Verified every number against the user's
+  notes (Factions & Ships/Xeno/Sa'Vasku.md, Sa'Vasku Power Points.md, Sa'Vasku Systems.md).
+- Fix: `combat/savasku.ts` (new). Power: `powerPoolTotal` (sum of surviving generators' MASS; unspent
+  lost = caller concern). Movement: `driveThrustCost` (2%×thrust×MASS ceil, damaged ×2),
+  `ftlJumpCost` (= FTL node MASS). Defence: `screenNodeMass` (5% ship MASS ceil, min 3). Stinger beam:
+  `stingerPowerPerDie` (1/2/4/8/16/32 doubling per 12mu band to 72mu, mirrors `torpedoToHit` null-out)
+  + `stingerDiceForPower` (floor(power/perDie)); per-die DAMAGE reuses beam.ts `poolBeamDamage` (screens
+  apply) — base die table NOT duplicated. Pods: `lancePodToHit` (3+/4+/5+/6 by 6mu, max 24mu) +
+  `applyLancePodHit` (damage = die face, armour-pierce — reuses `applyKgunHit`, identical pierce rule);
+  `leechPodClears` (Sa'Vasku spend 1-3 R-points; impact/ongoing 2 DP are non-penetrating via
+  `applyDamageWithArmour`). Repair: `systemRepairCost` (= system MASS), `systemRepairSucceeds` (4+),
+  `droneGrowthCost` (1 power + 1 biomass per drone). Biomass: `biomassRemaining` + `consumeBiomass`
+  (consumes from far end, NEVER trips a threshold — the Sa'Vasku-specific rule — dead when consumed +
+  damaged boxes meet). Interceptor Pod / Spicule reuse kravak.ts scattergun + shared PDS at the call
+  site (constants + documented reuse, no wrapper).
+- Constants: Sa'Vasku block appended at END of `constants.ts`, each number with a source-quote comment.
+  ASSUMPTION flagged: the 5% screen-node MASS has no rounding stated in the notes — modelled round-UP
+  (as the 2% thrust cost is) then floored at 3 MASS.
+- Deferred (in the notes, flagged not invented): the Stinger's "6 = reroll" penetrating layer — dice use
+  the FT2 base beam table, mirroring beam.ts's own reroll deferral; the More Thrust "Power Factor" model
+  (5 dice/turn, up-to-PF storage) is a superseded edition layer (mirrors kravak.ts leaving the More
+  Thrust railgun out of scope). Cortex needs no power (nothing to compute); drone COMBAT reuses standard
+  fighter mechanics. No engine glue / sheet / dice wiring (orchestration layer's job); Phalon is a
+  separate task and not built.
+- +25 tests (savasku.test.ts, hand-computed from the notes); 1086 passing (was 1061); typecheck clean.
+- Commit: this commit.
