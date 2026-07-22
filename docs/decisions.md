@@ -2256,3 +2256,24 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   typecheck clean. The pure core + HTML builder are unit-tested; the scene-tool click is
   live-unverified (P3 debt). COVERAGE Fire-Arcs section gains a preview row; roadmap #11 → ✅.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: multi-FCS fire-splitting (roadmap P2 #18)
+- Added `combat/fcs-allocation.ts` (`allocateFcsFire` + `validateAllocation`): PURE logic that
+  splits a ship's weapons across up to N distinct targets, where N = working FCS count (the caller
+  passes `remainingFcs` from `ship/systems.ts`). Source "Fire Control System (FCS)": each working
+  FCS directs fire at ONE target/turn; N FCS may split weapons "in any combination" among N
+  targets; lose all FCS → cannot fire; one weapon's dice may not split across targets.
+- Eligibility (bears + in range) is decided by REUSING `combat/targeting.ts` `previewTargeting`
+  (a weapon can engage a target iff its row is `will-fire`) — arc/range logic is never re-derived.
+  The caller supplies each candidate target's already-measured distance + bearing, mirroring
+  `previewTargeting`'s pure contract. No new constants were needed (purely structural).
+- Allocation STRATEGY: greedy, caller-priority-ordered. Targets consumed in caller order
+  (index 0 = highest priority); each weapon goes to the highest-priority target it can engage that
+  is ALREADY engaged (concentrate fire / conserve FCS slots), else opens a new FCS slot on the
+  highest-priority eligible target while engaged < N; a weapon that bears but finds every FCS
+  committed is left unassigned with reason `fcs-cap`. Valid, not optimal — priority order is the
+  caller's lever. `validateAllocation` rejects: >N distinct targets, a non-bearing/out-of-range
+  assignment (with the offending status), unknown target ids, and one weapon split across targets.
+- +16 tests (fcs-allocation.test.ts); 896 passing; typecheck clean. Pure core is unit-tested; no
+  Foundry glue added this commit (scene-tool wiring is later work). roadmap P2 #18 → core done.
+- Commit: this commit.
