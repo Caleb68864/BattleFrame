@@ -231,3 +231,17 @@ export const WAVE_GUN_DICE_BY_BAND = [4, 3, 2] as const;
 export const WAVE_GUN_TEMPLATE_INCHES_BY_BAND = [2, 3, 4] as const;
 /** Stored-charge total at or above which the Wave Gun is fully charged. */
 export const WAVE_GUN_FULL_CHARGE = 6;
+
+// --- Vector movement (optional FT2 / Fleet Book system) ---------------------
+
+/**
+ * Manoeuvring-thruster rating = the main-drive Thrust divided by this, rounded
+ * DOWN (a TR-6 ship has 3 thruster points, TR-5 has 2). Thruster spend is on top
+ * of full main-drive thrust. See `movement/vector.ts`. (Fleet Book rounds the
+ * vector-mode turning allowance DOWN, the mirror of cinematic `turningCap`'s UP.)
+ */
+export const MANOEUVRING_THRUSTER_DIVISOR = 2;
+/** A manoeuvring-thruster PUSH costs 1 point per 1 mu of displacement. */
+export const PUSH_MU_PER_POINT = 1;
+/** A facing ROTATION costs a flat 1 thruster point for any heading change. */
+export const ROTATION_THRUSTER_COST = 1;

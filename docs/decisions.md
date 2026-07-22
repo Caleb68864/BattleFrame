@@ -2217,3 +2217,26 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   token while unwired). COVERAGE.md Nova/Wave rows updated to 🟡 (math + tests; UI deferred).
 - Full suite 835 passing; typecheck clean. Worktree branch worktree-agent-a7479a4b5a4b870cf.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: vector movement (optional FT2 mode) — roadmap P2 #17
+- Added `movement/vector.ts`, a PURE geometry/vector library for the optional physics-accurate
+  system that contrasts with the cinematic `movement/path.ts`. Velocity is a persistent `{vx,vy}`
+  vector (mu, screen space y-down, same course->heading convention as path.ts). `advance` moves the
+  position by the velocity FIRST; thrust then NUDGES the vector: `applyMainDrive` burns along
+  FACING, `applyPush` (P/S/R) and `rotateFacing` are the manoeuvring thrusters. Facing and course
+  of motion can therefore differ (the whole point of vector mode). `resolveTurn` folds parsed
+  manoeuvres in written order (`TP2,MD6` != `MD6,TP2`). `parseVectorOrder` reads MDn/TPn/TSn/
+  PPn/PSn/PRn; `checkManoeuvres` enforces main-drive<=thrust and thruster-spend<=half (rounded
+  DOWN, the mirror of cinematic turningCap's UP), rotation flat 1pt, push 1pt/mu, <=1 rotation &
+  <=1 push per turn.
+- ASSUMPTIONS/SIMPLIFICATIONS: (1) velocity is kept as an EXACT vector; the tabletop's
+  "re-measure with a ruler, round to nearest mu" step is a physical artefact, so rounding is
+  exposed for DISPLAY only via `velocityMagnitude`/`nearestCourse` (marker realignment) rather
+  than mutating state. (2) Manoeuvring-thruster rating = floor(thrust/2) per Fleet Book (rounds
+  down); rotation costs a flat 1 point for any heading (spin distance irrelevant), push 1pt/mu.
+  (3) The canvas glue (a Vector-mode scene tool / token advance+rotate) is OUT OF SCOPE / DEFERRED
+  to an orchestrator, exactly as path.ts defers the token move to ui/round-control. New rules
+  numbers appended to constants.ts (MANOEUVRING_THRUSTER_DIVISOR, PUSH_MU_PER_POINT,
+  ROTATION_THRUSTER_COST). COVERAGE vector-movement row flipped from deferred to 🟡 (math built).
+- +16 tests (tests/vector.test.ts); 843 passing; typecheck clean.
+- Commit: this commit.

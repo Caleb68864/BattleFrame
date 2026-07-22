@@ -37,7 +37,7 @@ deferred. Nothing is silently missing.
 | Order notation `+N/-N/PN/SN`; no reverse | ✅ | `movement/orders.ts` `parseOrder` |
 | Thrust budget: total ≤ thrust, turning ≤ half (rounded up) | ✅ | `movement/orders.ts` `applyOrder`, `turningCap` |
 | Pivot-move-pivot-move curved path executed on canvas | ✅ | `movement/path.ts` `plotMovementPath` (verified vs both worked examples) + `ui/round-control.ts` `executeMovementPath` traces the two half-moves + pivots |
-| Vector movement (optional FT2 system) | ⏳ | Cinematic only for now |
+| Vector movement (optional FT2 system) | 🟡 | `movement/vector.ts` pure library: persistent `{vx,vy}` velocity, `advance` (move by vector), `applyMainDrive` (burn along facing), `applyPush`/`rotateFacing` (manoeuvring thrusters = ½ rating rounded DOWN), `resolveTurn` (advance-then-fold, written order matters), `parseVectorOrder`/`checkManoeuvres` budgets, `nearestCourse`/`velocityMagnitude` for marker realignment. Hand-verified in `tests/vector.test.ts`. The Vector-mode scene tool / token advance is DEFERRED to an orchestrator (as with cinematic `path.ts`) |
 | Measurement to/from stand centre | ✅ | core `measure.between(..., "centre-to-centre")` |
 
 ## Fire Arcs
