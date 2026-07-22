@@ -57,7 +57,8 @@ deferred. Nothing is silently missing.
 |---|---|---|
 | Screens (level 1–3) downgrade each beam die | ✅ | `combat/beam.ts` `beamDamageForFace` |
 | Armour absorbs point-for-point before hull | ✅ | `ship/damage.ts` `applyDamageWithArmour` |
-| Fire control: 1 FCS = 1 target; lost all FCS = cannot fire | 🟡 | FCS count in data model + threshold; multi-target split UI deferred |
+| Fire control: lost all FCS = cannot fire | ✅ | `combat/fire-ship.ts` refuses fire (`refused: "no-fcs"`) when `fcs < 1` |
+| Fire control: 1 FCS = 1 target / multi-FCS fire-splitting | 🟡 | FCS count tracked; the split-among-N-targets UI is deferred |
 | Point defence (PDAF/ADAF) vs fighters and missiles | 🟡 | `combat/fighters.ts` (math); PDS interception step in the fire UI deferred |
 
 ## Damage
@@ -66,7 +67,7 @@ deferred. Nothing is silently missing.
 | Hull boxes in rows; fill order; destroyed when all gone | ✅ | `ship/hull.ts` |
 | Threshold check on row completion (FT2 rolls high 6/5-6/4-6) | ✅ | `ship/threshold.ts`, `ship/systems.ts` |
 | Multi-threshold in one attack: worst reached, worsened per extra | ✅ | `ship/threshold.ts` `thresholdKillOn` |
-| Drives special (half then dead) | 🟡 | Modelled as halving thrust per hit (documented simplification) |
+| Drives special (half then dead) | ✅ | `ship/systems.ts` + `driveCrippled` field: first hit halves thrust, second kills |
 | Damage control (More Thrust end-of-turn repair) | 🟡 | `combat/damage-control.ts` (repair-count + free-DCP math); the end-of-turn repair-assignment UI is deferred |
 
 ## Fighters
@@ -74,8 +75,9 @@ deferred. Nothing is silently missing.
 |---|---|---|
 | Fighter group (1–6), type, endurance, morale | ✅ | `data/fighter-group.ts` + sheet |
 | Attack a ship in fore arc within 6mu; die per fighter; screens apply | ✅ | `combat/fire-fighters.ts` |
+| Morale roll (depleted group), endurance spend, Attack-type +1/die | ✅ | wired into `combat/fire-fighters.ts` (aborts on failed morale, spends endurance on a fired attack) |
 | PDS thins the group; dogfights; universal kill die | 🟡 | `combat/fighters.ts` (math); dogfight/PDS-order session deferred |
-| Morale (depleted group rolls ≤ size) and endurance spend | 🟡 | `combat/fighters.ts` (`fighterMoralePasses`, `enduranceAfterActiveTurn`); the pre-attack morale prompt in the fire flow is deferred |
+| Other specialised types (Heavy/Interceptor/Torpedo/Fast/Long-range) | ⏳ | Documented deferral in `combat/fire-fighters.ts` |
 | Carrier launch/recover | ⏳ | Not yet built |
 
 ## Ship Design
