@@ -2712,3 +2712,18 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   throughout beam.ts / ship/damage.ts, and nothing here rerolls).
 - +27 tests (phalon.test.ts); 1088 passing (was 1061); typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: fighter-movement token tool (roadmap P2 #16)
+- Gap: `movement/fighter-move.ts` (`canReachToAttack`) was pure + tested but nothing moved a
+  fighter-group token.
+- Fix: a "Move Fighters" tool (`fighterMoveAction`, player-usable) advances the controlled fighter
+  group toward the targeted ship up to its move allowance (12mu / 18mu Fast), stopping at the edge
+  of its 6mu strike range (never overshooting). Reuses `canReachToAttack`; converts token centres
+  px→mu for the reach math and back to px for the token `update`. The group then fires with the
+  normal Fire tool.
+- Surfaces: ui/round-control.ts (action + tool), lang/en.json (controls.fighterMove).
+- Watch: token px↔mu conversion + the top-left vs centre offset — live-verify a group moves toward
+  a ship and stops in range.
+- No new tests (thin token glue over the tested reach core; tool registration asserted); 1116
+  passing; typecheck clean.
+- Commit: this commit.

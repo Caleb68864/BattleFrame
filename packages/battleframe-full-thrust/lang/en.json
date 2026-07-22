@@ -33,6 +33,7 @@
   "battleframe-full-thrust.controls.advanceMissiles": "Missile phase (advance + resolve strikes)",
   "battleframe-full-thrust.controls.novaCannon": "Fire spinal Nova Cannon at target",
   "battleframe-full-thrust.controls.waveGun": "Fire Wave Gun at target",
+  "battleframe-full-thrust.controls.fighterMove": "Move fighter group toward target",
   "battleframe-full-thrust.controls.plot": "Plot movement order (hidden until execute)",
   "battleframe-full-thrust.controls.execute": "Execute maneuvers (reveal all plotted moves)",
   "battleframe-full-thrust.controls.damageControl": "Damage control (end-of-turn repairs)",

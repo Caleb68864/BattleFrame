@@ -39,6 +39,7 @@ import { advanceMissile, missileExpired, type ActiveMissile } from "../combat/mi
 import { resolveMissileAttack, missileCanAttack, type MissileAttackReport } from "../combat/missile";
 import { drawMissiles, clearMissiles } from "./missile-overlay";
 import { waveGunDiceAtRange, waveGunDamage, novaCannonDiceForTurn, novaCannonDamage } from "../combat/spinal";
+import { canReachToAttack } from "../movement/fighter-move";
 import { applyDamageAndThreshold } from "../combat/apply-damage";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
 import { plotMovementPath, type MovementPath } from "../movement/path";
@@ -905,6 +906,43 @@ export async function fireWaveGunAction(): Promise<void> {
 }
 
 /**
+ * Move-Fighters tool: advance the controlled fighter group toward the targeted
+ * ship, up to its move allowance (12mu / 18mu Fast), stopping at the edge of its
+ * 6mu strike range (never overshooting onto the hull). Reuses the pure
+ * `canReachToAttack`; the token then fires with the normal Fire tool. Available to
+ * the group's owner (they move their own fighters).
+ */
+export async function fighterMoveAction(): Promise<void> {
+  const groupToken = controlledToken();
+  const targetToken = targetedToken();
+  if (!groupToken || !targetToken) {
+    return;
+  }
+  const type = groupToken.actor?.type as string | undefined;
+  if (!type?.endsWith(FIGHTER_GROUP_ACTOR_TYPE)) {
+    notify("warn", `${MODULE_ID} | select one of your fighter groups to move`);
+    return;
+  }
+  const ppm = tokenScale(groupToken);
+  const from = tokenStartPx(groupToken);
+  const to = tokenStartPx(targetToken);
+  // The reach math is in mu; convert the token centres px → mu and back.
+  const reach = canReachToAttack(
+    { x: from.x / ppm, y: from.y / ppm },
+    { x: to.x / ppm, y: to.y / ppm },
+    groupToken.actor?.system?.fighterType
+  );
+  const doc = groupToken.document;
+  const halfW = (groupToken.w ?? 0) / 2;
+  const halfH = (groupToken.h ?? 0) / 2;
+  await doc?.update?.({ x: reach.intercept.x * ppm - halfW, y: reach.intercept.y * ppm - halfH });
+  notify(
+    "info",
+    `${MODULE_ID} | fighters moved${reach.canAttack ? " — in strike range" : ` — ${Math.round(reach.distanceToTarget)}mu short`}`
+  );
+}
+
+/**
  * Fire-Arcs tool: pin/unpin the fire-arc ring on ship tokens so a player can see
  * their fleet's arcs at a glance (hovering already shows a ship's arcs transiently
  * — this keeps them on). Toggles the controlled ships, or every ship on the scene
@@ -1422,6 +1460,16 @@ export function addSceneControl(controls: unknown): void {
     order: 3,
     onClick: () => void fireWaveGunAction(),
   };
+  // Move the controlled fighter group toward the targeted ship -- any player.
+  const fighterMoveTool = {
+    name: "full-thrust-fighter-move",
+    title: "battleframe-full-thrust.controls.fighterMove",
+    icon: "fas fa-jet-fighter",
+    button: true,
+    visible: true,
+    order: 3,
+    onClick: () => void fighterMoveAction(),
+  };
   const plotTool = {
     name: "full-thrust-plot",
     title: "battleframe-full-thrust.controls.plot",
@@ -1483,7 +1531,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, waveGunTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
+  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, waveGunTool, fighterMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);
