@@ -11,6 +11,8 @@ import { installHoverApi } from "./ui/hover-registry";
 import { installStatusApi } from "./ui/status";
 import { installSelectionApi } from "./ui/selection";
 import { installChatApi } from "./ui/chat";
+import { installI18nApi } from "./ui/i18n";
+import { installNotifyApi } from "./ui/notify";
 import { installReadyAdvanceApi, registerReadyAdvance } from "./rounds/ready-advance";
 import { registerBattleframeSettings } from "./settings";
 import {
@@ -59,6 +61,8 @@ installHoverApi();
 installStatusApi();
 installSelectionApi();
 installChatApi();
+installI18nApi();
+installNotifyApi();
 installReadyAdvanceApi();
 
 function hooksAvailable(): boolean {
