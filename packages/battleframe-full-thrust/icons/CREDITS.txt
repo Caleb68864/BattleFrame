@@ -18,3 +18,4 @@ Used unmodified aside from renaming and runtime recoloring. Attribution required
 ---
 
 Like what I'm building? Support me on Buy Me a Coffee: https://buymeacoffee.com/plainsprepper
+fighter.svg          jet-fighter      Delapouite

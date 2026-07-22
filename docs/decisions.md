@@ -3527,3 +3527,21 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
     sheet or default token images.
 - Template-only change; 1445 tests green. Foundry-facing -> sheet render re-verified live.
 - Commit: this commit.
+
+## 2026-07-22 — Engine token-defaults registry + shipped default-token game-icons
+- Follow-up to the icon audit: give actor SUBTYPES a default token image (a game icon)
+  instead of Foundry's mystery-man. Rather than 5 near-identical preCreateActor hooks,
+  added a neutral engine registry `game.battleframe.tokens.registerDefaultImage(type,img)`
+  — mirrors the status/hover registries (5 witnesses: every ruleset). The engine owns the
+  single preCreateActor hook + the "don't override a deliberately-chosen image" rule
+  (shouldApplyDefault: apply only when img is empty or the core mystery-man default); the
+  ruleset owns WHICH image per type. Pure (defaultImageFor/shouldApplyDefault) unit-tested;
+  the hook is thin glue. Installed at module top level (installTokenDefaultsApi).
+- Shipped game-icons.net SVGs (CC-BY-3.0, per-module icons/CREDITS.txt), mirroring FT's
+  existing approach: stargrunt-ii/incountry squad.svg (dark-squad, Lorc); dirtside-ii
+  infantry.svg (dark-squad) + vehicle.svg (battle-tank, Lorc); greathelm knight.svg
+  (black-knight-helm, Delapouite); full-thrust fighter.svg (jet-fighter, Delapouite). FT
+  ship uses its existing ship.svg. Module adoptions (register the type->icon map at init)
+  + FT ship-sheet weapon-type icons land in follow-up commits.
+- Engine tests: +3 (token-defaults); neutrality green (no ruleset vocab in the service).
+- Commit: this commit.

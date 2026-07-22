@@ -1,0 +1,5 @@
+Icons from game-icons.net, licensed CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/).
+Source: https://github.com/game-icons/icons . Used unmodified aside from renaming.
+
+infantry.svg   dark-squad    Lorc
+vehicle.svg    battle-tank   Lorc

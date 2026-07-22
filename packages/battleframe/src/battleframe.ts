@@ -13,6 +13,7 @@ import { installSelectionApi } from "./ui/selection";
 import { installChatApi } from "./ui/chat";
 import { installI18nApi } from "./ui/i18n";
 import { installNotifyApi } from "./ui/notify";
+import { installTokenDefaultsApi } from "./ui/token-defaults";
 import { installReadyAdvanceApi, registerReadyAdvance } from "./rounds/ready-advance";
 import { registerBattleframeSettings } from "./settings";
 import {
@@ -63,6 +64,7 @@ installSelectionApi();
 installChatApi();
 installI18nApi();
 installNotifyApi();
+installTokenDefaultsApi();
 installReadyAdvanceApi();
 
 function hooksAvailable(): boolean {
