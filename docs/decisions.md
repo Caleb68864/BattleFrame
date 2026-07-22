@@ -3638,3 +3638,29 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   damage (a beam 6 scores 2, not the level-2 value of 1). All three failed before the fix.
 - Watch: any NEW fire/damage path must read `remainingScreens`, never raw `system.screens`,
   for the defensive screen level. The raw field is the design rating only.
+
+## 2026-07-22 — DS2 fire-card XSS: user chit codes reached the card unescaped
+- Symptom: `fireReportParts` (dirtside-ii `round/fire.ts`) escaped the firer/target
+  names but interpolated the drawn chit codes raw:
+  `Chits [${(result.drawn ?? []).join(", ")}]`. Chit codes are USER-entered
+  RollTable `TableResult` text, so a code like `<img src=x onerror=...>` injected
+  live HTML into the chat card — a stored-XSS vector on the one dynamic field the
+  "names escaped" comment overlooked.
+- Fix: escape each drawn code through the module's existing `escapeHtml` before
+  joining. `chit.outcome`/`specials` are fixed enums and stay as-is.
+- Test: `tests/fire.test.ts` — a hit card whose `drawn` carries an `<img>` payload
+  must render `&lt;img`, never `<img`.
+- Commit: this commit.
+
+## 2026-07-22 — DS2 command-loss updateActor hook could reject into Foundry
+- Symptom: `onActorUpdate` (dirtside-ii `round/command-loss.ts`) awaited
+  `applyForceCommandLoss` — which awaits each unit `update` and the C3
+  `combat.setFlag` — with no guard. A rejecting write (lost socket, read-only
+  doc) propagated out of the `updateActor` hook body as an unhandled rejection,
+  since the registration only `void`s the promise.
+- Fix: wrap the effectful portion of the hook (after the cheap early-return
+  guards) in try/catch and `console.error` on failure. A Foundry hook must never
+  reject.
+- Test: `tests/command-loss.test.ts` — with a `Combat#setFlag` that throws, a
+  command-vehicle knockout must leave `onActorUpdate` resolving, not rejecting.
+- Commit: this commit.

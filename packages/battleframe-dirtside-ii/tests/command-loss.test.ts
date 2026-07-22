@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import {
   commandLossTriggered,
   forceC3FromUnits,
+  onActorUpdate,
   type UnitActorLike,
 } from "../src/round/command-loss";
+import { MODULE_ID, VEHICLE_ACTOR_TYPE } from "../src/constants";
 
 /**
  * G9 — wiring A11's command-loss ripple to a live element-damage transition. The
@@ -40,5 +42,38 @@ describe("forceC3FromUnits — build the A11 force object from unit actors", () 
       noNewOffensives: false,
       noRally: false,
     });
+  });
+});
+
+describe("onActorUpdate — the updateActor hook body must never throw", () => {
+  const g = globalThis as any;
+  afterEach(() => {
+    delete g.game;
+    delete g.canvas;
+  });
+
+  it("swallows a rejecting Combat#setFlag instead of rejecting the hook", async () => {
+    // A command vehicle transitions into knocked-out, but persisting the C3 lock
+    // fails (e.g. the GM lost the socket). The hook must resolve, not surface an
+    // unhandled rejection into Foundry's updateActor pipeline.
+    g.canvas = { tokens: { placeables: [] } };
+    g.game = {
+      actors: { contents: [] },
+      combat: {
+        setFlag: async () => {
+          throw new Error("setFlag failed");
+        },
+      },
+    };
+
+    const actor = {
+      type: `${MODULE_ID}.${VEHICLE_ACTOR_TYPE}`,
+      id: "v1",
+      system: { damage: "damaged", isCommandVehicle: true },
+      getFlag: () => undefined,
+    };
+    const changes = { system: { damage: "knocked-out" } };
+
+    await expect(onActorUpdate(actor, changes)).resolves.toBeUndefined();
   });
 });
