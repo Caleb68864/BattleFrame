@@ -44,6 +44,8 @@ export interface FireShipSplitParams {
   /** Candidate targets in caller-priority order (index 0 = highest priority). */
   targets: ReadonlyArray<FiringShip & { name?: string }>;
   context: FireContext;
+  /** Fleet Book optional layer: beams do penetrating (rerolling) damage. */
+  penetrating?: boolean;
 }
 
 export interface FireShipSplitReport {
@@ -67,7 +69,7 @@ export interface FireShipSplitReport {
  * single spent-write reference real mounts.
  */
 export async function fireShipSplit(params: FireShipSplitParams): Promise<FireShipSplitReport> {
-  const { attacker, targets, context } = params;
+  const { attacker, targets, context, penetrating } = params;
 
   // A ship that has lost ALL its fire control may not fire, even with working
   // weapons. A missing fcs field defaults to "able" (1), exactly like
@@ -112,7 +114,8 @@ export async function fireShipSplit(params: FireShipSplitParams): Promise<FireSh
       distanceMu: m.distance,
       bearing: m.bearing,
       targetScreenLevel,
-      dice: context.dice
+      dice: context.dice,
+      penetrating
     });
 
     // resolveWeaponFire indexes shots + spent against the SUB-LIST; remap both back

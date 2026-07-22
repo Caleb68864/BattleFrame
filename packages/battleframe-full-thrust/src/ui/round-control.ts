@@ -370,7 +370,8 @@ export async function resolveFireBetween(
   const report = await fireShipAtTarget({
     attacker,
     target,
-    context: { measure: api.measure, facing: api.facing, dice: api.dice }
+    context: { measure: api.measure, facing: api.facing, dice: api.dice },
+    penetrating: fleetBookPenetrating()
   });
   const html = buildFireReportHtml(report, {
     attacker: attacker.name ?? "Attacker",
@@ -625,7 +626,8 @@ export async function splitFireAction(): Promise<void> {
   const report = await fireShipSplit({
     attacker,
     targets,
-    context: { measure: services.measure, facing: services.facing, dice: services.dice }
+    context: { measure: services.measure, facing: services.facing, dice: services.dice },
+    penetrating: fleetBookPenetrating()
   });
   await g().ChatMessage?.create({
     content: buildSplitFireReportHtml(report, attackerToken?.name ?? "Attacker")
@@ -1245,6 +1247,11 @@ export function toggleArcsAction(): void {
       toggleArcPin(t);
     }
   }
+}
+
+/** Whether the world has enabled the Fleet Book penetrating-damage layer. */
+function fleetBookPenetrating(): boolean {
+  return !!(g().game as any)?.settings?.get?.(MODULE_ID, "penetratingDamage");
 }
 
 /** The scene grid pixels-per-mu for the token's scene. */

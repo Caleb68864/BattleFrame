@@ -9,8 +9,9 @@
  * "Screens", "Fire Arcs".
  */
 
-import { DIE_SIZE, type FireArc, type WeaponKind } from "../constants";
+import { DIE_SIZE, DIE_TWO_DAMAGE, type FireArc, type WeaponKind } from "../constants";
 import { beamDiceAtRange, poolBeamDamage } from "./beam";
+import { poolPenetratingDamage } from "../ship/fleet-book";
 import { torpedoToHit, submunitionDiceAtRange } from "./weapons";
 import { kgunToHit, kgunDamageForFace } from "./kravak";
 import { weaponBearsOn } from "./arcs";
@@ -46,6 +47,8 @@ export interface ResolveWeaponFireParams {
   bearing: number;
   targetScreenLevel: number;
   dice: DiceLike;
+  /** Fleet Book optional layer: beams do penetrating (rerolling) damage. Default off. */
+  penetrating?: boolean;
 }
 
 export interface WeaponFireResult {
@@ -68,7 +71,8 @@ async function resolveBeam(
   weapon: WeaponMount,
   distanceMu: number,
   screenLevel: number,
-  dice: DiceLike
+  dice: DiceLike,
+  penetrating: boolean
 ): Promise<{ damage: number; faces: number[]; reason?: NoFireReason }> {
   const cls = weapon.weaponClass;
   if (!cls || cls < 1) {
@@ -79,7 +83,20 @@ async function resolveBeam(
     return { damage: 0, faces: [], reason: "out-of-range" };
   }
   const faces = await dice.rollPool(diceCount, DIE_SIZE);
-  return { damage: poolBeamDamage(faces, screenLevel), faces };
+  if (!penetrating) {
+    return { damage: poolBeamDamage(faces, screenLevel), faces };
+  }
+  // Fleet Book penetrating damage: every 6 scores AND rerolls, chaining. Roll the
+  // whole reroll chain (each 6 spawns one more) so `poolPenetratingDamage` can
+  // score it; screens reduce only the initial dice.
+  const rerollFaces: number[] = [];
+  let pending = faces.filter((f) => f === DIE_TWO_DAMAGE).length;
+  while (pending > 0) {
+    const batch = await dice.rollPool(pending, DIE_SIZE);
+    rerollFaces.push(...batch);
+    pending = batch.filter((f) => f === DIE_TWO_DAMAGE).length;
+  }
+  return { damage: poolPenetratingDamage(faces, rerollFaces, screenLevel), faces: [...faces, ...rerollFaces] };
 }
 
 async function resolveTorpedo(
@@ -151,7 +168,7 @@ async function resolveKgun(
 export async function resolveWeaponFire(
   params: ResolveWeaponFireParams
 ): Promise<WeaponFireResult> {
-  const { weapons, distanceMu, bearing, targetScreenLevel, dice } = params;
+  const { weapons, distanceMu, bearing, targetScreenLevel, dice, penetrating } = params;
 
   const shots: WeaponShot[] = [];
   const spent: number[] = [];
@@ -177,7 +194,7 @@ export async function resolveWeaponFire(
     let outcome: { damage: number; faces: number[]; reason?: NoFireReason; piercingHit?: number };
     switch (weapon.kind) {
       case "beam":
-        outcome = await resolveBeam(weapon, distanceMu, targetScreenLevel, dice);
+        outcome = await resolveBeam(weapon, distanceMu, targetScreenLevel, dice, penetrating ?? false);
         break;
       case "torpedo":
         outcome = await resolveTorpedo(distanceMu, dice);

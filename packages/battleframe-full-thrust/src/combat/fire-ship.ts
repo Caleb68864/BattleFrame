@@ -37,6 +37,8 @@ export interface FireShipParams {
   attacker: FiringShip;
   target: FiringShip;
   context: FireContext;
+  /** Fleet Book optional layer: beams do penetrating (rerolling) damage. */
+  penetrating?: boolean;
 }
 
 export interface FireReport {
@@ -53,7 +55,7 @@ export interface FireReport {
 }
 
 export async function fireShipAtTarget(params: FireShipParams): Promise<FireReport> {
-  const { attacker, target, context } = params;
+  const { attacker, target, context, penetrating } = params;
 
   const distance = context.measure.between(attacker.token, target.token, "centre-to-centre").distance;
   const bearing = context.facing.bearingOf(attacker.token, target.token);
@@ -82,7 +84,8 @@ export async function fireShipAtTarget(params: FireShipParams): Promise<FireRepo
     distanceMu: distance,
     bearing,
     targetScreenLevel,
-    dice: context.dice
+    dice: context.dice,
+    penetrating
   });
 
   // Flag any one-shot weapons that fired as spent on the attacker. Write only the

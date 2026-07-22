@@ -138,5 +138,14 @@ globalHooks?.once("init", () => {
   // Player-driven, GM-less turn advance: register what "advance the turn" does.
   const advance = (globalThis as any).battleframe?.advance ?? (globalThis as any).game?.battleframe?.advance;
   advance?.registerAdvance?.(() => advanceTurnCore());
+  // Fleet Book optional layer: penetrating (rerolling) beam damage, off by default.
+  (globalThis as any).game?.settings?.register?.(MODULE_ID, "penetratingDamage", {
+    name: "Fleet Book: penetrating damage",
+    hint: "Beam 6s score AND reroll (chaining) instead of the FT2 '6 = 2, done'. Off = FT2 core.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: false
+  });
   registerFullThrustRuleset();
 });

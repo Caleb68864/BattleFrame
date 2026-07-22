@@ -263,4 +263,22 @@ describe("resolveWeaponFire — Kra'Vak K-gun (kinetic, armour-piercing)", () =>
     expect(result.totalDamage).toBe(3);
     expect(result.piercingHits).toEqual([6]);
   });
+
+  it("default (penetrating off) scores a beam 6 as the FT2 '6 = 2, done'", async () => {
+    const weapons: WeaponMount[] = [{ kind: "beam", weaponClass: 1, arcs: ["F"] }];
+    const result = await resolveWeaponFire({
+      weapons, distanceMu: 3, bearing: 0, targetScreenLevel: 0, dice: scriptedDice([[6]])
+    });
+    expect(result.totalDamage).toBe(2);
+  });
+
+  it("Fleet Book penetrating: a beam 6 scores 2 AND rerolls, chaining (6->6->3 = 4)", async () => {
+    const weapons: WeaponMount[] = [{ kind: "beam", weaponClass: 1, arcs: ["F"] }];
+    // initial [6] -> reroll [6] -> reroll [3]. poolPenetratingDamage = 2 + 2 + 0 = 4.
+    const result = await resolveWeaponFire({
+      weapons, distanceMu: 3, bearing: 0, targetScreenLevel: 0, penetrating: true,
+      dice: scriptedDice([[6], [6], [3]])
+    });
+    expect(result.totalDamage).toBe(4);
+  });
 });
