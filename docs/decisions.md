@@ -3131,3 +3131,43 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   world (ships animate the curved path, unconstrained, facing==heading). Batched with
   the pending GREATHELM + chat-card + socketlib live-verify.
 - Commit: this commit.
+
+## 2026-07-22 — Dirtside II module scaffold + Stage-1/Stage-2 pure combat math (A1–A9)
+- Context: first build slice of the Dirtside II (GZG) ruleset module, off the
+  full-thrust-ruleset base (e1f9810) which carries the engine service layer. Built
+  MVP-first per vault/ground-zero-games/dirtside-ii-build-plan.md, pure logic first,
+  strict TDD (failing test watched fail → minimal code) for every unit.
+- Scaffold: new workspace package packages/battleframe-dirtside/ (id battleframe-dirtside,
+  relationships.systems → battleframe), copying InCountry's shape: module.json (Actor
+  documentTypes vehicle/infantry/unit), package.json, vite.config.ts (dist/dirtside.js),
+  constants.ts, lang/en.json, placeholder styles. No per-package tsconfig — the root
+  tsconfig/vitest already glob packages/*/src + tests.
+- NAMING RECONCILIATION (finding, not a blocker): the plan writes the Actor subtypes and
+  flag scope as `dirtside-ii.*`, but Foundry v14 namespaces a module's document subtypes
+  by the manifest `id`, so the real subtype keys are `battleframe-dirtside.vehicle` etc.
+  and the flag scope must equal the module id too (`actor.setFlag("battleframe-dirtside",
+  "unitId", …)`), exactly as InCountry registers `battleframe-incountry.unit`. Adopted the
+  module-id namespace (constants.ts documents it); the G-series glue must use it, not the
+  plan's shorthand.
+- Tier-0 LOCKED atom: src/dice/ladder.ts — `shift(die: DieType, steps): DieType | null`,
+  symmetric `d4↔d12` walk, `null` off EITHER end, NO clamping. Built to the exact
+  cross-module contract (identical file forthcoming in the Stargrunt module); kept
+  ruleset-free as the future engine `dice.shift` port candidate.
+- Tier-1 GZG-family pure math (src/combat/, each depending only on Tier-0 shift + its
+  own args, zero data-model imports so extraction to a shared vehicle lib is a move not a
+  rewrite): band.ts `bandStep` (A2, out-of-range → null), tohit.ts `firerDie`/`targetDie`/
+  `resolveHit` (A3–A5, Stage-1 opposed exceed), armour.ts `armourByFace` (A7), chit.ts
+  `parseChit`+`resolveChitDraw` (A6, the whole Stage-2 damage body PURE over an injected
+  drawn-chit list — invalid-colour counts-but-zeroes, specials vs vehicle only, DFFG
+  ×2 close/÷2 long, sum vs faceArmour, infantry killTotal). arc.ts `inArc`+`ARC_HALF_ANGLE`
+  (A9). round/confidence.ts `confidenceTest` (A8).
+- Neutrality: ships ONLY the chit-code grammar + mechanisms. Pot composition, colour
+  meanings, chitValidity, signature→die map, band distances and kill totals are all
+  user-entered/injected. No GZG numbers, cost tables, colour tables or rules text.
+- Surfaces: packages/battleframe-dirtside/src/{dice/ladder,combat/{band,tohit,armour,chit,
+  arc},round/confidence}.ts + 7 test files. 54 DS2 tests pass; full-repo typecheck clean.
+- Remaining (later runs): A10 alternating unit session, A11 C3 command-loss ripple, the
+  two-tier data models + *-state readers, then the whole G-series glue (data-model
+  registration, sheets, round control, advance, live RollTable drawChits, fire path, chat
+  cards, status effects, command-loss hook, main.ts) + live-verify.
+- Commit: this commit.

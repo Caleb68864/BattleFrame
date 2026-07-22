@@ -1,0 +1,37 @@
+{
+  "TYPES": {
+    "Actor": {
+      "battleframe-dirtside.vehicle": "Vehicle",
+      "battleframe-dirtside.infantry": "Infantry",
+      "battleframe-dirtside.unit": "Unit"
+    }
+  },
+  "battleframe-dirtside": {
+    "sheets": {
+      "vehicle": "Vehicle",
+      "infantry": "Infantry",
+      "unit": "Unit"
+    },
+    "fields": {
+      "damage": "Damage",
+      "confidence": "Confidence",
+      "activated": "Activated"
+    },
+    "confidence": {
+      "confident": "Confident",
+      "steady": "Steady",
+      "shaken": "Shaken",
+      "broken": "Broken"
+    },
+    "damage": {
+      "ok": "OK",
+      "damaged": "Damaged",
+      "knocked-out": "Knocked Out"
+    },
+    "status": {
+      "damaged": "Damaged",
+      "knocked-out": "Knocked Out",
+      "under-fire": "Under Fire"
+    }
+  }
+}

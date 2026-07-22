@@ -1,0 +1,12 @@
+/*
+ * Dirtside II — placeholder theme.
+ *
+ * Sheets (G2) are Foundry glue and not part of the first build slice; this file
+ * exists so the manifest's `styles` entry resolves. A full "armour plate" visual
+ * language lands with the sheets.
+ */
+
+.battleframe-dirtside.sheet {
+  --ds2-panel: #1e2124;
+  --ds2-ink: #c7ccd1;
+}
