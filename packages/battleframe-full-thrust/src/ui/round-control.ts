@@ -1395,7 +1395,14 @@ export async function newTurnAction(): Promise<void> {
   }
   await firePhaseDoc()?.unsetFlag(MODULE_ID, FIRE_PHASE_FLAG);
   clearMovementPreview();
-  notify("info", `${MODULE_ID} | new turn -- cleared ${cleared} plot(s) and ended the fire phase`);
+  // Any independent missiles in flight fly their turn automatically as part of
+  // starting the new turn -- the player never moves them by hand. (The manual
+  // "Missile Phase" tool remains for firing them mid-turn.)
+  const missilesInFlight = loadMissiles().length;
+  if (missilesInFlight > 0) {
+    await advanceMissilesAction();
+  }
+  notify("info", `${MODULE_ID} | new turn -- cleared ${cleared} plot(s), ended the fire phase${missilesInFlight > 0 ? `, flew ${missilesInFlight} missile(s)` : ""}`);
 }
 
 /**
