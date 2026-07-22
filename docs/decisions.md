@@ -2633,3 +2633,17 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - +18 tests (kravak.test.ts, hand-computed from the notes' worked examples); 1029 passing (was 1011);
   typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: spinal-weapon scene tools (Nova Cannon + Wave Gun) (roadmap P2 #20)
+- Gap: `combat/spinal.ts` had the Nova/Wave damage math but no way to fire them.
+- Fix: "Nova Cannon" + "Wave Gun" GM scene tools (`fireNovaCannonAction`/`fireWaveGunAction` over a
+  shared `resolveSpinalWeapon`): roll the weapon's dice (Nova turn-1 = 6D6; Wave by range band via
+  `waveGunDiceAtRange`), sum faces for damage (screens give no protection), apply via
+  `applyDamageAndThreshold`, post `buildSpinalReportHtml`.
+- SIMPLIFICATION (like the salvo tool): resolves directly against ONE chosen target rather than the
+  swept/expanding MeasuredTemplate; the Nova's 3-turn sweep is fired as its turn-1 blast; the Wave
+  Gun charge cycle is not yet tracked (assumes ready). Remaining #20 pieces + Wave Gun armour bypass.
+- Surfaces: ui/round-control.ts (builder + 2 actions + shared resolver + 2 tools), lang/en.json.
+- Watch: live-verify firing each at a targeted ship posts a damage/threshold card.
+- +3 tests (buildSpinalReportHtml); 1064 passing; typecheck clean.
+- Commit: this commit.

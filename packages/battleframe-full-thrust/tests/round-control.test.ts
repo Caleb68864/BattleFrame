@@ -11,7 +11,7 @@ import {
   newTurnAction
 } from "../src/ui/round-control";
 import type { TargetingRow } from "../src/combat/targeting";
-import { buildSplitFireReportHtml, buildMissileReportHtml } from "../src/ui/round-control";
+import { buildSplitFireReportHtml, buildMissileReportHtml, buildSpinalReportHtml } from "../src/ui/round-control";
 import type { FireShipSplitReport } from "../src/combat/fire-ship-split";
 import type { FireReport } from "../src/combat/fire-ship";
 import type { FighterFireReport } from "../src/combat/fire-fighters";
@@ -228,6 +228,36 @@ describe("buildMissileReportHtml", () => {
   });
 });
 
+describe("buildSpinalReportHtml", () => {
+  it("summarises a Wave Gun hit with damage + threshold", () => {
+    const html = buildSpinalReportHtml(
+      { weapon: "Wave Gun", distance: 10, totalDamage: 14, thresholdsCrossed: [1], systemsKnockedOut: 2, destroyed: false },
+      "Enemy CA"
+    );
+    expect(html).toContain("Wave Gun");
+    expect(html).toContain("Enemy CA");
+    expect(html).toContain("14");
+    expect(html.toLowerCase()).toContain("threshold");
+  });
+
+  it("reports out of range", () => {
+    const html = buildSpinalReportHtml(
+      { weapon: "Wave Gun", outOfRange: true, distance: 99, totalDamage: 0, thresholdsCrossed: [], systemsKnockedOut: 0, destroyed: false },
+      "T"
+    );
+    expect(html.toLowerCase()).toContain("out of range");
+  });
+
+  it("escapes the target name and notes destruction", () => {
+    const html = buildSpinalReportHtml(
+      { weapon: "Nova Cannon", distance: 5, totalDamage: 30, thresholdsCrossed: [], systemsKnockedOut: 0, destroyed: true },
+      "<i>x</i>"
+    );
+    expect(html).not.toContain("<i>x");
+    expect(html.toLowerCase()).toContain("destroyed");
+  });
+});
+
 describe("addSceneControl", () => {
   it("adds a Full Thrust control with fire and plot tools (array payload)", () => {
     vi.stubGlobal("game", { user: { isGM: true } });
@@ -247,6 +277,8 @@ describe("addSceneControl", () => {
     expect(toolNames).toContain("full-thrust-salvo");
     expect(toolNames).toContain("full-thrust-launch-missile");
     expect(toolNames).toContain("full-thrust-advance-missiles");
+    expect(toolNames).toContain("full-thrust-nova-cannon");
+    expect(toolNames).toContain("full-thrust-wave-gun");
     expect(toolNames).toContain("full-thrust-plot");
     expect(toolNames).toContain("full-thrust-execute");
     expect(toolNames).toContain("full-thrust-damage-control");

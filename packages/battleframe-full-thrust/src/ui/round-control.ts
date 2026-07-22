@@ -38,6 +38,8 @@ import { fireShipSplit, type FireShipSplitReport } from "../combat/fire-ship-spl
 import { advanceMissile, missileExpired, type ActiveMissile } from "../combat/missile-phase";
 import { resolveMissileAttack, missileCanAttack, type MissileAttackReport } from "../combat/missile";
 import { drawMissiles, clearMissiles } from "./missile-overlay";
+import { waveGunDiceAtRange, waveGunDamage, novaCannonDiceForTurn, novaCannonDamage } from "../combat/spinal";
+import { applyDamageAndThreshold } from "../combat/apply-damage";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
 import { plotMovementPath, type MovementPath } from "../movement/path";
 import { usableThrust } from "../ship/systems";
@@ -247,6 +249,27 @@ export function buildMissileReportHtml(report: MissileAttackReport, targetName: 
     lines.push(`<p class="ft-destroyed"><strong>${target} destroyed.</strong></p>`);
   }
   return wrapReport(head, lines);
+}
+
+/** A resolved spinal-weapon shot for the chat card. */
+export interface SpinalFireOutcome {
+  weapon: "Nova Cannon" | "Wave Gun";
+  outOfRange?: boolean;
+  distance: number;
+  totalDamage: number;
+  thresholdsCrossed: number[];
+  systemsKnockedOut: number;
+  destroyed: boolean;
+}
+
+/** Builds the chat card for a spinal-mount weapon (Nova Cannon / Wave Gun) shot. */
+export function buildSpinalReportHtml(outcome: SpinalFireOutcome, targetName: string): string {
+  const target = escapeHtml(targetName);
+  const head = `${outcome.weapon} &rarr; ${target}`;
+  if (outcome.outOfRange) {
+    return wrapReport(head, [`<p>Out of range.</p>`]);
+  }
+  return wrapReport(head, reportBodyLines(outcome, target));
 }
 
 // --- Injectable actions (testable core) -------------------------------------
@@ -805,6 +828,83 @@ export async function advanceMissilesAction(): Promise<void> {
 }
 
 /**
+ * Resolves a spinal-mount weapon's blast against the targeted ship: roll the
+ * given dice, sum the faces for damage (screens give no protection), apply it +
+ * a threshold check, and post the card. Shared by the Nova Cannon + Wave Gun
+ * tools. SIMPLIFICATION: resolves directly against one chosen target (like the
+ * salvo tool); the swept/expanding MeasuredTemplate that would auto-select every
+ * ship under it, and the Wave Gun charge cycle, are deferred.
+ */
+async function resolveSpinalWeapon(
+  weapon: "Nova Cannon" | "Wave Gun",
+  diceCount: number,
+  distance: number,
+  target: FiringShip & { name?: string },
+  targetName: string,
+  damageOf: (faces: readonly number[]) => number,
+  services: RoundControlApi
+): Promise<void> {
+  if (diceCount <= 0) {
+    await g().ChatMessage?.create({
+      content: buildSpinalReportHtml(
+        { weapon, outOfRange: true, distance, totalDamage: 0, thresholdsCrossed: [], systemsKnockedOut: 0, destroyed: false },
+        targetName
+      )
+    });
+    return;
+  }
+  const faces = await services.dice.rollPool(diceCount, DIE_SIZE, { rulesetId: MODULE_ID, flavor: weapon });
+  const damage = damageOf(faces);
+  const outcome = await applyDamageAndThreshold(target, damage, services.dice);
+  await g().ChatMessage?.create({
+    content: buildSpinalReportHtml({ weapon, distance, totalDamage: damage, ...outcome }, targetName)
+  });
+}
+
+/** Shared setup for a spinal tool: GM check + controlled/targeted ship + range. */
+function spinalContext(): { services: RoundControlApi; target: FiringShip & { name?: string }; targetName: string; distance: number } | undefined {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM fires spinal weapons`);
+    return undefined;
+  }
+  const services = api();
+  if (!services) {
+    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+    return undefined;
+  }
+  const attackerToken = controlledToken();
+  const targetToken = targetedToken();
+  if (!attackerToken || !targetToken) {
+    return undefined;
+  }
+  const target = toFiringShip(targetToken);
+  if (!target) {
+    notify("warn", `${MODULE_ID} | the target needs a ship actor`);
+    return undefined;
+  }
+  const distance = services.measure.between(attackerToken, targetToken, "centre-to-centre").distance;
+  return { services, target, targetName: targetToken?.name ?? "Target", distance };
+}
+
+/** Nova-Cannon tool: fire the turn-1 blast (6D6, screens ignored) at the target. */
+export async function fireNovaCannonAction(): Promise<void> {
+  const ctx = spinalContext();
+  if (!ctx) {
+    return;
+  }
+  await resolveSpinalWeapon("Nova Cannon", novaCannonDiceForTurn(1), ctx.distance, ctx.target, ctx.targetName, novaCannonDamage, ctx.services);
+}
+
+/** Wave-Gun tool: fire at the target, dice by range band (screens/armour ignored). */
+export async function fireWaveGunAction(): Promise<void> {
+  const ctx = spinalContext();
+  if (!ctx) {
+    return;
+  }
+  await resolveSpinalWeapon("Wave Gun", waveGunDiceAtRange(ctx.distance), ctx.distance, ctx.target, ctx.targetName, waveGunDamage, ctx.services);
+}
+
+/**
  * Fire-Arcs tool: pin/unpin the fire-arc ring on ship tokens so a player can see
  * their fleet's arcs at a glance (hovering already shows a ship's arcs transiently
  * — this keeps them on). Toggles the controlled ships, or every ship on the scene
@@ -1303,6 +1403,25 @@ export function addSceneControl(controls: unknown): void {
     order: 3,
     onClick: () => void advanceMissilesAction(),
   };
+  // Spinal-mount mega-weapons (direct-target) -- GM only.
+  const novaCannonTool = {
+    name: "full-thrust-nova-cannon",
+    title: "battleframe-full-thrust.controls.novaCannon",
+    icon: "fas fa-sun",
+    button: true,
+    visible: gm,
+    order: 3,
+    onClick: () => void fireNovaCannonAction(),
+  };
+  const waveGunTool = {
+    name: "full-thrust-wave-gun",
+    title: "battleframe-full-thrust.controls.waveGun",
+    icon: "fas fa-water",
+    button: true,
+    visible: gm,
+    order: 3,
+    onClick: () => void fireWaveGunAction(),
+  };
   const plotTool = {
     name: "full-thrust-plot",
     title: "battleframe-full-thrust.controls.plot",
@@ -1364,7 +1483,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
+  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, waveGunTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);
