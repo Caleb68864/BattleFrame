@@ -24,6 +24,13 @@ export const FIGHTER_GROUP_ACTOR_TYPE = "fighter-group";
  */
 export const PLOTTED_ORDER_FLAG = "plottedOrder";
 
+/**
+ * Document flag holding the weapons-fire phase state (initiative winner, which
+ * ships have fired, whose turn). Stored on a Document (the active Combat, else
+ * the Scene) so it survives reload and syncs, per the project's turn-state rule.
+ */
+export const FIRE_PHASE_FLAG = "firePhase";
+
 /** The die every Full Thrust roll uses. */
 export const DIE_SIZE = 6;
 

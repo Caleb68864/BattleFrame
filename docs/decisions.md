@@ -2048,4 +2048,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Prior state (now answered): ship building was sheet-only and actor CREATION is GM-gated by
   default, so the GM prepped ships; the importer + the permission note give players a self-serve path.
 - 757 tests passing.
+- Commit: 7659277.
+
+## 2026-07-22 — Full Thrust roadmap note + wired fire-phase turn order (roadmap P0 #1)
+- Added docs/roadmap-full-thrust.md: a prioritized gaps/QoL inventory (P0 playability blockers =
+  tested-but-dormant math; P1 QoL; P2 advanced rules; P3 live-verification debt).
+- Fire-phase turn order is now WIRED (was tested-but-unreachable). round/fire-session.ts adds
+  side-from-disposition (`shipSideOf`), ship collection (`collectFireShips`), the "may fire now?"
+  check (`canShipFire`), and restore. round-control gains: "Begin Fire Phase" tool
+  (`beginFirePhaseAction`, GM) that rolls initiative (one die per side via game.battleframe.dice,
+  re-rolling ties) and persists the phase; fireAction now enforces active-side + eligibility when
+  a phase is running and calls `advanceFirePhase` (record fire, announce next side, auto-clear on
+  complete). No fire phase active = free fire (backward compatible).
+- Storage: the phase state lives on a Document -- the active Combat if present, else the Scene --
+  per the project's turn-state-on-a-Document rule (Scene fallback avoids forcing an encounter).
+- 765 tests passing. Enforcement/initiative logic unit-tested; the scene-tool clicks + Document
+  flag round-trip still want live-Foundry verification.
 - Commit: this commit.

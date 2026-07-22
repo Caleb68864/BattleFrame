@@ -15,9 +15,21 @@ import {
   FIGHTER_GROUP_ACTOR_TYPE,
   SHIP_ACTOR_TYPE,
   PLOTTED_ORDER_FLAG,
+  FIRE_PHASE_FLAG,
+  DIE_SIZE,
   COURSE_POINT_DEGREES,
   COURSES
 } from "../constants";
+import {
+  collectFireShips,
+  canShipFire,
+  shipSideOf,
+  restoreFireSession,
+  createFirePhase,
+  determineInitiative,
+  type FirePhase,
+  type FireSessionState
+} from "../round/fire-session";
 import { fireShipAtTarget, type FireContext, type FireReport, type FiringShip } from "../combat/fire-ship";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
 import { plotMovementPath, type MovementPath } from "../movement/path";
@@ -142,15 +154,22 @@ export function pixelsPerMu(grid: { size?: number; distance?: number } | undefin
 
 // --- Foundry glue -----------------------------------------------------------
 
+interface FlagDocLike {
+  getFlag: (scope: string, key: string) => unknown;
+  setFlag: (scope: string, key: string, value: unknown) => Promise<unknown>;
+  unsetFlag: (scope: string, key: string) => Promise<unknown>;
+}
+
 interface GlobalScope {
   game?: {
     user?: { isGM?: boolean; id?: string; targets?: { first?: () => unknown } };
     battleframe?: RoundControlApi;
+    combats?: { active?: FlagDocLike };
   };
   battleframe?: RoundControlApi;
   canvas?: {
     tokens?: { controlled?: any[]; placeables?: any[] };
-    scene?: { grid?: { size?: number; distance?: number } };
+    scene?: (FlagDocLike & { grid?: { size?: number; distance?: number } }) | undefined;
   };
   ui?: { notifications?: { warn?: (t: string) => void; error?: (t: string) => void; info?: (t: string) => void } };
   Hooks?: { on?: (event: string, cb: (...args: unknown[]) => void) => void };
@@ -255,8 +274,20 @@ export async function fireAction(): Promise<void> {
     return;
   }
 
+  // If a fire phase is running, enforce initiative + alternation: only the active
+  // side's still-unfired ships may fire. With no fire phase, firing is free.
+  const phase = activeFirePhase();
+  if (phase && !canShipFire(phase, shipSideOf(attackerToken), attackerToken.id)) {
+    notify("warn", `${MODULE_ID} | it is side ${phase.activeSide()}'s turn to fire (pick one of its ships)`);
+    return;
+  }
+
   const { html } = await resolveFireBetween(attacker, target, services);
   await g().ChatMessage?.create({ content: html });
+
+  if (phase) {
+    await advanceFirePhase(phase, attackerToken.id);
+  }
 }
 
 /** The scene grid pixels-per-mu for the token's scene. */
@@ -319,6 +350,96 @@ export async function plotAction(): Promise<void> {
   // Store secretly; the token stays put until maneuvers are executed.
   await token.actor.setFlag?.(MODULE_ID, PLOTTED_ORDER_FLAG, orderText);
   notify("info", `${MODULE_ID} | plotted "${orderText || "no change"}" (hidden until execute)`);
+}
+
+// --- Fire-phase turn order (initiative + strict alternation) ----------------
+
+/** The Document the fire-phase state lives on: the active Combat, else the Scene. */
+function firePhaseDoc(): FlagDocLike | undefined {
+  return g().game?.combats?.active ?? g().canvas?.scene ?? undefined;
+}
+
+/** The stored fire-phase state, or undefined when no fire phase is running. */
+function loadFireState(): FireSessionState | undefined {
+  const state = firePhaseDoc()?.getFlag(MODULE_ID, FIRE_PHASE_FLAG);
+  return state && typeof state === "object" ? (state as FireSessionState) : undefined;
+}
+
+/** The active fire phase restored from state + freshly-gathered ships, or undefined. */
+function activeFirePhase(): FirePhase | undefined {
+  const state = loadFireState();
+  if (!state) {
+    return undefined;
+  }
+  const ships = collectFireShips(g().canvas?.tokens?.placeables ?? []).map((s) => ({
+    id: s.id,
+    sideId: s.sideId
+  }));
+  return restoreFireSession(ships, state);
+}
+
+/**
+ * Advances the fire phase after `shipId` has fired: records it, and either saves
+ * the new state (announcing the next side) or clears the phase when every ship
+ * has fired.
+ */
+async function advanceFirePhase(phase: FirePhase, shipId: string): Promise<void> {
+  const doc = firePhaseDoc();
+  try {
+    phase.fire(shipId);
+  } catch {
+    return; // out-of-turn / already-fired: the enforcement check should prevent this
+  }
+  if (phase.isComplete()) {
+    await doc?.unsetFlag(MODULE_ID, FIRE_PHASE_FLAG);
+    notify("info", `${MODULE_ID} | fire phase complete`);
+  } else {
+    await doc?.setFlag(MODULE_ID, FIRE_PHASE_FLAG, phase.serialize());
+    notify("info", `${MODULE_ID} | next to fire: side ${phase.activeSide()}`);
+  }
+}
+
+const MAX_INITIATIVE_REROLLS = 5;
+
+/**
+ * Begin-Fire-Phase action (GM): roll initiative (one die per side, re-rolling
+ * ties), then open the phase so ships fire in strict alternation from the winning
+ * side. State is persisted to a Document so it survives reload and syncs.
+ */
+export async function beginFirePhaseAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM begins the fire phase`);
+    return;
+  }
+  const services = api();
+  const ships = collectFireShips(g().canvas?.tokens?.placeables ?? []);
+  const sides = [...new Set(ships.map((s) => s.sideId))];
+  if (sides.length < 2) {
+    notify("warn", `${MODULE_ID} | need ships on two sides (set one fleet Friendly, one Hostile)`);
+    return;
+  }
+
+  // Roll off for initiative, re-rolling a tie.
+  let firstSideId: string | null = null;
+  for (let attempt = 0; attempt <= MAX_INITIATIVE_REROLLS && firstSideId === null; attempt += 1) {
+    const rolls = [];
+    for (const sideId of sides) {
+      const roll = await services?.dice?.rollPool?.(1, DIE_SIZE, {
+        rulesetId: MODULE_ID,
+        flavor: `initiative (side ${sideId})`
+      });
+      rolls.push({ sideId, roll: roll?.[0] ?? 0 });
+    }
+    firstSideId = determineInitiative(rolls);
+  }
+  if (firstSideId === null) {
+    notify("warn", `${MODULE_ID} | initiative stayed tied -- try again`);
+    return;
+  }
+
+  const phase = createFirePhase({ ships, firstSideId });
+  await firePhaseDoc()?.setFlag(MODULE_ID, FIRE_PHASE_FLAG, phase.serialize());
+  notify("info", `${MODULE_ID} | side ${firstSideId} won initiative and fires first`);
 }
 
 /**
@@ -454,13 +575,24 @@ async function executeMovementPath(token: any, path: MovementPath): Promise<void
 /** Adds the Full Thrust scene control, tolerating both payload shapes. */
 export function addSceneControl(controls: unknown): void {
   const gm = isGM();
+  // Begin the fire phase: roll initiative, then ships fire in strict alternation.
+  const initiativeTool = {
+    name: "full-thrust-initiative",
+    title: "battleframe-full-thrust.controls.initiative",
+    icon: "fas fa-dice",
+    button: true,
+    visible: gm,
+    order: 0,
+    onClick: () => void beginFirePhaseAction(),
+    onChange: () => void beginFirePhaseAction()
+  };
   const fireTool = {
     name: "full-thrust-fire",
     title: "battleframe-full-thrust.controls.fire",
     icon: "fas fa-crosshairs",
     button: true,
     visible: gm,
-    order: 0,
+    order: 1,
     onClick: () => void fireAction(),
     onChange: () => void fireAction()
   };
@@ -470,7 +602,7 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-route",
     button: true,
     visible: true,
-    order: 1,
+    order: 2,
     onClick: () => void plotAction(),
     onChange: () => void plotAction()
   };
@@ -481,7 +613,7 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-play",
     button: true,
     visible: gm,
-    order: 2,
+    order: 3,
     onClick: () => void executeManeuversAction(),
     onChange: () => void executeManeuversAction()
   };
@@ -492,7 +624,7 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-file-import",
     button: true,
     visible: true,
-    order: 3,
+    order: 4,
     onClick: () => void importFleetAction(),
     onChange: () => void importFleetAction()
   };
@@ -509,12 +641,13 @@ export function addSceneControl(controls: unknown): void {
   };
 
   if (Array.isArray(controls)) {
-    control.tools = [fireTool, plotTool, executeTool, importTool];
+    control.tools = [initiativeTool, fireTool, plotTool, executeTool, importTool];
     controls.push(control);
     return;
   }
   if (controls && typeof controls === "object") {
     control.tools = {
+      [initiativeTool.name]: initiativeTool,
       [fireTool.name]: fireTool,
       [plotTool.name]: plotTool,
       [executeTool.name]: executeTool,

@@ -4,7 +4,8 @@ import {
   buildFighterReportHtml,
   addSceneControl,
   registerRoundControl,
-  executeManeuversAction
+  executeManeuversAction,
+  beginFirePhaseAction
 } from "../src/ui/round-control";
 import type { FireReport } from "../src/combat/fire-ship";
 import type { FighterFireReport } from "../src/combat/fire-fighters";
@@ -115,6 +116,7 @@ describe("addSceneControl", () => {
     expect(controls).toHaveLength(1);
     expect(controls[0].name).toBe("battleframe-full-thrust");
     const toolNames = controls[0].tools.map((t: any) => t.name);
+    expect(toolNames).toContain("full-thrust-initiative");
     expect(toolNames).toContain("full-thrust-fire");
     expect(toolNames).toContain("full-thrust-plot");
     expect(toolNames).toContain("full-thrust-execute");
@@ -188,6 +190,58 @@ describe("executeManeuversAction (simultaneous reveal of plotted orders)", () =>
     vi.stubGlobal("game", { user: { isGM: false } });
     vi.stubGlobal("ui", { notifications: { warn } });
     await executeManeuversAction();
+    expect(warn).toHaveBeenCalled();
+  });
+});
+
+describe("beginFirePhaseAction (roll initiative, persist the fire phase)", () => {
+  function shipTok(id: string, disposition: number) {
+    return { id, actor: { type: "battleframe-full-thrust.ship" }, document: { disposition } };
+  }
+
+  it("rolls initiative and stores the phase on the scene, winner first", async () => {
+    const flags: Record<string, any> = {};
+    const scene = {
+      grid: { size: 50, distance: 1 },
+      getFlag: (_m: string, k: string) => flags[k],
+      setFlag: (_m: string, k: string, v: unknown) => {
+        flags[k] = v;
+        return Promise.resolve();
+      },
+      unsetFlag: (_m: string, k: string) => {
+        delete flags[k];
+        return Promise.resolve();
+      }
+    };
+    // Side "1" rolls 5, side "-1" rolls 3 -> side "1" wins.
+    const pools = [[5], [3]];
+    const rollPool = vi.fn(async () => pools.shift() ?? []);
+    vi.stubGlobal("game", {
+      user: { isGM: true },
+      battleframe: { dice: { rollPool } },
+      combats: { active: undefined }
+    });
+    vi.stubGlobal("canvas", {
+      tokens: { placeables: [shipTok("a1", 1), shipTok("b1", -1)] },
+      scene
+    });
+    vi.stubGlobal("ui", { notifications: { info: vi.fn(), warn: vi.fn() } });
+
+    await beginFirePhaseAction();
+
+    expect(flags.firePhase).toBeDefined();
+    expect(flags.firePhase.firstSideId).toBe("1");
+    expect(flags.firePhase.activeSideId).toBe("1");
+    expect(flags.firePhase.fired).toEqual([]);
+  });
+
+  it("warns and does nothing when ships are not on two sides", async () => {
+    const warn = vi.fn();
+    vi.stubGlobal("game", { user: { isGM: true }, battleframe: { dice: { rollPool: vi.fn() } }, combats: {} });
+    vi.stubGlobal("canvas", { tokens: { placeables: [shipTok("a1", 1), shipTok("a2", 1)] }, scene: {} });
+    vi.stubGlobal("ui", { notifications: { warn, info: vi.fn() } });
+
+    await beginFirePhaseAction();
     expect(warn).toHaveBeenCalled();
   });
 });

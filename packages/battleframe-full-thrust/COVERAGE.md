@@ -27,7 +27,7 @@ deferred. Nothing is silently missing.
 | Secret order plotting, then simultaneous reveal | ✅ | Plot tool stores the order on an owner/GM-only actor flag (token does not move) with a live local path preview; "Execute Maneuvers" (GM) reveals + runs all plotted moves at once. `ui/round-control.ts`, `ui/preview-overlay.ts`, `movement/preview.ts` |
 | Plotting-secrecy safeguard | ✅ | `ui/ownership-warning.ts` warns when a ship's ownership is changed so 2+ players can observe it (an opponent could then read the plotted order) |
 | Fleet import (bring-your-own-data) | ✅ | "Import Fleet" tool + `data/fleet-import.ts` `parseFleet` turn a JSON fleet into player-owned ship Actors (see FLEET-FORMAT.md). Gated by Foundry's "Create New Actors" permission |
-| Fire phase: initiative (highest), winner fires one ship, strict alternation | ✅ | `round/fire-phase.ts` (`determineInitiative`, `createFirePhase`) |
+| Fire phase: initiative (highest), winner fires one ship, strict alternation | ✅ | `round/fire-phase.ts` logic, **wired** via `round/fire-session.ts` + the "Begin Fire Phase" scene tool; the Fire tool enforces active-side/eligibility and advances alternation, phase state persisted to a Document |
 | Damage applied immediately; threshold check after each attacker | ✅ | `combat/apply-damage.ts` |
 
 ## Movement (cinematic)
