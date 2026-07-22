@@ -281,6 +281,8 @@ describe("addSceneControl", () => {
     expect(toolNames).toContain("full-thrust-charge-wave-gun");
     expect(toolNames).toContain("full-thrust-wave-gun");
     expect(toolNames).toContain("full-thrust-fighter-move");
+    expect(toolNames).toContain("full-thrust-launch-fighters");
+    expect(toolNames).toContain("full-thrust-recover-fighters");
     expect(toolNames).toContain("full-thrust-new-battle");
     expect(toolNames).toContain("full-thrust-plot");
     expect(toolNames).toContain("full-thrust-execute");

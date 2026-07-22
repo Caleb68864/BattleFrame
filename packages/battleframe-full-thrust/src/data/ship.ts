@@ -70,6 +70,10 @@ export function createShipDataClass(
       schema.pdsLost = new NumberField(nonNegativeInt(0));
       schema.damageControl = new NumberField(nonNegativeInt(0));
 
+      // Fighter bays: 0 = not a carrier; each bay holds one 6-fighter group. A
+      // ship with 3+ bays counts as a "true carrier" (launches 2 groups/turn).
+      schema.bays = new NumberField(nonNegativeInt(0));
+
       // Cinematic movement state: current velocity (mu) and heading (course 1-12).
       schema.velocity = new NumberField(nonNegativeInt(0));
       schema.course = new NumberField({

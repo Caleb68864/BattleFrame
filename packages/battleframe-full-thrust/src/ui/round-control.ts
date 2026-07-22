@@ -19,6 +19,9 @@ import {
   ACTIVE_MISSILES_FLAG,
   WAVE_GUN_CHARGE_FLAG,
   WAVE_GUN_FULL_CHARGE,
+  LAUNCHED_GROUPS_FLAG,
+  FIGHTER_GROUP_MAX,
+  FIGHTER_ATTACK_RANGE_MU,
   DIE_SIZE,
   COURSE_POINT_DEGREES,
   COURSES
@@ -42,6 +45,7 @@ import { resolveMissileAttack, missileCanAttack, type MissileAttackReport, type 
 import { drawMissiles, clearMissiles } from "./missile-overlay";
 import { waveGunDiceAtRange, waveGunDamage, novaCannonDiceForTurn, novaCannonDamage, waveGunChargeAfterTurn, waveGunIsCharged, waveGunChargeAfterFiring } from "../combat/spinal";
 import { canReachToAttack } from "../movement/fighter-move";
+import { bayCapacity } from "../combat/carrier";
 import { applyDamageAndThreshold } from "../combat/apply-damage";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
 import { plotMovementPath, type MovementPath } from "../movement/path";
@@ -351,7 +355,7 @@ interface GlobalScope {
   ui?: { notifications?: { warn?: (t: string) => void; error?: (t: string) => void; info?: (t: string) => void } };
   Hooks?: { on?: (event: string, cb: (...args: unknown[]) => void) => void };
   ChatMessage?: { create: (data: Record<string, unknown>) => Promise<unknown> };
-  Actor?: { createDocuments: (data: any[]) => Promise<unknown> };
+  Actor?: { createDocuments: (data: any[]) => Promise<unknown>; create: (data: any) => Promise<any> };
   foundry?: { applications?: { api?: { DialogV2?: { prompt: (opts: unknown) => Promise<unknown> } } } };
 }
 
@@ -1002,6 +1006,89 @@ export async function fighterMoveAction(): Promise<void> {
 }
 
 /**
+ * Launch-Fighters tool (GM): a controlled carrier (a ship with fighter bays)
+ * deploys one 6-fighter group token beside it, up to its bay capacity. The
+ * carrier tracks how many groups are out via a flag. A launched group is a fresh
+ * full-strength group (the bay's contents are not individually modelled).
+ */
+export async function launchFightersAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM launches fighters`);
+    return;
+  }
+  const carrier = controlledToken();
+  if (!carrier?.actor) {
+    return;
+  }
+  const bays = Number(carrier.actor.system?.bays ?? 0);
+  if (bays <= 0) {
+    notify("warn", `${MODULE_ID} | that ship has no fighter bays (set system.bays)`);
+    return;
+  }
+  const deployed = Number(carrier.actor.getFlag?.(MODULE_ID, LAUNCHED_GROUPS_FLAG) ?? 0);
+  if (deployed >= bayCapacity(bays).groups) {
+    notify("info", `${MODULE_ID} | all ${bays} bay(s) are empty -- recover a group first`);
+    return;
+  }
+
+  const disposition = Number(carrier.document?.disposition ?? 0);
+  const start = tokenStartPx(carrier);
+  const scale = tokenScale(carrier);
+  const offset = (carrier?.w ?? 0) / 2 + 2 * scale;
+  const group = await g().Actor?.create?.({
+    name: `${carrier.name ?? "Carrier"} Wing ${deployed + 1}`,
+    type: `${MODULE_ID}.${FIGHTER_GROUP_ACTOR_TYPE}`,
+    system: { size: FIGHTER_GROUP_MAX }
+  });
+  if (!group?.getTokenDocument) {
+    notify("error", `${MODULE_ID} | could not create the fighter group`);
+    return;
+  }
+  const td = await group.getTokenDocument({ x: start.x + offset, y: start.y - offset, disposition, width: 1, height: 1 });
+  await carrier.document?.parent?.createEmbeddedDocuments?.("Token", [td.toObject()]);
+  await carrier.actor.setFlag?.(MODULE_ID, LAUNCHED_GROUPS_FLAG, deployed + 1);
+  notify("info", `${MODULE_ID} | launched a fighter group (${deployed + 1}/${bayCapacity(bays).groups} bays used)`);
+}
+
+/**
+ * Recover-Fighters tool (GM): a controlled carrier lands the nearest friendly
+ * fighter group within docking reach (removing its token + actor), freeing a bay.
+ */
+export async function recoverFightersAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM recovers fighters`);
+    return;
+  }
+  const services = api();
+  const carrier = controlledToken();
+  if (!services || !carrier?.actor) {
+    return;
+  }
+  const deployed = Number(carrier.actor.getFlag?.(MODULE_ID, LAUNCHED_GROUPS_FLAG) ?? 0);
+  const disposition = Number(carrier.document?.disposition ?? 0);
+  // Nearest friendly fighter group within its own move + docking reach of the carrier.
+  const groups = (g().canvas?.tokens?.placeables ?? []).filter(
+    (t: any) => typeof t?.actor?.type === "string" && t.actor.type.endsWith(FIGHTER_GROUP_ACTOR_TYPE) && Number(t?.document?.disposition ?? 0) === disposition
+  );
+  let best: { token: any; distance: number } | undefined;
+  for (const gp of groups) {
+    const distance = services.measure.between(gp, carrier, "centre-to-centre").distance;
+    if (distance <= FIGHTER_ATTACK_RANGE_MU && (!best || distance < best.distance)) {
+      best = { token: gp, distance };
+    }
+  }
+  if (!best) {
+    notify("warn", `${MODULE_ID} | no friendly fighter group within ${FIGHTER_ATTACK_RANGE_MU}mu to recover`);
+    return;
+  }
+  const groupActor = best.token.actor;
+  await best.token.document?.delete?.();
+  await groupActor?.delete?.();
+  await carrier.actor.setFlag?.(MODULE_ID, LAUNCHED_GROUPS_FLAG, Math.max(0, deployed - 1));
+  notify("info", `${MODULE_ID} | recovered a fighter group (${Math.max(0, deployed - 1)} still out)`);
+}
+
+/**
  * Fire-Arcs tool: pin/unpin the fire-arc ring on ship tokens so a player can see
  * their fleet's arcs at a glance (hovering already shows a ship's arcs transiently
  * — this keeps them on). Toggles the controlled ships, or every ship on the scene
@@ -1620,6 +1707,25 @@ export function addSceneControl(controls: unknown): void {
     order: 3,
     onClick: () => void fireWaveGunAction(),
   };
+  // Carrier ops: launch / recover fighter groups -- GM only.
+  const launchFightersTool = {
+    name: "full-thrust-launch-fighters",
+    title: "battleframe-full-thrust.controls.launchFighters",
+    icon: "fas fa-plane-departure",
+    button: true,
+    visible: gm,
+    order: 3,
+    onClick: () => void launchFightersAction(),
+  };
+  const recoverFightersTool = {
+    name: "full-thrust-recover-fighters",
+    title: "battleframe-full-thrust.controls.recoverFighters",
+    icon: "fas fa-plane-arrival",
+    button: true,
+    visible: gm,
+    order: 3,
+    onClick: () => void recoverFightersAction(),
+  };
   // Move the controlled fighter group toward the targeted ship -- any player.
   const fighterMoveTool = {
     name: "full-thrust-fighter-move",
@@ -1701,7 +1807,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, chargeWaveGunTool, waveGunTool, fighterMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, newBattleTool, importTool];
+  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, chargeWaveGunTool, waveGunTool, launchFightersTool, recoverFightersTool, fighterMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, newBattleTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);

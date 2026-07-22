@@ -42,6 +42,9 @@ export const ACTIVE_MISSILES_FLAG = "activeMissiles";
 /** Actor flag holding a ship's accumulated Wave Gun charge (fires at 6+). */
 export const WAVE_GUN_CHARGE_FLAG = "waveGunCharge";
 
+/** Actor flag: how many fighter groups a carrier currently has deployed (vs its bays). */
+export const LAUNCHED_GROUPS_FLAG = "launchedGroups";
+
 /** The die every Full Thrust roll uses. */
 export const DIE_SIZE = 6;
 
