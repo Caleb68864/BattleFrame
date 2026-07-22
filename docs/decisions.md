@@ -2782,3 +2782,29 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   write are Foundry-facing) — the pure helper + the handler's field mapping are what these unit
   tests lock down.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust chat report cards routed through i18n (roadmap P1 #12)
+- The `build*ReportHtml` builders in `packages/battleframe-full-thrust/src/ui/round-control.ts`
+  emitted hardcoded English ("damage.", "destroyed.", "Threshold check (row ...)",
+  "No strike", "Out of range.", "point defence", "Fire phase:", etc.). Routed them
+  through a new local `tr(key, fallback, data?)` helper that prefers
+  `game.i18n.format`/`localize` and falls back to `fallback` when `game.i18n` is
+  absent. Added matching `battleframe-full-thrust.report.*` keys to `lang/en.json`
+  whose English values equal the old literals, using Foundry `{placeholder}` style
+  for interpolated counts/rows/names.
+- KEY CONSTRAINT that shaped the design: `round-control.test.ts` never stubs
+  `game.i18n`, so `tr` always returns `fallback` under unit test. The fallback is
+  therefore passed as the **already-interpolated** current English template literal
+  (e.g. `` `<strong>${report.totalDamage}</strong> damage.` ``) while the en.json value
+  carries the `{n}` token for the live-Foundry `format` path. Values in two places,
+  but it keeps the 34 round-control assertions (substrings "damage", "destroyed",
+  "threshold", "out of range", "point defence", "no strike", "fighters", "2 FCS", ...)
+  green with ZERO test changes. HTML structure (including `<strong>` wrappers and the
+  `ft-destroyed`/`ft-unassigned` classes) is byte-identical; ship/target names still go
+  through `escapeHtml` and are injected as placeholders, never localized.
+- Surfaces: round-control.ts (`tr` + `REPORT` prefix + `GlobalScope.game.i18n` type;
+  `reportBodyLines`, `buildFire/Fighter/Needle/Salvo/Dogfight/Targeting/SplitFire/Missile/
+  Spinal ReportHtml`, `announceFirePhase`), lang/en.json (+33 `report.*` keys).
+- 1141 tests pass (unchanged count); typecheck clean. Live-verification in a Foundry
+  world still pending (i18n-present path exercised only in production).
+- Commit: this commit.

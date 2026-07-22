@@ -75,6 +75,21 @@ export function escapeHtml(value: string): string {
     .replace(/'/g, "&#39;");
 }
 
+/** i18n key prefix for the chat report cards. */
+const REPORT = `${MODULE_ID}.report`;
+
+/**
+ * Localizes a report string. When `game.i18n` is live it uses Foundry's
+ * `format`/`localize` (with `{placeholder}` interpolation); when it is absent
+ * (unit tests, early boot) it returns `fallback` -- which callers pass as the
+ * already-interpolated current English, so the pure builders behave identically
+ * without a running Foundry.
+ */
+function tr(key: string, fallback: string, data?: Record<string, unknown>): string {
+  const i18n = g().game?.i18n;
+  return i18n?.format?.(key, data) ?? i18n?.localize?.(key) ?? fallback;
+}
+
 export interface FireReportNames {
   attacker: string;
   target: string;
@@ -86,16 +101,27 @@ function reportBodyLines(
   report: { distance?: number; totalDamage: number; thresholdsCrossed: number[]; systemsKnockedOut: number; destroyed: boolean },
   target: string
 ): string[] {
-  const range = report.distance === undefined ? "" : `Range ${Math.round(report.distance)}mu &middot; `;
-  const lines = [`<p>${range}<strong>${report.totalDamage}</strong> damage.</p>`];
+  const range =
+    report.distance === undefined
+      ? ""
+      : tr(`${REPORT}.rangePrefix`, `Range ${Math.round(report.distance)}mu &middot; `, { n: Math.round(report.distance) });
+  const lines = [
+    `<p>${range}${tr(`${REPORT}.damage`, `<strong>${report.totalDamage}</strong> damage.`, { n: report.totalDamage })}</p>`
+  ];
   if (report.thresholdsCrossed.length > 0) {
     lines.push(
-      `<p>Threshold check (row ${report.thresholdsCrossed.join(", ")}): ` +
-        `<strong>${report.systemsKnockedOut}</strong> system(s) knocked out.</p>`
+      `<p>${tr(
+        `${REPORT}.threshold`,
+        `Threshold check (row ${report.thresholdsCrossed.join(", ")}): ` +
+          `<strong>${report.systemsKnockedOut}</strong> system(s) knocked out.`,
+        { rows: report.thresholdsCrossed.join(", "), n: report.systemsKnockedOut }
+      )}</p>`
     );
   }
   if (report.destroyed) {
-    lines.push(`<p class="ft-destroyed"><strong>${target} destroyed.</strong></p>`);
+    lines.push(
+      `<p class="ft-destroyed">${tr(`${REPORT}.destroyed`, `<strong>${target} destroyed.</strong>`, { name: target })}</p>`
+    );
   }
   return lines;
 }
@@ -117,15 +143,23 @@ export function buildFighterReportHtml(report: FighterFireReport, names: FireRep
   const attacker = escapeHtml(names.attacker);
   const target = escapeHtml(names.target);
 
-  const pdsLine = report.pdsKills > 0 ? [`<p>Point defence shot down ${report.pdsKills} fighter(s).</p>`] : [];
+  const pdsLine =
+    report.pdsKills > 0
+      ? [
+          `<p>${tr(`${REPORT}.pdsKills`, `Point defence shot down ${report.pdsKills} fighter(s).`, {
+            n: report.pdsKills
+          })}</p>`
+        ]
+      : [];
 
   if (!report.fired) {
+    const reason = escapeHtml(report.reason ?? "unable");
     return wrapReport(`${attacker} &rarr; ${target}`, [
       ...pdsLine,
-      `<p>No attack (${escapeHtml(report.reason ?? "unable")}).</p>`
+      `<p>${tr(`${REPORT}.noAttack`, `No attack (${reason}).`, { reason })}</p>`
     ]);
   }
-  return wrapReport(`${attacker} (fighters) &rarr; ${target}`, [
+  return wrapReport(tr(`${REPORT}.fighterHeading`, `${attacker} (fighters) &rarr; ${target}`, { attacker, target }), [
     ...pdsLine,
     ...reportBodyLines(report, target)
   ]);
@@ -137,29 +171,32 @@ export function buildNeedleReportHtml(report: NeedleReport, names: FireReportNam
   const target = escapeHtml(names.target);
   const system = escapeHtml(report.systemType);
 
+  const heading = tr(`${REPORT}.needleHeading`, `${attacker} needle &rarr; ${target}`, { attacker, target });
   if (!report.fired) {
-    return wrapReport(`${attacker} needle &rarr; ${target}`, [
-      `<p>No strike (${escapeHtml(report.reason ?? "unable")}).</p>`
-    ]);
+    const reason = escapeHtml(report.reason ?? "unable");
+    return wrapReport(heading, [`<p>${tr(`${REPORT}.noStrike`, `No strike (${reason}).`, { reason })}</p>`]);
   }
   const body = report.hit
-    ? `<p>Needle beam knocked out the target's <strong>${system}</strong>.</p>`
-    : `<p>Needle beam missed the target's ${system}.</p>`;
-  return wrapReport(`${attacker} needle &rarr; ${target}`, [body]);
+    ? `<p>${tr(`${REPORT}.needleHit`, `Needle beam knocked out the target's <strong>${system}</strong>.`, { system })}</p>`
+    : `<p>${tr(`${REPORT}.needleMiss`, `Needle beam missed the target's ${system}.`, { system })}</p>`;
+  return wrapReport(heading, [body]);
 }
 
 /** Builds the chat-card HTML for a salvo missile attack. */
 export function buildSalvoReportHtml(report: SalvoReport, names: FireReportNames): string {
   const attacker = escapeHtml(names.attacker);
   const target = escapeHtml(names.target);
+  const heading = tr(`${REPORT}.salvoHeading`, `${attacker} salvo &rarr; ${target}`, { attacker, target });
   if (!report.fired) {
-    return wrapReport(`${attacker} salvo &rarr; ${target}`, [
-      `<p>No launch (${escapeHtml(report.reason ?? "unable")}).</p>`
-    ]);
+    const reason = escapeHtml(report.reason ?? "unable");
+    return wrapReport(heading, [`<p>${tr(`${REPORT}.noLaunch`, `No launch (${reason}).`, { reason })}</p>`]);
   }
-  const intro = `<p>${report.onTarget} on target, ${report.intercepted} intercepted, ` +
-    `<strong>${report.survivors}</strong> hit.</p>`;
-  return wrapReport(`${attacker} salvo &rarr; ${target}`, [intro, ...reportBodyLines(report, target)]);
+  const intro = `<p>${tr(
+    `${REPORT}.salvoIntro`,
+    `${report.onTarget} on target, ${report.intercepted} intercepted, ` + `<strong>${report.survivors}</strong> hit.`,
+    { onTarget: report.onTarget, intercepted: report.intercepted, survivors: report.survivors }
+  )}</p>`;
+  return wrapReport(heading, [intro, ...reportBodyLines(report, target)]);
 }
 
 /** Builds the chat-card HTML for a dogfight (fighter vs fighter). */
@@ -167,17 +204,24 @@ export function buildDogfightReportHtml(report: DogfightReport, names: FireRepor
   const attacker = escapeHtml(names.attacker);
   const target = escapeHtml(names.target);
   if (!report.fired) {
+    const reason = escapeHtml(report.reason ?? "unable");
     return wrapReport(`${attacker} &times; ${target}`, [
-      `<p>No dogfight (${escapeHtml(report.reason ?? "unable")}).</p>`
+      `<p>${tr(`${REPORT}.noDogfight`, `No dogfight (${reason}).`, { reason })}</p>`
     ]);
   }
   const lines = [
-    `<p>${attacker} shot down <strong>${report.attackerKills}</strong> fighter(s).</p>`,
+    `<p>${tr(`${REPORT}.dogfightAttackerKills`, `${attacker} shot down <strong>${report.attackerKills}</strong> fighter(s).`, {
+      attacker,
+      n: report.attackerKills
+    })}</p>`,
     report.defenderReturned
-      ? `<p>${target} returned fire: <strong>${report.defenderKills}</strong> killed.</p>`
-      : `<p>${target} could not return fire.</p>`
+      ? `<p>${tr(`${REPORT}.dogfightReturned`, `${target} returned fire: <strong>${report.defenderKills}</strong> killed.`, {
+          target,
+          n: report.defenderKills
+        })}</p>`
+      : `<p>${tr(`${REPORT}.dogfightNoReturn`, `${target} could not return fire.`, { target })}</p>`
   ];
-  return wrapReport(`${attacker} &times; ${target} (dogfight)`, lines);
+  return wrapReport(tr(`${REPORT}.dogfightHeading`, `${attacker} &times; ${target} (dogfight)`, { attacker, target }), lines);
 }
 
 /**
@@ -192,12 +236,14 @@ export function buildTargetingReportHtml(
 ): string {
   const attacker = escapeHtml(names.attacker);
   const target = escapeHtml(names.target);
-  const heading = `${attacker} &rarr; ${target} (targeting)`;
-  const range = `<p>Range <strong>${Math.round(distanceMu)}mu</strong>.</p>`;
+  const heading = tr(`${REPORT}.targetingHeading`, `${attacker} &rarr; ${target} (targeting)`, { attacker, target });
+  const range = `<p>${tr(`${REPORT}.targetingRange`, `Range <strong>${Math.round(distanceMu)}mu</strong>.`, {
+    n: Math.round(distanceMu)
+  })}</p>`;
 
   const bearing = rows.filter((r) => r.status === "will-fire");
   if (bearing.length === 0) {
-    return wrapReport(heading, [range, `<p><em>No weapon bears on the target.</em></p>`]);
+    return wrapReport(heading, [range, `<p><em>${tr(`${REPORT}.noWeaponBears`, `No weapon bears on the target.`)}</em></p>`]);
   }
 
   const items = rows
@@ -219,11 +265,13 @@ export function buildTargetingReportHtml(
 export function buildSplitFireReportHtml(report: FireShipSplitReport, attackerName: string): string {
   const attacker = escapeHtml(attackerName);
   if (report.refused === "no-fcs") {
-    return wrapReport(`${attacker} split fire`, [`<p>No fire control (cannot fire).</p>`]);
+    return wrapReport(tr(`${REPORT}.splitHeadingRefused`, `${attacker} split fire`, { attacker }), [
+      `<p>${tr(`${REPORT}.noFireControl`, `No fire control (cannot fire).`)}</p>`
+    ]);
   }
   const blocks: string[] = [];
   if (report.perTarget.length === 0) {
-    blocks.push(`<p><em>No target in arc/range to engage.</em></p>`);
+    blocks.push(`<p><em>${tr(`${REPORT}.noTargetToEngage`, `No target in arc/range to engage.`)}</em></p>`);
   }
   for (const t of report.perTarget) {
     const name = escapeHtml(t.targetName ?? "Target");
@@ -231,30 +279,53 @@ export function buildSplitFireReportHtml(report: FireShipSplitReport, attackerNa
     blocks.push(...reportBodyLines(t, name));
   }
   if (report.unassigned.length > 0) {
-    blocks.push(`<p class="ft-unassigned">${report.unassigned.length} weapon(s) unassigned (no free FCS / out of arc).</p>`);
+    blocks.push(
+      `<p class="ft-unassigned">${tr(
+        `${REPORT}.unassigned`,
+        `${report.unassigned.length} weapon(s) unassigned (no free FCS / out of arc).`,
+        { n: report.unassigned.length }
+      )}</p>`
+    );
   }
-  return wrapReport(`${attacker} splits fire (${report.fcsCount} FCS)`, blocks);
+  return wrapReport(tr(`${REPORT}.splitHeading`, `${attacker} splits fire (${report.fcsCount} FCS)`, { attacker, n: report.fcsCount }), blocks);
 }
 
 /** Builds the chat card for an independent missile's strike on a ship (#15). */
 export function buildMissileReportHtml(report: MissileAttackReport, targetName: string): string {
   const target = escapeHtml(targetName);
-  const head = `Missile &rarr; ${target}`;
+  const head = tr(`${REPORT}.missileHeading`, `Missile &rarr; ${target}`, { target });
   if (!report.attacked) {
-    return wrapReport(head, [`<p>No strike (${escapeHtml(report.reason ?? "no target")}).</p>`]);
+    const reason = escapeHtml(report.reason ?? "no target");
+    return wrapReport(head, [`<p>${tr(`${REPORT}.noStrike`, `No strike (${reason}).`, { reason })}</p>`]);
   }
   if (report.intercepted) {
-    return wrapReport(head, [`<p>Point defence destroyed the missile before it struck.</p>`]);
+    return wrapReport(head, [
+      `<p>${tr(`${REPORT}.missileIntercepted`, `Point defence destroyed the missile before it struck.`)}</p>`
+    ]);
   }
-  const lines = [`<p>${escapeHtml(report.warhead)} warhead: <strong>${report.totalDamage}</strong> damage.</p>`];
+  const warhead = escapeHtml(report.warhead);
+  const lines = [
+    `<p>${tr(`${REPORT}.missileWarhead`, `${warhead} warhead: <strong>${report.totalDamage}</strong> damage.`, {
+      warhead,
+      n: report.totalDamage
+    })}</p>`
+  ];
   if (report.nominatedSystemKnockedOut) {
-    lines.push(`<p>The nominated system was knocked out.</p>`);
+    lines.push(`<p>${tr(`${REPORT}.nominatedKnockedOut`, `The nominated system was knocked out.`)}</p>`);
   }
   if (report.thresholdsCrossed.length > 0) {
-    lines.push(`<p>Threshold check (row ${report.thresholdsCrossed.join(", ")}): <strong>${report.systemsKnockedOut}</strong> system(s) knocked out.</p>`);
+    lines.push(
+      `<p>${tr(
+        `${REPORT}.threshold`,
+        `Threshold check (row ${report.thresholdsCrossed.join(", ")}): <strong>${report.systemsKnockedOut}</strong> system(s) knocked out.`,
+        { rows: report.thresholdsCrossed.join(", "), n: report.systemsKnockedOut }
+      )}</p>`
+    );
   }
   if (report.destroyed) {
-    lines.push(`<p class="ft-destroyed"><strong>${target} destroyed.</strong></p>`);
+    lines.push(
+      `<p class="ft-destroyed">${tr(`${REPORT}.destroyed`, `<strong>${target} destroyed.</strong>`, { name: target })}</p>`
+    );
   }
   return wrapReport(head, lines);
 }
@@ -275,7 +346,7 @@ export function buildSpinalReportHtml(outcome: SpinalFireOutcome, targetName: st
   const target = escapeHtml(targetName);
   const head = `${outcome.weapon} &rarr; ${target}`;
   if (outcome.outOfRange) {
-    return wrapReport(head, [`<p>Out of range.</p>`]);
+    return wrapReport(head, [`<p>${tr(`${REPORT}.outOfRange`, `Out of range.`)}</p>`]);
   }
   return wrapReport(head, reportBodyLines(outcome, target));
 }
@@ -347,6 +418,10 @@ interface GlobalScope {
     user?: { isGM?: boolean; id?: string; targets?: { first?: () => unknown } };
     battleframe?: RoundControlApi;
     combats?: { active?: FlagDocLike };
+    i18n?: {
+      localize?: (key: string) => string;
+      format?: (key: string, data?: Record<string, unknown>) => string;
+    };
   };
   battleframe?: RoundControlApi;
   canvas?: {
@@ -1316,8 +1391,9 @@ async function advanceFireOrder(order: ActivationOrderLike, shipId: string): Pro
 /** Posts the visible fire-phase tracker line as a chat card for all players. */
 async function announceFirePhase(order: ActivationOrderLike): Promise<void> {
   const line = escapeHtml(firePhaseStatusLine(order));
+  const label = tr(`${REPORT}.firePhaseLabel`, `Fire phase:`);
   await g().ChatMessage?.create({
-    content: `<div class="ft-fire-report ft-phase-status"><p><strong>Fire phase:</strong> ${line}</p></div>`
+    content: `<div class="ft-fire-report ft-phase-status"><p><strong>${label}</strong> ${line}</p></div>`
   });
 }
 
