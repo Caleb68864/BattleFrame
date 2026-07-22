@@ -1238,6 +1238,61 @@ export async function newTurnAction(): Promise<void> {
 }
 
 /**
+ * New-Battle tool (GM): a full reset — after a confirm, restores every ship's
+ * damage (hull/armour/systems/weapons) and clears defeated, then wipes the
+ * transient battle state (plots, fire phase, in-flight missiles). For starting a
+ * fresh engagement with the same fleets without re-importing.
+ */
+export async function newBattleAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM resets the battle`);
+    return;
+  }
+  const confirm = g().foundry?.applications?.api?.DialogV2 as any;
+  if (confirm?.confirm) {
+    const ok = await confirm.confirm({
+      window: { title: "Full Thrust: New Battle" },
+      content: `<p>Restore ALL ships to undamaged and clear plots, the fire phase, and in-flight missiles?</p>`
+    });
+    if (!ok) {
+      return;
+    }
+  }
+  const defeatedId = (g() as any).CONFIG?.specialStatusEffects?.DEFEATED ?? "dead";
+  const tokens = g().canvas?.tokens?.placeables ?? [];
+  let ships = 0;
+  for (const token of tokens) {
+    const actor = token?.actor;
+    if (typeof actor?.type !== "string" || !actor.type.endsWith(SHIP_ACTOR_TYPE)) {
+      continue;
+    }
+    const weapons = ((actor.system?.weapons ?? []) as any[]).map((w) => ({ ...w, destroyed: false, spent: false }));
+    await actor.update({
+      "system.hull.damage": 0,
+      "system.armour.damage": 0,
+      "system.driveHits": 0,
+      "system.fcsLost": 0,
+      "system.screensLost": 0,
+      "system.pdsLost": 0,
+      "system.weapons": weapons
+    });
+    await actor.unsetFlag?.(MODULE_ID, PLOTTED_ORDER_FLAG);
+    await actor.toggleStatusEffect?.(defeatedId, { active: false });
+    await syncShipStatuses({
+      token,
+      system: actor.system,
+      update: (d: Record<string, unknown>) => actor.update(d),
+      toggleStatusEffect: (id: string, o: { active: boolean }) => actor.toggleStatusEffect(id, o)
+    } as any);
+    ships += 1;
+  }
+  await firePhaseDoc()?.unsetFlag(MODULE_ID, FIRE_PHASE_FLAG);
+  await saveMissiles([]);
+  clearMovementPreview();
+  notify("info", `${MODULE_ID} | new battle -- reset ${ships} ship(s); cleared plots, fire phase, missiles`);
+}
+
+/**
  * Damage-control action (GM, end of turn): each ship's Damage Control Parties
  * roll (a 6 repairs a system); repairs restore knocked-out systems in priority
  * order. Reads `damageControl` (party count) off each ship.
@@ -1538,6 +1593,16 @@ export function addSceneControl(controls: unknown): void {
     order: 7,
     onClick: () => void newTurnAction(),
   };
+  // Full reset: restore all ships + clear plots/fire phase/missiles -- GM only.
+  const newBattleTool = {
+    name: "full-thrust-new-battle",
+    title: "battleframe-full-thrust.controls.newBattle",
+    icon: "fas fa-arrows-rotate",
+    button: true,
+    visible: gm,
+    order: 8,
+    onClick: () => void newBattleAction(),
+  };
   // Import a fleet from JSON -- any player (subject to Foundry's create-actor perm).
   const importTool = {
     name: "full-thrust-import",
@@ -1560,7 +1625,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, waveGunTool, fighterMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
+  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, waveGunTool, fighterMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, newBattleTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);

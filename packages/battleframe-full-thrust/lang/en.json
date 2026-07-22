@@ -38,5 +38,6 @@
   "battleframe-full-thrust.controls.execute": "Execute maneuvers (reveal all plotted moves)",
   "battleframe-full-thrust.controls.damageControl": "Damage control (end-of-turn repairs)",
   "battleframe-full-thrust.controls.newTurn": "New turn (clear plots, end fire phase)",
+  "battleframe-full-thrust.controls.newBattle": "New battle (reset all ships + clear state)",
   "battleframe-full-thrust.controls.import": "Import fleet from JSON"
 }
