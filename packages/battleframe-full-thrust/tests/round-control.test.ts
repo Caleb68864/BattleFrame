@@ -242,9 +242,16 @@ describe("beginFirePhaseAction (roll initiative, persist the fire phase)", () =>
     // Side "1" rolls 5, side "-1" rolls 3 -> side "1" wins.
     const pools = [[5], [3]];
     const rollPool = vi.fn(async () => pools.shift() ?? []);
+    // Fake engine rounds API: returns an order that serializes to engine state.
+    const rounds = {
+      createActivationOrder: (p: any) => ({
+        serialize: () => ({ firstSideId: p.firstSideId, activatedIds: [], priorityPointer: 0, mainPointer: 0 })
+      }),
+      restoreActivationOrder: vi.fn()
+    };
     vi.stubGlobal("game", {
       user: { isGM: true },
-      battleframe: { dice: { rollPool } },
+      battleframe: { dice: { rollPool }, rounds },
       combats: { active: undefined }
     });
     vi.stubGlobal("canvas", {
@@ -256,14 +263,17 @@ describe("beginFirePhaseAction (roll initiative, persist the fire phase)", () =>
     await beginFirePhaseAction();
 
     expect(flags.firePhase).toBeDefined();
-    expect(flags.firePhase.firstSideId).toBe("1");
-    expect(flags.firePhase.activeSideId).toBe("1");
-    expect(flags.firePhase.fired).toEqual([]);
+    expect(flags.firePhase.firstSideId).toBe("1"); // side 1 won initiative
+    expect(flags.firePhase.activatedIds).toEqual([]);
   });
 
   it("warns and does nothing when ships are not on two sides", async () => {
     const warn = vi.fn();
-    vi.stubGlobal("game", { user: { isGM: true }, battleframe: { dice: { rollPool: vi.fn() } }, combats: {} });
+    vi.stubGlobal("game", {
+      user: { isGM: true },
+      battleframe: { dice: { rollPool: vi.fn() }, rounds: { createActivationOrder: vi.fn(), restoreActivationOrder: vi.fn() } },
+      combats: {}
+    });
     vi.stubGlobal("canvas", { tokens: { placeables: [shipTok("a1", 1), shipTok("a2", 1)] }, scene: {} });
     vi.stubGlobal("ui", { notifications: { warn, info: vi.fn() } });
 

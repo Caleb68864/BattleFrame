@@ -24,10 +24,11 @@ import {
   collectFireShips,
   canShipFire,
   shipSideOf,
-  restoreFireSession,
-  createFirePhase,
+  createFireOrder,
+  restoreFireOrder,
   determineInitiative,
-  type FirePhase,
+  type ActivationOrderLike,
+  type RoundsApiLike,
   type FireSessionState
 } from "../round/fire-session";
 import { fireShipAtTarget, type FireContext, type FireReport, type FiringShip } from "../combat/fire-ship";
@@ -148,6 +149,8 @@ export interface RoundControlApi {
   measure: FireContext["measure"];
   facing: FireContext["facing"];
   dice: FireContext["dice"];
+  /** The engine's activation-order service (game.battleframe.rounds). */
+  rounds?: RoundsApiLike;
 }
 
 /** Resolves one ship firing at another and returns the report + its HTML. */
@@ -318,17 +321,17 @@ export async function fireAction(): Promise<void> {
 
   // If a fire phase is running, enforce initiative + alternation: only the active
   // side's still-unfired ships may fire. With no fire phase, firing is free.
-  const phase = activeFirePhase();
-  if (phase && !canShipFire(phase, shipSideOf(attackerToken), attackerToken.id)) {
-    notify("warn", `${MODULE_ID} | it is side ${phase.activeSide()}'s turn to fire (pick one of its ships)`);
+  const order = activeFireOrder();
+  if (order && !canShipFire(order, shipSideOf(attackerToken), attackerToken.id)) {
+    notify("warn", `${MODULE_ID} | it is side ${order.activeSideId()}'s turn to fire (pick one of its ships)`);
     return;
   }
 
   const { html } = await resolveFireBetween(attacker, target, services);
   await g().ChatMessage?.create({ content: html });
 
-  if (phase) {
-    await advanceFirePhase(phase, attackerToken.id);
+  if (order) {
+    await advanceFireOrder(order, attackerToken.id);
   }
 }
 
@@ -498,37 +501,39 @@ function loadFireState(): FireSessionState | undefined {
   return state && typeof state === "object" ? (state as FireSessionState) : undefined;
 }
 
-/** The active fire phase restored from state + freshly-gathered ships, or undefined. */
-function activeFirePhase(): FirePhase | undefined {
+/** The engine's activation-order service, or undefined when absent. */
+function roundsApi(): RoundsApiLike | undefined {
+  return api()?.rounds;
+}
+
+/** The active fire order restored from state + freshly-gathered ships, or undefined. */
+function activeFireOrder(): ActivationOrderLike | undefined {
   const state = loadFireState();
-  if (!state) {
+  const rounds = roundsApi();
+  if (!state || !rounds) {
     return undefined;
   }
-  const ships = collectFireShips(g().canvas?.tokens?.placeables ?? []).map((s) => ({
-    id: s.id,
-    sideId: s.sideId
-  }));
-  return restoreFireSession(ships, state);
+  return restoreFireOrder(rounds, collectFireShips(g().canvas?.tokens?.placeables ?? []), state);
 }
 
 /**
- * Advances the fire phase after `shipId` has fired: records it, and either saves
- * the new state (announcing the next side) or clears the phase when every ship
- * has fired.
+ * Advances the fire order after `shipId` has fired: activates it in the engine
+ * order, then either saves the new state (announcing the next side) or clears the
+ * phase when every ship has fired.
  */
-async function advanceFirePhase(phase: FirePhase, shipId: string): Promise<void> {
+async function advanceFireOrder(order: ActivationOrderLike, shipId: string): Promise<void> {
   const doc = firePhaseDoc();
   try {
-    phase.fire(shipId);
+    order.activate(shipId);
   } catch {
     return; // out-of-turn / already-fired: the enforcement check should prevent this
   }
-  if (phase.isComplete()) {
+  if (order.isComplete()) {
     await doc?.unsetFlag(MODULE_ID, FIRE_PHASE_FLAG);
     notify("info", `${MODULE_ID} | fire phase complete`);
   } else {
-    await doc?.setFlag(MODULE_ID, FIRE_PHASE_FLAG, phase.serialize());
-    notify("info", `${MODULE_ID} | next to fire: side ${phase.activeSide()}`);
+    await doc?.setFlag(MODULE_ID, FIRE_PHASE_FLAG, order.serialize());
+    notify("info", `${MODULE_ID} | next to fire: side ${order.activeSideId()}`);
   }
 }
 
@@ -536,8 +541,8 @@ const MAX_INITIATIVE_REROLLS = 5;
 
 /**
  * Begin-Fire-Phase action (GM): roll initiative (one die per side, re-rolling
- * ties), then open the phase so ships fire in strict alternation from the winning
- * side. State is persisted to a Document so it survives reload and syncs.
+ * ties), then open the ENGINE's activation order (default alternation) from the
+ * winning side. State is persisted to a Document so it survives reload and syncs.
  */
 export async function beginFirePhaseAction(): Promise<void> {
   if (!isGM()) {
@@ -545,6 +550,11 @@ export async function beginFirePhaseAction(): Promise<void> {
     return;
   }
   const services = api();
+  const rounds = services?.rounds;
+  if (!rounds) {
+    notify("error", `${MODULE_ID} | the battleframe rounds service was not found`);
+    return;
+  }
   const ships = collectFireShips(g().canvas?.tokens?.placeables ?? []);
   const sides = [...new Set(ships.map((s) => s.sideId))];
   if (sides.length < 2) {
@@ -570,8 +580,8 @@ export async function beginFirePhaseAction(): Promise<void> {
     return;
   }
 
-  const phase = createFirePhase({ ships, firstSideId });
-  await firePhaseDoc()?.setFlag(MODULE_ID, FIRE_PHASE_FLAG, phase.serialize());
+  const order = createFireOrder(rounds, ships, firstSideId);
+  await firePhaseDoc()?.setFlag(MODULE_ID, FIRE_PHASE_FLAG, order.serialize());
   notify("info", `${MODULE_ID} | side ${firstSideId} won initiative and fires first`);
 }
 

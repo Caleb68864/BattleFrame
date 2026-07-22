@@ -1,25 +1,44 @@
 /**
- * The weapons-fire phase as a session over the ships on the table: which side a
- * ship is on, gathering the ship tokens, and the "may this ship fire right now?"
- * check that enforces initiative + strict alternation. Wraps the pure
- * `./fire-phase` machine; the persistence (a Document flag) and the dice roll for
- * initiative are the scene-control glue.
+ * The weapons-fire phase as an activation order over the ships on the table. The
+ * turn-order MACHINE (winner acts, strict alternation, serialize/restore) is the
+ * ENGINE's -- `game.battleframe.rounds` -- not the module's: Full Thrust's fire
+ * phase is the no-priority-tier, default-alternation case of the engine's
+ * activation order, so we consume it instead of duplicating it (see
+ * docs/plans/2026-07-22-full-thrust-engine-extraction-findings.md, finding 1).
  *
- * Side = the token's disposition (set one fleet Friendly, the other Hostile), so
- * a two-player fight groups correctly without any extra tagging.
+ * What stays the ruleset's: how sides are decided (token disposition), gathering
+ * the ship tokens, and the d6 initiative roll-off (`determineInitiative`).
  *
  * Source: FT2 "Initiative", "Sequence of Play".
  */
 
 import { SHIP_ACTOR_TYPE } from "../constants";
-import {
-  createFirePhase,
-  determineInitiative,
-  type FirePhase,
-  type FirePhaseShip
-} from "./fire-phase";
+import { isShipDestroyed } from "../data/ship-state";
 
-export type FireSessionState = ReturnType<FirePhase["serialize"]>;
+// --- Ruleset-specific: sides, ships, initiative ------------------------------
+
+export interface InitiativeRoll {
+  sideId: string;
+  roll: number;
+}
+
+/**
+ * The side that won initiative (highest roll), or null on a tie so the caller
+ * rerolls. (Not part of the engine's ordering -- the roll-off is Full Thrust's.)
+ */
+export function determineInitiative(rolls: readonly InitiativeRoll[]): string | null {
+  let best: InitiativeRoll | undefined;
+  let tied = false;
+  for (const entry of rolls) {
+    if (!best || entry.roll > best.roll) {
+      best = entry;
+      tied = false;
+    } else if (entry.roll === best.roll) {
+      tied = true;
+    }
+  }
+  return best && !tied ? best.sideId : null;
+}
 
 /** The side id of a ship token: its disposition as a string (default "0"). */
 export function shipSideOf(token: any): string {
@@ -27,7 +46,9 @@ export function shipSideOf(token: any): string {
   return String(disposition);
 }
 
-export interface FireShipToken extends FirePhaseShip {
+export interface FireShipToken {
+  id: string;
+  sideId: string;
   token: any;
 }
 
@@ -43,23 +64,66 @@ export function collectFireShips(tokens: readonly any[]): FireShipToken[] {
   return ships;
 }
 
-/** Whether `shipId` (on `sideId`) may fire now: it is the active side's turn and the ship is eligible. */
-export function canShipFire(phase: FirePhase, sideId: string, shipId: string): boolean {
-  return phase.activeSide() === sideId && phase.eligible().includes(shipId);
+// --- Engine activation-order glue -------------------------------------------
+
+/** The engine's serialized activation-order state (persisted on a Document). */
+export type FireSessionState = {
+  firstSideId: string;
+  activatedIds: string[];
+  priorityPointer: number;
+  mainPointer: number;
+  cachedMainSide?: string;
+};
+
+/** The slice of the engine's ActivationOrder the fire phase uses. */
+export interface ActivationOrderLike {
+  activeSideId(): string | undefined;
+  eligible(sideId: string): string[];
+  activate(unitId: string): void;
+  isComplete(): boolean;
+  serialize(): FireSessionState;
 }
 
-/** Rebuilds a fire phase from serialized state and the freshly-gathered ships. */
-export function restoreFireSession(
-  ships: readonly FirePhaseShip[],
+/** The slice of `game.battleframe.rounds` the fire phase uses. */
+export interface RoundsApiLike {
+  createActivationOrder(params: {
+    units: Array<{ id: string; sideId: string; isResolved?: () => boolean }>;
+    firstSideId: string;
+  }): ActivationOrderLike;
+  restoreActivationOrder(params: {
+    units: Array<{ id: string; sideId: string; isResolved?: () => boolean }>;
+    state: FireSessionState;
+  }): ActivationOrderLike;
+}
+
+function toUnits(ships: readonly FireShipToken[]) {
+  // A destroyed ship is "resolved" so the order can complete without it.
+  return ships.map((s) => ({
+    id: s.id,
+    sideId: s.sideId,
+    isResolved: () => (s.token?.actor ? isShipDestroyed(s.token.actor) : false)
+  }));
+}
+
+/** Opens a fresh fire order via the engine (winning side first, then alternation). */
+export function createFireOrder(
+  rounds: RoundsApiLike,
+  ships: readonly FireShipToken[],
+  firstSideId: string
+): ActivationOrderLike {
+  return rounds.createActivationOrder({ units: toUnits(ships), firstSideId });
+}
+
+/** Rebuilds the fire order from persisted state + the freshly-gathered ships. */
+export function restoreFireOrder(
+  rounds: RoundsApiLike,
+  ships: readonly FireShipToken[],
   state: FireSessionState
-): FirePhase {
-  return createFirePhase({
-    ships,
-    firstSideId: state.firstSideId,
-    fired: state.fired,
-    activeSideId: state.activeSideId
-  });
+): ActivationOrderLike {
+  return rounds.restoreActivationOrder({ units: toUnits(ships), state });
 }
 
-export { createFirePhase, determineInitiative };
-export type { FirePhase, FirePhaseShip };
+/** Whether `shipId` (on `sideId`) may fire now: its side's turn and it is eligible. */
+export function canShipFire(order: ActivationOrderLike, sideId: string, shipId: string): boolean {
+  return order.activeSideId() === sideId && order.eligible(sideId).includes(shipId);
+}

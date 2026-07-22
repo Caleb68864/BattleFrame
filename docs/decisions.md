@@ -2141,4 +2141,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   prediction step is deferred (combat resolution is faithful).
 - 806 tests passing. This completes roadmap P0 (#1 fire order, #2 PDS, #3 needle, #4 salvo,
   #5 damage control, #6 points).
+- Commit: 7d47b8b.
+
+## 2026-07-22 — Full Thrust: adopt engine rounds API for the fire phase (extraction finding #1)
+- User green-lit engine-extraction finding #1. Deleted the module's own turn-order machine
+  (round/fire-phase.ts createFirePhase + its test) and now consume the ENGINE's activation order
+  via game.battleframe.rounds (default alternation = Full Thrust's strict alternation, the
+  no-priority-tier case). round/fire-session.ts keeps only the ruleset-specific parts (side from
+  disposition, ship collection, the d6 initiative roll-off) + thin glue: build units, call
+  createActivationOrder/restoreActivationOrder, map canShipFire→activeSideId/eligible and
+  advance→activate. round-control resolves game.battleframe.rounds and persists the engine's
+  serialized state to the Document (same flag). Destroyed ships pass isResolved so the order can
+  complete without them.
+- Net: alternation logic + tests now live once, in the engine (activation.test.ts), not
+  duplicated in the module. 799 tests (807 − 8 deleted fire-phase tests + new engine-glue tests).
+  Live-verify the round trip in a real world (engine rounds is runtime-only).
 - Commit: this commit.
