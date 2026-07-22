@@ -3279,3 +3279,199 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   and tests `{main,i18n,status,unit-sheet,round-control}.test.ts`. +32 tests (97 SG2 / 1317 repo
   total); `npx vitest run`, `npm run typecheck`, and `npm run build` all green.
 - Commit: this commit.
+
+## 2026-07-22 — Dirtside II module scaffold + Stage-1/Stage-2 pure combat math (A1–A9)
+- Context: first build slice of the Dirtside II (GZG) ruleset module, off the
+  full-thrust-ruleset base (e1f9810) which carries the engine service layer. Built
+  MVP-first per vault/ground-zero-games/dirtside-ii-build-plan.md, pure logic first,
+  strict TDD (failing test watched fail → minimal code) for every unit.
+- Scaffold: new workspace package packages/battleframe-dirtside/ (id battleframe-dirtside,
+  relationships.systems → battleframe), copying InCountry's shape: module.json (Actor
+  documentTypes vehicle/infantry/unit), package.json, vite.config.ts (dist/dirtside.js),
+  constants.ts, lang/en.json, placeholder styles. No per-package tsconfig — the root
+  tsconfig/vitest already glob packages/*/src + tests.
+- NAMING RECONCILIATION (finding, not a blocker): the plan writes the Actor subtypes and
+  flag scope as `dirtside-ii.*`, but Foundry v14 namespaces a module's document subtypes
+  by the manifest `id`, so the real subtype keys are `battleframe-dirtside.vehicle` etc.
+  and the flag scope must equal the module id too (`actor.setFlag("battleframe-dirtside",
+  "unitId", …)`), exactly as InCountry registers `battleframe-incountry.unit`. Adopted the
+  module-id namespace (constants.ts documents it); the G-series glue must use it, not the
+  plan's shorthand.
+- Tier-0 LOCKED atom: src/dice/ladder.ts — `shift(die: DieType, steps): DieType | null`,
+  symmetric `d4↔d12` walk, `null` off EITHER end, NO clamping. Built to the exact
+  cross-module contract (identical file forthcoming in the Stargrunt module); kept
+  ruleset-free as the future engine `dice.shift` port candidate.
+- Tier-1 GZG-family pure math (src/combat/, each depending only on Tier-0 shift + its
+  own args, zero data-model imports so extraction to a shared vehicle lib is a move not a
+  rewrite): band.ts `bandStep` (A2, out-of-range → null), tohit.ts `firerDie`/`targetDie`/
+  `resolveHit` (A3–A5, Stage-1 opposed exceed), armour.ts `armourByFace` (A7), chit.ts
+  `parseChit`+`resolveChitDraw` (A6, the whole Stage-2 damage body PURE over an injected
+  drawn-chit list — invalid-colour counts-but-zeroes, specials vs vehicle only, DFFG
+  ×2 close/÷2 long, sum vs faceArmour, infantry killTotal). arc.ts `inArc`+`ARC_HALF_ANGLE`
+  (A9). round/confidence.ts `confidenceTest` (A8).
+- Neutrality: ships ONLY the chit-code grammar + mechanisms. Pot composition, colour
+  meanings, chitValidity, signature→die map, band distances and kill totals are all
+  user-entered/injected. No GZG numbers, cost tables, colour tables or rules text.
+- Surfaces: packages/battleframe-dirtside/src/{dice/ladder,combat/{band,tohit,armour,chit,
+  arc},round/confidence}.ts + 7 test files. 54 DS2 tests pass; full-repo typecheck clean.
+- Remaining (later runs): A10 alternating unit session, A11 C3 command-loss ripple, the
+  two-tier data models + *-state readers, then the whole G-series glue (data-model
+  registration, sheets, round control, advance, live RollTable drawChits, fire path, chat
+  cards, status effects, command-loss hook, main.ts) + live-verify.
+- Commit: this commit.
+
+## 2026-07-22 — Dirtside II alternating unit session (A10) + flattened C3 (A11)
+- Context: second slice — the two DSII-specific round-state pure units, both proving the
+  two-tier bet (plan risk #4) that activation iterates UNITS while damage ripples through
+  ELEMENTS to the FORCE. Strict TDD as before.
+- A10 src/round/session.ts `createDirtsideRound`/`restoreDirtsideRound`/`firstChooser`:
+  extends Simple Skirmish's `createSkirmishRound` base loop (alternate, skip an exhausted
+  side, serialize/restore from a flag — state on the Combat doc, never a module `let`).
+  Iterates `dirtside-ii.unit` grouping actors. Two DSII policies added as ruleset rules
+  (kept out of the base loop so the base stays liftable to engine `rounds`): `firstChooser`
+  = the side with fewer un-destroyed units chooses first (null on tie → caller rolls off);
+  `canPass`/`pass` = a side may pass (yield the turn without spending a unit) ONLY while it
+  has strictly fewer un-activated units than the opponent — which also guarantees
+  termination (both sides can't be strictly outnumbered at once, so someone must activate).
+- A11 src/round/c3.ts `applyCommandLoss`/`resolveRally`/`stepConfidence`: pure transforms
+  over a force-level C3 object (the glue persists it on a Combat flag). Command loss drops
+  EVERY unit one confidence level (clamped ladder broken↔confident) and sets
+  noNewOffensives + noRally; returns a new force (no mutation). Rally = quality roll must
+  exceed ralliedLR+cmdLR for +1 CL, and always spends the activation pass or fail.
+- Two-tier validation: A10 (unit-level iteration) + A11 (element-death→force-wide ripple)
+  are the pure halves of the bet; the G9 hook that fires A11 on a command element reaching
+  knocked-out is deferred glue.
+- Surfaces: packages/battleframe-dirtside/src/round/{session,c3}.ts + 2 test files.
+  71 DS2 tests pass; full-repo typecheck clean.
+- Commit: this commit.
+
+## 2026-07-22 — Dirtside II two-tier data models (G1) + pure state readers
+- Context: final slice of the first increment — the token-less unit ← element two-tier
+  TypeDataModels and their pure readers, completing "scaffold + pure logic + data models".
+  TDD throughout (shape-assertion tests via injected fake fields, InCountry's pattern).
+- Data models (src/data/, factory-resolves-base-at-call-time so they build under a fake in
+  tests and the real globals live): vehicle.ts (createVehicleDataClass + weaponSchema —
+  size/signature/stealth/armour block/fire-control/weapons[]/posture/damage markers/
+  isCommandVehicle), infantry.ts (createInfantryDataClass — troopType/chitsDrawn/killTotal/
+  posture/canFirefight/removed), unit.ts (createUnitDataClass — role/quality/leadership/
+  confidence/isCommandUnit/commandVehicleId/activated/underFire + battery fields). Shared
+  foundry-base.ts resolves the TypeDataModel base + fields namespace. register.ts wires all
+  three onto CONFIG.Actor.dataModels under `battleframe-dirtside.<subtype>` (the module-id
+  namespace — see the naming reconciliation). Every field is user-entered w/ neutral
+  defaults; no GZG numbers.
+- Pure readers: vehicle-state.ts effectiveSignature (max(0, sig-stealth), a reader not a
+  stored field per the walker/oversize exception) + armourFace (adapter onto Tier-1
+  armourByFace); unit-state.ts elementsOf(unitId, actors) — the unitId flag is the SINGLE
+  join (the unit stores NO element list, avoiding two-way sync), read via getFlag or a raw
+  flags bag so it's testable Foundry-free.
+- main.ts: FIRST-SLICE state — wires ONLY registerDataModels() at init so the subtypes
+  register live and the package builds (verified: vite build → dist/dirtside.js, 7 modules).
+  The full G10 init order (sheets → status → hover → round control → advance → ruleset LAST)
+  is documented inline as the deferred G-series the parent completes.
+- Surfaces: packages/battleframe-dirtside/src/{main.ts, data/{foundry-base,vehicle,infantry,
+  unit,register,vehicle-state,unit-state}.ts} + 2 test files. 86 DS2 tests (11 files);
+  full-repo 1306 pass; typecheck clean; DS2 package builds.
+- STOPPED HERE. Remaining = the whole G-series glue (G2 sheets, G3 round control, G4
+  advance/Turn-End reset, G5 live RollTable drawChits + without-replacement live-verify,
+  G6 Stage-1/Stage-2 fire path wiring, G7 chat cards, G8 status effects, G9 command-loss
+  hook firing A11, G10 finishing main.ts init) + live-verify in a v14 world — parent-handled.
+- Commit: this commit.
+
+## 2026-07-22 — Rename module battleframe-dirtside → battleframe-dirtside-ii
+- Context: coordinator asked to rename for consistency with the Stargrunt module
+  (`battleframe-stargrunt-ii`) and the game's real name ("Dirtside II").
+- Change: `git mv packages/battleframe-dirtside packages/battleframe-dirtside-ii`; replaced
+  every `battleframe-dirtside` reference with `battleframe-dirtside-ii` — module.json `id`
+  + TYPES keys, package.json name, constants.ts MODULE_ID (which is BOTH the Actor-subtype
+  namespace `battleframe-dirtside-ii.{vehicle,infantry,unit}` AND the flag scope, since
+  Foundry keys module subtypes by manifest id), lang/en.json keys, styles selector, the
+  data-model registration assertion strings. Vite bundle output renamed
+  `dirtside.js → dirtside-ii.js` (vite.config fileName + module.json esmodules). No external
+  repo references existed. Prior decision-log entries above keep the old name as historical
+  record (append-only log; not rewritten).
+- Gates: `npm run typecheck` clean, `npm run build` green (dist/dirtside-ii.js), 86 DS2
+  tests pass.
+- Commit: this commit.
+
+## 2026-07-22 — Dirtside II G2: three ApplicationV2 sheets (vehicle/infantry/unit)
+- Context: increment 2 (the Foundry glue). Sheets first. Copied InCountry's sheet shape:
+  ApplicationV2 via HandlebarsApplicationMixin(ActorSheetV2), `form:{submitOnChange:true}`,
+  `data-action` add/remove handlers, NO self-wrapped `<form>` (the AppV2 root is the form).
+- src/sheets/base.ts: shared resolveFoundryApplications (base + mixin + DocumentSheetConfig
+  resolved at call time so classes build under an injected fake in tests), mixedSheetBase,
+  registerSheetFor, and a selectOptions(choices, current, i18nPrefix) helper for enum
+  dropdowns. vehicle-sheet.ts (weapons add/remove, fireControl/damage/posture selects),
+  infantry-sheet.ts (weapon-tag add/remove, troopType/posture selects), unit-sheet.ts
+  (role/quality/confidence selects, command markers). register.ts registers all three under
+  battleframe-dirtside-ii.<subtype>. Three .hbs templates (ds2-plate theme). lang keys added
+  for every enum + the round-control strings the later glue will use.
+- main.ts now wires G1+G2 (registerDataModels → registerSheets) at init.
+- Surfaces: src/sheets/{base,vehicle-sheet,infantry-sheet,unit-sheet,register}.ts, 3
+  templates, lang/en.json, main.ts, tests/sheets.test.ts (+4). 90 DS2 tests; typecheck
+  clean; DS2 builds (dist/dirtside-ii.js 14.45 kB).
+- Live-verify (deferred to parent): the sheets must be opened in a live v14 world — form
+  saves + the add/remove-weapon actions are exactly the class of bug the unit suite can't
+  see (per CLAUDE.md's sheet-save / form-nesting warning).
+- Commit: this commit.
+
+## 2026-07-22 — Dirtside II G5–G8: fire path, chit-pot draw, chat report, status effects
+- Context: increment 2 fire slice — the two-stage direct-fire loop wired end to end over
+  injected deps so it is fully unit-tested, plus the native-condition surfaces.
+- G6 src/round/fire.ts `resolveFire(input, {dice, drawChits})`: composes bandStep →
+  firerDie/targetDie (via injected dice.roll) → resolveHit → on hit drawChits(weapon.class)
+  → resolveChitDraw vs armourByFace(struck face). Short-circuits out-of-range (bandStep
+  null) and auto-miss (firerDie null off the bottom). PURE — dice + drawChits injected, so
+  the whole sequence is Foundry-free tested; the live measure→distance / RollTable→chits
+  wiring is G3 glue. resolveChitDraw stays untouched under it. stepToBand exported.
+- G7 same file `fireReportParts(result, names)`: pure chat-card title+body, dynamic names
+  escaped, cssClass `dirtside-ii-fire-report`; the single source of truth the live
+  `chat.postCard` posts (same live/fallback split InCountry uses).
+- G5 src/round/chit-pot.ts: `drawChits(table, n)` glue — sets replacement:false best-effort,
+  `drawMany(n, {displayChat:false})`, extract codes, `reset()`. Pure code extraction
+  (chitCodeOf text→description→name, chitCodesFromResults) unit-tested; the RollTable
+  without-replacement + reset behaviour is FOUNDRY-FACING → parent live-verify (else swap
+  only this fn to the module-multiset fallback, plan §2(b); resolver unaffected).
+- G8 src/status.ts: registers damaged / knocked-out / under-fire on the engine status
+  registry (core SVG icons only). Pure statusFlagsFor(system) maps the data field (truth)
+  to icons (view); knocked-out also lights Foundry DEFEATED so the token drops from the
+  turn order. syncElementStatus(actor) is the toggle glue (live-verified).
+- Surfaces: src/round/{fire,chit-pot}.ts, src/status.ts + 3 test files (fire+8, status+7,
+  chit-pot+6). 111 DS2 tests; typecheck clean.
+- Commit: this commit.
+
+## 2026-07-22 — Dirtside II G3/G4/G9/G10: round control, Turn-End, command-loss hook, init
+- Context: increment 2 final slice — the playable spine + init wiring. Copied InCountry's +
+  Full Thrust's round-control shape (testable core on top, live glue below).
+- G3 src/ui/round-control.ts: activation iterates UNITS (the token-less grouping actors) —
+  a player activates by selecting one of their unit's element tokens; the session (A10)
+  drives the alternation. Round state (DirtsideRoundState) persists on
+  `combat.flags[battleframe-dirtside-ii].round` (never a module `let`). Testable core:
+  beginRoundState (fewer-units chooses first, tie → deterministic-but-flagged first side),
+  unitSidesOf, addSceneControl (Ready / Activate Unit / End Turn tools, both payload
+  shapes). Glue: gatherUnitsFromCanvas (element token → unitId flag → unit), advanceRoundCore
+  (begin/resume, refuse while in progress), activateSelectedControl.
+- G4 src/round: advanceTurnCore clears every unit's activated+underFire (pure turnEndUpdate)
+  then opens a fresh round; registered as the engine's GM-less advance callback so a
+  player-driven table ends the turn itself via the ready countdown.
+- G6 glue helper: buildFireInput (pure) assembles a resolveFire input from stored actor
+  data + the user tables the glue resolves (sigTable/distance); the fire path stays fully
+  tested. NOTE: the live activate→fire application (measure.between + chat.postCard +
+  syncElementStatus) is the remaining thin wire the parent completes at live-verify — the
+  fire RESOLUTION + report are done and tested; only their canvas application is deferred.
+- G9 src/round/command-loss.ts: pure commandLossTriggered (fires on a command vehicle's
+  transition INTO knocked-out) + forceC3FromUnits; updateActor-hook glue applies A11's
+  applyCommandLoss to the losing force and writes the C3 lock to
+  `combat.flags[…].c3`. This closes the two-tier loop live: an element death ripples to
+  unit confidence + the force.
+- G10 src/main.ts: full init order — data models → sheets → status → hover fields → round
+  control → advance.registerAdvance → command-loss hook → registerDirtsideRuleset (LAST +
+  loud, primary:true, defensive api resolution). Hover fields for vehicle + unit.
+- Surfaces: src/ui/round-control.ts, src/round/{fire(+buildFireInput),command-loss}.ts,
+  src/main.ts, lang + 3 test files (round-control+5, command-loss+5, main+5, fire+1).
+  127 DS2 tests; full repo 1347 pass; typecheck clean; `npm run build` GREEN
+  (dist/dirtside-ii.js 32 kB).
+- Live-verify (deferred to parent): sheet saves/actions; G5 RollTable drawMany
+  without-replacement + reset; the round-control canvas reads / Combatant seating / scene
+  control payload; the activate→fire→apply canvas wire; status toggles; the updateActor
+  transition timing (pre- vs post-apply system.damage). Do NOT deploy.
+- Commit: this commit.

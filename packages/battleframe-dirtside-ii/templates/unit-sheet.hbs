@@ -1,0 +1,33 @@
+<div class="battleframe-dirtside-ii sheet unit ds2-plate">
+  <header class="ds2-plate__header">
+    <h1 class="ds2-plate__name">{{actor.name}}</h1>
+    <span class="ds2-plate__tag">DIRTSIDE II &middot; UNIT</span>
+  </header>
+
+  <section class="ds2-block">
+    <h2 class="ds2-block__title">Command</h2>
+    <div class="ds2-stats">
+      <label class="ds2-stat"><span>Role</span>
+        <select name="system.role">
+          {{#each roleOptions}}<option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>{{/each}}
+        </select></label>
+      <label class="ds2-stat"><span>Quality</span>
+        <select name="system.quality">
+          {{#each qualityOptions}}<option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>{{/each}}
+        </select></label>
+      <label class="ds2-stat"><span>Leadership</span>
+        <input type="number" name="system.leadership" value="{{system.leadership}}" min="1" step="1" /></label>
+      <label class="ds2-stat"><span>Confidence</span>
+        <select name="system.confidence">
+          {{#each confidenceOptions}}<option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>{{/each}}
+        </select></label>
+    </div>
+    <div class="ds2-flags">
+      <label class="ds2-toggle"><input type="checkbox" name="system.isCommandUnit" {{#if system.isCommandUnit}}checked{{/if}} /><span>Command unit</span></label>
+      <label class="ds2-toggle"><input type="checkbox" name="system.activated" {{#if system.activated}}checked{{/if}} /><span>Activated</span></label>
+      <label class="ds2-toggle"><input type="checkbox" name="system.underFire" {{#if system.underFire}}checked{{/if}} /><span>Under fire</span></label>
+    </div>
+    <label class="ds2-stat ds2-stat--wide"><span>Command vehicle id</span>
+      <input type="text" name="system.commandVehicleId" value="{{system.commandVehicleId}}" /></label>
+  </section>
+</div>

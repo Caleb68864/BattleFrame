@@ -1,0 +1,44 @@
+<div class="battleframe-dirtside-ii sheet infantry ds2-plate">
+  <header class="ds2-plate__header">
+    <h1 class="ds2-plate__name">{{actor.name}}</h1>
+    <span class="ds2-plate__tag">DIRTSIDE II</span>
+  </header>
+
+  <section class="ds2-block">
+    <h2 class="ds2-block__title">Stand</h2>
+    <div class="ds2-stats">
+      <label class="ds2-stat"><span>Troop Type</span>
+        <select name="system.troopType">
+          {{#each troopTypeOptions}}<option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>{{/each}}
+        </select></label>
+      <label class="ds2-stat"><span>Chits Drawn</span>
+        <input type="number" name="system.chitsDrawn" value="{{system.chitsDrawn}}" min="1" step="1" /></label>
+      <label class="ds2-stat"><span>Kill Total</span>
+        <input type="number" name="system.killTotal" value="{{system.killTotal}}" min="1" step="1" /></label>
+      <label class="ds2-stat"><span>Posture</span>
+        <select name="system.posture">
+          {{#each postureOptions}}<option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>{{/each}}
+        </select></label>
+    </div>
+    <div class="ds2-flags">
+      <label class="ds2-toggle"><input type="checkbox" name="system.canFirefight" {{#if system.canFirefight}}checked{{/if}} /><span>Can firefight</span></label>
+      <label class="ds2-toggle"><input type="checkbox" name="system.removed" {{#if system.removed}}checked{{/if}} /><span>Removed</span></label>
+    </div>
+  </section>
+
+  <section class="ds2-block">
+    <h2 class="ds2-block__title">Weapons
+      <button type="button" class="ds2-add" data-action="addWeapon" title="Add a weapon">+ Add</button>
+    </h2>
+    <div class="ds2-weapons">
+      {{#each system.weapons as |weapon i|}}
+      <div class="ds2-weapon ds2-weapon--tag">
+        <input type="text" name="system.weapons.{{i}}" value="{{weapon}}" title="Weapon" />
+        <button type="button" class="ds2-remove" data-action="removeWeapon" data-index="{{i}}" title="Remove">&times;</button>
+      </div>
+      {{else}}
+      <p class="ds2-weapons__empty">No weapons.</p>
+      {{/each}}
+    </div>
+  </section>
+</div>

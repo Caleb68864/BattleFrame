@@ -1,0 +1,15 @@
+{
+  "name": "battleframe-dirtside-ii",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Dirtside II (GZG) ruleset module for the BattleFrame system. Implements the mechanics of Dirtside II by Ground Zero Games; ships no ruleset content, cost tables, or artwork. Free and non-commercial.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0"
+  }
+}
