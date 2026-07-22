@@ -17,13 +17,19 @@
  * Morale", "Fighter Endurance"; "Specialised Fighter Types".
  */
 
-import { DIE_SIZE, FIGHTER_ATTACK_RANGE_MU, FIGHTER_GROUP_MAX } from "../constants";
+import { DIE_SIZE, FIGHTER_ATTACK_RANGE_MU } from "../constants";
 import {
   fighterAttackDamage,
-  fighterMoralePasses,
   enduranceAfterActiveTurn,
   pdsKillsVsFighters
 } from "./fighters";
+import {
+  type PilotQuality,
+  pilotAttackDice,
+  pilotMoralePasses,
+  pilotMoraleBreaks,
+  pilotRequiresMoraleCheck
+} from "./pilot";
 import { arcForBearing } from "./arcs";
 import { applyDamageAndThreshold } from "./apply-damage";
 import type { ShipActorLike } from "../data/ship-state";
@@ -39,6 +45,7 @@ export interface AttackingGroup {
   system?: {
     size?: number;
     fighterType?: string;
+    pilotQuality?: PilotQuality;
     endurance?: number;
     moraleBroken?: boolean;
     moraleFails?: number;
@@ -70,6 +77,7 @@ export async function fireFighterGroupAtTarget(
   const { group, target, context } = params;
 
   const size = group.system?.size ?? 0;
+  const quality: PilotQuality = group.system?.pilotQuality ?? "standard";
   const distance = context.measure.between(group.token, target.token, "centre-to-centre").distance;
   const bearing = context.facing.bearingOf(group.token, target.token);
 
@@ -117,15 +125,17 @@ export async function fireFighterGroupAtTarget(
     return { ...idle, reason: "shot-down", pdsKills };
   }
 
-  // Morale: a depleted group (below full strength) rolls before attacking and
-  // aborts if the die exceeds the fighters remaining. Three consecutive fails
-  // break the group; a passed check resets the streak (More Thrust).
-  if (remaining < FIGHTER_GROUP_MAX) {
+  // Morale: a depleted group (below full strength) rolls before attacking -- as
+  // does a Turkey group even at full strength -- and aborts if the pilot-modified
+  // die (Ace -1, Turkey +1) exceeds the fighters remaining. Consecutive fails
+  // break the group (Turkey after 2, others after 3); a passed check resets the
+  // streak (More Thrust "Fighter Group Morale", "Fighter Pilot Quality").
+  if (pilotRequiresMoraleCheck(remaining, quality)) {
     const [moraleDie] = await context.dice.rollPool(1, DIE_SIZE);
-    if (moraleDie !== undefined && !fighterMoralePasses(moraleDie, remaining)) {
+    if (moraleDie !== undefined && !pilotMoralePasses(moraleDie, remaining, quality)) {
       const fails = (group.system?.moraleFails ?? 0) + 1;
       if (typeof group.update === "function") {
-        await group.update({ "system.moraleFails": fails, "system.moraleBroken": fails >= 3 });
+        await group.update({ "system.moraleFails": fails, "system.moraleBroken": pilotMoraleBreaks(fails, quality) });
       }
       return { ...idle, reason: "morale", pdsKills };
     }
@@ -134,7 +144,8 @@ export async function fireFighterGroupAtTarget(
     }
   }
 
-  const rolled = await context.dice.rollPool(remaining, DIE_SIZE);
+  // An Ace adds one extra attack die to the group's normal ship attack.
+  const rolled = await context.dice.rollPool(pilotAttackDice(remaining, quality), DIE_SIZE);
   // An Attack-type group adds +1 to each attack die versus ships.
   const faces = group.system?.fighterType === "attack" ? rolled.map((f) => f + 1) : rolled;
   const screenLevel = (target.system?.screens as number | undefined) ?? 0;

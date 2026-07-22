@@ -188,6 +188,55 @@ describe("fireFighterGroupAtTarget", () => {
     expect(shaky.system.moraleBroken).toBe(true);
   });
 
+  it("an Ace group rolls one extra attack die", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const ace = fakeGroup({ size: 6, pilotQuality: "ace" });
+    const target = targetHull();
+    // A full-strength Ace throws 7 dice (6 fighters + 1); seven 4s -> 1 damage each = 7.
+    // A standard size-6 group would only roll 6 -> 6 damage.
+    const ctx = context(4, 0, scriptedDice([[4, 4, 4, 4, 4, 4, 4]]));
+    const report = await fireFighterGroupAtTarget({ group: ace, target, context: ctx });
+    expect(report.fired).toBe(true);
+    expect(report.totalDamage).toBe(7);
+  });
+
+  it("an Ace group gets -1 on its morale roll", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const ace = fakeGroup({ size: 4, pilotQuality: "ace", endurance: 3 });
+    const target = targetHull();
+    // Morale die 5: a standard group at size 4 would FAIL (5 > 4); the Ace's -1
+    // makes it 4 <= 4 -> pass. Then it throws 5 dice (4 + Ace extra): four 4s + a 1
+    // -> 1+1+1+1+0 = 4 damage. (Only 5 attack faces are supplied, proving 5 dice.)
+    const ctx = context(4, 0, scriptedDice([[5], [4, 4, 4, 4, 1]]));
+    const report = await fireFighterGroupAtTarget({ group: ace, target, context: ctx });
+    expect(report.fired).toBe(true);
+    expect(report.totalDamage).toBe(4);
+  });
+
+  it("a Turkey group adds +1 to its morale roll (and must roll even at full strength)", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const turkey = fakeGroup({ size: 6, pilotQuality: "turkey", endurance: 3 });
+    const target = targetHull();
+    // A full-strength Turkey still rolls morale. Die 6: standard would pass (6 <= 6),
+    // but the Turkey's +1 makes it 7 > 6 -> fail. No attack dice are rolled.
+    const ctx = context(4, 0, scriptedDice([[6], [4, 4, 4, 4, 4, 4]]));
+    const report = await fireFighterGroupAtTarget({ group: turkey, target, context: ctx });
+    expect(report.fired).toBe(false);
+    expect(report.reason).toBe("morale");
+    expect(target.system.hull.damage).toBe(0);
+  });
+
+  it("a Turkey group breaks after only TWO consecutive failed checks", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const turkey = fakeGroup({ size: 2, pilotQuality: "turkey", moraleFails: 1 }); // one prior fail
+    // Morale die 3: +1 -> 4 > size 2 -> fail; that is the SECOND consecutive fail,
+    // which breaks a Turkey (vs three for average).
+    const report = await fireFighterGroupAtTarget({ group: turkey, target: targetHull(), context: context(4, 0, scriptedDice([[3]])) });
+    expect(report.reason).toBe("morale");
+    expect(turkey.system.moraleFails).toBe(2);
+    expect(turkey.system.moraleBroken).toBe(true);
+  });
+
   it("a group shot down entirely by PDS makes no attack", async () => {
     vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
     const wing = fakeGroup({ size: 2 });

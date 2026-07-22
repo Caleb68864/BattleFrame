@@ -18,6 +18,15 @@
     </datalist>
   </div>
   <div class="ft-field">
+    <label>Pilot quality</label>
+    <input type="text" name="system.pilotQuality" value="{{system.pilotQuality}}" list="ft-pilot-qualities" />
+    <datalist id="ft-pilot-qualities">
+      <option value="standard"></option>
+      <option value="ace"></option>
+      <option value="turkey"></option>
+    </datalist>
+  </div>
+  <div class="ft-field">
     <label>Endurance</label>
     <input type="number" name="system.endurance" value="{{system.endurance}}" min="0" step="1" />
   </div>

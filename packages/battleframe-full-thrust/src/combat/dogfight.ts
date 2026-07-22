@@ -14,6 +14,7 @@
 
 import { DIE_SIZE, FIGHTER_ATTACK_RANGE_MU } from "../constants";
 import { dogfightKillsAgainst } from "./fighters";
+import { type PilotQuality, pilotAttackDice, pilotDogfightFaces } from "./pilot";
 import { arcForBearing } from "./arcs";
 
 export interface DogfightContext {
@@ -24,13 +25,19 @@ export interface DogfightContext {
 
 export interface DogfightGroup {
   token: unknown;
-  system?: { size?: number; fighterType?: string };
+  system?: { size?: number; fighterType?: string; pilotQuality?: PilotQuality };
   update?: (data: Record<string, unknown>) => Promise<unknown>;
 }
 
-/** An Interceptor adds +1 to each of its dogfight dice; others roll as-is. */
-function dogfightFaces(faces: readonly number[], fighterType?: string): number[] {
-  return fighterType === "interceptor" ? faces.map((f) => f + 1) : [...faces];
+/**
+ * A group's dogfight dice after both the fighter-type and pilot-quality per-die
+ * modifiers, which stack: an Interceptor adds +1 to each die; a Turkey subtracts
+ * 1 from each; an Ace's benefit is an extra die (via `pilotAttackDice`), not a
+ * per-die bonus.
+ */
+function dogfightFaces(faces: readonly number[], fighterType?: string, quality: PilotQuality = "standard"): number[] {
+  const typed = fighterType === "interceptor" ? faces.map((f) => f + 1) : [...faces];
+  return pilotDogfightFaces(typed, quality);
 }
 
 export interface DogfightParams {
@@ -67,16 +74,21 @@ export async function resolveDogfight(params: DogfightParams): Promise<DogfightR
 
   const attackerType = attacker.system?.fighterType;
   const defenderType = defender.system?.fighterType;
+  const attackerQuality: PilotQuality = attacker.system?.pilotQuality ?? "standard";
+  const defenderQuality: PilotQuality = defender.system?.pilotQuality ?? "standard";
 
   // Attacker fires; the defender returns fire only if IT bears on the attacker.
-  // Interceptors roll +1/die; a Heavy target is screened (dogfightKillsAgainst).
-  const attackerFaces = dogfightFaces(await context.dice.rollPool(attackerSize, DIE_SIZE), attackerType);
+  // Interceptors roll +1/die and Aces throw an extra die; a Turkey rolls -1/die;
+  // a Heavy target is screened (dogfightKillsAgainst).
+  const attackerRolled = await context.dice.rollPool(pilotAttackDice(attackerSize, attackerQuality), DIE_SIZE);
+  const attackerFaces = dogfightFaces(attackerRolled, attackerType, attackerQuality);
   const attackerKills = Math.min(defenderSize, dogfightKillsAgainst(attackerFaces, defenderType));
 
   const defenderReturned = arcForBearing(context.facing.bearingOf(defender.token, attacker.token)) === "F";
   let defenderKills = 0;
   if (defenderReturned) {
-    const defenderFaces = dogfightFaces(await context.dice.rollPool(defenderSize, DIE_SIZE), defenderType);
+    const defenderRolled = await context.dice.rollPool(pilotAttackDice(defenderSize, defenderQuality), DIE_SIZE);
+    const defenderFaces = dogfightFaces(defenderRolled, defenderType, defenderQuality);
     defenderKills = Math.min(attackerSize, dogfightKillsAgainst(defenderFaces, attackerType));
   }
 

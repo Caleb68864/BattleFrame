@@ -26,6 +26,11 @@ const FIGHTER_TYPES = [
   "long-range"
 ] as const;
 
+// Pilot quality (More Thrust "Fighter Pilot Quality"): most groups are average,
+// a diced 6 gives an Ace and a 1 a whole Turkey group. Drives the pilot-quality
+// modifiers in combat/pilot.ts (attack-die count, morale, dogfight dice).
+const PILOT_QUALITIES = ["standard", "ace", "turkey"] as const;
+
 export function createFighterGroupDataClass(
   TypeDataModelBase: TypeDataModelBaseConstructor = resolveTypeDataModelBase()
 ): TypeDataModelBaseConstructor {
@@ -42,6 +47,10 @@ export function createFighterGroupDataClass(
       });
       schema.fighterType = new StringField({
         required: true, blank: false, choices: [...FIGHTER_TYPES], initial: "standard"
+      });
+      // Ace/Turkey/average pilot quality (More Thrust); "standard" = average.
+      schema.pilotQuality = new StringField({
+        required: true, blank: false, choices: [...PILOT_QUALITIES], initial: "standard"
       });
       // Active-turn endurance remaining (More Thrust: 3 for standard, 5 long-range).
       schema.endurance = new NumberField({ required: true, nullable: false, integer: true, min: 0, initial: 3 });

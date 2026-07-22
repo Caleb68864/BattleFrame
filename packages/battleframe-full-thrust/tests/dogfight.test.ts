@@ -74,4 +74,20 @@ describe("resolveDogfight", () => {
     expect(report.fired).toBe(false);
     expect(report.reason).toBe("out-of-arc");
   });
+
+  it("a Turkey attacker subtracts 1 from each of its dogfight dice", async () => {
+    const a = group(6);
+    (a.system as any).pilotQuality = "turkey";
+    const b = group(6);
+    (a.token as any).__id = "a";
+    (b.token as any).__id = "b";
+    // Defender bears 180 -> no return fire. Attacker faces 6,5,5,1,1,1: a standard
+    // group scores 2+1+1 = 4 kills; the Turkey's -1/die makes them 5,4,4,0,0,0 ->
+    // 1+1+1 = 3 kills.
+    const c = ctx(4, 0, 180, scriptedDice([[6, 5, 5, 1, 1, 1]]));
+    const report = await resolveDogfight({ attacker: a, defender: b, context: c });
+    expect(report.attackerKills).toBe(3);
+    expect(report.defenderReturned).toBe(false);
+    expect(b.system.size).toBe(3); // 6 - 3
+  });
 });

@@ -2342,3 +2342,24 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   hull.damage persists). Arc/range diagram (the other half of #10) still deferred.
 - +6 tests (ship-sheet-hull.test.ts); 949 passing; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Wired pilot quality into the fighter fire + dogfight orchestrators (roadmap P2 #14)
+- `combat/pilot.ts`'s pure modifiers existed and were tested but nothing read them. Threaded a
+  new optional `pilotQuality` (`"standard"|"ace"|"turkey"`, default `"standard"`) field on the
+  `fighter-group` DataModel through the group's `system` into `fire-fighters.ts` and
+  `dogfight.ts`, applying the pilot helpers so the orchestrators stay pure over the injected
+  dice service (no `game.*`/Foundry calls added).
+- fire-fighters: attack pool count is now `pilotAttackDice(remaining, quality)` (Ace +1 die);
+  the morale gate switched from `remaining < FIGHTER_GROUP_MAX` + `fighterMoralePasses` +
+  `fails >= 3` to `pilotRequiresMoraleCheck` (Turkey rolls even at full strength) +
+  `pilotMoralePasses` (Ace −1 / Turkey +1 on the die) + `pilotMoraleBreaks` (Turkey breaks at
+  2 consecutive fails vs 3). dogfight: the per-die `dogfightFaces` now also applies
+  `pilotDogfightFaces` (Turkey −1/die, stacking with Interceptor +1), and the dice COUNT uses
+  `pilotAttackDice` so an Ace throws its extra die here too (the dogfight size-dice path does
+  NOT already supply the Ace die — it rolls one die per fighter, so it had to be added; the
+  Attack/Torpedo per-die kill-table and Heavy screen were already applied and are untouched).
+- Sheet: added a `pilotQuality` datalist input to `fighter-sheet.hbs` mirroring the existing
+  `fighterType` control (avoided an `eq` Handlebars helper Foundry doesn't register). No new
+  constants — every pilot-quality rules number already lived at the end of `constants.ts`.
+- +5 tests (fire-fighters 4, dogfight 1); 948 passing; typecheck clean.
+- Commit: this commit.
