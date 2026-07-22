@@ -27,6 +27,7 @@ import {
   createFireOrder,
   restoreFireOrder,
   determineInitiative,
+  firePhaseStatusLine,
   type ActivationOrderLike,
   type RoundsApiLike,
   type FireSessionState
@@ -736,11 +737,33 @@ async function advanceFireOrder(order: ActivationOrderLike, shipId: string): Pro
   }
   if (order.isComplete()) {
     await doc?.unsetFlag(MODULE_ID, FIRE_PHASE_FLAG);
-    notify("info", `${MODULE_ID} | fire phase complete`);
   } else {
     await doc?.setFlag(MODULE_ID, FIRE_PHASE_FLAG, order.serialize());
-    notify("info", `${MODULE_ID} | next to fire: side ${order.activeSideId()}`);
   }
+  // Announce the tracker to everyone (persistent card), not a GM-only toast.
+  await announceFirePhase(order);
+}
+
+/** Posts the visible fire-phase tracker line as a chat card for all players. */
+async function announceFirePhase(order: ActivationOrderLike): Promise<void> {
+  const line = escapeHtml(firePhaseStatusLine(order));
+  await g().ChatMessage?.create({
+    content: `<div class="ft-fire-report ft-phase-status"><p><strong>Fire phase:</strong> ${line}</p></div>`
+  });
+}
+
+/**
+ * Phase-Status tool (GM): re-post the current fire-phase tracker on demand, so a
+ * player who missed the announcement can see whose turn it is. No-op with a note
+ * when no fire phase is running.
+ */
+export async function phaseStatusAction(): Promise<void> {
+  const order = activeFireOrder();
+  if (!order) {
+    notify("info", `${MODULE_ID} | no fire phase is running (use Begin Fire Phase)`);
+    return;
+  }
+  await announceFirePhase(order);
 }
 
 const MAX_INITIATIVE_REROLLS = 5;
@@ -788,7 +811,7 @@ export async function beginFirePhaseAction(): Promise<void> {
 
   const order = createFireOrder(rounds, ships, firstSideId);
   await firePhaseDoc()?.setFlag(MODULE_ID, FIRE_PHASE_FLAG, order.serialize());
-  notify("info", `${MODULE_ID} | side ${firstSideId} won initiative and fires first`);
+  await announceFirePhase(order);
 }
 
 /**
@@ -999,6 +1022,16 @@ export function addSceneControl(controls: unknown): void {
     order: 0,
     onClick: () => void beginFirePhaseAction(),
   };
+  // Re-post the current fire-phase tracker (whose side fires next) -- GM only.
+  const phaseStatusTool = {
+    name: "full-thrust-phase-status",
+    title: "battleframe-full-thrust.controls.phaseStatus",
+    icon: "fas fa-list-ol",
+    button: true,
+    visible: gm,
+    order: 0,
+    onClick: () => void phaseStatusAction(),
+  };
   const fireTool = {
     name: "full-thrust-fire",
     title: "battleframe-full-thrust.controls.fire",
@@ -1108,7 +1141,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, fireTool, splitFireTool, targetingTool, needleTool, salvoTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
+  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, targetingTool, needleTool, salvoTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);

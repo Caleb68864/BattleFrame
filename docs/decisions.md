@@ -2431,3 +2431,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - +4 tests (buildSplitFireReportHtml 3, split-fire tool registration 1); 970 passing; typecheck
   clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: visible fire-phase turn tracker (roadmap P1 #12)
+- Symptom/gap: whose-turn-it-is in the fire phase was a GM-only `ui.notifications` toast printing a
+  raw disposition number ("side -1"); players had no visible tracker.
+- Fix: pure `firePhaseStatusLine(order)` + `sideLabel(id)` in `round/fire-session.ts` (maps
+  Foundry dispositions → Friendly/Hostile/Neutral/Secret; reports the active side + its remaining
+  eligible ships, or completion). `round-control.ts` now posts this as a persistent chat card
+  (`announceFirePhase`) visible to ALL players on fire-phase begin and after each activation
+  (replacing the GM toast), plus a "Phase Status" GM scene tool (`phaseStatusAction`) to re-post
+  the current tracker on demand.
+- Surfaces: round/fire-session.ts (pure line + label), ui/round-control.ts (announce + tool),
+  lang/en.json (controls.phaseStatus).
+- Watch: the announcement fires on begin/advance — live-verify Begin Fire Phase posts a readable
+  "Friendly/Hostile to fire" card and Phase Status re-posts it. The "New Battle" reset + fully
+  localized chat cards (the other #12 sub-items) remain deferred.
+- +5 tests (fire-phase-status.test.ts); 975 passing; typecheck clean.
+- Commit: this commit.

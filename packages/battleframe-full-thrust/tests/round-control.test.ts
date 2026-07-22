@@ -211,6 +211,7 @@ describe("addSceneControl", () => {
     expect(controls[0].name).toBe("battleframe-full-thrust");
     const toolNames = controls[0].tools.map((t: any) => t.name);
     expect(toolNames).toContain("full-thrust-initiative");
+    expect(toolNames).toContain("full-thrust-phase-status");
     expect(toolNames).toContain("full-thrust-fire");
     expect(toolNames).toContain("full-thrust-targeting");
     expect(toolNames).toContain("full-thrust-split-fire");
@@ -319,7 +320,10 @@ describe("beginFirePhaseAction (roll initiative, persist the fire phase)", () =>
     // Fake engine rounds API: returns an order that serializes to engine state.
     const rounds = {
       createActivationOrder: (p: any) => ({
-        serialize: () => ({ firstSideId: p.firstSideId, activatedIds: [], priorityPointer: 0, mainPointer: 0 })
+        serialize: () => ({ firstSideId: p.firstSideId, activatedIds: [], priorityPointer: 0, mainPointer: 0 }),
+        isComplete: () => false,
+        activeSideId: () => p.firstSideId,
+        eligible: () => ["a1"]
       }),
       restoreActivationOrder: vi.fn()
     };

@@ -127,3 +127,37 @@ export function restoreFireOrder(
 export function canShipFire(order: ActivationOrderLike, sideId: string, shipId: string): boolean {
   return order.activeSideId() === sideId && order.eligible(sideId).includes(shipId);
 }
+
+/**
+ * A readable name for a side id. Sides are Foundry token dispositions as strings
+ * (`shipSideOf` = `String(token.document.disposition)`); this maps the standard
+ * dispositions to friendly names and falls back to `Side N` for anything else.
+ */
+export function sideLabel(sideId: string): string {
+  switch (sideId) {
+    case "1":
+      return "Friendly";
+    case "-1":
+      return "Hostile";
+    case "0":
+      return "Neutral";
+    case "-2":
+      return "Secret";
+    default:
+      return `Side ${sideId}`;
+  }
+}
+
+/**
+ * The visible fire-phase tracker line (roadmap #12): whose side fires next and
+ * how many of its ships are still eligible, or a completion notice. Pure over the
+ * activation order so it is unit-tested and reused by the chat announcement.
+ */
+export function firePhaseStatusLine(order: ActivationOrderLike): string {
+  const active = order.isComplete() ? undefined : order.activeSideId();
+  if (!active) {
+    return "Fire phase complete.";
+  }
+  const remaining = order.eligible(active).length;
+  return `${sideLabel(active)} to fire — ${remaining} ship(s) still to activate.`;
+}
