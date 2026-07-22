@@ -40,11 +40,12 @@ in a live Foundry.
 7. **[qol] Editable-weapons sheet.** The ship sheet's weapon list is READ-ONLY — you cannot add/
    remove/edit weapons in-app (only via fleet import or the data default). Biggest build-a-ship
    gap.
-8. **[qol] Hull damage on the hover panel.** The most important at-a-glance stat is missing
-   (`HoverStatField.max` is a static number, not a `damage/boxes` path).
-9. **[qol] Battlefield status icons.** Only `defeated` shows. `driveCrippled` (can't maneuver)
-   and `fcs==0` (can't fire) are in the data but invisible; the `status.crippled` i18n key is
-   unused. Register `CONFIG.statusEffects` for them.
+8. ~~**[qol] Hull damage on the hover panel.**~~ ✅ **DONE 2026-07-22.** The ship's
+   `prepareDerivedData` computes a `hullTrack` "remaining/total" string, registered as the first
+   hover field.
+9. ~~**[qol] Battlefield status icons.**~~ ✅ **DONE 2026-07-22.** `src/status.ts` registers
+   `crippled` (thrust 0) + `weapons-offline` (fcs 0) on `CONFIG.statusEffects`; `syncShipStatuses`
+   toggles them after every damage/threshold resolution.
 10. **[qol] Visual SSD** — clickable damage boxes + an arc/range diagram instead of number inputs.
 11. **[qol] Pre-fire targeting feedback** — show which weapons bear + the range band before
     committing (arc/range math already exists); today you learn "out of arc" only after firing.

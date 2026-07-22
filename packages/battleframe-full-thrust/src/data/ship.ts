@@ -85,6 +85,21 @@ export function createShipDataClass(
 
       return schema;
     }
+
+    /**
+     * Derived read-only values for display. `hullTrack` is the "remaining/total"
+     * hull string the hover panel shows (the panel renders a value verbatim, and
+     * a static `max` can't track the box count, so we compute the label here).
+     */
+    prepareDerivedData(): void {
+      const self = this as unknown as {
+        hull?: { boxes?: number; damage?: number };
+        hullTrack?: string;
+      };
+      const boxes = self.hull?.boxes ?? 0;
+      const damage = self.hull?.damage ?? 0;
+      self.hullTrack = `${Math.max(0, boxes - damage)}/${boxes}`;
+    }
   }
 
   return ShipData as unknown as TypeDataModelBaseConstructor;

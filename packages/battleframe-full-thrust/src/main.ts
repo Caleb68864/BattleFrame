@@ -5,6 +5,7 @@ import { registerShipSheet } from "./sheets/ship-sheet";
 import { registerFighterSheet } from "./sheets/fighter-sheet";
 import { registerRoundControl } from "./ui/round-control";
 import { registerOwnershipWarning } from "./ui/ownership-warning";
+import { registerShipStatusEffects } from "./status";
 
 interface BattleframeRegisterResult {
   ok: boolean;
@@ -72,6 +73,7 @@ export function registerFullThrustHoverFields(): void {
 
   registry.register(`${MODULE_ID}.${SHIP_ACTOR_TYPE}`, {
     fields: [
+      { key: "hullTrack", label: `${MODULE_ID}.fields.hull` },
       { key: "thrust", label: `${MODULE_ID}.fields.thrust` },
       { key: "velocity", label: `${MODULE_ID}.fields.velocity` },
       { key: "course", label: `${MODULE_ID}.fields.course` },
@@ -120,6 +122,7 @@ globalHooks?.once("init", () => {
   registerFighterGroupDataModel();
   registerShipSheet();
   registerFighterSheet();
+  registerShipStatusEffects();
   registerFullThrustHoverFields();
   // The reachable trigger: a scene control answering Foundry's own hook. Without
   // it the fire/movement code is tree-shaken out (see COVERAGE.md).

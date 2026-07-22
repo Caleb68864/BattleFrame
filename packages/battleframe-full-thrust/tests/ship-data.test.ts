@@ -78,6 +78,26 @@ describe("ship data model schema", () => {
   });
 });
 
+describe("prepareDerivedData", () => {
+  it("computes a remaining/total hull string for the hover panel", () => {
+    stubFoundryFields();
+    const ShipData = createShipDataClass() as unknown as new () => any;
+    const instance = new ShipData();
+    instance.hull = { boxes: 16, damage: 3 };
+    instance.prepareDerivedData();
+    expect(instance.hullTrack).toBe("13/16");
+  });
+
+  it("never shows negative remaining hull", () => {
+    stubFoundryFields();
+    const ShipData = createShipDataClass() as unknown as new () => any;
+    const instance = new ShipData();
+    instance.hull = { boxes: 6, damage: 9 };
+    instance.prepareDerivedData();
+    expect(instance.hullTrack).toBe("0/6");
+  });
+});
+
 describe("registerShipDataModel", () => {
   it("registers the ship data model under the namespaced key", () => {
     stubFoundryFields();

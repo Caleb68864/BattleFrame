@@ -95,3 +95,5 @@ deferred. Nothing is silently missing.
 | Rule | Status | Where |
 |---|---|---|
 | Destroyed → native `defeated` (skull, syncs, drops from turn order) | ✅ | `data/ship-state.ts` |
+| Crippled (drives dead) + weapons-offline (no FCS) → status icons | ✅ | `src/status.ts` registers them; `syncShipStatuses` toggles after damage/threshold |
+| Hull remaining shown on token hover | ✅ | ship `prepareDerivedData` `hullTrack` + hover field |

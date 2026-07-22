@@ -2074,4 +2074,15 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   post-PDS count) and the attack rolls the survivors. Chat card reports the PDS kills.
 - pdsKillsVsMissiles stays unwired until the missile/salvo launch flow exists (#4/#15).
 - 767 tests passing.
+- Commit: 500f496.
+
+## 2026-07-22 — Full Thrust QoL: ship status icons + hull on hover (roadmap P1 #8, #9)
+- src/status.ts registers `crippled` (drives dead, thrust 0) and `weapons-offline` (all FCS gone,
+  fcs 0) on CONFIG.statusEffects; `syncShipStatuses(actor)` toggles both to match the ship's
+  systems and is called at the end of `applyDamageAndThreshold`, so a threshold knockout that
+  kills the drives/FCS immediately shows on the token. Destruction stays native `defeated`.
+- The ship data model's `prepareDerivedData` computes `hullTrack` = "remaining/total" (the hover
+  panel renders a value verbatim and a static field `max` can't track the box count), registered
+  as the first hover field so hull damage is the headline at-a-glance stat.
+- 774 tests passing.
 - Commit: this commit.

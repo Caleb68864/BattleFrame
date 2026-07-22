@@ -11,6 +11,7 @@ import { DIE_SIZE } from "../constants";
 import { applyDamageToShip, type ShipActorLike } from "../data/ship-state";
 import { thresholdKillOn, knockedOutIndices } from "../ship/threshold";
 import { enumerateSurvivingSystems, applySystemKnockouts } from "../ship/systems";
+import { syncShipStatuses } from "../status";
 
 export interface ThresholdDiceLike {
   rollPool: (count: number, dieSize: number, options?: unknown) => Promise<number[]>;
@@ -46,6 +47,9 @@ export async function applyDamageAndThreshold(
       }
     }
   }
+
+  // Reflect the ship's post-damage systems on its token (crippled / weapons-offline).
+  await syncShipStatuses(target);
 
   return { destroyed: damageResult.destroyed, thresholdsCrossed, systemsKnockedOut };
 }
