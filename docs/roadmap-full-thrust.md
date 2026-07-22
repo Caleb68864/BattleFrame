@@ -76,7 +76,13 @@ in a live Foundry.
     carrier (`enduranceExhausted` computed, unused), morale-broken disengage (`moraleBroken`
     stub), pilot quality (Ace/Turkey), remaining specialised types (Heavy/Interceptor/Torpedo/
     Fast/Long-range).
-15. **[build] Independent (More Thrust) missiles** as moving craft (own phase, 18mu, 3-turn life).
+15. **[build] Independent (More Thrust) missiles** — 🟡 PARTIAL (2026-07-22). Pure combat +
+    movement built + tested: `movement/missile-path.ts` `plotMissilePath` (18mu with one mid-point
+    2-point turn) and `combat/missile.ts` `missileCanAttack` (≤6mu, not in the missile's rear arc)
+    + `resolveMissileAttack` (target PDS kills on a 6 via `pdsKillsVsMissiles`; surviving missile
+    detonates a Normal warhead — 2d6 total, screens ignored, armour absorbs). Still to do: the
+    dedicated missile-phase launch + a Foundry token orchestrator that moves/tracks the craft and
+    removes it after the 3-turn life, plus the EMP/Needle warhead variants.
 16. **[build] Fighter movement + dogfights** (`dogfightKills` exists, unwired).
 17. **[build] Vector movement** (optional FT2 mode) — cinematic only today.
 18. **[build] Multi-FCS fire-splitting** (N FCS → N targets) — one target per action now.

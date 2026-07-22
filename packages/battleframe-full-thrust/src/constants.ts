@@ -80,6 +80,34 @@ export type WeaponKind = (typeof WEAPON_KINDS)[number];
 export const SALVO_SIZE = 6;
 export const SALVO_RANGE_MU = 24;
 
+// --- Independent (More Thrust) missiles -------------------------------------
+
+/**
+ * Independent missiles are one-shot AI craft (distinct from salvo missiles):
+ * launched in a dedicated missile phase forward along the firing ship's course,
+ * they move as craft for a few turns and strike a ship that ends its move nearby.
+ * Source: More Thrust "Missiles (Basic)".
+ */
+/** Missile move per turn (mu). */
+export const MISSILE_MOVE_MU = 18;
+/** The single mid-point course change a missile may make, in course points (60°). */
+export const MISSILE_TURN_POINTS = 2;
+/** Missile life span before it runs out of power and is removed (turns). */
+export const MISSILE_LIFE_TURNS = 3;
+/** A ship must FINISH within this range of an active missile to be attacked (mu). */
+export const MISSILE_ATTACK_RANGE_MU = 6;
+/**
+ * The missile's rear arc: a target lying in the "A" arc relative to the missile's
+ * own facing is behind it and cannot be attacked (the missile does not turn back).
+ */
+export const MISSILE_REAR_ARC: FireArc = "A";
+/**
+ * Normal (nuclear) warhead: on a successful attack roll this many dice; the TOTAL
+ * score is the damage inflicted (2-12). Ignores screens (armour still absorbs).
+ * Source: More Thrust "Missile Warheads" — Normal.
+ */
+export const MISSILE_NORMAL_WARHEAD_DICE = 2;
+
 // --- Pulse torpedoes --------------------------------------------------------
 
 /** Pulse torpedo maximum range (mu) and per-band to-hit numbers. */

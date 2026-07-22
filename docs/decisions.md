@@ -2171,3 +2171,29 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   beam, missiles, system, etc.) are shipped for future sheet/token use. Deploy includes icons/
   (not in the exclude list).
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: independent (More Thrust) missiles (roadmap P2 #15)
+- Independent missiles are one-shot AI CRAFT, distinct from the salvo-missile weapon already built
+  (#4). Modelled as two pure, injected-service functions mirroring salvo.ts / path.ts:
+  - `movement/missile-path.ts` `plotMissilePath(start, distance, turn)`: up to 18mu (MISSILE_MOVE_MU)
+    with ONE 2-point (60°) course change (MISSILE_TURN_POINTS) taken WHOLLY at the mid-point —
+    unlike a ship, whose turn `plotMovementPath` splits half-at-start/half-at-mid. Half the
+    distance on the launch course, pivot, half on the new course; returns the mu displacement in
+    screen space. Verified by hand (Course 12, 18mu, +2 → end (7.794, -13.5)). Rejects |turn|>2
+    (`turn-cap`) and distance>18 (`over-range`).
+  - `combat/missile.ts` `missileCanAttack(distanceMu, bearing)` (≤6mu AND target not in the
+    missile's rear "A" arc, via arcForBearing) + orchestrator `resolveMissileAttack`: measure
+    range → attackable check → target PDS fires first (REUSES `pdsKillsVsMissiles`; a 6 kills the
+    one missile) → survivor detonates a Normal warhead through the shared `applyDamageAndThreshold`
+    (armour absorbs, screens do NOT reduce).
+- RULES ASSUMPTION resolved (not the task's 1d6 fallback): `Rules/Weapons/Missile Warheads.md`
+  Normal = "roll 2 dice, the TOTAL is the damage (2-12), ignores screens" → MISSILE_NORMAL_WARHEAD_DICE=2
+  summed. Unambiguous, so 2d6, not 1d6.
+- Constants added: MISSILE_MOVE_MU=18, MISSILE_TURN_POINTS=2, MISSILE_LIFE_TURNS=3,
+  MISSILE_ATTACK_RANGE_MU=6, MISSILE_REAR_ARC="A", MISSILE_NORMAL_WARHEAD_DICE=2.
+- SCOPE: pure combat + movement only (the deliverable). The dedicated missile-phase launch, the
+  per-turn craft-tracking + remove-after-3-turns (MISSILE_LIFE_TURNS) Foundry token orchestrator,
+  and the EMP / Needle warhead variants are deferred (COVERAGE row marked 🟡). This also flips the
+  "PDS vs missiles" coverage row to ✅ (pdsKillsVsMissiles now has a live consumer).
+- +14 tests (missile-path.test.ts 5, missile.test.ts 9); 827 passing; typecheck clean.
+- Commit: this commit.

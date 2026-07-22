@@ -53,6 +53,7 @@ deferred. Nothing is silently missing.
 | Submunition packs: dice by band, ignore screens, one-shot | ✅ | `combat/weapons.ts`, `combat/fire.ts` |
 | Needle beams: 9mu, knock a nominated system on a 6, ignore screens/armour | ✅ | `combat/needle.ts` `fireNeedleAtSystem` + "Needle Beam" scene tool with a system-type picker |
 | Salvo missiles: salvo of 6, PDS interception, per-missile damage | ✅ | `combat/salvo.ts` `resolveSalvoAtTarget` + "salvo" weapon kind + "Fire Salvo" tool (direct-target; point-of-aim counter deferred) |
+| Independent (More Thrust) missiles: one-shot craft, own phase, 18mu + mid-point 2-pt turn, 3-turn life, strike ≤6mu & not in rear arc, PDS kills on a 6, Normal warhead 2d6 (ignores screens) | 🟡 | `combat/missile.ts` `missileCanAttack`/`resolveMissileAttack` + `movement/missile-path.ts` `plotMissilePath` (pure + tested). Missile-phase launch/track/remove-after-3-turns UI (a Foundry token orchestrator) deferred; EMP/Needle warheads not yet modelled |
 | Nova cannon / wave gun / K-guns | ⏳ | Not yet built |
 
 ## Defences
@@ -82,7 +83,7 @@ deferred. Nothing is silently missing.
 | Morale broken (3 consecutive fails → disengage) + out-of-fuel exhaustion | ✅ | `combat/fire-fighters.ts` tracks `moraleFails`; a broken or endurance-0 group refuses to attack |
 | PDS thins the group before it strikes | ✅ | `combat/fire-fighters.ts` rolls the target's PDS first (`pdsKillsVsFighters`); casualties persist; a fully-killed group makes no attack |
 | Dogfights (fighter vs fighter) | ✅ | `combat/dogfight.ts` `resolveDogfight` (6mu fore arc, simultaneous, defender returns fire if it bears); the Fire tool dispatches it when both are fighter groups |
-| PDS vs missiles | 🟡 | `combat/fighters.ts` `pdsKillsVsMissiles` (math); waits on the missile/salvo flow |
+| PDS vs missiles | ✅ | `combat/fighters.ts` `pdsKillsVsMissiles` (a 6 kills), consumed by `combat/salvo.ts` (salvo) and `combat/missile.ts` (independent missiles) |
 | Specialised types: Heavy (screen), Interceptor (+1/die dogfight), Long-range (endurance 5) | ✅ | `combat/fighters.ts` `dogfightKillsAgainst`/`enduranceForType`, applied in `combat/dogfight.ts` |
 | Specialised types: Fast/Torpedo (movement / one-shot modes) | ⏳ | Need fighter movement + a torpedo-run mode (deferred) |
 | Carrier launch/recover | ⏳ | Not yet built |
