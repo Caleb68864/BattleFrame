@@ -2386,3 +2386,31 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   (split-by-arc, no-fcs refusal, spent-index remap, centre-to-centre measure); 947 passing;
   typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Independent missile EMP & Needle warheads as pure math (roadmap P2 #15 subset)
+- Extended `combat/missile.ts` with a `warhead: "normal" | "emp" | "needle"` param on
+  `resolveMissileAttack` (default "normal"), dispatching after the shared range/bearing/PDS
+  prelude. The Normal path is byte-for-byte behaviour-compatible (existing missile.test.ts
+  unchanged, still 9 passing); the interception step (`pdsKillsVsMissiles`) and the system
+  knockout primitives (`enumerateSurvivingSystems` / `knockedOutIndices` / `applySystemKnockouts`
+  / `syncShipStatuses`) are REUSED, not duplicated — the same machinery `combat/needle.ts` and
+  the shared threshold check use.
+- Rules taken VERBATIM from the user's "Missile Warheads.md" note (More Thrust):
+  EMP = "Roll ONE die, subtracting 1 per level of the target's screens, then: 1-2 = no effect.
+  3-4 = roll for EVERY system as a Threshold Check; systems knocked out on 5-6. 5-6 = ...
+  knocked out on 4, 5 or 6." No hull damage. Needle = "Owner picks the target system and rolls
+  a die: 1-3 = misses that system but does ONE die-score of normal damage (1-6 points). 4-6 =
+  knocks out that specific system AND does 1 die of normal damage."
+- ASSUMED (Needle die count): the note says "rolls a die" (singular) and both branches "do 1
+  die of normal damage", so modelled as a SINGLE die whose face is the normal damage dealt AND,
+  on 4-6, also knocks out the nominated system; the "(1-6 points)" parenthetical read as
+  defining "one die-score". The two-dice reading (separate to-hit + damage die) is a one-line
+  change if wrong — flagged at the MISSILE_NEEDLE_* constants.
+- NOTED tension: the note header says "All three ignore Screens", yet the EMP rule explicitly
+  subtracts screen level from its EFFECT die. EMP does no hull damage, so "damage bypasses
+  screens" is vacuous for it; the screen subtraction on the effect die is implemented as the
+  specific rule states.
+- New rules numbers appended to the END of `constants.ts` (MISSILE_EMP_* and MISSILE_NEEDLE_*)
+  with source-quote comments. +9 tests (tests/missile-warheads.test.ts); 952 passing; typecheck
+  clean. COVERAGE.md / roadmap-full-thrust.md left untouched per task scope.
+- Commit: this commit.

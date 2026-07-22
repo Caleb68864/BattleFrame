@@ -306,3 +306,45 @@ export const TORPEDO_HIT_MIN = 4;
  * (one kill)" -- a single kill per 6, never the universal table's 2.
  */
 export const ATTACK_FIGHTER_DOGFIGHT_KILL_ON = 6;
+
+// --- Independent missile warhead variants: EMP & Needle (More Thrust) --------
+
+/**
+ * EMP warhead. Source (user's "Missile Warheads" note): "Scrambles systems
+ * without structural damage. Roll ONE die, subtracting 1 per level of the
+ * target's screens, then: 1-2 = no effect. 3-4 = roll for EVERY system as a
+ * Threshold Check; systems knocked out on 5-6. 5-6 = roll for every system as
+ * threshold, but knocked out on 4, 5 or 6."
+ *
+ * Note the apparent tension with the note's header "All three ignore Screens":
+ * the EMP does NO hull damage (so "damage bypasses screens" is vacuous for it),
+ * yet its EFFECT die is explicitly reduced by screen level -- that specific rule
+ * is what these constants encode.
+ */
+export const MISSILE_EMP_WARHEAD_DICE = 1;
+/** Screen-modified effect die at or below this = no effect (the "1-2" band). */
+export const MISSILE_EMP_NO_EFFECT_MAX = 2;
+/** Top of the weak effect band ("3-4"); above it is the strong band ("5-6"). */
+export const MISSILE_EMP_WEAK_MAX = 4;
+/** Weak band ("3-4"): each system's threshold roll knocks it out on 5-6. */
+export const MISSILE_EMP_WEAK_KILL_ON = 5;
+/** Strong band ("5-6"): each system's threshold roll knocks it out on 4-6. */
+export const MISSILE_EMP_STRONG_KILL_ON = 4;
+
+/**
+ * Needle warhead. Source (user's "Missile Warheads" note): "Like a Needle Beam,
+ * seeks one nominated system. Owner picks the target system and rolls a die:
+ * 1-3 = misses that system but does ONE die-score of normal damage (1-6 points).
+ * 4-6 = knocks out that specific system AND does 1 die of normal damage."
+ *
+ * ASSUMPTION (number of dice): the note says "rolls a die" (singular) and, in
+ * BOTH branches, "does ... 1 die of normal damage". We model this as a SINGLE
+ * die whose face is dealt as normal damage (armour absorbs, screens bypassed)
+ * AND, on a 4-6, also knocks out the nominated system. The parenthetical
+ * "(1-6 points)" is read as defining "one die-score of normal damage" = a d6.
+ * The alternative reading (a separate to-hit die plus an independent 1d6 damage
+ * die) is possible; if the intent was two dice this is a one-line change.
+ */
+export const MISSILE_NEEDLE_WARHEAD_DICE = 1;
+/** The nominated system is knocked out on a die of this or higher (the "4-6"). */
+export const MISSILE_NEEDLE_KNOCKOUT_MIN = 4;
