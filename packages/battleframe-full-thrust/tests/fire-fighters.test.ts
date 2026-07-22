@@ -75,6 +75,22 @@ describe("fireFighterGroupAtTarget", () => {
     expect(target.system.hull.damage).toBe(4);
   });
 
+  it("scores against the target's REMAINING screen level, not its design level", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    // Screen level 2 designed but both generators knocked out -> defends unscreened.
+    const target = fakeTarget({
+      screens: 2, screensLost: 2, thrust: 0, fcs: 0, pds: 0,
+      armour: { boxes: 0, damage: 0 },
+      hull: { boxes: 18, damage: 0, rows: 3 },
+      weapons: []
+    });
+    // Size 6 faces all 6: unscreened 2 each = 12; at level 2 each 6 = 1 -> 6.
+    const ctx = context(4, 0, scriptedDice([[6, 6, 6, 6, 6, 6]]));
+
+    const report = await fireFighterGroupAtTarget({ group, target, context: ctx });
+    expect(report.totalDamage).toBe(12); // unscreened, not the level-2 value of 6
+  });
+
   it("cannot attack a target beyond 6mu", async () => {
     const target = fakeTarget({ screens: 0, hull: { boxes: 18, damage: 0, rows: 3 } });
     const ctx = context(7, 0, scriptedDice([[6, 6, 6, 6, 6, 6]]));

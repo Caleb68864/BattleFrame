@@ -3598,3 +3598,23 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - The default-token rollout initially skipped Simple Skirmish; added it for consistency so
   all six rulesets give fresh actors a game-icon. SS unit -> squad.svg (dark-squad, Lorc,
   CC-BY), same engine token-defaults registry pattern + shipped icon/CREDITS as the others. +4 tests.
+
+## 2026-07-22 — Full Thrust: fire scored against DESIGN screen level, ignoring knocked-out screens
+- Symptom: beam fire (`fire-ship.ts`), split fire (`fire-ship-split.ts`) and fighter
+  attacks (`fire-fighters.ts`) all read the target's screen level as the raw
+  `system.screens` design field, never subtracting `system.screensLost`. So a ship
+  whose screen generators had been knocked out (by a threshold check) or that a player
+  had painstakingly shot out still defended at FULL screen level against every beam and
+  fighter attack — the knockout gave the attacker no benefit.
+- Root cause: the rest of the system already models screens as degrading — the EMP
+  warhead (`missile.ts`) uses `remainingScreens`, the threshold enumeration rolls one
+  die per `remainingScreens` generator, damage-control repairs `screensLost`, and the
+  SSD shows a `remaining/design` screen track. The three direct-fire paths were the
+  outliers, reading the design level instead of `remainingScreens = screens − screensLost`.
+- Fix: all three now compute `targetScreenLevel = remainingScreens(target.system ?? {})`,
+  matching the EMP path and the SSD. Minimal — one import + one line each.
+- Tests: one per path (fire-ship / fire-ship-split / fire-fighters) — a target designed
+  at screen level 2 with both generators lost (`screensLost: 2`) now takes UNSCREENED
+  damage (a beam 6 scores 2, not the level-2 value of 1). All three failed before the fix.
+- Watch: any NEW fire/damage path must read `remainingScreens`, never raw `system.screens`,
+  for the defensive screen level. The raw field is the design rating only.

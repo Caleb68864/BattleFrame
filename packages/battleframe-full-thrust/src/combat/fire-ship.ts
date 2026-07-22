@@ -14,7 +14,7 @@
 import { type ShipActorLike } from "../data/ship-state";
 import { resolveWeaponFire, type WeaponMount, type WeaponShot } from "./fire";
 import { applyDamageAndThreshold } from "./apply-damage";
-import { remainingFcs } from "../ship/systems";
+import { remainingFcs, remainingScreens } from "../ship/systems";
 
 export interface FireContext {
   measure: {
@@ -76,7 +76,9 @@ export async function fireShipAtTarget(params: FireShipParams): Promise<FireRepo
       refused: "no-fcs"
     };
   }
-  const targetScreenLevel = (target.system?.screens as number | undefined) ?? 0;
+  // Score against REMAINING screen level (design − knocked-out generators), so a
+  // ship whose screens have been shot out no longer gets its full reduction.
+  const targetScreenLevel = remainingScreens(target.system ?? {});
   const weapons = ((attacker.system?.weapons ?? []) as WeaponMount[]);
 
   const fire = await resolveWeaponFire({

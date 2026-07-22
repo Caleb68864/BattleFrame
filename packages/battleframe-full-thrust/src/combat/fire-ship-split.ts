@@ -19,7 +19,7 @@
 import { allocateFcsFire, type UnassignedWeapon } from "./fcs-allocation";
 import { resolveWeaponFire, type WeaponMount, type WeaponShot } from "./fire";
 import { applyDamageAndThreshold } from "./apply-damage";
-import { remainingFcs } from "../ship/systems";
+import { remainingFcs, remainingScreens } from "../ship/systems";
 import type { FireContext, FiringShip } from "./fire-ship";
 
 /** One target's slice of a split: the outcome of the weapons directed at it. */
@@ -107,7 +107,8 @@ export async function fireShipSplit(params: FireShipSplitParams): Promise<FireSh
 
     const { weaponIndexes } = assignment;
     const subList = weaponIndexes.map((i) => weapons[i]);
-    const targetScreenLevel = (m.target.system?.screens as number | undefined) ?? 0;
+    // REMAINING screen level (design − knocked-out generators), matching fireShipAtTarget.
+    const targetScreenLevel = remainingScreens(m.target.system ?? {});
 
     const fire = await resolveWeaponFire({
       weapons: subList,

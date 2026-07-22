@@ -167,6 +167,33 @@ describe("fireShipAtTarget", () => {
     expect(target.system.hull.damage).toBe(0); // no damage applied
   });
 
+  it("scores against the target's REMAINING screen level, not its design level", async () => {
+    // A target designed with screen level 2 whose two screen generators have both
+    // been knocked out (screensLost 2) defends as UNSCREENED. A class-1 beam die of
+    // 6 does 2 unscreened, but only 1 at level 2 -- so reading the raw design level
+    // over-protects a ship that has already lost its screens.
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const attacker = fakeShip({
+      screens: 0,
+      weapons: [{ kind: "beam", weaponClass: 1, arcs: ["F"], destroyed: false, spent: false }]
+    });
+    const target = fakeShip({
+      screens: 2,
+      screensLost: 2, // both screen generators knocked out -> effectively unscreened
+      thrust: 0,
+      fcs: 0,
+      pds: 0,
+      armour: { boxes: 0, damage: 0 },
+      hull: { boxes: 18, damage: 0, rows: 3 },
+      weapons: []
+    });
+    const ctx = context(1, 0, scriptedDice([[6]]));
+
+    const report = await fireShipAtTarget({ attacker, target, context: ctx });
+
+    expect(report.totalDamage).toBe(2); // unscreened 6 = 2, not the level-2 value of 1
+  });
+
   it("does no threshold check when the attack destroys the ship outright", async () => {
     vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
     const attacker = fakeShip({
