@@ -265,3 +265,44 @@ export const ROTATION_THRUSTER_COST = 1;
  * those existing constants rather than adding duplicates here.
  */
 export const CORE_SYSTEM_THRESHOLD_BONUS = 1;
+
+// --- Fighter pilot quality (More Thrust: Aces and Turkeys) ------------------
+
+/**
+ * Pilot quality is diced 1D6 per group at the start of the game: "6 = the group
+ * contains an Ace; 1 = the group is a Turkey group; 2-5 = average."
+ */
+export const PILOT_QUALITY_ACE_ROLL = 6;
+export const PILOT_QUALITY_TURKEY_ROLL = 1;
+/** Ace: "+1 die on all normal attacks (a full group of 6 rolls 7 dice)." */
+export const PILOT_ACE_EXTRA_ATTACK_DICE = 1;
+/** Ace: "-1 to all morale rolls." */
+export const PILOT_ACE_MORALE_MODIFIER = -1;
+/** Turkey: "+1 to all morale rolls (must roll even at full strength)." */
+export const PILOT_TURKEY_MORALE_MODIFIER = 1;
+/**
+ * Consecutive failed attack rolls that break a group's morale: a Turkey "Bugs
+ * out after only TWO consecutive failed attack rolls (vs three for average)."
+ */
+export const PILOT_TURKEY_MORALE_BREAK_FAILS = 2;
+export const PILOT_STANDARD_MORALE_BREAK_FAILS = 3;
+/** Turkey: "-1 to every die roll when in a dogfight (ship attacks are unaffected)." */
+export const PILOT_TURKEY_DOGFIGHT_DIE_MODIFIER = -1;
+/**
+ * Fleet Book 1 initiative use: "+1 to the initiative roll per Ace in action,
+ * -1 per Turkey group."
+ */
+export const PILOT_ACE_INITIATIVE_MODIFIER = 1;
+export const PILOT_TURKEY_INITIATIVE_MODIFIER = -1;
+
+// --- Specialised fighter types: Fast & Torpedo (More Thrust) ----------------
+
+/** Fast: "move 18 mu instead of 12." (The standard 12 is FIGHTER_MOVE_MU.) */
+export const FIGHTER_MOVE_FAST_MU = 18;
+/** Torpedo attack run: "each needs 4+ to hit". */
+export const TORPEDO_HIT_MIN = 4;
+/**
+ * Attack fighters (and a spent-Torpedo group) "in a dogfight kills only on a 6
+ * (one kill)" -- a single kill per 6, never the universal table's 2.
+ */
+export const ATTACK_FIGHTER_DOGFIGHT_KILL_ON = 6;

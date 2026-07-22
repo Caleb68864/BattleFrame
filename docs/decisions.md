@@ -2306,3 +2306,22 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - +22 tests (tests/fleet-book.test.ts); 902 passing; typecheck clean. Default combat path untouched.
   COVERAGE.md / roadmap-full-thrust.md left for the main session on integration.
 - Commit: this commit.
+
+## 2026-07-22 — Fighter pilot quality + Fast/Torpedo types as pure math (roadmap P2 #14 subset)
+- Added `combat/pilot.ts` (Ace/Turkey/standard pilot quality) and `combat/fighter-types.ts`
+  (Fast move, Torpedo attack run, Attack/spent-Torpedo dogfight kill table) rather than
+  editing `combat/fighters.ts`, keeping the change additive and collision-free with the
+  existing Heavy/Interceptor/Long-Range logic. Pilot quality changes the die COUNT and
+  morale; fighter TYPE changes the per-die face table — the two are orthogonal and stack.
+- Modifiers taken verbatim from More Thrust notes: Ace = +1 attack die, -1 morale, +1
+  initiative, and a 1-die specific-system snipe that diverts the extra die; Turkey = +1
+  morale (rolls even at full strength), breaks after 2 consecutive fails (vs 3), -1 to
+  every dogfight die. Fast = 18mu; Torpedo one-shot = 4+ to hit then re-roll for damage =
+  the number rolled (no screen reduction stated, so none applied), then fights as an Attack
+  fighter (dogfight kills only on a 6, ONE kill). Each rules number lives at the END of
+  `constants.ts` with a source quote.
+- Deferred (absent from or out of scope per the notes): the Foundry orchestration (who
+  moves 18mu, when a torpedo is spent, when pilot dice are surfaced) and the ship-design
+  points premiums — pure predicates/numbers only here. +25 tests (pilot 19, fighter-types
+  6); 905 passing; typecheck clean.
+- Commit: this commit.
