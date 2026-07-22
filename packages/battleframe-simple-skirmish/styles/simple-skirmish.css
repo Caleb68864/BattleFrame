@@ -201,3 +201,24 @@
   outline: 2px solid var(--bf-iron);
   outline-offset: 1px;
 }
+
+/* ---- Chat cards (accents only) --------------------------------------- *
+ * The base `.battleframe-card` look — box, title, spacing — comes from the
+ * engine stylesheet so every ruleset's cards share one shape. These rules only
+ * add Simple Skirmish's heraldic accents: a gules edge on a combat report, a
+ * gilt edge on the round-over card, and the kill line inked in gules.
+ * -------------------------------------------------------------------------- */
+
+.battleframe-card.ss-combat-report {
+  border-left: 3px solid #7c2020; /* gules — the exchange of blows */
+}
+
+.battleframe-card.ss-victory {
+  border-left: 3px solid #a9852f; /* gilt — a decided round */
+}
+
+.battleframe-card.ss-combat-report .ss-destroyed {
+  color: #7c2020;
+  font-variant: small-caps;
+  letter-spacing: 0.04em;
+}

@@ -6,7 +6,13 @@ import {
   type AttackType
 } from "../constants";
 import { isUnitDestroyed } from "../data/unit-state";
-import { attackTargetFor, performAttack, type AttackOutcome, type AttackUnit } from "../combat/attack";
+import {
+  attackTargetFor,
+  performAttack,
+  type AttackApplied,
+  type AttackOutcome,
+  type AttackUnit
+} from "../combat/attack";
 import { isInRange, nearestEnemy, type MeasureApiLike } from "../combat/range";
 import type { DiceApiLike } from "../combat/resolve";
 import {
@@ -37,6 +43,119 @@ export interface RoundControlUnit extends AttackUnit {
 /** A readable label for a unit -- its name, or the id when a test omits one. */
 function label(unit: RoundControlUnit): string {
   return unit.name ?? unit.id;
+}
+
+/* ------------------------------------------------------------------------ *
+ * Persistent chat cards -- the pure, unit-tested half.
+ *
+ * Combat is surfaced as persistent ChatMessage CARDS (the CLAUDE.md-mandated
+ * result surface), not just transient GM-only toasts. The card HTML is built by
+ * pure functions here (no Foundry, no canvas) so the exact markup -- names,
+ * outcome, and the `battleframe-card`/`ss-*` classes -- is pinned by unit tests.
+ * The dynamic parts (user-editable unit names) are HTML-escaped; the runtime
+ * posting goes through the engine's `game.battleframe.chat.postCard` seam wired
+ * in the Foundry glue below.
+ * ------------------------------------------------------------------------ */
+
+/**
+ * Escapes the five HTML-significant characters -- unit names are user-editable,
+ * so they must never reach a chat card as live markup (XSS). The engine owns the
+ * canonical copy (`game.battleframe.chat.escapeHtml`), but the pure builders run
+ * with NO engine present (unit tests), so this local copy keeps them testable --
+ * the same live/fallback split the engine card delegation uses below.
+ */
+export function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+/** A neutral chat-card spec (title + pre-built body lines + ruleset accent class). */
+interface CardSpec {
+  title?: string;
+  lines?: readonly string[];
+  cssClass?: string;
+}
+
+/** The engine's chat service (game.battleframe.chat), read live at runtime. */
+interface ChatServiceLike {
+  card?: (spec: CardSpec) => string;
+  postCard?: (spec: CardSpec) => void | Promise<void>;
+  escapeHtml?: (value: string) => string;
+}
+
+function chatService(): ChatServiceLike | undefined {
+  const scope = globalThis as unknown as {
+    game?: { battleframe?: { chat?: ChatServiceLike } };
+    battleframe?: { chat?: ChatServiceLike };
+  };
+  return scope.game?.battleframe?.chat ?? scope.battleframe?.chat;
+}
+
+/**
+ * Renders a card spec to HTML. Delegates to the engine's neutral `chat.card()`
+ * when the runtime services are present (so every ruleset shares one card shape +
+ * stylesheet), falling back to that card's identical markup inline for the
+ * no-engine unit-test path -- the same live/fallback split the round-control glue
+ * uses for i18n. The `ss-*` accent class rides along either way.
+ */
+function renderCard(spec: CardSpec): string {
+  const card = chatService()?.card;
+  if (card) {
+    return card(spec);
+  }
+  const classes = ["battleframe-card", spec.cssClass].filter(Boolean).join(" ");
+  const title = spec.title ? `<h3 class="battleframe-card__title">${spec.title}</h3>` : "";
+  return `<div class="${classes}">${title}${(spec.lines ?? []).join("")}</div>`;
+}
+
+export interface CombatReportNames {
+  attacker: string;
+  defender: string;
+  type: AttackType;
+}
+
+/** The combat-outcome card spec: attacker vs defender, hits, models removed, kill. */
+function combatReportSpec(result: AttackApplied, names: CombatReportNames): CardSpec {
+  const attacker = escapeHtml(names.attacker);
+  const defender = escapeHtml(names.defender);
+  const lines = [
+    `<p><strong>${result.hits}</strong> hit(s), <strong>${result.modelsRemoved}</strong> model(s) removed.</p>`
+  ];
+  if (result.destroyed) {
+    lines.push(`<p class="ss-destroyed"><strong>${defender} destroyed.</strong></p>`);
+  }
+  return {
+    title: `${attacker} ${names.type} &rarr; ${defender}`,
+    lines,
+    cssClass: "ss-combat-report"
+  };
+}
+
+/** The round-over card spec: who won, or a draw / play-on outcome. */
+function victorySpec(victory: VictoryOutcome): CardSpec {
+  let line: string;
+  if (victory.result === "winner") {
+    line = `<p><strong>${escapeHtml(victory.playerId)} wins</strong> &mdash; no enemy models remain.</p>`;
+  } else if (victory.result === "draw") {
+    line = `<p>A draw &mdash; no models remain on either side.</p>`;
+  } else {
+    line = `<p>Both sides still hold the field. Start a new round.</p>`;
+  }
+  return { title: "Round over", lines: [line], cssClass: "ss-victory" };
+}
+
+/** Builds the persistent combat-outcome card HTML (attacker vs defender, hits, kills). */
+export function buildCombatReportHtml(result: AttackApplied, names: CombatReportNames): string {
+  return renderCard(combatReportSpec(result, names));
+}
+
+/** Builds the persistent round-over / victory card HTML. */
+export function buildVictoryHtml(victory: VictoryOutcome): string {
+  return renderCard(victorySpec(victory));
 }
 
 export class InitiativeUnresolvedError extends Error {
@@ -174,6 +293,12 @@ export interface ResolveActivationParams {
   /** All units, for the end-of-round victory read. */
   units: readonly RoundControlUnit[];
   notify?: (message: string, level?: "info" | "warn") => void;
+  /**
+   * Posts a persistent chat card (a combat report, a round-over card). Default
+   * no-op so the pure resolution stays UI-free; the Foundry glue wires the real
+   * `game.battleframe.chat.postCard`.
+   */
+  postCard?: (spec: CardSpec) => void | Promise<void>;
 }
 
 export interface ActivationResult {
@@ -192,6 +317,7 @@ export interface ActivationResult {
 export async function resolveActivation(params: ResolveActivationParams): Promise<ActivationResult> {
   const { round, attacker, target, type, dice, units } = params;
   const notify = params.notify ?? (() => undefined);
+  const postCard = params.postCard ?? (() => undefined);
 
   if (round.activePlayerId() !== attacker.playerId) {
     throw new IllegalActivationError(
@@ -211,6 +337,8 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
         `${label(attacker)} ${type} vs ${label(target)}: ${attack.hits} hit(s), ` +
           `${attack.modelsRemoved} model(s) removed${attack.destroyed ? " -- destroyed" : ""}`
       );
+      // The persistent record of the exchange: a combat-outcome chat card.
+      await postCard(combatReportSpec(attack, { attacker: label(attacker), defender: label(target), type }));
     }
   }
 
@@ -232,6 +360,8 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
   } else {
     notify("Round over: both sides still hold the field. Start a new round.");
   }
+  // The persistent record of how the round ended: a round-over / victory card.
+  await postCard(victorySpec(victory));
 
   return { attack, roundComplete: true, victory };
 }
@@ -578,7 +708,10 @@ export async function activateSelectedControl(): Promise<void> {
       type,
       dice,
       units,
-      notify: notifyUser
+      notify: notifyUser,
+      // Persistent chat cards ride the engine's neutral chat service. No-ops when
+      // it is absent (early boot), same posture as the notify seam above.
+      postCard: (spec) => chatService()?.postCard?.(spec)
     });
 
     // Persist the advanced round back onto the Combat document.

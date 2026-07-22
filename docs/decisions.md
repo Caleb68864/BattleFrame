@@ -3034,3 +3034,36 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Live-verify: DEFERRED — the parent batch-deploys; the card render + escaping in a
   live world is the outstanding check.
 - Commit: this commit.
+
+## 2026-07-22 — Simple Skirmish adopts persistent chat cards (chat-card witness 2)
+- Context: SS resolved combat in `resolveActivation` but only surfaced the result as
+  transient GM-only `ui.notifications` toasts (via the `notify` seam) — a refused
+  attack, the per-attack hit/casualty line, and the round-over line. None survived a
+  reload or reached the players. This is the "all games get outcome cards" rollout of
+  the engine's `chat` primitive (see the prior entry), the second witness after FT.
+- Change: two PURE, unit-tested card builders in `src/ui/round-control.ts` —
+  `buildCombatReportHtml(result, names)` (`ss-combat-report`: attacker/type/defender
+  title, hits + models removed, a kill line when destroyed) and
+  `buildVictoryHtml(victory)` (`ss-victory`: winner / draw / play-on). Both go
+  through a local `renderCard()` that delegates to `game.battleframe.chat.card()`
+  when the engine is present and inlines the identical `battleframe-card` markup for
+  the no-engine unit path — the same live/fallback split `tr()`/FT's `wrapReport`
+  use. Dynamic unit names are escaped with a local `escapeHtml` (SS had none; the
+  engine's copy is unreachable in pure tests, so the builders own a local one, as FT
+  does).
+- Seam: `resolveActivation` gained a `postCard?` seam (default no-op) alongside
+  `notify`, kept the toasts, and now posts the combat card after an applied attack
+  and the round-over card when the round ends. The real
+  `game.battleframe.chat.postCard` is wired ONLY in the `activateSelectedControl`
+  glue, next to `notify` — passing the SPEC (title/lines/cssClass) so postCard wraps
+  exactly once (no double card). The pure resolution stays UI-free and canvas-free.
+- CSS: `styles/simple-skirmish.css` adds accents only — a gules edge on the combat
+  report, a gilt edge on the round-over card, the kill line inked in gules. The base
+  `.battleframe-card` box comes from the engine stylesheet.
+- Live-verify: DEFERRED — this is Foundry-facing (real card render + speaker +
+  persistence in a live chat log), batched into the parent's deploy.
+- Surfaces: packages/battleframe-simple-skirmish/src/ui/round-control.ts
+  (escapeHtml, buildCombatReportHtml, buildVictoryHtml, renderCard, postCard seam +
+  glue), styles/simple-skirmish.css (.ss-combat-report/.ss-victory),
+  tests/chat-cards.test.ts. +11 tests; 1193 → 1204 pass; typecheck green.
+- Commit: this commit.
