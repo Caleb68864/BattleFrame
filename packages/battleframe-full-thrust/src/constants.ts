@@ -163,7 +163,6 @@ export const THRESHOLD_KILL_ON = [6, 5, 4] as const;
 
 // --- Point defence ----------------------------------------------------------
 
-/** PDS/anti-fighter range (mu). */
 export const PDS_RANGE_MU = 6;
 /** PDS vs fighters: 4-5 = 1 kill, 6 = 2 kills (same as the beam table). */
 export const PDS_FIGHTER_ONE_KILL_MIN = 4;
@@ -232,8 +231,6 @@ export const NOVA_CANNON_TRAVEL_MU_BY_TURN = [18, 24, 24] as const;
  *   24-36mu: 4" template, 2D6.
  * "Damage = actual score on each die." "Charging: each turn noted as charging,
  * roll one die and accumulate; at 6+ total it is fully charged... Firing fully
- * discharges it (recharge from zero)." "If knocked out... while charging/charged,
- * the ship takes damage equal to the current stored charge." "MASS 10, 30 Points."
  */
 export const WAVE_GUN_MASS = 10;
 export const WAVE_GUN_POINTS = 30;
@@ -248,7 +245,6 @@ export const WAVE_GUN_TEMPLATE_INCHES_BY_BAND = [2, 3, 4] as const;
 export const WAVE_GUN_FULL_CHARGE = 6;
 
 // --- Vector movement (optional FT2 / Fleet Book system) ---------------------
-
 /**
  * Manoeuvring-thruster rating = the main-drive Thrust divided by this, rounded
  * DOWN (a TR-6 ship has 3 thruster points, TR-5 has 2). Thruster spend is on top

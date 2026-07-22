@@ -3475,3 +3475,14 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   control payload; the activate→fire→apply canvas wire; status toggles; the updateActor
   transition timing (pre- vs post-apply system.damage). Do NOT deploy.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: neutrality comment scrub + plot-builder CSS (concurrent-session polish)
+- Origin: edits made in the working tree by a concurrent session's FT polish, committed
+  here with the user's go once that session confirmed done.
+- `src/constants.ts`: removed verbatim rulebook QUOTES from two comments (the WAVE_GUN
+  charge/knock-out text + "MASS 10, 30 Points") and a redundant one-line comment. This is a
+  neutrality improvement — the zero-copyrighted-content contract covers comments too; the
+  numeric constants (all user-facing mechanics) are unchanged. No code change.
+- `styles/full-thrust.css`: additive `.ft-plot-builder` styling for the Plot Movement dialog.
+- No test impact (comment/CSS only). Deployed with the 7-package push.
+- Commit: this commit.
