@@ -124,7 +124,7 @@ interface Glob {
     on?: (event: string, cb: (...args: any[]) => void) => void;
     once?: (event: string, cb: (...args: any[]) => void) => void;
   };
-  ui?: { notifications?: { info?: (m: string) => void } };
+  ui?: { notifications?: { info?: (m: string) => void; warn?: (m: string) => void } };
   socketlib?: { registerSystem?: (id: string) => SocketReg | undefined };
 }
 
@@ -274,13 +274,25 @@ export function createReadyAdvanceApi(): ReadyAdvanceApi {
       if (!me || !doc) {
         return;
       }
-      if (readyMap()[me]) {
-        // Un-ready: DELETE my key. setFlag deep-merges, so it cannot remove a key;
-        // the `-=` update prefix is Foundry's key-deletion syntax.
-        await doc.update?.({ [`flags.${SYSTEM_ID}.${READY_FLAG}.-=${me}`]: null });
-      } else {
-        // Ready: setFlag merges my key into the existing map.
-        await doc.setFlag?.(SYSTEM_ID, READY_FLAG, { [me]: true });
+      try {
+        if (readyMap()[me]) {
+          // Un-ready: DELETE my key. setFlag deep-merges, so it cannot remove a key;
+          // the `-=` update prefix is Foundry's key-deletion syntax.
+          await doc.update?.({ [`flags.${SYSTEM_ID}.${READY_FLAG}.-=${me}`]: null });
+        } else {
+          // Ready: setFlag merges my key into the existing map.
+          await doc.setFlag?.(SYSTEM_ID, READY_FLAG, { [me]: true });
+        }
+      } catch (error) {
+        // A plain PLAYER in GM-less play may not have permission to write the
+        // GM-owned Combat/Scene (no socketlib and not an Assistant GM). The write
+        // rejects -- surface a notice and swallow it, so a scene-control click
+        // never leaks an unhandled rejection. Nothing changed, so the button just
+        // stays as it was.
+        console.warn(`${SYSTEM_ID} | could not toggle ready`, error);
+        glob().ui?.notifications?.warn?.(
+          `${SYSTEM_ID} | could not mark ready -- you may need Assistant-GM permission or socketlib for GM-less play`
+        );
       }
     },
     isReady(userId) {

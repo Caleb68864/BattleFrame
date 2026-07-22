@@ -6,15 +6,18 @@
  * all ready, which client performs the advance, and the ready-map transition.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   participantsOf,
   allReady,
   advancingHost,
   toggledReady,
   gmConnected,
-  advanceStrategy
+  advanceStrategy,
+  createReadyAdvanceApi
 } from "../src/rounds/ready-advance";
+
+afterEach(() => vi.unstubAllGlobals());
 
 describe("participantsOf", () => {
   const users = [
@@ -88,6 +91,25 @@ describe("gmConnected", () => {
 
   it("is false at an all-player table (no GM to receive a delegated advance)", () => {
     expect(gmConnected([{ id: "p1", active: true, isGM: false }])).toBe(false);
+  });
+});
+
+describe("toggleReady — resilient to a forbidden flag write", () => {
+  it("resolves instead of rejecting when the player may not write the GM-owned doc", async () => {
+    // The flagship GM-less case: a plain PLAYER toggles ready, but writing the
+    // ready flag on a GM-owned Combat/Scene is forbidden (no socketlib/Assistant-GM),
+    // so setFlag rejects. toggleReady must swallow it and surface a notice, never
+    // reject an unhandled promise out of the scene-control click handler.
+    const doc = {
+      getFlag: () => ({}),
+      setFlag: () => Promise.reject(new Error("User lacks permission to update Combat")),
+      update: () => Promise.reject(new Error("User lacks permission to update Combat"))
+    };
+    const warn = vi.fn();
+    vi.stubGlobal("game", { user: { id: "p1" }, combats: { active: doc } });
+    vi.stubGlobal("ui", { notifications: { warn } });
+    const api = createReadyAdvanceApi();
+    await expect(api.toggleReady()).resolves.toBeUndefined();
   });
 });
 

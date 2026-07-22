@@ -3684,3 +3684,21 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - TDD: failing test first (`tests/session.test.ts` "tolerates a malformed persisted
   round…") reproduced the TypeError, then the coercion made it pass.
 - Gates: vitest 1477 green, typecheck 0, build 0.
+
+## 2026-07-22 — Hardening: guard GM-less toggleReady against a forbidden flag write
+- Systemic finding from the hardening pass (engine + FT + GZG agents all flagged the
+  unguarded-await scene-control pattern). The flagship case: a plain PLAYER toggles ready,
+  but writing the ready flag on a GM-owned Combat/Scene is forbidden without socketlib/
+  Assistant-GM, so setFlag/update rejects. toggleReady now try/catches -> console.warn +
+
+  ui.notifications.warn, swallowing it so a scene-control click never leaks an unhandled
+
+
+
+
+  rejection. TDD: a rejecting setFlag now leaves toggleReady resolving (was: rejected). +1 test.
+- Noted follow-ups (not done; not provable defects): the same void-async pattern in FT/DS2/SG2
+  scene controls; the glue-level round-resume brick (greathelm advanceRoundCore / SS) when a
+  persisted firstPlayerId no longer matches a canvas unit; the unreachable degenerate-grid
+  divide-by-zero in areas/area radiusPx (BaseScene constrains grid.distance > 0).
+- Commit: this commit.
