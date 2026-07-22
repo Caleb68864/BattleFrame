@@ -3505,3 +3505,25 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   rewrote the test's "must be reconciled" NOTE to "RECONCILED — 1:1 confirmed." No production
   code change (opposedShift was already correct). SG2 ladder tests: 10 pass.
 - Commit: this commit.
+
+## 2026-07-22 — Icon audit: sheet add/remove buttons now use FontAwesome icons
+- Audited icon usage across the engine + all six ruleset modules ("game icons used
+  everywhere needed or useful"). Findings:
+  - Scene-control tools: COMPLETE — every tool in every module already carries a
+    thematic FontAwesome icon (hourglass-half/crosshairs/flag/meteor/rocket/…).
+  - Status effects: COMPLETE — every registered status has a core `icons/svg/*.svg`
+    img; Full Thrust's crippled/weapons-offline are game-icons.net (Lorc/Delapouite),
+    CC-BY-3.0 with proper icons/CREDITS.txt attribution (legit game icons).
+  - GAP FIXED: sheet add/remove buttons used text glyphs ("+ Add" / "&times;") with
+    no icon. Replaced with `<i class="fas fa-plus"></i> Add` and
+    `<i class="fas fa-trash"></i>` across DS2 (vehicle+infantry), InCountry, Stargrunt,
+    and Full Thrust sheets. GREATHELM's knight sheet has no array rows -> no buttons.
+- Remaining OPPORTUNITIES (not done — need icon-choice judgment, flagged to user):
+  - No actor type sets a default token image (new tokens are mystery-man). FT already
+    ships credited ship.svg/rocket.svg that are currently UNUSED — natural defaults for
+    ship/fighter; the other modules would need a core icon or a shipped game-icon.
+  - 9 of FT's 11 shipped game-icons (beam/missiles/destroyed/explosion/screens/power/
+    system/ship/rocket) are unreferenced — candidates for weapon-type icons on the ship
+    sheet or default token images.
+- Template-only change; 1445 tests green. Foundry-facing -> sheet render re-verified live.
+- Commit: this commit.

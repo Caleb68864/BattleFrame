@@ -56,7 +56,7 @@
   <section class="inx-block">
     <h2 class="inx-block__title">
       Weapons
-      <button type="button" class="inx-add" data-action="addWeapon" title="Add a weapon">+ Add</button>
+      <button type="button" class="inx-add" data-action="addWeapon" title="Add a weapon"><i class="fas fa-plus"></i> Add</button>
     </h2>
     <div class="inx-weapons">
       <div class="inx-weapons__head">
@@ -69,7 +69,7 @@
         <input type="number" name="system.weapons.{{i}}.dmg" value="{{weapon.dmg}}" min="0" step="1" />
         <input type="number" name="system.weapons.{{i}}.attackDice" value="{{weapon.attackDice}}" min="0" step="1" title="Attack dice (d10)" />
         <input type="number" name="system.weapons.{{i}}.owDice" value="{{weapon.owDice}}" min="0" step="1" title="Overwatch/react dice (0 = cannot react)" />
-        <button type="button" class="inx-remove" data-action="removeWeapon" data-index="{{i}}" title="Remove">&times;</button>
+        <button type="button" class="inx-remove" data-action="removeWeapon" data-index="{{i}}" title="Remove"><i class="fas fa-trash"></i></button>
       </div>
       {{else}}
       <p class="inx-weapons__empty">No weapons. Add one to arm this unit.</p>

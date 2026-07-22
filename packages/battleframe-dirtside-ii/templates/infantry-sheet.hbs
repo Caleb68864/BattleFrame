@@ -28,13 +28,13 @@
 
   <section class="ds2-block">
     <h2 class="ds2-block__title">Weapons
-      <button type="button" class="ds2-add" data-action="addWeapon" title="Add a weapon">+ Add</button>
+      <button type="button" class="ds2-add" data-action="addWeapon" title="Add a weapon"><i class="fas fa-plus"></i> Add</button>
     </h2>
     <div class="ds2-weapons">
       {{#each system.weapons as |weapon i|}}
       <div class="ds2-weapon ds2-weapon--tag">
         <input type="text" name="system.weapons.{{i}}" value="{{weapon}}" title="Weapon" />
-        <button type="button" class="ds2-remove" data-action="removeWeapon" data-index="{{i}}" title="Remove">&times;</button>
+        <button type="button" class="ds2-remove" data-action="removeWeapon" data-index="{{i}}" title="Remove"><i class="fas fa-trash"></i></button>
       </div>
       {{else}}
       <p class="ds2-weapons__empty">No weapons.</p>

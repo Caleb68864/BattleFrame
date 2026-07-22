@@ -100,7 +100,7 @@
   </section>
 
   <section class="ft-weapons">
-    <h3>Weapons <button type="button" class="ft-add-weapon" data-action="addWeapon" title="Add weapon">+ Add</button></h3>
+    <h3>Weapons <button type="button" class="ft-add-weapon" data-action="addWeapon" title="Add weapon"><i class="fas fa-plus"></i> Add</button></h3>
     <ol>
       {{#each weapons as |weapon|}}
         <li class="ft-weapon {{#if weapon.destroyed}}ft-destroyed{{/if}}">
@@ -117,7 +117,7 @@
             {{/each}}
           </select>
           <button type="button" class="ft-remove-weapon" data-action="removeWeapon"
-                  data-index="{{weapon.index}}" title="Remove">&times;</button>
+                  data-index="{{weapon.index}}" title="Remove"><i class="fas fa-trash"></i></button>
         </li>
       {{/each}}
     </ol>
