@@ -11,6 +11,7 @@
     "packages/battleframe/src/rounds/activation.ts",
     "packages/battleframe/src/vision/los.ts",
     "packages/battleframe/src/ui/hover-registry.ts",
+    "packages/battleframe/src/ui/status.ts",
     "packages/battleframe/src/base/base-model.ts",
     "packages/battleframe/src/base/types.ts",
     "packages/battleframe/src/areas/types.ts",

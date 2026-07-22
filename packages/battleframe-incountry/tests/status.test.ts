@@ -7,27 +7,37 @@ import {
 
 afterEach(() => {
   delete (globalThis as any).CONFIG;
+  delete (globalThis as any).battleframe;
 });
 
+/** A stand-in for the engine's game.battleframe.status registry (idempotent push). */
+function stubEngineStatus(): any[] {
+  const effects: any[] = [];
+  (globalThis as any).battleframe = {
+    status: {
+      register: (e: any) => {
+        if (!effects.some((x) => x.id === e.id)) effects.push(e);
+      }
+    }
+  };
+  return effects;
+}
+
 describe("registerStatusEffects", () => {
-  it("adds the suppressed condition to CONFIG.statusEffects", () => {
-    (globalThis as any).CONFIG = { statusEffects: [] };
+  it("registers the suppressed condition via the engine status registry", () => {
+    const effects = stubEngineStatus();
     registerStatusEffects();
-    const ids = (globalThis as any).CONFIG.statusEffects.map((e: { id: string }) => e.id);
-    expect(ids).toContain(SUPPRESSED_STATUS);
+    expect(effects.map((e) => e.id)).toContain(SUPPRESSED_STATUS);
   });
 
   it("is idempotent (no duplicate on a second call)", () => {
-    (globalThis as any).CONFIG = { statusEffects: [] };
+    const effects = stubEngineStatus();
     registerStatusEffects();
     registerStatusEffects();
-    const count = (globalThis as any).CONFIG.statusEffects.filter(
-      (e: { id: string }) => e.id === SUPPRESSED_STATUS
-    ).length;
-    expect(count).toBe(1);
+    expect(effects.filter((e) => e.id === SUPPRESSED_STATUS)).toHaveLength(1);
   });
 
-  it("is a no-op when CONFIG is absent (not a browser)", () => {
+  it("is a no-op when the engine registry is absent (not a browser)", () => {
     expect(() => registerStatusEffects()).not.toThrow();
   });
 

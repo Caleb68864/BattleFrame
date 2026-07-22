@@ -30,6 +30,7 @@ const bf = (globalThis as any).battleframe ?? (globalThis as any).game?.battlefr
 | `rounds` | `game.battleframe.rounds` | Two-tier activation order (priority + main), serializable |
 | `los` | `game.battleframe.los` | Line of sight via Foundry's wall sweep |
 | `hover` | `game.battleframe.hover` | Register the stat fields the hover panel shows |
+| `status` | `game.battleframe.status` | Register a condition onto `CONFIG.statusEffects` (idempotent) |
 
 Plus Foundry `CONFIG`/document machinery the engine sets up (not on `game.battleframe`): the
 base model (token `flags.battleframe.base`), a generic `Actor` fallback type, a neutered
@@ -159,6 +160,19 @@ The engine owns the panel + HTML-escaping + the `hoverToken` hook; you only decl
 `system` fields to show (per namespaced Actor type). `max` is a static number — for a
 computed "N/M" readout, compute a string in `prepareDerivedData` and show that (Full Thrust's
 `hullTrack`). **Don't** build your own hover UI.
+
+## `status` — register battlefield conditions
+
+```ts
+status.register({ id, name, img, ...foundryFields }): void   // idempotent push to CONFIG.statusEffects
+status.registered(): string[]
+```
+
+Registers a condition so it shows as a native token icon (syncs + persists). The engine owns
+only the dedup-and-push; the ruleset owns *which* conditions and *when* to toggle them
+(`actor.toggleStatusEffect(id, {active})`; destruction uses `CONFIG.specialStatusEffects.DEFEATED`).
+Namespace ids by module id, `name` is an i18n key, `img` a core Foundry SVG. **Don't** hand-roll
+the `CONFIG.statusEffects` push.
 
 ---
 

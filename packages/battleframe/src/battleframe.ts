@@ -8,6 +8,7 @@ import { installFacingApi } from "./measurement/facing";
 import { installRoundsApi } from "./rounds/activation";
 import { installLosApi } from "./vision/los";
 import { installHoverApi } from "./ui/hover-registry";
+import { installStatusApi } from "./ui/status";
 import { registerBattleframeSettings } from "./settings";
 import {
   createSetupWizardClass,
@@ -52,6 +53,7 @@ installAreaApi();
 installRoundsApi();
 installLosApi();
 installHoverApi();
+installStatusApi();
 
 function hooksAvailable(): boolean {
   return typeof Hooks !== "undefined";

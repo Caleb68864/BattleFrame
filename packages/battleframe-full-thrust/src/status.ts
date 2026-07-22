@@ -19,24 +19,23 @@ interface StatusEffect {
   img: string;
 }
 
-/** Registers the ship condition status effects onto CONFIG.statusEffects (idempotent). */
+/** The engine's status registry (game.battleframe.status), resolved defensively. */
+function statusApi(): { register: (e: StatusEffect) => void } | undefined {
+  const scope = globalThis as {
+    battleframe?: { status?: { register: (e: StatusEffect) => void } };
+    game?: { battleframe?: { status?: { register: (e: StatusEffect) => void } } };
+  };
+  return scope.battleframe?.status ?? scope.game?.battleframe?.status;
+}
+
+/** Registers the ship condition status effects via the engine's status registry. */
 export function registerShipStatusEffects(): void {
-  const config = (globalThis as unknown as {
-    CONFIG?: { statusEffects?: StatusEffect[] };
-  }).CONFIG;
-  if (!config) {
+  const registry = statusApi();
+  if (!registry) {
     return;
   }
-  config.statusEffects = config.statusEffects ?? [];
-
-  const add = (effect: StatusEffect): void => {
-    if (!config.statusEffects!.some((s) => s.id === effect.id)) {
-      config.statusEffects!.push(effect);
-    }
-  };
-
-  add({ id: CRIPPLED_STATUS, name: "battleframe-full-thrust.status.crippled", img: "icons/svg/downgrade.svg" });
-  add({ id: WEAPONS_OFFLINE_STATUS, name: "battleframe-full-thrust.status.weaponsOffline", img: "icons/svg/explosion.svg" });
+  registry.register({ id: CRIPPLED_STATUS, name: "battleframe-full-thrust.status.crippled", img: "icons/svg/downgrade.svg" });
+  registry.register({ id: WEAPONS_OFFLINE_STATUS, name: "battleframe-full-thrust.status.weaponsOffline", img: "icons/svg/explosion.svg" });
 }
 
 export interface StatusShipLike {

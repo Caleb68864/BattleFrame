@@ -29,15 +29,22 @@ export function inCountryStatusEffects(): StatusEffectConfig[] {
   ];
 }
 
-/** Adds InCountry's conditions to `CONFIG.statusEffects` at init. Idempotent. */
+/** The engine's status registry (game.battleframe.status), resolved defensively. */
+function statusApi(): { register: (e: StatusEffectConfig) => void } | undefined {
+  const scope = globalThis as {
+    battleframe?: { status?: { register: (e: StatusEffectConfig) => void } };
+    game?: { battleframe?: { status?: { register: (e: StatusEffectConfig) => void } } };
+  };
+  return scope.battleframe?.status ?? scope.game?.battleframe?.status;
+}
+
+/** Registers InCountry's conditions via the engine's status registry at init. Idempotent. */
 export function registerStatusEffects(): void {
-  const config = (globalThis as unknown as { CONFIG?: { statusEffects?: StatusEffectConfig[] } }).CONFIG;
-  if (!config || !Array.isArray(config.statusEffects)) {
+  const registry = statusApi();
+  if (!registry) {
     return;
   }
   for (const effect of inCountryStatusEffects()) {
-    if (!config.statusEffects.some((existing) => existing.id === effect.id)) {
-      config.statusEffects.push(effect);
-    }
+    registry.register(effect);
   }
 }

@@ -16,18 +16,25 @@ function fakeShip(system: Record<string, any>) {
 }
 
 describe("registerShipStatusEffects", () => {
-  it("adds crippled + weapons-offline to CONFIG.statusEffects, once", () => {
-    const CONFIG: any = { statusEffects: [] };
-    vi.stubGlobal("CONFIG", CONFIG);
+  it("registers crippled + weapons-offline via the engine status registry, once", () => {
+    // Simulate the engine's idempotent register onto CONFIG.statusEffects.
+    const effects: any[] = [];
+    const register = (e: any) => {
+      if (!effects.some((x) => x.id === e.id)) effects.push(e);
+    };
+    vi.stubGlobal("battleframe", { status: { register } });
+
     registerShipStatusEffects();
     registerShipStatusEffects(); // idempotent
-    const ids = CONFIG.statusEffects.map((s: any) => s.id);
-    expect(ids.filter((i: string) => i === CRIPPLED_STATUS)).toHaveLength(1);
-    expect(ids.filter((i: string) => i === WEAPONS_OFFLINE_STATUS)).toHaveLength(1);
+
+    const ids = effects.map((s) => s.id);
+    expect(ids.filter((i) => i === CRIPPLED_STATUS)).toHaveLength(1);
+    expect(ids.filter((i) => i === WEAPONS_OFFLINE_STATUS)).toHaveLength(1);
   });
 
-  it("does nothing when CONFIG is absent", () => {
-    vi.stubGlobal("CONFIG", undefined);
+  it("does nothing when the engine registry is absent", () => {
+    vi.stubGlobal("battleframe", undefined);
+    vi.stubGlobal("game", undefined);
     expect(() => registerShipStatusEffects()).not.toThrow();
   });
 });
