@@ -2,6 +2,7 @@ import { MODULE_ID, VEHICLE_ACTOR_TYPE, UNIT_ACTOR_TYPE } from "./constants";
 import { registerDataModels } from "./data/register";
 import { registerSheets } from "./sheets/register";
 import { registerStatusEffects } from "./status";
+import { registerDirtsideTokenDefaults } from "./token-defaults";
 import { registerRoundControl, advanceTurnCore } from "./ui/round-control";
 import { registerCommandLossHook } from "./round/command-loss";
 
@@ -95,6 +96,8 @@ globalHooks?.once("init", () => {
   registerDataModels(); // G1
   registerSheets(); // G2
   registerStatusEffects(); // G8
+  // Give fresh vehicle/infantry Actors a shipped default token image (engine token registry).
+  registerDirtsideTokenDefaults();
   registerDirtsideHoverFields();
   registerRoundControl(); // G3 — the reachable trigger; without it the fire/round code is tree-shaken
   // G4 — player-driven, GM-less Turn End: register what "advance" does.

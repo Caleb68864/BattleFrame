@@ -2,6 +2,7 @@ import { MODULE_ID, UNIT_ACTOR_TYPE } from "./constants";
 import { registerUnitDataModel } from "./data/unit";
 import { registerUnitSheet } from "./sheets/unit-sheet";
 import { registerStatusEffects } from "./status";
+import { registerStargruntTokenDefaults } from "./token-defaults";
 import { registerRoundControl, advanceTurnCore } from "./ui/round-control";
 
 interface BattleframeRegisterResult {
@@ -98,6 +99,8 @@ globalHooks?.once("init", () => {
   registerUnitDataModel();
   registerUnitSheet();
   registerStatusEffects();
+  // Give fresh unit Actors a shipped default token image (engine token registry).
+  registerStargruntTokenDefaults();
   registerStargruntHoverFields();
   // The reachable trigger: a scene control answering Foundry's own hook. Without
   // it the session/fire code is tree-shaken out of the bundle.

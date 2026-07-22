@@ -2,6 +2,7 @@ import { MODULE_ID, UNIT_ACTOR_TYPE } from "./constants";
 import { registerUnitDataModel } from "./data/unit";
 import { registerUnitSheet } from "./sheets/unit-sheet";
 import { registerStatusEffects } from "./status";
+import { registerInCountryTokenDefaults } from "./token-defaults";
 import { registerRoundControl, advanceRoundCore } from "./ui/round-control";
 
 interface BattleframeRegisterResult {
@@ -102,6 +103,8 @@ globalHooks?.once("init", () => {
   registerUnitDataModel();
   registerUnitSheet();
   registerStatusEffects();
+  // Give fresh unit Actors a shipped default token image (engine token registry).
+  registerInCountryTokenDefaults();
   // Advertise the unit's hover stat fields to the engine's hover registry.
   registerInCountryHoverFields();
   // The round trigger: a scene control answering Foundry's own hook. This is
