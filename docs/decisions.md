@@ -2842,3 +2842,36 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   Live-verification in a Foundry world still pending (the ready-flag sync + countdown path
   runs only against a real synced Document).
 - Commit: this commit.
+
+## 2026-07-22 — InCountry wired to the engine's player-driven, GM-less round advance
+- InCountry's round advance is **"Run Round"** (`runRoundControl` in
+  `packages/battleframe-incountry/src/ui/round-control.ts`): it rolls the d10
+  initiative roll-off and opens a fresh activation round for the table to play unit
+  by unit. That WAS the advance action, but it was GM-gated (`isGM()`) and its whole
+  scene-control group was `visible: gm`, so players could neither advance nor even
+  see the control. InCountry therefore *did* have a round to advance — it just had
+  no GM-less path to it.
+- Followed the Full Thrust template exactly: extracted the ungated body into
+  `advanceRoundCore()` (initiative + open next round, still refusing while a round
+  is in progress); `runRoundControl()` now just does the `isGM()` gate then calls it.
+  Registered `advanceRoundCore` as the engine advance callback in `main.ts`
+  (`game.battleframe.advance.registerAdvance(() => advanceRoundCore())`), so when all
+  active non-GM players mark ready the engine's host-side countdown runs it and clears
+  the ready flags — no GM click needed.
+- Added a player-visible **Ready** toggle scene tool (`incountry-ready`, first in the
+  tools array, `toggle: true`, `visible: true`, `onChange: readyAction`), whose
+  `readyAction` calls `game.battleframe.advance.toggleReady()` and reports the
+  ready/total count. KEY FIX: the InCountry control group was `visible: gm`, which
+  would have hidden the Ready tool from the very players it is for — changed the group
+  to `visible: true` (matching Full Thrust) while the Run/Activate tools keep their own
+  `visible: gm`. `activeTool` now points at the always-visible Ready tool.
+- Added `battleframe-incountry.controls.ready.{tool,status}` i18n keys (the i18n
+  completeness test scans the `.tool` literal). Added an `addSceneControl` test
+  asserting the Ready toggle is registered first, is player-visible, and that the GM
+  tools stay hidden from a non-GM under both payload shapes.
+- Engine (`packages/battleframe/src/rounds/ready-advance.ts`), Full Thrust, and the
+  other modules were NOT touched. 1160 tests pass (1158 + 2 new); typecheck clean.
+  Live-verification in a Foundry world still pending (the countdown/host wiring is
+  engine glue exercised only in production).
+- Commit: this commit.
+

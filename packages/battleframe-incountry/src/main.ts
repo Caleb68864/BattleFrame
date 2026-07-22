@@ -2,7 +2,7 @@ import { MODULE_ID, UNIT_ACTOR_TYPE } from "./constants";
 import { registerUnitDataModel } from "./data/unit";
 import { registerUnitSheet } from "./sheets/unit-sheet";
 import { registerStatusEffects } from "./status";
-import { registerRoundControl } from "./ui/round-control";
+import { registerRoundControl, advanceRoundCore } from "./ui/round-control";
 
 interface BattleframeRegisterResult {
   ok: boolean;
@@ -108,5 +108,10 @@ globalHooks?.once("init", () => {
   // what makes the round/combat logic reachable in the shipped bundle -- without
   // it, all of it is tree-shaken out.
   registerRoundControl();
+  // Player-driven, GM-less round advance: register what "advance the round" does
+  // (roll initiative + open the next round). When all players mark ready, the
+  // engine's countdown runs this on the host client. Same wiring as Full Thrust.
+  const advance = (globalThis as any).battleframe?.advance ?? (globalThis as any).game?.battleframe?.advance;
+  advance?.registerAdvance?.(() => advanceRoundCore());
   registerInCountryRuleset();
 });

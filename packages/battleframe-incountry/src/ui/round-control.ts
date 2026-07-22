@@ -478,13 +478,24 @@ async function applyStateToActor(
   await actor.toggleStatusEffect?.(defeated, { active: state.modelsRemaining <= 0 });
 }
 
-/** "Run Round": rolls initiative and opens a round for the GM to play unit by unit. */
+/** "Run Round" (GM manual): gate, then run the ungated round-advance. */
 export async function runRoundControl(): Promise<void> {
   if (!isGM()) {
     notifyUser(localize("controls.round.gmOnly"), "warn");
     return;
   }
+  await advanceRoundCore();
+}
 
+/**
+ * The round-advance work, UNGATED: roll initiative and open a fresh round for the
+ * table to play unit by unit (refusing while a round is still in progress). This
+ * is what the player-driven ready countdown runs (on the host client) as well as
+ * the GM's manual Run Round tool, so a GM-less table advances the game itself.
+ * Registered as the engine's advance callback via
+ * `game.battleframe.advance.registerAdvance` (see main.ts).
+ */
+export async function advanceRoundCore(): Promise<void> {
   const dice = globalScope().game?.battleframe?.dice;
   const roundsApi = globalScope().game?.battleframe?.rounds;
   if (!dice || !roundsApi) {
@@ -600,6 +611,41 @@ export async function activateSelectedControl(): Promise<void> {
   }
 }
 
+/**
+ * Ready tool (every player): toggle "ready to advance". When all players are
+ * ready the engine runs a settable countdown and then advances the round
+ * (`advanceRoundCore`) with no GM needed. Un-readying cancels the countdown.
+ */
+export async function readyAction(): Promise<void> {
+  const advance = (globalScope().game as unknown as { battleframe?: { advance?: AdvanceApiLike } })?.battleframe?.advance;
+  if (!advance?.toggleReady) {
+    notifyUser(localize("controls.round.noApi"), "warn");
+    return;
+  }
+  await advance.toggleReady();
+  const status = advance.status?.();
+  notifyUser(
+    format("controls.ready.status", {
+      state: advance.isReady?.() ? "READY" : "not ready",
+      ready: status?.ready?.length ?? 0,
+      total: status?.participants?.length ?? 0
+    })
+  );
+}
+
+/** Whether the current user is marked ready (for the toggle button's state). */
+function currentUserReady(): boolean {
+  const advance = (globalScope().game as unknown as { battleframe?: { advance?: AdvanceApiLike } })?.battleframe?.advance;
+  return advance?.isReady?.() === true;
+}
+
+/** Minimal structural view of the engine's ready-advance service (game.battleframe.advance). */
+interface AdvanceApiLike {
+  toggleReady?: () => Promise<void>;
+  isReady?: (userId?: string) => boolean;
+  status?: () => { ready: string[]; participants: string[]; allReady: boolean };
+}
+
 function localize(suffix: string): string {
   const key = `${MODULE_ID}.${suffix}`;
   return globalScope().game?.i18n?.localize?.(key) ?? key;
@@ -613,6 +659,19 @@ function format(suffix: string, data: Record<string, unknown>): string {
 /** The scene-control entry, accommodating both known payload shapes. */
 export function addSceneControl(controls: unknown): void {
   const gm = isGM();
+  // Ready-to-advance toggle: when every player is ready, the round advances on a
+  // settable countdown -- no GM needed. Visible to every player (unlike the GM
+  // Run/Activate tools), and first so it is the default tool.
+  const readyTool = {
+    name: "incountry-ready",
+    title: "battleframe-incountry.controls.ready.tool",
+    icon: "fas fa-hourglass-half",
+    toggle: true,
+    active: currentUserReady(),
+    visible: true,
+    order: 0,
+    onChange: () => void readyAction()
+  };
   const runTool = {
     name: "incountry-run-round",
     title: "battleframe-incountry.controls.round.tool",
@@ -639,19 +698,25 @@ export function addSceneControl(controls: unknown): void {
     title: "battleframe-incountry.controls.round.title",
     icon: "fas fa-helmet-safety",
     layer: "tokens",
-    visible: gm,
+    // Visible to every player so the Ready toggle reaches them; the Run/Activate
+    // tools inside stay GM-only via their own `visible: gm`.
+    visible: true,
     order: 0,
-    activeTool: runTool.name,
+    activeTool: readyTool.name,
     tools: {} as Record<string, unknown> | unknown[]
   };
 
   if (Array.isArray(controls)) {
-    control.tools = [runTool, activateTool];
+    control.tools = [readyTool, runTool, activateTool];
     controls.push(control);
     return;
   }
   if (controls && typeof controls === "object") {
-    control.tools = { [runTool.name]: runTool, [activateTool.name]: activateTool };
+    control.tools = {
+      [readyTool.name]: readyTool,
+      [runTool.name]: runTool,
+      [activateTool.name]: activateTool
+    };
     (controls as Record<string, unknown>)[MODULE_ID] = control;
   }
 }

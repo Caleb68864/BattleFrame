@@ -32,6 +32,10 @@
         "inProgress": "A round is already in progress. Finish activating every unit before starting a new one.",
         "complete": "Round complete."
       },
+      "ready": {
+        "tool": "Ready to Advance",
+        "status": "You are {state} ({ready}/{total} players ready). When all are ready, the round advances."
+      },
       "activate": {
         "tool": "Activate Unit",
         "noRound": "No round is in progress. Run a round first.",

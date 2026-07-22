@@ -1,9 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   createRoundsApi,
   type RoundsApi
 } from "../../battleframe/src/rounds/activation";
 import {
+  addSceneControl,
   beginRound,
   checkVictoryInx,
   resolveActivation,
@@ -178,5 +179,45 @@ describe("beginRound + resolveActivation — a played round to victory", () => {
     await expect(
       resolveActivation({ order, attacker: b1, target: a1, dice, units: [a1, b1] })
     ).rejects.toThrow();
+  });
+});
+
+describe("addSceneControl — player-driven ready-to-advance tool", () => {
+  afterEach(() => {
+    vi.unstubAllGlobals();
+  });
+
+  it("registers a player-visible Ready toggle first, alongside the GM tools (array payload)", () => {
+    vi.stubGlobal("game", { user: { isGM: true } });
+    const controls: any[] = [];
+    addSceneControl(controls);
+
+    expect(controls).toHaveLength(1);
+    // The control group itself must be visible to every player so the Ready
+    // toggle reaches non-GMs.
+    expect(controls[0].visible).toBe(true);
+    const tools = controls[0].tools as any[];
+    const names = tools.map((t) => t.name);
+    expect(names[0]).toBe("incountry-ready");
+    expect(names).toContain("incountry-run-round");
+    expect(names).toContain("incountry-activate");
+
+    const ready = tools.find((t) => t.name === "incountry-ready");
+    expect(ready.toggle).toBe(true);
+    expect(ready.visible).toBe(true);
+  });
+
+  it("exposes the Ready tool under the keyed-record payload shape, hiding GM tools from a player", () => {
+    vi.stubGlobal("game", { user: { isGM: false } });
+    const controls: Record<string, any> = {};
+    addSceneControl(controls);
+
+    const control = controls["battleframe-incountry"];
+    expect(control).toBeDefined();
+    expect(control.visible).toBe(true);
+    expect(control.tools["incountry-ready"]).toBeDefined();
+    expect(control.tools["incountry-ready"].visible).toBe(true);
+    // A non-GM player still sees the group + Ready tool, but the GM tools are hidden.
+    expect(control.tools["incountry-run-round"].visible).toBe(false);
   });
 });
