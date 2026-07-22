@@ -1981,4 +1981,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Also H4: attacker spent-weapon write now uses targeted `system.weapons.N.spent`
   paths instead of clobbering the whole array from a pre-await snapshot.
 - 729 tests passing. XSS handling reviewed and confirmed sound (no change).
+- Commit: aeb0990.
+
+## 2026-07-22 — Full Thrust polish pass (review: 5 hardening / 5 polish / 5 rules-gap)
+- Polish refactors, behavior-preserving, 730 tests still green: extracted
+  data/foundry-data-model.ts (shared TypeDataModel/fields resolution + registerActorDataModel,
+  was triplicated); shared sheet resolution + registerActorSheet (fighter-sheet dropped its
+  weaker `any` copy); combat/bands.ts shared bandIndex; reportBodyLines/wrapReport dedup the
+  two chat-card builders; used the previously-unused constants (DIE_*, PDS_FIGHTER_*,
+  MAX_THRUST, COURSES, FIGHTER_GROUP_MAX) instead of magic numbers; typed `game.user.targets`
+  to drop an `as any`; removed a dead i18n type member.
+- Documented deliberate simplifications now explicit in code: cinematic pivot-move-pivot
+  displacement is manual-drag (only heading auto-applied); FTL aft blind spot is data-driven
+  per-weapon; Fleet Book conditional aft fire / reroll / penetrating damage / Core-Systems +1
+  / most specialised fighter types are out of FT2-core scope.
+- Added a centre-to-centre regression test on the fire path; SYSTEM_POINTS/designPoints cite
+  their source and scope.
 - Commit: this commit.

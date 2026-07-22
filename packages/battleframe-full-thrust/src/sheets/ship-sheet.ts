@@ -23,7 +23,7 @@ export class MissingActorSheetV2BaseError extends Error {
   }
 }
 
-function resolveFoundryApplications(): {
+export function resolveFoundryApplications(): {
   ActorSheetV2?: ActorSheetV2BaseConstructor;
   HandlebarsApplicationMixin?: HandlebarsApplicationMixinFn;
   DocumentSheetConfig?: {
@@ -105,24 +105,29 @@ export function createShipSheetClass(
 }
 
 /**
- * Registers the ship sheet for `battleframe-full-thrust.ship` through
- * `DocumentSheetConfig.registerSheet`, scoped to this module's id.
+ * Registers an Actor sheet for `<moduleId>.<typeKey>` via
+ * `DocumentSheetConfig.registerSheet`. Shared by every subtype's sheet so the
+ * registration boilerplate lives in one place. No-op when Foundry's sheet
+ * machinery is absent (pre-init / tests).
  */
-export function registerShipSheet(): void {
+export function registerActorSheet(
+  typeKey: string,
+  sheetClass: ActorSheetV2BaseConstructor,
+  label: string
+): void {
   const resolved = resolveFoundryApplications();
-
   if (!resolved.DocumentSheetConfig || !resolved.ActorDocumentClass) {
     return;
   }
-
   resolved.DocumentSheetConfig.registerSheet(
     resolved.ActorDocumentClass,
     MODULE_ID,
-    createShipSheetClass(),
-    {
-      types: [`${MODULE_ID}.${SHIP_ACTOR_TYPE}`],
-      makeDefault: true,
-      label: "battleframe-full-thrust.sheets.ship"
-    }
+    sheetClass,
+    { types: [`${MODULE_ID}.${typeKey}`], makeDefault: true, label }
   );
+}
+
+/** Registers the ship sheet for `battleframe-full-thrust.ship`. */
+export function registerShipSheet(): void {
+  registerActorSheet(SHIP_ACTOR_TYPE, createShipSheetClass(), "battleframe-full-thrust.sheets.ship");
 }

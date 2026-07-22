@@ -14,7 +14,7 @@ import { MODULE_ID, FIGHTER_GROUP_ACTOR_TYPE } from "../constants";
 import { fireShipAtTarget, type FireContext, type FireReport, type FiringShip } from "../combat/fire-ship";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
 import { parseOrder, applyOrder } from "../movement/orders";
-import { COURSE_POINT_DEGREES } from "../constants";
+import { COURSE_POINT_DEGREES, COURSES } from "../constants";
 
 // --- Pure report formatting (unit-tested) -----------------------------------
 
@@ -33,18 +33,15 @@ export interface FireReportNames {
   target: string;
 }
 
-/** Builds the chat-card HTML summarising one ship's fire at a target. */
-export function buildFireReportHtml(report: FireReport, names: FireReportNames): string {
-  const attacker = escapeHtml(names.attacker);
-  const target = escapeHtml(names.target);
-
-  const lines: string[] = [];
-  lines.push(`<div class="ft-fire-report">`);
-  lines.push(`<h3>${attacker} &rarr; ${target}</h3>`);
-  lines.push(
+/** The shared middle+tail of a fire report: the damage line, threshold check, and
+ * destruction notice. `target` is already HTML-escaped. */
+function reportBodyLines(
+  report: { distance: number; totalDamage: number; thresholdsCrossed: number[]; systemsKnockedOut: number; destroyed: boolean },
+  target: string
+): string[] {
+  const lines = [
     `<p>Range ${Math.round(report.distance)}mu &middot; <strong>${report.totalDamage}</strong> damage.</p>`
-  );
-
+  ];
   if (report.thresholdsCrossed.length > 0) {
     lines.push(
       `<p>Threshold check (row ${report.thresholdsCrossed.join(", ")}): ` +
@@ -54,8 +51,19 @@ export function buildFireReportHtml(report: FireReport, names: FireReportNames):
   if (report.destroyed) {
     lines.push(`<p class="ft-destroyed"><strong>${target} destroyed.</strong></p>`);
   }
-  lines.push(`</div>`);
-  return lines.join("");
+  return lines;
+}
+
+/** Wraps a report's heading + body lines in the card container. */
+function wrapReport(heading: string, bodyLines: string[]): string {
+  return `<div class="ft-fire-report"><h3>${heading}</h3>${bodyLines.join("")}</div>`;
+}
+
+/** Builds the chat-card HTML summarising one ship's fire at a target. */
+export function buildFireReportHtml(report: FireReport, names: FireReportNames): string {
+  const attacker = escapeHtml(names.attacker);
+  const target = escapeHtml(names.target);
+  return wrapReport(`${attacker} &rarr; ${target}`, reportBodyLines(report, target));
 }
 
 /** Builds the chat-card HTML summarising a fighter group's attack on a ship. */
@@ -64,25 +72,11 @@ export function buildFighterReportHtml(report: FighterFireReport, names: FireRep
   const target = escapeHtml(names.target);
 
   if (!report.fired) {
-    return `<div class="ft-fire-report"><h3>${attacker} &rarr; ${target}</h3>` +
-      `<p>No attack (${escapeHtml(report.reason ?? "unable")}).</p></div>`;
+    return wrapReport(`${attacker} &rarr; ${target}`, [
+      `<p>No attack (${escapeHtml(report.reason ?? "unable")}).</p>`
+    ]);
   }
-
-  const lines: string[] = [];
-  lines.push(`<div class="ft-fire-report">`);
-  lines.push(`<h3>${attacker} (fighters) &rarr; ${target}</h3>`);
-  lines.push(`<p>Range ${Math.round(report.distance)}mu &middot; <strong>${report.totalDamage}</strong> damage.</p>`);
-  if (report.thresholdsCrossed.length > 0) {
-    lines.push(
-      `<p>Threshold check (row ${report.thresholdsCrossed.join(", ")}): ` +
-        `<strong>${report.systemsKnockedOut}</strong> system(s) knocked out.</p>`
-    );
-  }
-  if (report.destroyed) {
-    lines.push(`<p class="ft-destroyed"><strong>${target} destroyed.</strong></p>`);
-  }
-  lines.push(`</div>`);
-  return lines.join("");
+  return wrapReport(`${attacker} (fighters) &rarr; ${target}`, reportBodyLines(report, target));
 }
 
 // --- Injectable actions (testable core) -------------------------------------
@@ -117,7 +111,7 @@ export function resolvePlotOrder(
   orderText: string
 ): ReturnType<typeof applyOrder> {
   return applyOrder(
-    { velocity: system.velocity ?? 0, course: system.course ?? 12 },
+    { velocity: system.velocity ?? 0, course: system.course ?? COURSES },
     parseOrder(orderText),
     system.thrust ?? 0
   );
@@ -127,9 +121,8 @@ export function resolvePlotOrder(
 
 interface GlobalScope {
   game?: {
-    user?: { isGM?: boolean };
+    user?: { isGM?: boolean; targets?: { first?: () => unknown } };
     battleframe?: RoundControlApi;
-    i18n?: { localize?: (k: string) => string };
   };
   battleframe?: RoundControlApi;
   canvas?: { tokens?: { controlled?: any[] } };
@@ -168,7 +161,7 @@ function controlledToken(): any | undefined {
 
 /** The user's single targeted token, or undefined with a warning. */
 function targetedToken(): any | undefined {
-  const targets = (g().game as any)?.user?.targets;
+  const targets = g().game?.user?.targets;
   const first = targets && typeof targets.first === "function" ? targets.first() : undefined;
   if (!first) {
     notify("warn", `${MODULE_ID} | target one enemy ship (T over the token) first`);
@@ -268,7 +261,7 @@ export async function plotAction(): Promise<void> {
 
   await token.actor.update({ "system.velocity": result.velocity, "system.course": result.course });
   // Face the ship along its new course (cinematic movement: facing == heading).
-  await token.document?.update?.({ rotation: (result.course % 12) * COURSE_POINT_DEGREES });
+  await token.document?.update?.({ rotation: (result.course % COURSES) * COURSE_POINT_DEGREES });
   notify("info", `${MODULE_ID} | velocity ${result.velocity}, course ${result.course}`);
 }
 

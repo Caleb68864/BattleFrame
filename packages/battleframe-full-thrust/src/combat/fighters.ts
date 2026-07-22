@@ -8,8 +8,19 @@
  * defence.
  */
 
-import { PDS_MISSILE_KILL_ON } from "../constants";
+import {
+  PDS_MISSILE_KILL_ON,
+  PDS_FIGHTER_ONE_KILL_MIN,
+  PDS_FIGHTER_TWO_KILL
+} from "../constants";
 import { poolBeamDamage } from "./beam";
+
+/** The universal fighter kill die: 4-5 = 1 kill, 6 = 2 kills. */
+function killsForFace(face: number): number {
+  if (face >= PDS_FIGHTER_TWO_KILL) return 2;
+  if (face >= PDS_FIGHTER_ONE_KILL_MIN) return 1;
+  return 0;
+}
 
 /**
  * Damage a fighter group's attack dice inflict on a ship. Fighters use the beam
@@ -24,8 +35,7 @@ export function fighterAttackDamage(faces: readonly number[], screenLevel: numbe
  * 6 = 2). One die per firing PDS/anti-fighter system.
  */
 export function pdsKillsVsFighters(faces: readonly number[]): number {
-  // The unscreened beam table is exactly the universal kill die.
-  return poolBeamDamage(faces, 0);
+  return faces.reduce((kills, face) => kills + killsForFace(face), 0);
 }
 
 /**
@@ -39,7 +49,7 @@ export function pdsKillsVsMissiles(faces: readonly number[]): number {
 
 /** Fighter kills in a dogfight: the same universal kill die as anti-fighter fire. */
 export function dogfightKills(faces: readonly number[]): number {
-  return poolBeamDamage(faces, 0);
+  return faces.reduce((kills, face) => kills + killsForFace(face), 0);
 }
 
 /**

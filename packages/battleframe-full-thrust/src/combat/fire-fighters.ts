@@ -6,6 +6,12 @@
  * armour/hull + threshold path. A fired attack spends one endurance. Engine
  * services injected; the carrier bookkeeping (launch/recover) is layered above.
  *
+ * DEFERRED specialised types: only Attack (+1/die vs ships) is applied here.
+ * Heavy (counts as a Level-1 screen vs incoming fire), Interceptor/Torpedo
+ * (dogfight modes), Fast (18mu move) and Long-Range (endurance 5, not the default
+ * 3) touch movement / anti-fighter / dogfight contexts not resolved by this ship-
+ * attack path, and are not yet modelled.
+ *
  * Sources: FT2 "Fighter Attacks", "Fighter Groups"; More Thrust "Fighter Group
  * Morale", "Fighter Endurance"; "Specialised Fighter Types".
  */

@@ -116,6 +116,35 @@ describe("fireShipAtTarget", () => {
     expect(attacker.system.weapons[0].spent).toBe(true);
   });
 
+  it("measures range centre-to-centre (FT stands measure to/from centre)", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const attacker = fakeShip({
+      screens: 0,
+      weapons: [{ kind: "beam", weaponClass: 1, arcs: ["F"], destroyed: false, spent: false }]
+    });
+    const target = fakeShip({
+      screens: 0, thrust: 0, fcs: 0, pds: 0,
+      armour: { boxes: 0, damage: 0 },
+      hull: { boxes: 18, damage: 0, rows: 3 },
+      weapons: []
+    });
+    let capturedMode: string | undefined;
+    const ctx: FireContext = {
+      measure: {
+        between: (_a, _b, mode) => {
+          capturedMode = mode;
+          return { distance: 5 };
+        }
+      },
+      facing: { bearingOf: () => 0 },
+      dice: scriptedDice([[4]])
+    };
+
+    await fireShipAtTarget({ attacker, target, context: ctx });
+
+    expect(capturedMode).toBe("centre-to-centre");
+  });
+
   it("refuses to fire when the attacker has lost all fire control", async () => {
     vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
     const attacker = fakeShip({

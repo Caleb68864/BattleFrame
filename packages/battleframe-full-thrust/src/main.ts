@@ -1,4 +1,4 @@
-import { MODULE_ID, SHIP_ACTOR_TYPE, FIGHTER_GROUP_ACTOR_TYPE } from "./constants";
+import { MODULE_ID, SHIP_ACTOR_TYPE, FIGHTER_GROUP_ACTOR_TYPE, FIGHTER_GROUP_MAX } from "./constants";
 import { registerShipDataModel } from "./data/ship";
 import { registerFighterGroupDataModel } from "./data/fighter-group";
 import { registerShipSheet } from "./sheets/ship-sheet";
@@ -81,7 +81,7 @@ export function registerFullThrustHoverFields(): void {
   });
 
   registry.register(`${MODULE_ID}.${FIGHTER_GROUP_ACTOR_TYPE}`, {
-    fields: [{ key: "size", label: `${MODULE_ID}.fields.size`, max: 6 }],
+    fields: [{ key: "size", label: `${MODULE_ID}.fields.size`, max: FIGHTER_GROUP_MAX }],
     defaultVisibility: "everyone"
   });
 }

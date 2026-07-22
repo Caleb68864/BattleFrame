@@ -9,6 +9,13 @@
  * point. Total TP spent <= thrust; turning TP <= half thrust (FT2 rounds UP),
  * and turning thrust cannot also accelerate. Ships never move backwards.
  *
+ * DEFERRED: `applyOrder` computes only the FINAL velocity and heading. The
+ * cinematic "half the turn at the start of the move, half at the mid-point"
+ * pivot-move-pivot-move path (Making Course Changes) affects the ship's final
+ * *position*, not just its heading -- that displacement is currently executed by
+ * dragging the token manually; only the heading is auto-applied (token rotated
+ * to the new course). Auto-tracing the curved path on the canvas is a follow-up.
+ *
  * Sources: FT2 "Movement Orders", "Thrust Points", "Making Course Changes",
  * "Course & the Clockface".
  */

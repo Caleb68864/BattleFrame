@@ -1,13 +1,3 @@
-import {
-  MODULE_ID,
-  SHIP_ACTOR_TYPE,
-  FIRE_ARCS,
-  WEAPON_KINDS,
-  MAX_SCREEN_LEVEL,
-  MAX_THRUST,
-  COURSES
-} from "../constants";
-
 /**
  * The Full Thrust ship (SSD) Actor data model. Only the systems the rules
  * evidence are modelled -- the ship's mass, drives (thrust), the hull damage
@@ -19,33 +9,13 @@ import {
  * Sources: FT2 "Ship Record Sheet (SSD)", "Hull Boxes & Damage", "Fire Arcs".
  */
 
-export type TypeDataModelBaseConstructor = new (...args: any[]) => {
-  [key: string]: unknown;
-};
-
-export class MissingTypeDataModelBaseError extends Error {
-  constructor() {
-    super(`${MODULE_ID} | no TypeDataModel base class found on foundry.abstract.TypeDataModel`);
-    this.name = "MissingTypeDataModelBaseError";
-  }
-}
-
-function resolveTypeDataModelBase(): TypeDataModelBaseConstructor {
-  const base = (globalThis as unknown as {
-    foundry?: { abstract?: { TypeDataModel?: TypeDataModelBaseConstructor } };
-  }).foundry?.abstract?.TypeDataModel;
-
-  if (!base) {
-    throw new MissingTypeDataModelBaseError();
-  }
-  return base;
-}
-
-function resolveFieldsNamespace(): Record<string, any> {
-  return (globalThis as unknown as {
-    foundry?: { data?: { fields?: Record<string, any> } };
-  }).foundry?.data?.fields ?? {};
-}
+import { SHIP_ACTOR_TYPE, FIRE_ARCS, WEAPON_KINDS, MAX_SCREEN_LEVEL, MAX_THRUST, COURSES } from "../constants";
+import {
+  type TypeDataModelBaseConstructor,
+  resolveTypeDataModelBase,
+  resolveFieldsNamespace,
+  registerActorDataModel
+} from "./foundry-data-model";
 
 function nonNegativeInt(initial: number): Record<string, unknown> {
   return { required: true, nullable: false, integer: true, min: 0, initial };
@@ -125,15 +95,5 @@ export function createShipDataClass(
  * Foundry v14's `CONFIG.Actor.dataModels` path. Namespaced by module id.
  */
 export function registerShipDataModel(): void {
-  const globalScope = globalThis as unknown as {
-    CONFIG?: { Actor?: { dataModels?: Record<string, unknown> } };
-  };
-
-  if (!globalScope.CONFIG) {
-    return;
-  }
-
-  globalScope.CONFIG.Actor = globalScope.CONFIG.Actor ?? {};
-  globalScope.CONFIG.Actor.dataModels = globalScope.CONFIG.Actor.dataModels ?? {};
-  globalScope.CONFIG.Actor.dataModels[`${MODULE_ID}.${SHIP_ACTOR_TYPE}`] = createShipDataClass();
+  registerActorDataModel(SHIP_ACTOR_TYPE, createShipDataClass);
 }

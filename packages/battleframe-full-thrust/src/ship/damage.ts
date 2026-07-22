@@ -4,6 +4,10 @@
  * overflow reaches the hull damage track and can trigger threshold checks.
  * Pure; the actor read/write lives in ../data/ship-state.
  *
+ * DEFERRED (Fleet Book optional): "penetrating" / reroll damage that bypasses
+ * armour to hit the hull directly is not modelled -- all incoming damage spends
+ * armour first. FT2-core armour has no such bypass.
+ *
  * Sources: FT2 "Armour", "Hull Boxes & Damage".
  */
 

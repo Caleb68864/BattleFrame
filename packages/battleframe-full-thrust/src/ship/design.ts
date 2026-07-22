@@ -55,7 +55,11 @@ export function beamBatteryMass(cls: number): number {
   return cls;
 }
 
-/** Fixed point costs of the common non-beam systems (FT2). */
+/**
+ * Fixed point costs of the common non-beam systems, from the FT2 Ship Design
+ * cheat sheet systems table (PDAF 3, ADAF 10, Needle 6, Pulse Torpedo 15,
+ * Submunition 3, extra Fire Control 10, Level-1 Screen 25, Level-2 Screen 50).
+ */
 export const SYSTEM_POINTS = {
   pdaf: 3,
   adaf: 10,
@@ -90,7 +94,11 @@ export interface DesignSpec {
   batteries?: BatterySpec[];
 }
 
-/** Total Points value of a ship design: hull + drives + every fitted system. */
+/**
+ * Total Points value of a ship design: hull + drives + every fitted system.
+ * (Computes the Points combat value only; it does not sum system MASS or
+ * validate it against the half-MASS budget -- that is a separate design check.)
+ */
 export function designPoints(spec: DesignSpec): number {
   let total = hullCost(spec.mass);
   total += mainDriveCost(spec.shipClass, spec.mass, spec.thrust);

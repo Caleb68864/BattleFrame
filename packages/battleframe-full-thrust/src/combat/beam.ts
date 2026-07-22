@@ -4,6 +4,10 @@
  * over die faces -- the actual rolling (via game.battleframe.dice.rollPool) and
  * target/arc checks live in the firing orchestration.
  *
+ * Baseline is FT2: a die scores at most 2, with NO "reroll on 6". The reroll /
+ * penetrating-damage rules are a Fleet Book *optional* layer (Reroll Damage
+ * Rules) and are deliberately out of scope here.
+ *
  * Sources: FT2 "Beam Weapons", "Weapon Ranges & Damage Rolls", "Screens".
  */
 
@@ -13,6 +17,7 @@ import {
   DIE_ONE_DAMAGE_MAX,
   DIE_TWO_DAMAGE
 } from "../constants";
+import { bandIndex } from "./bands";
 
 /**
  * Dice a Class-`cls` beam rolls at `distanceMu`: full class dice in the first
@@ -29,8 +34,7 @@ export function beamDiceAtRange(cls: number, distanceMu: number): number {
   if (distanceMu <= 0) {
     return cls;
   }
-  const band = Math.ceil(distanceMu / BEAM_RANGE_BAND_MU) - 1;
-  return Math.max(0, cls - band);
+  return Math.max(0, cls - bandIndex(distanceMu, BEAM_RANGE_BAND_MU));
 }
 
 /**

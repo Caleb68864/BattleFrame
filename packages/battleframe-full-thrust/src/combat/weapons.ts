@@ -14,14 +14,7 @@ import {
   SUBMUNITION_DICE_BY_BAND,
   SUBMUNITION_MAX_RANGE_MU
 } from "../constants";
-
-/** The band index a distance falls in, boundaries inclusive at the lower band. */
-function bandIndex(distanceMu: number, bandWidth: number): number {
-  if (distanceMu <= 0) {
-    return 0;
-  }
-  return Math.ceil(distanceMu / bandWidth) - 1;
-}
+import { bandIndex } from "./bands";
 
 /**
  * Pulse-torpedo to-hit target number at `distanceMu` (2+/3+/4+/5+/6 by 6mu

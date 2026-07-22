@@ -1,4 +1,10 @@
-import { MODULE_ID, FIGHTER_GROUP_ACTOR_TYPE, FIGHTER_GROUP_MAX } from "../constants";
+import { FIGHTER_GROUP_ACTOR_TYPE, FIGHTER_GROUP_MAX } from "../constants";
+import {
+  type TypeDataModelBaseConstructor,
+  resolveTypeDataModelBase,
+  resolveFieldsNamespace,
+  registerActorDataModel
+} from "./foundry-data-model";
 
 /**
  * The Full Thrust fighter-group Actor data model. A group is 1-6 fighters that
@@ -10,10 +16,6 @@ import { MODULE_ID, FIGHTER_GROUP_ACTOR_TYPE, FIGHTER_GROUP_MAX } from "../const
  * "Specialised Fighter Types".
  */
 
-export type TypeDataModelBaseConstructor = new (...args: any[]) => {
-  [key: string]: unknown;
-};
-
 const FIGHTER_TYPES = [
   "standard",
   "fast",
@@ -23,22 +25,6 @@ const FIGHTER_TYPES = [
   "torpedo",
   "long-range"
 ] as const;
-
-function resolveTypeDataModelBase(): TypeDataModelBaseConstructor {
-  const base = (globalThis as unknown as {
-    foundry?: { abstract?: { TypeDataModel?: TypeDataModelBaseConstructor } };
-  }).foundry?.abstract?.TypeDataModel;
-  if (!base) {
-    throw new Error(`${MODULE_ID} | no TypeDataModel base on foundry.abstract.TypeDataModel`);
-  }
-  return base;
-}
-
-function resolveFieldsNamespace(): Record<string, any> {
-  return (globalThis as unknown as {
-    foundry?: { data?: { fields?: Record<string, any> } };
-  }).foundry?.data?.fields ?? {};
-}
 
 export function createFighterGroupDataClass(
   TypeDataModelBase: TypeDataModelBaseConstructor = resolveTypeDataModelBase()
@@ -70,14 +56,5 @@ export function createFighterGroupDataClass(
 
 /** Registers `battleframe-full-thrust.fighter-group` as an Actor data model. */
 export function registerFighterGroupDataModel(): void {
-  const globalScope = globalThis as unknown as {
-    CONFIG?: { Actor?: { dataModels?: Record<string, unknown> } };
-  };
-  if (!globalScope.CONFIG) {
-    return;
-  }
-  globalScope.CONFIG.Actor = globalScope.CONFIG.Actor ?? {};
-  globalScope.CONFIG.Actor.dataModels = globalScope.CONFIG.Actor.dataModels ?? {};
-  globalScope.CONFIG.Actor.dataModels[`${MODULE_ID}.${FIGHTER_GROUP_ACTOR_TYPE}`] =
-    createFighterGroupDataClass();
+  registerActorDataModel(FIGHTER_GROUP_ACTOR_TYPE, createFighterGroupDataClass);
 }

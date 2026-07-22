@@ -6,6 +6,10 @@
  * number by 1 per extra threshold passed. Pure functions; the dice roll and the
  * mapping back onto actual ship systems live in the combat layer.
  *
+ * DEFERRED (Fleet Book optional): "Core Systems" (Command Bridge / Power Core /
+ * Life Support) rolled at +1 to the threshold number and immune to needle beams
+ * are not modelled -- every surviving system rolls on the same table.
+ *
  * Source: FT2 "Threshold Check".
  */
 
