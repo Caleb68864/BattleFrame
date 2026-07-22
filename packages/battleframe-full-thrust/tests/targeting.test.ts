@@ -118,6 +118,30 @@ describe("previewTargeting", () => {
     expect(outRange[0].status).toBe("out-of-range");
   });
 
+  it("reports a K-gun's to-hit by band, and out of range beyond 30mu", () => {
+    const inRange = previewTargeting({
+      weapons: [{ kind: "kgun", weaponClass: 3, arcs: ["F"] }],
+      distanceMu: 10,
+      bearing: FORE
+    });
+    expect(inRange[0]).toMatchObject({ kind: "kgun", status: "will-fire", toHit: 3 });
+    const outRange = previewTargeting({
+      weapons: [{ kind: "kgun", weaponClass: 3, arcs: ["F"] }],
+      distanceMu: 31,
+      bearing: FORE
+    });
+    expect(outRange[0].status).toBe("out-of-range");
+  });
+
+  it("marks a classless K-gun as no-class, mirroring resolveWeaponFire", () => {
+    const rows = previewTargeting({
+      weapons: [{ kind: "kgun", weaponClass: null, arcs: ["F"] }],
+      distanceMu: 10,
+      bearing: FORE
+    });
+    expect(rows[0].status).toBe("no-class");
+  });
+
   it("gives every row a human-readable effect string", () => {
     const rows = previewTargeting({ weapons: [beam(3)], distanceMu: 10, bearing: FORE });
     expect(typeof rows[0].effect).toBe("string");

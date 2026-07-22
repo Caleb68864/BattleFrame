@@ -120,7 +120,7 @@ export async function fireShipSplit(params: FireShipSplitParams): Promise<FireSh
     const shots: WeaponShot[] = fire.shots.map((s) => ({ ...s, index: weaponIndexes[s.index] }));
     for (const subIdx of fire.spent) spentReal.add(weaponIndexes[subIdx]);
 
-    const outcome = await applyDamageAndThreshold(m.target, fire.totalDamage, context.dice);
+    const outcome = await applyDamageAndThreshold(m.target, fire.totalDamage, context.dice, fire.piercingHits);
 
     perTarget.push({
       targetId: m.id,

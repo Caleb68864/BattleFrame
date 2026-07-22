@@ -83,7 +83,8 @@ export const WEAPON_KINDS = [
   "torpedo",
   "needle",
   "submunition",
-  "salvo"
+  "salvo",
+  "kgun"
 ] as const;
 export type WeaponKind = (typeof WEAPON_KINDS)[number];
 

@@ -27,6 +27,7 @@ import type { WeaponMount } from "./fire";
 import { weaponBearsOn } from "./arcs";
 import { beamDiceAtRange } from "./beam";
 import { torpedoToHit, submunitionDiceAtRange } from "./weapons";
+import { kgunToHit } from "./kravak";
 
 /** Why a weapon would or would not fire at this target, no dice rolled. */
 export type TargetingStatus =
@@ -117,6 +118,25 @@ function inArcRow(index: number, weapon: WeaponMount, distanceMu: number): Targe
         return { ...base, status: "out-of-range", effect: statusLabel("out-of-range") };
       }
       return { ...base, status: "will-fire", effect: "knocks a system on 6" };
+    }
+    case "kgun": {
+      // Every K-gun class shares one to-hit band table; class only sets the
+      // penetrating damage. Mirror resolveWeaponFire's precedence: a classless
+      // K-gun is "no-class", not "out-of-range".
+      const cls = weapon.weaponClass;
+      if (!cls || cls < 1) {
+        return { ...base, status: "no-class", effect: statusLabel("no-class") };
+      }
+      const toHit = kgunToHit(distanceMu);
+      if (toHit === null) {
+        return { ...base, status: "out-of-range", effect: statusLabel("out-of-range") };
+      }
+      return {
+        ...base,
+        status: "will-fire",
+        toHit,
+        effect: toHit >= 6 ? "hit on 6" : `hit on ${toHit}+`
+      };
     }
     default:
       return { ...base, status: "out-of-range", effect: statusLabel("out-of-range") };

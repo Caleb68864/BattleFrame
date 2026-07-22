@@ -7,6 +7,7 @@
  */
 
 import { applyDamageWithArmour, type ApplyDamageWithArmourResult } from "../ship/damage";
+import { applyKgunHit } from "../combat/kravak";
 
 export interface ShipActorLike {
   system?: Record<string, any>;
@@ -49,30 +50,57 @@ function defeatedStatusId(): string {
 }
 
 /**
- * Applies `points` of damage to a ship: armour first, then hull, persisting the
- * new armour/hull damage to the actor and toggling the native defeated status
- * to match destruction. Returns the full damage result -- including which
- * thresholds were crossed -- so the caller can run the threshold check.
+ * Applies `points` of pooled (armour-eligible) damage to a ship -- armour first,
+ * then hull -- followed by any Kra'Vak K-gun `piercingHits`, each applied on its
+ * own via `applyKgunHit` (1 DP on armour, the rest straight to hull, per-hit).
+ * Both streams land in ONE persisted write and one destruction toggle, so the
+ * threshold check downstream sees the union of every row this attack crossed.
+ * Returns the full damage result -- including which thresholds were crossed --
+ * so the caller can run the threshold check.
  */
 export async function applyDamageToShip(
   actor: ShipActorLike,
-  points: number
+  points: number,
+  piercingHits: readonly number[] = []
 ): Promise<ApplyDamageWithArmourResult> {
   const armour = armourOf(actor);
   const hull = hullOf(actor);
 
-  const result = applyDamageWithArmour({
+  const pooled = applyDamageWithArmour({
     armour,
     hull,
     incoming: points
   });
 
+  // Fold the per-hit piercing stream onto the state the pooled damage left
+  // behind, so armour/hull deplete continuously and thresholds accumulate.
+  let curArmour = pooled.armour;
+  let curHullDamage = pooled.hull.damage;
+  let destroyed = pooled.destroyed;
+  const thresholdsCrossed = [...pooled.hull.thresholdsCrossed];
+
+  for (const hit of piercingHits) {
+    const r = applyKgunHit({
+      armour: curArmour,
+      hull: { boxes: hull.boxes, damage: curHullDamage, rows: hull.rows },
+      damage: hit
+    });
+    curArmour = r.armour;
+    curHullDamage = r.hull.damage;
+    destroyed = destroyed || r.destroyed;
+    thresholdsCrossed.push(...r.hull.thresholdsCrossed);
+  }
+
   await actor.update({
-    "system.armour.damage": result.armour.damage,
-    "system.hull.damage": result.hull.damage
+    "system.armour.damage": curArmour.damage,
+    "system.hull.damage": curHullDamage
   });
 
-  await actor.toggleStatusEffect(defeatedStatusId(), { active: result.destroyed });
+  await actor.toggleStatusEffect(defeatedStatusId(), { active: destroyed });
 
-  return result;
+  return {
+    armour: curArmour,
+    hull: { damage: curHullDamage, destroyed, thresholdsCrossed },
+    destroyed
+  };
 }

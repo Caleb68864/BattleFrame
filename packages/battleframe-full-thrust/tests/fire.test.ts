@@ -153,3 +153,114 @@ describe("resolveWeaponFire", () => {
     expect(result.totalDamage).toBe(5);
   });
 });
+
+describe("resolveWeaponFire — Kra'Vak K-gun (kinetic, armour-piercing)", () => {
+  it("rolls one to-hit die by 6mu band, then a penetration die for damage", async () => {
+    const weapons: WeaponMount[] = [{ kind: "kgun", weaponClass: 3, arcs: ["F"] }];
+    // At 10mu -> 3+ to hit. To-hit die 5 (hit); penetration die 2 -> class-3 does
+    // 6 DP (roll <= class doubles). The pierced hit is carried in `piercingHits`,
+    // NOT the armour-eligible `totalDamage` pool.
+    const result = await resolveWeaponFire({
+      weapons,
+      distanceMu: 10,
+      bearing: 0,
+      targetScreenLevel: 3, // kinetic: screens do not apply
+      dice: scriptedDice([[5], [2]])
+    });
+    expect(result.totalDamage).toBe(0);
+    expect(result.piercingHits).toEqual([6]);
+    expect(result.shots[0].fired).toBe(true);
+    expect(result.shots[0].damage).toBe(6);
+    expect(result.shots[0].faces).toEqual([5, 2]);
+  });
+
+  it("uses the penetration die per the class table (roll>class = class DP)", async () => {
+    const weapons: WeaponMount[] = [{ kind: "kgun", weaponClass: 3, arcs: ["F"] }];
+    // To-hit 6 (hit at any band); penetration 5 -> class-3 does 3 DP (roll>class).
+    const result = await resolveWeaponFire({
+      weapons,
+      distanceMu: 28, // 24-30 band needs 6
+      bearing: 0,
+      targetScreenLevel: 0,
+      dice: scriptedDice([[6], [5]])
+    });
+    expect(result.piercingHits).toEqual([3]);
+  });
+
+  it("a K-gun that misses rolls no penetration die and adds no hit", async () => {
+    const weapons: WeaponMount[] = [{ kind: "kgun", weaponClass: 5, arcs: ["F"] }];
+    // At 28mu -> needs 6; rolls 5 -> miss. No penetration pool is consumed.
+    const result = await resolveWeaponFire({
+      weapons,
+      distanceMu: 28,
+      bearing: 0,
+      targetScreenLevel: 0,
+      dice: scriptedDice([[5], [1]])
+    });
+    expect(result.piercingHits).toEqual([]);
+    expect(result.totalDamage).toBe(0);
+    expect(result.shots[0].fired).toBe(true);
+    expect(result.shots[0].damage).toBe(0);
+  });
+
+  it("does not fire a K-gun beyond its 30mu maximum range", async () => {
+    const weapons: WeaponMount[] = [{ kind: "kgun", weaponClass: 3, arcs: ["F"] }];
+    const result = await resolveWeaponFire({
+      weapons,
+      distanceMu: 31,
+      bearing: 0,
+      targetScreenLevel: 0,
+      dice: scriptedDice([[6], [1]])
+    });
+    expect(result.shots[0].fired).toBe(false);
+    expect(result.shots[0].reason).toBe("out-of-range");
+    expect(result.piercingHits).toEqual([]);
+  });
+
+  it("does not fire a K-gun that cannot bear on the target's arc", async () => {
+    const weapons: WeaponMount[] = [{ kind: "kgun", weaponClass: 3, arcs: ["F"] }];
+    const result = await resolveWeaponFire({
+      weapons,
+      distanceMu: 6,
+      bearing: 180,
+      targetScreenLevel: 0,
+      dice: scriptedDice([[6], [1]])
+    });
+    expect(result.shots[0].reason).toBe("out-of-arc");
+    expect(result.piercingHits).toEqual([]);
+  });
+
+  it("keeps every hit separate (per-hit pierce), never pre-summed", async () => {
+    const weapons: WeaponMount[] = [
+      { kind: "kgun", weaponClass: 3, arcs: ["F"] },
+      { kind: "kgun", weaponClass: 5, arcs: ["F"] }
+    ];
+    // K-3: to-hit 4 (hit), pen 1 -> 6 DP. K-5: to-hit 4 (hit), pen 6 -> natural 6 = class = 5 DP.
+    const result = await resolveWeaponFire({
+      weapons,
+      distanceMu: 6,
+      bearing: 0,
+      targetScreenLevel: 0,
+      dice: scriptedDice([[4], [1], [4], [6]])
+    });
+    expect(result.piercingHits).toEqual([6, 5]);
+    expect(result.totalDamage).toBe(0);
+  });
+
+  it("leaves the armour-eligible beam pool untouched when mixed with a K-gun", async () => {
+    const weapons: WeaponMount[] = [
+      { kind: "beam", weaponClass: 2, arcs: ["F"] },
+      { kind: "kgun", weaponClass: 3, arcs: ["F"] }
+    ];
+    // Beam cl2 at 6mu: 2 dice 6,4 -> 3 (armour-eligible). K-gun: to-hit 6, pen 2 -> 6 DP (piercing).
+    const result = await resolveWeaponFire({
+      weapons,
+      distanceMu: 6,
+      bearing: 0,
+      targetScreenLevel: 0,
+      dice: scriptedDice([[6, 4], [6], [2]])
+    });
+    expect(result.totalDamage).toBe(3);
+    expect(result.piercingHits).toEqual([6]);
+  });
+});

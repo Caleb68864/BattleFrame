@@ -2727,3 +2727,33 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - No new tests (thin token glue over the tested reach core; tool registration asserted); 1116
   passing; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: wire the Kra'Vak K-gun as a fireable weapon kind (roadmap P2 #20)
+- Gap: `combat/kravak.ts` had the tested K-gun math (`kgunToHit`, `kgunDamageForFace`,
+  `applyKgunHit`) but no `WEAPON_KINDS` entry, so a ship mount could not actually fire a K-gun
+  through `resolveWeaponFire` / the fire orchestrators.
+- Design issue: the K-gun pierces armour PER HIT (only the first DP of each single hit is stopped
+  by armour, the rest goes straight to hull), which does NOT fit `resolveWeaponFire`'s "sum all
+  weapon damage, apply armour once downstream" pool. Chose **option (b)**: the K-gun is its own
+  damage stream, NOT added to the armour-eligible `totalDamage`. `resolveWeaponFire` rolls one
+  to-hit die by band (`kgunToHit`, kinetic so screens never apply) and, on a hit, a penetration
+  die (`kgunDamageForFace`), and returns the per-hit DP in a new `piercingHits: number[]` (a LIST,
+  never pre-summed, precisely because the pierce is per-hit). Downstream `applyDamageToShip` applies
+  the pooled beam damage through armour first, then folds each K-gun hit on via `applyKgunHit`
+  (1 DP to armour, remainder to hull) onto the same running state — ONE persisted write, one
+  destruction toggle, thresholds unioned. So the existing single armour step is genuinely a no-op
+  for the K-gun stream. Beam/torpedo/submunition are byte-for-byte unchanged (their pool and tests
+  are untouched; `piercingHits` is `[]` for every non-K-gun ship).
+- Also added a `kgun` case to `previewTargeting` (per-band to-hit; classless = `no-class`) so the
+  FCS allocator engages it in split fire and the pre-fire preview shows its reach — otherwise it fell
+  into `default: out-of-range` and was silently un-allocatable.
+- Sheet: the weapon-kind `<select>` iterates `WEAPON_KINDS` (ship-sheet.ts builds `kinds`, the
+  template `{{#each weapon.kinds}}`), and the schema `choices` is `[...WEAPON_KINDS]`, so adding
+  "kgun" makes it selectable AND a valid stored value with NO template/schema change. Verified.
+- Surfaces: constants.ts (`WEAPON_KINDS` += "kgun"; no new constants — the KGUN_* set already
+  existed), combat/fire.ts (`resolveKgun` + `piercingHits`), data/ship-state.ts (`applyDamageToShip`
+  piercing fold), combat/apply-damage.ts (thread `piercingHits`), combat/fire-ship.ts +
+  fire-ship-split.ts (pass `fire.piercingHits`), combat/targeting.ts (`kgun` preview case).
+- +11 tests (fire.test.ts K-gun path, apply-damage.test.ts pierce integration, targeting.test.ts
+  K-gun preview); 1127 passing (was 1116); typecheck clean.
+- Commit: this commit.

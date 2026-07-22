@@ -54,6 +54,38 @@ describe("applyDamageAndThreshold", () => {
     expect(result.systemsKnockedOut).toBe(1);
   });
 
+  it("applies K-gun piercing hits per-hit: 1 DP to armour, remainder to hull", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const target = fakeTarget({
+      screens: 0, thrust: 4, fcs: 1, pds: 0,
+      armour: { boxes: 3, damage: 0 },
+      hull: { boxes: 18, damage: 0, rows: 3 },
+      weapons: []
+    });
+    // Two K-gun hits of 6 DP each. Per-hit pierce: each spends exactly 1 on armour,
+    // 5 to hull. Armour -> 2 damage, hull -> 10. (A single pooled 12 would instead
+    // spend all 3 armour and put only 9 on hull -- the pierce is why we keep hits.)
+    const result = await applyDamageAndThreshold(target, 0, scriptedDice([]), [6, 6]);
+    expect(target.system.armour.damage).toBe(2);
+    expect(target.system.hull.damage).toBe(10);
+    expect(result.destroyed).toBe(false);
+  });
+
+  it("combines an armour-eligible beam pool with K-gun piercing hits in one pass", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const target = fakeTarget({
+      screens: 0, thrust: 4, fcs: 1, pds: 0,
+      armour: { boxes: 3, damage: 0 },
+      hull: { boxes: 18, damage: 0, rows: 3 },
+      weapons: []
+    });
+    // Beam pool 4 spends armour normally (3 armour + 1 hull). Then one K-gun hit of
+    // 6: armour already exhausted, so all 6 pierce to hull. Hull = 1 + 6 = 7.
+    await applyDamageAndThreshold(target, 4, scriptedDice([]), [6]);
+    expect(target.system.armour.damage).toBe(3);
+    expect(target.system.hull.damage).toBe(7);
+  });
+
   it("skips the threshold check when the ship is destroyed outright", async () => {
     vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
     const target = fakeTarget({

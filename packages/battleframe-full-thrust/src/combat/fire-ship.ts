@@ -96,7 +96,7 @@ export async function fireShipAtTarget(params: FireShipParams): Promise<FireRepo
     await attacker.update(spentUpdate);
   }
 
-  const outcome = await applyDamageAndThreshold(target, fire.totalDamage, context.dice);
+  const outcome = await applyDamageAndThreshold(target, fire.totalDamage, context.dice, fire.piercingHits);
 
   return {
     distance,
