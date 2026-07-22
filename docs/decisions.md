@@ -3171,3 +3171,28 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   registration, sheets, round control, advance, live RollTable drawChits, fire path, chat
   cards, status effects, command-loss hook, main.ts) + live-verify.
 - Commit: this commit.
+
+## 2026-07-22 — Dirtside II alternating unit session (A10) + flattened C3 (A11)
+- Context: second slice — the two DSII-specific round-state pure units, both proving the
+  two-tier bet (plan risk #4) that activation iterates UNITS while damage ripples through
+  ELEMENTS to the FORCE. Strict TDD as before.
+- A10 src/round/session.ts `createDirtsideRound`/`restoreDirtsideRound`/`firstChooser`:
+  extends Simple Skirmish's `createSkirmishRound` base loop (alternate, skip an exhausted
+  side, serialize/restore from a flag — state on the Combat doc, never a module `let`).
+  Iterates `dirtside-ii.unit` grouping actors. Two DSII policies added as ruleset rules
+  (kept out of the base loop so the base stays liftable to engine `rounds`): `firstChooser`
+  = the side with fewer un-destroyed units chooses first (null on tie → caller rolls off);
+  `canPass`/`pass` = a side may pass (yield the turn without spending a unit) ONLY while it
+  has strictly fewer un-activated units than the opponent — which also guarantees
+  termination (both sides can't be strictly outnumbered at once, so someone must activate).
+- A11 src/round/c3.ts `applyCommandLoss`/`resolveRally`/`stepConfidence`: pure transforms
+  over a force-level C3 object (the glue persists it on a Combat flag). Command loss drops
+  EVERY unit one confidence level (clamped ladder broken↔confident) and sets
+  noNewOffensives + noRally; returns a new force (no mutation). Rally = quality roll must
+  exceed ralliedLR+cmdLR for +1 CL, and always spends the activation pass or fail.
+- Two-tier validation: A10 (unit-level iteration) + A11 (element-death→force-wide ripple)
+  are the pure halves of the bet; the G9 hook that fires A11 on a command element reaching
+  knocked-out is deferred glue.
+- Surfaces: packages/battleframe-dirtside/src/round/{session,c3}.ts + 2 test files.
+  71 DS2 tests pass; full-repo typecheck clean.
+- Commit: this commit.
