@@ -3197,4 +3197,26 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   often confidence tests occur).
 - Surfaces: `packages/battleframe-stargrunt-ii/src/round/{suppression.ts,morale.ts}`,
   `tests/{suppression,morale}.test.ts`. +9 tests (44 total); typecheck clean.
+- Commit: 56fb133.
+
+## 2026-07-22 — SG2 activation session (D1-D5): extend the skirmish shape, don't generalise it
+- Decision: built the two-action alternating session by COPYING the shape of Simple Skirmish's
+  `createSkirmishRound` (continuous alternation + serialize/restore to a Combat flag) and adding
+  the three SG2 extensions as separable predicates so a future engine port is a lift, not a
+  rewrite. D1 `firstActivator` — the smaller force goes first, equal counts return `"tie"`
+  (caller rolls off). D2 `canPass` — legal only when strictly outnumbered in face-up
+  (un-activated) units. D3 the two-action budget as a nested immutable state machine
+  (`startActivation`/`spendMove`/`spendFire`/`isActivationComplete`): opens at 2, a weapon may
+  fire only once per activation, moving with BOTH actions sets `reactionEligible` (the Phase-2
+  reaction-fire hook), over-spend throws. D4 `beginNextTurn` — pure Turn-End reset (clear
+  activation, reset the pass track, bump the turn number, pick the next first activator fresh);
+  the glue registers this through `advance`. D5 `createStargruntRound`/`restoreStargruntRound`
+  serialize `{firstSideId, activatedIds, turnPointer, turn, consecutivePasses}` to the Combat
+  document — a turn ends when everyone is resolved OR both sides pass in succession
+  (`consecutivePasses >= sides.length`), so a mid-round reload resumes rather than restarts.
+- Watch: kept ruleset-local per design risk 7.2 — NOT extracted to core. Reaction fire is only
+  a stored eligibility flag here (Phase 2 consumes it); the budget is a nested per-activation
+  state the glue persists alongside the round state at wiring time.
+- Surfaces: `packages/battleframe-stargrunt-ii/src/round/session.ts`, `tests/session.test.ts`.
+  +15 tests (59 total); typecheck clean.
 - Commit: this commit.
