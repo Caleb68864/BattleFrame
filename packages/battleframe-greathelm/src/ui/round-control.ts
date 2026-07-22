@@ -899,9 +899,20 @@ async function resolveRoundEnd(
   notifyUser(
     format("battleframe-greathelm.victory.continue", { round: roundNumber })
   );
-  await onRoundControlActivated(roundNumber + 1);
+  // Ungated: the round loop continues on whichever client is resolving the end
+  // of the round. In GM-less play that host is a trusted player, not the GM, so
+  // the recursive next-round MUST go through advanceRoundCore -- routing it back
+  // through the GM-gated onRoundControlActivated would stall a GM-less table.
+  await advanceRoundCore(roundNumber + 1);
 }
 
+/**
+ * The GM's manual "Run Round" tool: the GM-gated entry into the round loop. A
+ * round rolls dice and, once opened, the panel writes wounds to Actors and turn
+ * order to the Combat document -- all shared state a player must not be able to
+ * mutate, and a hidden button is not an access control. Delegates the actual
+ * work to `advanceRoundCore`.
+ */
 export async function onRoundControlActivated(
   roundNumber = 1
 ): Promise<PoolPanelInstance | undefined> {
@@ -911,6 +922,24 @@ export async function onRoundControlActivated(
     return undefined;
   }
 
+  return advanceRoundCore(roundNumber);
+}
+
+/**
+ * The round-advance work, UNGATED: set up one round (roll initiative, resume a
+ * persisted round after a reload) and open the pool panel to play it die by die.
+ *
+ * This is what the engine's player-driven ready countdown runs -- when all
+ * players mark ready, the host client (a trusted player, not necessarily a GM)
+ * advances the round with no GM present. The GM's manual Run Round tool delegates
+ * here too, so there is exactly one round-advance code path. Split out of
+ * `onRoundControlActivated` precisely so the GM gate lives on the button, not on
+ * the advance itself. Registered as the engine's advance callback in main.ts via
+ * `game.battleframe.advance.registerAdvance`.
+ */
+export async function advanceRoundCore(
+  roundNumber = 1
+): Promise<PoolPanelInstance | undefined> {
   const game = resolveGame();
   const dice = game?.battleframe?.dice;
   const measure = game?.battleframe?.measure;
@@ -1024,6 +1053,62 @@ export async function resetBattleFromControl(): Promise<number> {
 }
 
 /**
+ * The engine's player-driven advance service, resolved without depending on load
+ * order. `globalThis.battleframe` is built at the system's module top level;
+ * `game.battleframe` is the bound form -- both are the same object once bound
+ * (the same trick as resolveBattleframeApi in main.ts).
+ */
+interface AdvanceServiceLike {
+  registerAdvance?: (fn: () => void | Promise<void>) => void;
+  toggleReady?: () => Promise<void>;
+  isReady?: (userId?: string) => boolean;
+  status?: () => { ready: string[]; participants: string[]; allReady: boolean };
+}
+
+function resolveAdvanceService(): AdvanceServiceLike | undefined {
+  const globalScope = globalThis as unknown as {
+    battleframe?: { advance?: AdvanceServiceLike };
+    game?: { battleframe?: { advance?: AdvanceServiceLike } };
+  };
+
+  return globalScope.battleframe?.advance ?? globalScope.game?.battleframe?.advance;
+}
+
+/**
+ * Ready tool action (every player): toggle "ready to advance". When ALL active
+ * players are ready the engine runs a settable countdown on the host client and
+ * then advances the round (`advanceRoundCore`, via the callback registered in
+ * main.ts) with no GM needed. Any player un-readying cancels the countdown. This
+ * is the GM-less counterpart to the GM's Run Round tool.
+ */
+export async function readyAction(): Promise<void> {
+  const advance = resolveAdvanceService();
+
+  if (!advance?.toggleReady) {
+    notifyUser(localize("battleframe-greathelm.controls.ready.noApi"), "warn");
+
+    return;
+  }
+
+  await advance.toggleReady();
+  const status = advance.status?.();
+  notifyUser(
+    format("battleframe-greathelm.controls.ready.status", {
+      state: advance.isReady?.()
+        ? localize("battleframe-greathelm.controls.ready.stateReady")
+        : localize("battleframe-greathelm.controls.ready.stateNotReady"),
+      ready: status?.ready?.length ?? 0,
+      total: status?.participants?.length ?? 0,
+    })
+  );
+}
+
+/** Whether the current user is marked ready (drives the toggle button's state). */
+function currentUserReady(): boolean {
+  return resolveAdvanceService()?.isReady?.() === true;
+}
+
+/**
  * The scene control entry itself.
  *
  * >>> UNVERIFIED against Foundry v14. <<< This is not modesty, it is the
@@ -1044,6 +1129,23 @@ export async function resetBattleFromControl(): Promise<number> {
  * to be wrong. Do not leave this comment standing as an excuse.
  */
 export function addRoundSceneControl(controls: unknown): void {
+  // Ready-to-advance toggle (every player, GM-less): when all players mark ready
+  // the round advances on a countdown -- no GM click needed. FIRST in the tools
+  // list, and the only tool visible to a non-GM. A toggle, so its pressed state
+  // reflects whether this user is currently ready.
+  const readyTool = {
+    name: "greathelm-ready",
+    title: "battleframe-greathelm.controls.ready.tool",
+    icon: "fas fa-hourglass-half",
+    toggle: true,
+    active: currentUserReady(),
+    visible: true,
+    order: 0,
+    onChange: () => {
+      void readyAction();
+    },
+  };
+
   const tool = {
     name: "greathelm-run-round",
     title: "battleframe-greathelm.controls.round.tool",
@@ -1083,21 +1185,29 @@ export function addRoundSceneControl(controls: unknown): void {
     title: "battleframe-greathelm.controls.round.title",
     icon: "fas fa-chess-rook",
     layer: "tokens",
-    visible: isGM(),
+    // Visible to everyone now that it carries the player Ready toggle: a control
+    // hidden from players would hide the Ready tool with it, and GM-less advance
+    // is the whole point. The GM-only run-round/new-battle tools stay gated by
+    // their own `visible: isGM()`, so a player sees only the Ready toggle here.
+    visible: true,
     order: 0,
     activeTool: tool.name,
     tools: {} as Record<string, unknown> | unknown[],
   };
 
   if (Array.isArray(controls)) {
-    control.tools = [tool, newBattleTool];
+    control.tools = [readyTool, tool, newBattleTool];
     controls.push(control);
 
     return;
   }
 
   if (controls && typeof controls === "object") {
-    control.tools = { [tool.name]: tool, [newBattleTool.name]: newBattleTool };
+    control.tools = {
+      [readyTool.name]: readyTool,
+      [tool.name]: tool,
+      [newBattleTool.name]: newBattleTool,
+    };
     (controls as Record<string, unknown>)[MODULE_ID] = control;
   }
 }

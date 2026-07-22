@@ -550,13 +550,18 @@ describe("the scene control is GM-only", () => {
     expect(warn).toHaveBeenCalledTimes(1);
   });
 
-  it("marks the control and its tool invisible to a player", () => {
-    vi.stubGlobal("game", { user: { isGM: false } });
-    const controls: Record<string, { visible?: boolean; tools?: unknown }> = {};
+  it("keeps the GM-only run-round tool invisible to a player", () => {
+    // The control itself is now visible to players (it carries the player Ready
+    // toggle -- see addRoundSceneControl), but the GM's run-round tool inside it
+    // stays gated: a hidden button is not access control, and onRoundControlActivated
+    // re-checks isGM anyway.
+    vi.stubGlobal("game", { user: { isGM: false }, battleframe: {} });
+    const controls: Record<string, { visible?: boolean; tools?: Record<string, { visible?: boolean }> }> = {};
 
     addRoundSceneControl(controls);
 
-    expect(controls["battleframe-greathelm"].visible).toBe(false);
+    expect(controls["battleframe-greathelm"].visible).toBe(true);
+    expect(controls["battleframe-greathelm"].tools?.["greathelm-run-round"].visible).toBe(false);
   });
 
   it("shows the control to a GM", () => {
@@ -586,9 +591,10 @@ describe("addRoundSceneControl tolerates both known payload shapes", () => {
     expect(controls).toHaveLength(1);
     expect(controls[0].name).toBe("battleframe-greathelm");
     expect(Array.isArray(controls[0].tools)).toBe(true);
-    // Both tools present: running a round and starting a new battle.
+    // Every tool present: the player-visible Ready toggle first, then the GM's
+    // run-round and new-battle tools.
     const toolNames = (controls[0].tools as Array<{ name: string }>).map((t) => t.name);
-    expect(toolNames).toEqual(["greathelm-run-round", "greathelm-new-battle"]);
+    expect(toolNames).toEqual(["greathelm-ready", "greathelm-run-round", "greathelm-new-battle"]);
   });
 
   it("keys into a record-shaped controls payload", () => {
@@ -597,8 +603,20 @@ describe("addRoundSceneControl tolerates both known payload shapes", () => {
 
     addRoundSceneControl(controls);
 
+    expect(controls["battleframe-greathelm"].tools).toHaveProperty("greathelm-ready");
     expect(controls["battleframe-greathelm"].tools).toHaveProperty("greathelm-run-round");
     expect(controls["battleframe-greathelm"].tools).toHaveProperty("greathelm-new-battle");
+  });
+
+  it("shows the player-visible Ready toggle even to a non-GM", () => {
+    vi.stubGlobal("game", { user: { isGM: false }, battleframe: {} });
+    const controls: Array<{ name: string; tools: Array<{ name: string; visible?: boolean; toggle?: boolean }> }> = [];
+
+    addRoundSceneControl(controls);
+
+    const ready = controls[0].tools.find((t) => t.name === "greathelm-ready");
+    expect(ready?.visible).toBe(true);
+    expect(ready?.toggle).toBe(true);
   });
 
   it("does not throw on an unexpected payload", () => {

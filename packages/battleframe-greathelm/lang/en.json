@@ -39,6 +39,13 @@
         "tool": "New Battle",
         "noKnights": "No knights on the canvas to reset.",
         "done": "New battle: reset {count} knight(s) to full strength."
+      },
+      "ready": {
+        "tool": "Ready to Advance",
+        "noApi": "BattleFrame's round-advance service is unavailable, so ready-to-advance cannot be toggled.",
+        "stateReady": "READY",
+        "stateNotReady": "not ready",
+        "status": "You are {state} ({ready}/{total} players ready)."
       }
     },
     "prompts": {

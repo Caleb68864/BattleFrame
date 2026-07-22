@@ -7,7 +7,7 @@ import {
 } from "./constants";
 import { registerKnightDataModel } from "./data/knight";
 import { registerKnightSheet } from "./sheets/knight-sheet";
-import { registerRoundControl } from "./ui/round-control";
+import { advanceRoundCore, registerRoundControl } from "./ui/round-control";
 
 interface FoundrySettingsApi {
   register: (namespace: string, key: string, data: Record<string, unknown>) => void;
@@ -84,6 +84,34 @@ export function registerGreathelmHoverFields(): void {
       { key: "damage", label: `${MODULE_ID}.fields.damage`, max: 3 },
     ],
     defaultVisibility: "everyone",
+  });
+}
+
+/**
+ * Resolves the engine's player-driven advance service, load-order-independent
+ * (same shape as resolveBattleframeApi): built on `globalThis.battleframe` at
+ * the system's module top level, bound onto `game.battleframe` at its init.
+ */
+function advanceService(): { registerAdvance?: (fn: () => void | Promise<void>) => void } | undefined {
+  const g = globalThis as {
+    battleframe?: { advance?: { registerAdvance?: (fn: () => void | Promise<void>) => void } };
+    game?: { battleframe?: { advance?: { registerAdvance?: (fn: () => void | Promise<void>) => void } } };
+  };
+  return g.battleframe?.advance ?? g.game?.battleframe?.advance;
+}
+
+/**
+ * Wires GREATHELM's round advance into the engine's GM-less ready-to-advance
+ * feature: when every active player marks ready, the engine runs its countdown
+ * on the host client and calls this callback, which starts the next round
+ * (`advanceRoundCore`, the UNGATED round-advance -- no GM needed). The players'
+ * Ready toggle (ui/round-control.ts) drives it. A no-op when the engine's
+ * advance service is absent (an older system, or unit tests). See
+ * packages/battleframe/src/rounds/ready-advance.ts.
+ */
+export function registerGreathelmAdvance(): void {
+  advanceService()?.registerAdvance?.(() => {
+    void advanceRoundCore();
   });
 }
 
@@ -203,6 +231,10 @@ globalHooks?.once("init", () => {
   // reachable by a user -- and it needs nothing from packages/battleframe,
   // which is the point (see ./ui/round-control.ts).
   registerRoundControl();
+  // Wire the round advance into the engine's GM-less ready-to-advance feature,
+  // so a table with no GM can advance the round itself (players mark ready ->
+  // countdown -> advanceRoundCore). See registerGreathelmAdvance.
+  registerGreathelmAdvance();
   // Last, deliberately: registerGreathelmRuleset throws on failure rather
   // than returning silently, and everything above it is independent of the
   // system's api. Ordering it here means a missing system produces a loud

@@ -2808,3 +2808,37 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - 1141 tests pass (unchanged count); typecheck clean. Live-verification in a Foundry
   world still pending (i18n-present path exercised only in production).
 - Commit: this commit.
+
+## 2026-07-22 — GREATHELM wired to the engine's GM-less player-driven round advance
+- The engine's `game.battleframe.advance` service (packages/battleframe/src/rounds/
+  ready-advance.ts) lets a table with no GM advance the round: every active player
+  marks "ready", and when all are ready a host client runs a countdown and calls a
+  ruleset-registered callback. GREATHELM had no wiring to it. Added it following the
+  Full Thrust template.
+- GREATHELM's round-advance action is `onRoundControlActivated` in
+  `packages/battleframe-greathelm/src/ui/round-control.ts` — it rolls initiative and
+  opens the pool panel for the round, and `resolveRoundEnd` recursively starts the
+  next round after the victory check. It was GM-gated (`isGM()` guard up top). GREATHELM
+  DOES have a round to advance (it is a round-based game), so this is a real wiring, not
+  a no-op. Extracted the ungated body into `advanceRoundCore(roundNumber)`;
+  `onRoundControlActivated` keeps the GM gate for the manual "Run Round" tool and delegates
+  to it. `resolveRoundEnd`'s recursive next-round now calls `advanceRoundCore` directly —
+  in GM-less play the host resolving the round end is a trusted player, not the GM, so
+  routing it back through the gated entry would stall the loop. Registered
+  `() => void advanceRoundCore()` via `registerGreathelmAdvance()` in main.ts init.
+- UI: added a player-visible "Ready to Advance" toggle scene tool (`greathelm-ready`),
+  FIRST in the tools list, `toggle: true`, `visible: true`, `active: currentUserReady()`,
+  `onChange: () => void readyAction()`, where `readyAction` calls
+  `game.battleframe.advance.toggleReady()`. This forced the parent scene control's
+  `visible` from `isGM()` to `true` (a control hidden from players hides the Ready tool
+  with it); the GM-only run-round/new-battle tools keep their own `visible: isGM()` and
+  `onRoundControlActivated` re-checks `isGM`, so a hidden button was never the access
+  control anyway. Updated the one existing test that asserted the control was invisible to
+  players to assert the new split (control visible; run-round tool still GM-gated), and
+  added Ready-tool-registered + `registerGreathelmAdvance` tests. Added
+  `battleframe-greathelm.controls.ready.*` lang keys.
+- 1162 tests pass (was 1158; +3 scene-control assertions changed/added, +3 advance-registration,
+  net +4); typecheck clean. Engine, Full Thrust, and the other modules untouched.
+  Live-verification in a Foundry world still pending (the ready-flag sync + countdown path
+  runs only against a real synced Document).
+- Commit: this commit.
