@@ -80,7 +80,7 @@ deferred. Nothing is silently missing.
 | Attack a ship in fore arc within 6mu; die per fighter; screens apply | ✅ | `combat/fire-fighters.ts` |
 | Morale roll (depleted group), endurance spend, Attack-type +1/die | ✅ | wired into `combat/fire-fighters.ts` (aborts on failed morale, spends endurance on a fired attack) |
 | PDS thins the group before it strikes | ✅ | `combat/fire-fighters.ts` rolls the target's PDS first (`pdsKillsVsFighters`); casualties persist; a fully-killed group makes no attack |
-| Dogfights (fighter vs fighter) | 🟡 | `combat/fighters.ts` `dogfightKills` (math); dogfight session deferred |
+| Dogfights (fighter vs fighter) | ✅ | `combat/dogfight.ts` `resolveDogfight` (6mu fore arc, simultaneous, defender returns fire if it bears); the Fire tool dispatches it when both are fighter groups |
 | PDS vs missiles | 🟡 | `combat/fighters.ts` `pdsKillsVsMissiles` (math); waits on the missile/salvo flow |
 | Other specialised types (Heavy/Interceptor/Torpedo/Fast/Long-range) | ⏳ | Documented deferral in `combat/fire-fighters.ts` |
 | Carrier launch/recover | ⏳ | Not yet built |

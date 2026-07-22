@@ -40,6 +40,7 @@ import { drawMovementPreview, clearMovementPreview } from "./preview-overlay";
 import { parseFleet } from "../data/fleet-import";
 import { fireNeedleAtSystem, type NeedleReport } from "../combat/needle";
 import { resolveSalvoAtTarget, type SalvoReport } from "../combat/salvo";
+import { resolveDogfight, type DogfightReport } from "../combat/dogfight";
 import { resolveDamageControl, damageControlRepairs } from "../combat/damage-control";
 import { syncShipStatuses } from "../status";
 import type { SystemRef } from "../ship/systems";
@@ -141,6 +142,24 @@ export function buildSalvoReportHtml(report: SalvoReport, names: FireReportNames
   const intro = `<p>${report.onTarget} on target, ${report.intercepted} intercepted, ` +
     `<strong>${report.survivors}</strong> hit.</p>`;
   return wrapReport(`${attacker} salvo &rarr; ${target}`, [intro, ...reportBodyLines(report, target)]);
+}
+
+/** Builds the chat-card HTML for a dogfight (fighter vs fighter). */
+export function buildDogfightReportHtml(report: DogfightReport, names: FireReportNames): string {
+  const attacker = escapeHtml(names.attacker);
+  const target = escapeHtml(names.target);
+  if (!report.fired) {
+    return wrapReport(`${attacker} &times; ${target}`, [
+      `<p>No dogfight (${escapeHtml(report.reason ?? "unable")}).</p>`
+    ]);
+  }
+  const lines = [
+    `<p>${attacker} shot down <strong>${report.attackerKills}</strong> fighter(s).</p>`,
+    report.defenderReturned
+      ? `<p>${target} returned fire: <strong>${report.defenderKills}</strong> killed.</p>`
+      : `<p>${target} could not return fire.</p>`
+  ];
+  return wrapReport(`${attacker} &times; ${target} (dogfight)`, lines);
 }
 
 // --- Injectable actions (testable core) -------------------------------------
@@ -291,19 +310,40 @@ export async function fireAction(): Promise<void> {
   if (!attackerToken || !targetToken) {
     return;
   }
+  const context = { measure: services.measure, facing: services.facing, dice: services.dice };
+  const attackerType = attackerToken?.actor?.type as string | undefined;
+  const targetType = targetToken?.actor?.type as string | undefined;
+  const attackerIsFighter = !!attackerType?.endsWith(FIGHTER_GROUP_ACTOR_TYPE);
+  const targetIsFighter = !!targetType?.endsWith(FIGHTER_GROUP_ACTOR_TYPE);
+
+  // Fighter vs fighter is a dogfight.
+  if (attackerIsFighter && targetIsFighter) {
+    const report = await resolveDogfight({
+      attacker: { token: attackerToken, system: attackerToken.actor.system, update: (d: any) => attackerToken.actor.update(d) },
+      defender: { token: targetToken, system: targetToken.actor.system, update: (d: any) => targetToken.actor.update(d) },
+      context
+    });
+    await g().ChatMessage?.create({
+      content: buildDogfightReportHtml(report, {
+        attacker: attackerToken?.name ?? "Fighters",
+        target: targetToken?.name ?? "Fighters"
+      })
+    });
+    return;
+  }
+
   const target = toFiringShip(targetToken);
   if (!target) {
     notify("warn", `${MODULE_ID} | the target needs a ship actor`);
     return;
   }
 
-  // A fighter group attacks differently (size dice, 6mu fore arc) than a ship.
-  const attackerType = attackerToken?.actor?.type as string | undefined;
-  if (attackerType?.endsWith(FIGHTER_GROUP_ACTOR_TYPE)) {
+  // A fighter group attacks a ship differently (size dice, 6mu fore arc).
+  if (attackerIsFighter) {
     const report = await fireFighterGroupAtTarget({
-      group: { token: attackerToken, system: attackerToken.actor.system },
+      group: { token: attackerToken, system: attackerToken.actor.system, update: (d: any) => attackerToken.actor.update(d) },
       target,
-      context: { measure: services.measure, facing: services.facing, dice: services.dice }
+      context
     });
     const html = buildFighterReportHtml(report, {
       attacker: attackerToken?.name ?? "Fighters",
