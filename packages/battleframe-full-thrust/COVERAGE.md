@@ -44,6 +44,7 @@ deferred. Nothing is silently missing.
 | Rule | Status | Where |
 |---|---|---|
 | 6 × 60° arcs (F, FS, AS, A, AP, FP), weapon must bear | ✅ | `combat/arcs.ts` over the engine bearing |
+| Fire-arc ring overlay on the token (the GZG "FTring" diagram) | ✅ | `ui/arc-overlay.ts` draws the 6 labelled arcs + beam range rings oriented to a ship's facing (pure geometry unit-tested, matches `arcForBearing`); shown on hover + pinnable via the "Fire Arcs" tool. Live-verified |
 | Pre-fire targeting preview (which weapons bear + range band, no roll) | ✅ | `combat/targeting.ts` `previewTargeting` (mirrors `resolveWeaponFire` precedence) + a player-visible "Check Targeting" tool whispering `buildTargetingReportHtml` |
 | Fleet Book conditional aft fire (all-round turrets fire aft on a no-thrust turn) | 🟡 | `combat/aft-fire.ts` `aftFirePermitted`/`weaponBearsOnWithAftFire` (pure + tested; opt-in, default `weaponBearsOn` unchanged); the "did the ship thrust this turn" fact is caller-supplied — live wiring deferred |
 

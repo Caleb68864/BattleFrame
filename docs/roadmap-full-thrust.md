@@ -63,7 +63,9 @@ in a live Foundry.
 10. **[qol] Visual SSD** — 🟡 PARTIAL: the sheet + hover show "remaining/design" tracks for hull,
     thrust, FCS, screens, PDS, and (2026-07-22, live-verified) a **clickable hull damage track**
     (`prepareHullBoxes` + `onToggleHullBox`) with FT2 threshold-row separators replaces the bare
-    number input. Still to do: an arc/range diagram, and clickable boxes for armour/systems too.
+    number input. The **arc/range diagram** is delivered as an on-canvas fire-arc ring overlay on
+    the token (`ui/arc-overlay.ts`, live-verified — 6 labelled arcs + beam rings, hover + "Fire
+    Arcs" pin tool). Still to do: clickable boxes for armour/systems too.
 11. ~~**[qol] Pre-fire targeting feedback.**~~ ✅ **DONE 2026-07-22.** `combat/targeting.ts`
     `previewTargeting` returns a per-weapon row (bears? / in-range? / dice or to-hit) WITHOUT
     rolling, mirroring `resolveWeaponFire`'s precedence exactly so it never disagrees with the
