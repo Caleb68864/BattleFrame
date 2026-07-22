@@ -3196,3 +3196,35 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Surfaces: packages/battleframe-dirtside/src/round/{session,c3}.ts + 2 test files.
   71 DS2 tests pass; full-repo typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Dirtside II two-tier data models (G1) + pure state readers
+- Context: final slice of the first increment — the token-less unit ← element two-tier
+  TypeDataModels and their pure readers, completing "scaffold + pure logic + data models".
+  TDD throughout (shape-assertion tests via injected fake fields, InCountry's pattern).
+- Data models (src/data/, factory-resolves-base-at-call-time so they build under a fake in
+  tests and the real globals live): vehicle.ts (createVehicleDataClass + weaponSchema —
+  size/signature/stealth/armour block/fire-control/weapons[]/posture/damage markers/
+  isCommandVehicle), infantry.ts (createInfantryDataClass — troopType/chitsDrawn/killTotal/
+  posture/canFirefight/removed), unit.ts (createUnitDataClass — role/quality/leadership/
+  confidence/isCommandUnit/commandVehicleId/activated/underFire + battery fields). Shared
+  foundry-base.ts resolves the TypeDataModel base + fields namespace. register.ts wires all
+  three onto CONFIG.Actor.dataModels under `battleframe-dirtside.<subtype>` (the module-id
+  namespace — see the naming reconciliation). Every field is user-entered w/ neutral
+  defaults; no GZG numbers.
+- Pure readers: vehicle-state.ts effectiveSignature (max(0, sig-stealth), a reader not a
+  stored field per the walker/oversize exception) + armourFace (adapter onto Tier-1
+  armourByFace); unit-state.ts elementsOf(unitId, actors) — the unitId flag is the SINGLE
+  join (the unit stores NO element list, avoiding two-way sync), read via getFlag or a raw
+  flags bag so it's testable Foundry-free.
+- main.ts: FIRST-SLICE state — wires ONLY registerDataModels() at init so the subtypes
+  register live and the package builds (verified: vite build → dist/dirtside.js, 7 modules).
+  The full G10 init order (sheets → status → hover → round control → advance → ruleset LAST)
+  is documented inline as the deferred G-series the parent completes.
+- Surfaces: packages/battleframe-dirtside/src/{main.ts, data/{foundry-base,vehicle,infantry,
+  unit,register,vehicle-state,unit-state}.ts} + 2 test files. 86 DS2 tests (11 files);
+  full-repo 1306 pass; typecheck clean; DS2 package builds.
+- STOPPED HERE. Remaining = the whole G-series glue (G2 sheets, G3 round control, G4
+  advance/Turn-End reset, G5 live RollTable drawChits + without-replacement live-verify,
+  G6 Stage-1/Stage-2 fire path wiring, G7 chat cards, G8 status effects, G9 command-loss
+  hook firing A11, G10 finishing main.ts init) + live-verify in a v14 world — parent-handled.
+- Commit: this commit.
