@@ -1,6 +1,7 @@
 import { MODULE_ID, UNIT_ACTOR_TYPE } from "./constants";
 import { registerUnitDataModel } from "./data/unit";
 import { registerUnitSheet } from "./sheets/unit-sheet";
+import { registerSimpleSkirmishTokenDefaults } from "./token-defaults";
 import { registerRoundControl, advanceRoundCore } from "./ui/round-control";
 
 interface BattleframeRegisterResult {
@@ -115,6 +116,8 @@ const globalHooks = (globalThis as unknown as {
 globalHooks?.once("init", () => {
   registerUnitDataModel();
   registerUnitSheet();
+  // Give a fresh unit its shipped squad game-icon (via the engine token registry).
+  registerSimpleSkirmishTokenDefaults();
   // Advertise the unit's hover stat fields to the engine's hover registry.
   registerSimpleSkirmishHoverFields();
   // The round trigger: a scene control answering Foundry's own hook. This is

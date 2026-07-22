@@ -3593,3 +3593,8 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Gates: vitest 1456 green, typecheck 0, build 0. Live-verify (icon paths, sheet
   render) deferred to the parent per the project's Foundry-facing rule.
 - Commit: this commit.
+
+## 2026-07-22 — Simple Skirmish default token image (completeness)
+- The default-token rollout initially skipped Simple Skirmish; added it for consistency so
+  all six rulesets give fresh actors a game-icon. SS unit -> squad.svg (dark-squad, Lorc,
+  CC-BY), same engine token-defaults registry pattern + shipped icon/CREDITS as the others. +4 tests.
