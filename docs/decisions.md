@@ -3598,3 +3598,23 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - The default-token rollout initially skipped Simple Skirmish; added it for consistency so
   all six rulesets give fresh actors a game-icon. SS unit -> squad.svg (dark-squad, Lorc,
   CC-BY), same engine token-defaults registry pattern + shipped icon/CREDITS as the others. +4 tests.
+
+## 2026-07-22 — GREATHELM round restore must not throw on a malformed persisted flag
+- The suspendable round's `restoreRoundSession`/`createRoundSession` restore path
+  dereferenced `restore.unspent` directly (`Object.keys` / `Object.entries` +
+  per-player `.map`). A round flag is untyped JSON on the Combat document that has
+  to survive both a reload and a module version change, so a flag written by an
+  older/partial build can arrive with `unspent` absent (or a player entry that is
+  not an array). Either shape threw `TypeError: Cannot convert undefined or null
+  to object`.
+- Why it mattered (not just defensive): `advanceRoundCore` (ui/round-control.ts)
+  reads the flag on every "Run Round" click and, whenever it is non-complete, takes
+  the resume branch — it never falls through to start a fresh round while a flag is
+  present. A throwing restore is caught and reported, then re-entered on the next
+  click, so a single malformed flag bricks the round tool permanently.
+- Fix: coerce a missing/non-object `unspent` to `{}` and a non-array player pool to
+  `[]` in `createRoundSession` — a malformed flag degrades to an empty round instead
+  of throwing. Engine-neutral; touches only battleframe-greathelm.
+- TDD: failing test first (`tests/session.test.ts` "tolerates a malformed persisted
+  round…") reproduced the TypeError, then the coercion made it pass.
+- Gates: vitest 1477 green, typecheck 0, build 0.

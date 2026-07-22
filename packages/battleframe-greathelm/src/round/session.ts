@@ -305,13 +305,23 @@ export function createRoundSession(
   // fresh round rolls them from the initiative pools. Everything else is the
   // same live machine.
   const effectiveFirstPlayerId = restore?.firstPlayerId ?? firstPlayerId;
-  const playerKeys = restore ? Object.keys(restore.unspent) : [...pools.keys()];
+  // The restore state is untyped JSON off the Combat document -- it must survive
+  // a reload AND a module version change, so a flag written by an older/partial
+  // build can arrive without `unspent`, or with a player entry that is not an
+  // array. Coerce both here rather than dereference them: a malformed flag must
+  // degrade to an empty round, never throw. `advanceRoundCore` re-enters the
+  // resume path on every "Run Round" click, and a throw there would brick the
+  // round tool permanently (a non-complete flag is never allowed to fall through
+  // to a fresh round). See ui/round-control.ts and session.test.ts.
+  const restoredUnspent: Record<string, RoundSessionDie[]> =
+    restore && restore.unspent && typeof restore.unspent === "object" ? restore.unspent : {};
+  const playerKeys = restore ? Object.keys(restoredUnspent) : [...pools.keys()];
   const playerIds = rotateToFirst(playerKeys, effectiveFirstPlayerId);
   const unspent = new Map<string, RoundSessionDie[]>(
     restore
-      ? Object.entries(restore.unspent).map(([playerId, dice_]) => [
+      ? Object.entries(restoredUnspent).map(([playerId, dice_]) => [
           playerId,
-          dice_.map((die) => ({ ...die })),
+          (Array.isArray(dice_) ? dice_ : []).map((die) => ({ ...die })),
         ])
       : [...pools.entries()].map(([playerId, faces]) => [
           playerId,

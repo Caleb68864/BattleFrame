@@ -116,6 +116,42 @@ describe("createRoundSession", () => {
     );
   });
 
+  it("tolerates a malformed persisted round (missing/invalid unspent) instead of throwing", () => {
+    const knights = [knight("a1", "a"), knight("b1", "b")];
+    const dice = fixedDice();
+    const measure = makeMeasure([]);
+
+    // A round flag is untyped JSON persisted on the Combat document -- it must
+    // survive a reload AND a module version change. A flag written by an older
+    // build (or partially written) can arrive with `unspent` absent. Restoring
+    // it must degrade to an empty round, never throw: the resume path in
+    // ui/round-control.ts runs this on every "Run Round" click, and a throw
+    // there bricks the round tool permanently (the flag is non-complete, so the
+    // glue re-enters resume every time and can never start a fresh round).
+    const malformed = {
+      firstPlayerId: "a",
+      turnPointer: 0,
+      complete: false,
+    } as unknown as import("../src/round/session").SerializedRoundSession;
+
+    expect(() => restoreRoundSession({ knights, dice, measure }, malformed)).not.toThrow();
+    const restored = restoreRoundSession({ knights, dice, measure }, malformed);
+    expect(restored.remainingDice()).toEqual([]);
+
+    // A player entry that is not an array (another partial-write shape) is
+    // likewise coerced rather than dereferenced with `.map`.
+    const malformedPool = {
+      firstPlayerId: "a",
+      turnPointer: 0,
+      complete: false,
+      unspent: { a: null, b: [{ id: "b-d1", playerId: "b", face: 6 }] },
+    } as unknown as import("../src/round/session").SerializedRoundSession;
+
+    expect(() => restoreRoundSession({ knights, dice, measure }, malformedPool)).not.toThrow();
+    const restoredPool = restoreRoundSession({ knights, dice, measure }, malformedPool);
+    expect(restoredPool.remainingDice().map((die) => die.id)).toEqual(["b-d1"]);
+  });
+
   it("alternates sides, and lets one side continue after the other runs out", async () => {
     const knights = [knight("a1", "a"), knight("b1", "b")];
     const pools = new Map([
