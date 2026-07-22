@@ -52,3 +52,10 @@ docs/_local-foundry-access.md
 # Generated TypeDoc API reference (run: npm run docs)
 docs/api/
 docs/api-full-thrust/
+
+# Local secrets + live-test artifacts (never commit)
+.portainer-key
+*.ptr_key
+/local-test/
+playwright-report/
+test-results/
