@@ -141,10 +141,14 @@ in a live Foundry.
     spinal-mount Nova Cannon (3-turn forward sweep, 6/4/2 D6, 2"/4"/6" template) and the More
     Thrust Wave Gun (36mu expanding template, 4/3/2 D6, charge-then-fire + knock-out feedback) as
     pure math (+22 tests); damage = die score, screens ignored. Still to do: template canvas
-    geometry, arming/charge bookkeeping on a Document, scene tools. **K-guns are now built**:
-    `combat/kravak.ts` (K-gun railgun to-hit/damage/armour-pierce, MKP packs, scatterguns vs
-    fighters/plasma/ships, K-1 point-defence — Fleet Book 2 baseline, +18 tests). Still to do: the
-    spinal scene tools + templates, and the Sa'Vasku / Phalon races (different design/damage systems).
+    geometry. **Spinal scene tools DONE (2026-07-22, live-verified)** — "Nova Cannon" + "Wave Gun"
+    GM tools fire (direct-target, like salvo) via `resolveSpinalWeapon`: dice by turn/range, damage
+    applied + threshold, card posted (verified: Wave 16dmg + Nova 24dmg destroyed a ship). Deferred:
+    the swept/expanding MeasuredTemplate, the Nova 3-turn sweep, the Wave Gun charge cycle.
+    **All three xeno races are now built (pure math):** `combat/kravak.ts` (K-gun/MKP/scattergun/K-1
+    PD, +18), `combat/savasku.ts` (bio power-points, stinger/lance/leech pods, biomass, regen, +25),
+    `combat/phalon.ts` (plasma bolts + multi-layer shell, +27). Still to do: wiring the xeno weapons
+    as fireable weapon-kinds + their ship design/damage models into the sheet/combat path.
 
 ## P3 — Live-verification debt
 

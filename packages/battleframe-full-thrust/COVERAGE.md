@@ -60,7 +60,10 @@ deferred. Nothing is silently missing.
 | Kra'Vak kinetic weapons: K-gun railgun, MKP packs, scatterguns, K-1 PD (armour-piercing, screens ignored) | 🟡 | `combat/kravak.ts` `kgunToHit`/`kgunDamageForFace`/`applyKgunHit`/`mkpHits`/`scattergun*`/`kgunK1PointDefenceKills` (Fleet Book 2, pure + tested); a Kra'Vak weapon kind + scene wiring deferred; Sa'Vasku / Phalon not built |
 | Spinal-mount Nova Cannon: 3-turn forward sweep (6/4/2 D6, 2"/4"/6" template), damage = die score, screens ignored | 🟡 | `combat/spinal.ts` `novaCannonDamage`/`novaCannonDiceForTurn`/`novaCannonTemplateInches`/`novaCannonSweep` (pure math + tests); template geometry, arming bookkeeping, and a scene tool deferred |
 | Wave Gun: 36mu expanding template (4/3/2 D6, 2"/3"/4"), charge-then-fire, knock-out feedback, damage = die score, screens/armour ignored | 🟡 | `combat/spinal.ts` `waveGunDamage`/`waveGunDiceAtRange`/`waveGunTemplateInches`/`waveGunIsCharged`/`waveGunChargeAfterTurn`/`waveGunChargeAfterFiring`/`waveGunFeedbackDamage` (pure math + tests); template geometry, charge state on a Document, and a scene tool deferred |
-| K-guns / xeno (Kra'Vak / Sa'Vasku / Phalon) weapons | ⏳ | Not yet built |
+| Spinal Nova Cannon / Wave Gun — fireable | ✅ | "Nova Cannon" / "Wave Gun" GM tools (`resolveSpinalWeapon`, direct-target). Live-verified: dice by turn/range, damage + threshold + destruction. Template/charge/3-turn-sweep deferred |
+| Kra'Vak K-guns / MKP / scatterguns / K-1 PD | 🟡 | `combat/kravak.ts` (pure + tested); weapon-kind + scene wiring deferred |
+| Sa'Vasku bio-ships (power points, stinger/lance/leech pods, biomass, regen) | 🟡 | `combat/savasku.ts` (pure + tested); design/combat wiring deferred |
+| Phalon plasma bolts + multi-layer shell | 🟡 | `combat/phalon.ts` (pure + tested); weapon-kind + shell-model wiring deferred |
 
 ## Defences
 | Rule | Status | Where |
