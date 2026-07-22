@@ -182,3 +182,65 @@ export function fireReportParts(result: FireResult, names: FireReportNames): Fir
 function band(result: FireResult): string {
   return result.band ? result.band.charAt(0).toUpperCase() + result.band.slice(1) : "";
 }
+
+/* ---- Glue helper: build a FireInput from actor system data --------------- */
+
+/** The weapon shape as stored on a vehicle element's `system.weapons[i]`. */
+export interface StoredWeapon {
+  class?: number;
+  type?: string;
+  bands?: Partial<Bands>;
+  chitValidity?: Partial<Record<Band, string[]>>;
+}
+
+/** The firer/target system slices the glue reads off the two element actors. */
+export interface FireContextData {
+  distance: number;
+  firerFireControl: FireControl;
+  movedOverHalf: boolean;
+  weapon: StoredWeapon;
+  /** DFFG + arty/SLAM are keyed off the weapon type list the user maintains. */
+  dffgTypes?: readonly string[];
+  artySlamTypes?: readonly string[];
+  targetEffSignature: number;
+  targetPostureSecondaries?: readonly DieType[];
+  sigTable: Readonly<Record<number, DieType>>;
+  targetArmour: ArmourValue;
+  struckFace: StruckFace;
+  targetKind: "vehicle" | "infantry";
+  targetKillTotal?: number;
+}
+
+/**
+ * Assembles a `resolveFire` input from stored actor data + the user tables the
+ * glue resolves (sigTable from a world setting, distance from `measure.between`).
+ * Pure so the mapping is testable without Foundry.
+ */
+export function buildFireInput(ctx: FireContextData): FireInput {
+  const type = (ctx.weapon.type ?? "").toLowerCase();
+  return {
+    distance: ctx.distance,
+    firer: { fireControl: ctx.firerFireControl, movedOverHalf: ctx.movedOverHalf },
+    weapon: {
+      class: ctx.weapon.class ?? 1,
+      bands: {
+        close: ctx.weapon.bands?.close ?? 0,
+        medium: ctx.weapon.bands?.medium ?? 0,
+        long: ctx.weapon.bands?.long ?? 0,
+        flatMax: ctx.weapon.bands?.flatMax ?? 0,
+      },
+      isDffg: (ctx.dffgTypes ?? []).map((t) => t.toLowerCase()).includes(type),
+      isArtyOrSlam: (ctx.artySlamTypes ?? []).map((t) => t.toLowerCase()).includes(type),
+      chitValidity: ctx.weapon.chitValidity ?? {},
+    },
+    target: {
+      effSignature: ctx.targetEffSignature,
+      postureSecondaries: ctx.targetPostureSecondaries ?? [],
+      sigTable: ctx.sigTable,
+      armour: ctx.targetArmour,
+      struckFace: ctx.struckFace,
+      kind: ctx.targetKind,
+      killTotal: ctx.targetKillTotal,
+    },
+  };
+}

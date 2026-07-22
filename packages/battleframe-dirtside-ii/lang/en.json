@@ -15,7 +15,10 @@
     "fields": {
       "damage": "Damage",
       "confidence": "Confidence",
-      "activated": "Activated"
+      "activated": "Activated",
+      "size": "Size",
+      "armour": "Armour",
+      "leadership": "Leadership"
     },
     "confidence": {
       "confident": "Confident",

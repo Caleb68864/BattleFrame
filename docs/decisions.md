@@ -3290,3 +3290,40 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Surfaces: src/round/{fire,chit-pot}.ts, src/status.ts + 3 test files (fire+8, status+7,
   chit-pot+6). 111 DS2 tests; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Dirtside II G3/G4/G9/G10: round control, Turn-End, command-loss hook, init
+- Context: increment 2 final slice — the playable spine + init wiring. Copied InCountry's +
+  Full Thrust's round-control shape (testable core on top, live glue below).
+- G3 src/ui/round-control.ts: activation iterates UNITS (the token-less grouping actors) —
+  a player activates by selecting one of their unit's element tokens; the session (A10)
+  drives the alternation. Round state (DirtsideRoundState) persists on
+  `combat.flags[battleframe-dirtside-ii].round` (never a module `let`). Testable core:
+  beginRoundState (fewer-units chooses first, tie → deterministic-but-flagged first side),
+  unitSidesOf, addSceneControl (Ready / Activate Unit / End Turn tools, both payload
+  shapes). Glue: gatherUnitsFromCanvas (element token → unitId flag → unit), advanceRoundCore
+  (begin/resume, refuse while in progress), activateSelectedControl.
+- G4 src/round: advanceTurnCore clears every unit's activated+underFire (pure turnEndUpdate)
+  then opens a fresh round; registered as the engine's GM-less advance callback so a
+  player-driven table ends the turn itself via the ready countdown.
+- G6 glue helper: buildFireInput (pure) assembles a resolveFire input from stored actor
+  data + the user tables the glue resolves (sigTable/distance); the fire path stays fully
+  tested. NOTE: the live activate→fire application (measure.between + chat.postCard +
+  syncElementStatus) is the remaining thin wire the parent completes at live-verify — the
+  fire RESOLUTION + report are done and tested; only their canvas application is deferred.
+- G9 src/round/command-loss.ts: pure commandLossTriggered (fires on a command vehicle's
+  transition INTO knocked-out) + forceC3FromUnits; updateActor-hook glue applies A11's
+  applyCommandLoss to the losing force and writes the C3 lock to
+  `combat.flags[…].c3`. This closes the two-tier loop live: an element death ripples to
+  unit confidence + the force.
+- G10 src/main.ts: full init order — data models → sheets → status → hover fields → round
+  control → advance.registerAdvance → command-loss hook → registerDirtsideRuleset (LAST +
+  loud, primary:true, defensive api resolution). Hover fields for vehicle + unit.
+- Surfaces: src/ui/round-control.ts, src/round/{fire(+buildFireInput),command-loss}.ts,
+  src/main.ts, lang + 3 test files (round-control+5, command-loss+5, main+5, fire+1).
+  127 DS2 tests; full repo 1347 pass; typecheck clean; `npm run build` GREEN
+  (dist/dirtside-ii.js 32 kB).
+- Live-verify (deferred to parent): sheet saves/actions; G5 RollTable drawMany
+  without-replacement + reset; the round-control canvas reads / Combatant seating / scene
+  control payload; the activate→fire→apply canvas wire; status toggles; the updateActor
+  transition timing (pre- vs post-apply system.damage). Do NOT deploy.
+- Commit: this commit.

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { resolveFire, fireReportParts, stepToBand, type FireInput } from "../src/round/fire";
+import { resolveFire, fireReportParts, stepToBand, buildFireInput, type FireInput } from "../src/round/fire";
 import type { DieType } from "../src/dice/ladder";
 
 /**
@@ -127,6 +127,30 @@ describe("resolveFire — Stage-1 opposed roll", () => {
     expect(requested).toBe(3);
     expect(res.hit).toBe(true);
     expect(res.chit?.outcome).toBe("none");
+  });
+});
+
+describe("buildFireInput — maps stored actor data + user tables to a FireInput", () => {
+  it("flags DFFG/arty by weapon type and carries the bands + validity", () => {
+    const fi = buildFireInput({
+      distance: 5,
+      firerFireControl: "superior",
+      movedOverHalf: true,
+      weapon: { class: 3, type: "DFFG", bands: { close: 4 }, chitValidity: { close: ["R"] } },
+      dffgTypes: ["dffg"],
+      artySlamTypes: ["slam", "arty"],
+      targetEffSignature: 2,
+      sigTable,
+      targetArmour: { front: 3, openTop: false },
+      struckFace: "front",
+      targetKind: "vehicle",
+    });
+    expect(fi.weapon.isDffg).toBe(true);
+    expect(fi.weapon.isArtyOrSlam).toBe(false);
+    expect(fi.weapon.class).toBe(3);
+    expect(fi.weapon.bands.close).toBe(4);
+    expect(fi.firer.movedOverHalf).toBe(true);
+    expect(fi.weapon.chitValidity.close).toEqual(["R"]);
   });
 });
 
