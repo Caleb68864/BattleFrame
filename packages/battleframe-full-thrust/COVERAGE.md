@@ -51,7 +51,7 @@ deferred. Nothing is silently missing.
 | Beam batteries: class dice by 12mu band, pool damage | ✅ | `combat/beam.ts`, `combat/fire.ts` |
 | Pulse torpedoes: to-hit by band (2+…6), damage die, ignore screens | ✅ | `combat/weapons.ts`, `combat/fire.ts` |
 | Submunition packs: dice by band, ignore screens, one-shot | ✅ | `combat/weapons.ts`, `combat/fire.ts` |
-| Needle beams: 9mu, knock a nominated system on a 6, ignore screens/armour | 🟡 | `combat/ordnance.ts` (math); per-system targeting UI deferred |
+| Needle beams: 9mu, knock a nominated system on a 6, ignore screens/armour | ✅ | `combat/needle.ts` `fireNeedleAtSystem` + "Needle Beam" scene tool with a system-type picker |
 | Salvo missiles: salvo of 6, PDS interception, per-missile damage | 🟡 | `combat/ordnance.ts` (math); placed-counter launch UI deferred |
 | Nova cannon / wave gun / K-guns | ⏳ | Not yet built |
 

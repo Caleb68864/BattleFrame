@@ -36,6 +36,8 @@ import { plotMovementPath, type MovementPath } from "../movement/path";
 import { previewPointsPx } from "../movement/preview";
 import { drawMovementPreview, clearMovementPreview } from "./preview-overlay";
 import { parseFleet } from "../data/fleet-import";
+import { fireNeedleAtSystem, type NeedleReport } from "../combat/needle";
+import type { SystemRef } from "../ship/systems";
 
 // --- Pure report formatting (unit-tested) -----------------------------------
 
@@ -104,6 +106,23 @@ export function buildFighterReportHtml(report: FighterFireReport, names: FireRep
     ...pdsLine,
     ...reportBodyLines(report, target)
   ]);
+}
+
+/** Builds the chat-card HTML for a needle-beam strike. */
+export function buildNeedleReportHtml(report: NeedleReport, names: FireReportNames): string {
+  const attacker = escapeHtml(names.attacker);
+  const target = escapeHtml(names.target);
+  const system = escapeHtml(report.systemType);
+
+  if (!report.fired) {
+    return wrapReport(`${attacker} needle &rarr; ${target}`, [
+      `<p>No strike (${escapeHtml(report.reason ?? "unable")}).</p>`
+    ]);
+  }
+  const body = report.hit
+    ? `<p>Needle beam knocked out the target's <strong>${system}</strong>.</p>`
+    : `<p>Needle beam missed the target's ${system}.</p>`;
+  return wrapReport(`${attacker} needle &rarr; ${target}`, [body]);
 }
 
 // --- Injectable actions (testable core) -------------------------------------
@@ -294,6 +313,59 @@ export async function fireAction(): Promise<void> {
   if (phase) {
     await advanceFirePhase(phase, attackerToken.id);
   }
+}
+
+/** Needle-tool action: snipe one nominated system on the targeted ship. */
+export async function needleAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM resolves fire`);
+    return;
+  }
+  const services = api();
+  if (!services) {
+    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+    return;
+  }
+  const attackerToken = controlledToken();
+  const targetToken = targetedToken();
+  if (!attackerToken || !targetToken) {
+    return;
+  }
+  const target = toFiringShip(targetToken);
+  if (!target || !attackerToken.actor) {
+    notify("warn", `${MODULE_ID} | both tokens need a ship actor`);
+    return;
+  }
+
+  // Nominate which system to snipe.
+  const dialog = g().foundry?.applications?.api?.DialogV2;
+  let systemType: SystemRef["type"] = "fcs";
+  if (dialog?.prompt) {
+    const options = ["fcs", "drive", "screen", "pds", "weapon"]
+      .map((t) => `<option value="${t}">${t}</option>`)
+      .join("");
+    const value = (await dialog.prompt({
+      window: { title: "Full Thrust: Needle Beam -- target system" },
+      content: `<p>System to snipe:</p><select name="system">${options}</select>`,
+      ok: {
+        label: "Fire",
+        callback: (_event: unknown, button: any) => button?.form?.elements?.system?.value ?? "fcs"
+      }
+    })) as string;
+    systemType = (value as SystemRef["type"]) ?? "fcs";
+  }
+
+  const report = await fireNeedleAtSystem({
+    attacker: { token: attackerToken, system: attackerToken.actor.system },
+    target,
+    systemType,
+    context: { measure: services.measure, facing: services.facing, dice: services.dice }
+  });
+  const html = buildNeedleReportHtml(report, {
+    attacker: attackerToken?.name ?? "Attacker",
+    target: targetToken?.name ?? "Target"
+  });
+  await g().ChatMessage?.create({ content: html });
 }
 
 /** The scene grid pixels-per-mu for the token's scene. */
@@ -602,6 +674,16 @@ export function addSceneControl(controls: unknown): void {
     onClick: () => void fireAction(),
     onChange: () => void fireAction()
   };
+  const needleTool = {
+    name: "full-thrust-needle",
+    title: "battleframe-full-thrust.controls.needle",
+    icon: "fas fa-syringe",
+    button: true,
+    visible: gm,
+    order: 2,
+    onClick: () => void needleAction(),
+    onChange: () => void needleAction()
+  };
   const plotTool = {
     name: "full-thrust-plot",
     title: "battleframe-full-thrust.controls.plot",
@@ -647,7 +729,7 @@ export function addSceneControl(controls: unknown): void {
   };
 
   if (Array.isArray(controls)) {
-    control.tools = [initiativeTool, fireTool, plotTool, executeTool, importTool];
+    control.tools = [initiativeTool, fireTool, needleTool, plotTool, executeTool, importTool];
     controls.push(control);
     return;
   }
@@ -655,6 +737,7 @@ export function addSceneControl(controls: unknown): void {
     control.tools = {
       [initiativeTool.name]: initiativeTool,
       [fireTool.name]: fireTool,
+      [needleTool.name]: needleTool,
       [plotTool.name]: plotTool,
       [executeTool.name]: executeTool,
       [importTool.name]: importTool

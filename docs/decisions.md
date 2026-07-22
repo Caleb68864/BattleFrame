@@ -2095,4 +2095,12 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   `includes` Handlebars helpers. Array ops + row prep + handlers unit-tested (782 total).
 - Live-unverified: the ApplicationV2 action-button dispatch and the multi-select
   `system.weapons.N.arcs` → array form binding (needs a real Foundry v14 sheet).
+- Commit: b989457.
+
+## 2026-07-22 — Full Thrust: needle beams wired (roadmap P0 #3)
+- combat/needle.ts `fireNeedleAtSystem`: requires a working needle mount that bears (arc) on a
+  target within 9mu, rolls 1d6, and on a 6 knocks out ONE nominated surviving system (reusing
+  enumerateSurvivingSystems + applySystemKnockouts), ignoring screens/armour and dealing no hull
+  damage; then syncs the token status. A "Needle Beam" scene tool picks the system type
+  (fcs/drive/screen/pds/weapon) via a dialog and posts a chat report. Core unit-tested (790 total).
 - Commit: this commit.

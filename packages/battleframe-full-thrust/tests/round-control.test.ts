@@ -2,6 +2,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildFireReportHtml,
   buildFighterReportHtml,
+  buildNeedleReportHtml,
   addSceneControl,
   registerRoundControl,
   executeManeuversAction,
@@ -108,6 +109,25 @@ describe("buildFighterReportHtml", () => {
   });
 });
 
+describe("buildNeedleReportHtml", () => {
+  it("reports a knocked-out system on a hit", () => {
+    const html = buildNeedleReportHtml(
+      { fired: true, hit: true, systemType: "fcs" },
+      { attacker: "Sniper", target: "Foe" }
+    );
+    expect(html).toContain("Sniper");
+    expect(html).toContain("fcs");
+    expect(html.toLowerCase()).toContain("knocked out");
+  });
+  it("reports a no-strike reason (escaped)", () => {
+    const html = buildNeedleReportHtml(
+      { fired: false, hit: false, systemType: "drive", reason: "out-of-range" },
+      { attacker: "A", target: "B" }
+    );
+    expect(html).toContain("out-of-range");
+  });
+});
+
 describe("addSceneControl", () => {
   it("adds a Full Thrust control with fire and plot tools (array payload)", () => {
     vi.stubGlobal("game", { user: { isGM: true } });
@@ -119,6 +139,7 @@ describe("addSceneControl", () => {
     const toolNames = controls[0].tools.map((t: any) => t.name);
     expect(toolNames).toContain("full-thrust-initiative");
     expect(toolNames).toContain("full-thrust-fire");
+    expect(toolNames).toContain("full-thrust-needle");
     expect(toolNames).toContain("full-thrust-plot");
     expect(toolNames).toContain("full-thrust-execute");
     expect(toolNames).toContain("full-thrust-import");

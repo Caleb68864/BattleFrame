@@ -27,8 +27,10 @@ in a live Foundry.
    removes fighters (casualties persist to the group), and a group shot down entirely makes no
    attack (`reason: "shot-down"`); the chat card reports the kills. **Still pending:**
    `pdsKillsVsMissiles` against missiles — waits on the missile/salvo flow (#4/#15).
-3. **[wire] Needle beams.** `needleHit` + range done; no action to fire one at a *chosen enemy
-   system* (needs a system picker).
+3. ~~**[wire] Needle beams.**~~ ✅ **DONE 2026-07-22.** `combat/needle.ts` `fireNeedleAtSystem`
+   (9mu + arc, roll, knock out a nominated surviving system on a 6, ignores screens/armour) +
+   a "Needle Beam" scene tool with a system-type picker. Core unit-tested; the picker dialog is
+   live-unverified.
 4. **[wire] Salvo missiles.** `salvoIntercepted/salvoDamage/salvoSurvivors` done; no launch
    flow (point-of-aim counter, move, resolve with PDS).
 5. **[wire] Damage control.** `damageControlRepairs` done; no end-of-turn repair phase.
