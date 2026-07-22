@@ -1044,7 +1044,9 @@ export async function launchFightersAction(): Promise<void> {
     notify("error", `${MODULE_ID} | could not create the fighter group`);
     return;
   }
-  const td = await group.getTokenDocument({ x: start.x + offset, y: start.y - offset, disposition, width: 1, height: 1 });
+  // Link the token to its actor so recovery can delete both cleanly (an unlinked
+  // token owns a synthetic actor that vanishes with the token, double-deleting).
+  const td = await group.getTokenDocument({ x: start.x + offset, y: start.y - offset, disposition, width: 1, height: 1, actorLink: true });
   await carrier.document?.parent?.createEmbeddedDocuments?.("Token", [td.toObject()]);
   await carrier.actor.setFlag?.(MODULE_ID, LAUNCHED_GROUPS_FLAG, deployed + 1);
   notify("info", `${MODULE_ID} | launched a fighter group (${deployed + 1}/${bayCapacity(bays).groups} bays used)`);
@@ -1082,9 +1084,14 @@ export async function recoverFightersAction(): Promise<void> {
     return;
   }
   const groupActor = best.token.actor;
-  await best.token.document?.delete?.();
-  await groupActor?.delete?.();
+  // Decrement the bay count FIRST so a delete hiccup can't strand the flag.
   await carrier.actor.setFlag?.(MODULE_ID, LAUNCHED_GROUPS_FLAG, Math.max(0, deployed - 1));
+  try {
+    await best.token.document?.delete?.();
+    await groupActor?.delete?.();
+  } catch {
+    /* the token may take its (linked) actor with it; a leftover is harmless */
+  }
   notify("info", `${MODULE_ID} | recovered a fighter group (${Math.max(0, deployed - 1)} still out)`);
 }
 

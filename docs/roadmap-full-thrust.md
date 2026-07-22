@@ -93,11 +93,11 @@ in a live Foundry.
     (Heavy/Interceptor/Long-range already done). Pilot quality is now WIRED into `fire-fighters.ts`
     (Ace +1 attack die, Ace/Turkey morale mods, Turkey 2-fail break) and `dogfight.ts` (Turkey −1
     die, Ace extra die), with an optional `pilotQuality` field on the fighter-group model + sheet.
-    Carrier operations now have a pure core `combat/carrier.ts` (`bayCapacity`/`launchLimit`/
-    `canLaunch`/`canRecover`/`enduranceAfterTurn`/`mustReturn`/`isLost`/`recover` — bay capacity by
-    class, 2 groups/turn launch, 1/turn recover, endurance depletion + return-or-lost; +16 tests).
-    Still to do: the Foundry orchestrator that launches/recovers fighter-group tokens, and a fighter
-    MOVEMENT orchestrator that uses `fighterMoveForType` (#16).
+    Carrier operations: pure core `combat/carrier.ts` + a **launch/recover orchestrator (2026-07-22,
+    live-verified)** — a `bays` field marks carriers; "Launch Fighters" deploys a fresh group token
+    up to bay capacity (tracked on a flag), "Recover Fighters" lands the nearest friendly group
+    within 6mu (removing token + actor). Fighter movement (#16) is done. Remaining: endurance
+    return-to-carrier automation + pilot/type effects surfaced in the fire UI.
 15. **[build] Independent (More Thrust) missiles** — 🟡 PARTIAL (2026-07-22). Pure combat +
     movement built + tested: `movement/missile-path.ts` `plotMissilePath` (18mu with one mid-point
     2-point turn) and `combat/missile.ts` `missileCanAttack` (≤6mu, not in the missile's rear arc)
