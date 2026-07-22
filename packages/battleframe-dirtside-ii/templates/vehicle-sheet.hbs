@@ -1,0 +1,66 @@
+<div class="battleframe-dirtside-ii sheet vehicle ds2-plate">
+  <header class="ds2-plate__header">
+    <h1 class="ds2-plate__name">{{actor.name}}</h1>
+    <span class="ds2-plate__tag">DIRTSIDE II</span>
+  </header>
+
+  <section class="ds2-block">
+    <h2 class="ds2-block__title">Chassis</h2>
+    <div class="ds2-stats">
+      <label class="ds2-stat"><span>Size</span>
+        <input type="number" name="system.sizeClass" value="{{system.sizeClass}}" min="1" max="7" step="1" /></label>
+      <label class="ds2-stat"><span>Signature</span>
+        <input type="number" name="system.signatureBasic" value="{{system.signatureBasic}}" min="0" step="1" /></label>
+      <label class="ds2-stat"><span>Stealth</span>
+        <input type="number" name="system.stealthLevels" value="{{system.stealthLevels}}" min="0" step="1" /></label>
+      <label class="ds2-stat"><span>Fire Control</span>
+        <select name="system.fireControl">
+          {{#each fireControlOptions}}<option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>{{/each}}
+        </select></label>
+    </div>
+  </section>
+
+  <section class="ds2-block">
+    <h2 class="ds2-block__title">Armour</h2>
+    <div class="ds2-stats">
+      <label class="ds2-stat"><span>Front</span>
+        <input type="number" name="system.armour.front" value="{{system.armour.front}}" min="0" max="7" step="1" /></label>
+      <label class="ds2-toggle"><input type="checkbox" name="system.armour.openTop" {{#if system.armour.openTop}}checked{{/if}} /><span>Open-top</span></label>
+      <label class="ds2-stat"><span>Damage</span>
+        <select name="system.damage">
+          {{#each damageOptions}}<option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>{{/each}}
+        </select></label>
+      <label class="ds2-stat"><span>Posture</span>
+        <select name="system.posture">
+          {{#each postureOptions}}<option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>{{/each}}
+        </select></label>
+    </div>
+    <div class="ds2-flags">
+      <label class="ds2-toggle"><input type="checkbox" name="system.mobilityHit" {{#if system.mobilityHit}}checked{{/if}} /><span>Mobility hit</span></label>
+      <label class="ds2-toggle"><input type="checkbox" name="system.systemsDown" {{#if system.systemsDown}}checked{{/if}} /><span>Systems down</span></label>
+      <label class="ds2-toggle"><input type="checkbox" name="system.isCommandVehicle" {{#if system.isCommandVehicle}}checked{{/if}} /><span>Command vehicle</span></label>
+    </div>
+  </section>
+
+  <section class="ds2-block">
+    <h2 class="ds2-block__title">Weapons
+      <button type="button" class="ds2-add" data-action="addWeapon" title="Add a weapon">+ Add</button>
+    </h2>
+    <div class="ds2-weapons">
+      <div class="ds2-weapons__head"><span>Type</span><span>Class</span><span>Close</span><span>Med</span><span>Long</span><span>Flat</span><span></span></div>
+      {{#each system.weapons as |weapon i|}}
+      <div class="ds2-weapon">
+        <input type="text" name="system.weapons.{{i}}.type" value="{{weapon.type}}" title="Weapon type" />
+        <input type="number" name="system.weapons.{{i}}.class" value="{{weapon.class}}" min="1" max="6" step="1" title="Chits drawn" />
+        <input type="number" name="system.weapons.{{i}}.bands.close" value="{{weapon.bands.close}}" min="0" step="1" />
+        <input type="number" name="system.weapons.{{i}}.bands.medium" value="{{weapon.bands.medium}}" min="0" step="1" />
+        <input type="number" name="system.weapons.{{i}}.bands.long" value="{{weapon.bands.long}}" min="0" step="1" />
+        <input type="number" name="system.weapons.{{i}}.bands.flatMax" value="{{weapon.bands.flatMax}}" min="0" step="1" title="Flat range (no banding)" />
+        <button type="button" class="ds2-remove" data-action="removeWeapon" data-index="{{i}}" title="Remove">&times;</button>
+      </div>
+      {{else}}
+      <p class="ds2-weapons__empty">No weapons. Add one to arm this vehicle.</p>
+      {{/each}}
+    </div>
+  </section>
+</div>

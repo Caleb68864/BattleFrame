@@ -3244,3 +3244,24 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Gates: `npm run typecheck` clean, `npm run build` green (dist/dirtside-ii.js), 86 DS2
   tests pass.
 - Commit: this commit.
+
+## 2026-07-22 — Dirtside II G2: three ApplicationV2 sheets (vehicle/infantry/unit)
+- Context: increment 2 (the Foundry glue). Sheets first. Copied InCountry's sheet shape:
+  ApplicationV2 via HandlebarsApplicationMixin(ActorSheetV2), `form:{submitOnChange:true}`,
+  `data-action` add/remove handlers, NO self-wrapped `<form>` (the AppV2 root is the form).
+- src/sheets/base.ts: shared resolveFoundryApplications (base + mixin + DocumentSheetConfig
+  resolved at call time so classes build under an injected fake in tests), mixedSheetBase,
+  registerSheetFor, and a selectOptions(choices, current, i18nPrefix) helper for enum
+  dropdowns. vehicle-sheet.ts (weapons add/remove, fireControl/damage/posture selects),
+  infantry-sheet.ts (weapon-tag add/remove, troopType/posture selects), unit-sheet.ts
+  (role/quality/confidence selects, command markers). register.ts registers all three under
+  battleframe-dirtside-ii.<subtype>. Three .hbs templates (ds2-plate theme). lang keys added
+  for every enum + the round-control strings the later glue will use.
+- main.ts now wires G1+G2 (registerDataModels → registerSheets) at init.
+- Surfaces: src/sheets/{base,vehicle-sheet,infantry-sheet,unit-sheet,register}.ts, 3
+  templates, lang/en.json, main.ts, tests/sheets.test.ts (+4). 90 DS2 tests; typecheck
+  clean; DS2 builds (dist/dirtside-ii.js 14.45 kB).
+- Live-verify (deferred to parent): the sheets must be opened in a live v14 world — form
+  saves + the add/remove-weapon actions are exactly the class of bug the unit suite can't
+  see (per CLAUDE.md's sheet-save / form-nesting warning).
+- Commit: this commit.

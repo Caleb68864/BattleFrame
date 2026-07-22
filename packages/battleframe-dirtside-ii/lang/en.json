@@ -28,10 +28,67 @@
       "damaged": "Damaged",
       "knocked-out": "Knocked Out"
     },
+    "fireControl": {
+      "basic": "Basic",
+      "enhanced": "Enhanced",
+      "superior": "Superior"
+    },
+    "posture": {
+      "none": "None",
+      "turret-down": "Turret-down",
+      "hull-down": "Hull-down",
+      "evading": "Evading",
+      "soft-cover": "Soft cover",
+      "popped-up": "Popped-up"
+    },
+    "infantryPosture": {
+      "open": "Open",
+      "soft": "Soft cover",
+      "dug-in": "Dug-in",
+      "urban": "Urban"
+    },
+    "troopType": {
+      "militia": "Militia",
+      "line": "Line",
+      "powered": "Powered"
+    },
+    "role": {
+      "combat": "Combat",
+      "battery": "Battery"
+    },
+    "quality": {
+      "green": "Green",
+      "regular": "Regular",
+      "veteran": "Veteran"
+    },
     "status": {
       "damaged": "Damaged",
       "knocked-out": "Knocked Out",
       "under-fire": "Under Fire"
+    },
+    "controls": {
+      "round": {
+        "title": "Dirtside II",
+        "gmOnly": "Only the GM can run a Dirtside II round.",
+        "noApi": "BattleFrame's dice and round services are unavailable, so a round cannot be run.",
+        "noUnits": "No Dirtside II units on the canvas to run a round for.",
+        "started": "New round: {side} chooses first. Select one of your units and activate it.",
+        "tie": "Unit counts are equal — roll off to decide who chooses first.",
+        "inProgress": "A round is already in progress. Finish activating every unit before starting a new one.",
+        "complete": "Round complete."
+      },
+      "ready": {
+        "tool": "Ready to Advance",
+        "status": "You are {state} ({ready}/{total} players ready). When all are ready, the turn ends."
+      },
+      "activate": {
+        "tool": "Activate Unit",
+        "run": "End Turn / New Round",
+        "noRound": "No round is in progress. Start a round first.",
+        "noSelection": "Select one of your units to activate.",
+        "notYourTurn": "It is not this side's activation.",
+        "passed": "{unit} passed."
+      }
     }
   }
 }
