@@ -16,6 +16,14 @@ export const MODULE_ID = "battleframe-full-thrust";
 export const SHIP_ACTOR_TYPE = "ship";
 export const FIGHTER_GROUP_ACTOR_TYPE = "fighter-group";
 
+/**
+ * Actor flag holding a ship's secretly-plotted movement order (the `+4,P2`
+ * text) during the Order Plotting phase. Stored on the actor so only its owner
+ * and the GM can read it -- an opponent with no permission never receives it,
+ * which is what keeps plotting hidden until maneuvers are executed.
+ */
+export const PLOTTED_ORDER_FLAG = "plottedOrder";
+
 /** The die every Full Thrust roll uses. */
 export const DIE_SIZE = 6;
 

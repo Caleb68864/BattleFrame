@@ -24,6 +24,7 @@ deferred. Nothing is silently missing.
 | Rule | Status | Where |
 |---|---|---|
 | Order plotting → movement → weapons fire | 🟡 | Phases modelled; a single guided end-to-end turn UI is deferred |
+| Secret order plotting, then simultaneous reveal | ✅ | Plot tool stores the order on an owner/GM-only actor flag (token does not move) with a live local path preview; "Execute Maneuvers" (GM) reveals + runs all plotted moves at once. `ui/round-control.ts`, `ui/preview-overlay.ts`, `movement/preview.ts` |
 | Fire phase: initiative (highest), winner fires one ship, strict alternation | ✅ | `round/fire-phase.ts` (`determineInitiative`, `createFirePhase`) |
 | Damage applied immediately; threshold check after each attacker | ✅ | `combat/apply-damage.ts` |
 

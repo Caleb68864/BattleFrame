@@ -2013,4 +2013,22 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   (post-order) velocity, matching FT "move the full velocity".
 - 738 tests passing. Still canvas-only-unverified live (like the rest of the scene-control glue),
   but the geometry itself is unit-tested against the rulebook examples.
+- Commit: e9fe75f.
+
+## 2026-07-22 — Full Thrust: secret order plotting + simultaneous reveal (user request)
+- The defining FT "written orders, then execute" mechanic. Plot tool no longer moves the token:
+  it stores the order text on an actor flag (`flags.battleframe-full-thrust.plottedOrder`) that
+  only the owner + GM can read (an opponent with no permission on the actor never receives it),
+  so plotting is hidden. "Execute Maneuvers" (new GM-only scene-control tool) reads every ship
+  token's plotted order, applies velocity/course + traces the pivot-move-pivot path, and clears
+  the flags -- all ships move at once, the simultaneous reveal.
+- Live plotting preview (user asked for "a line with an arrow ... forming as you fill out the
+  plot"): as the owner types the order in the plot dialog, a client-LOCAL PIXI line-and-arrow
+  (green legal / red illegal) redraws through start->waypoint->end. Pure geometry in
+  movement/preview.ts (previewPointsPx/arrowHeadPx, tested); the PIXI drawing (ui/preview-
+  overlay.ts) is defensive glue that never throws and is a local graphic, not a synced document,
+  so the opponent never sees it. The dialog's live-redraw wiring + PIXI drawing are UNVERIFIED
+  against a live Foundry canvas (the pure geometry and the execute logic are unit-tested).
+- Secrecy relies on the normal ownership setup (each player owns only their own ships); documented.
+- 743 tests passing.
 - Commit: this commit.

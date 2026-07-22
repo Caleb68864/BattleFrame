@@ -10,11 +10,19 @@
  * Sources: FT2 "Sequence of Play" (fire phase), "Movement Orders".
  */
 
-import { MODULE_ID, FIGHTER_GROUP_ACTOR_TYPE } from "../constants";
+import {
+  MODULE_ID,
+  FIGHTER_GROUP_ACTOR_TYPE,
+  SHIP_ACTOR_TYPE,
+  PLOTTED_ORDER_FLAG,
+  COURSE_POINT_DEGREES,
+  COURSES
+} from "../constants";
 import { fireShipAtTarget, type FireContext, type FireReport, type FiringShip } from "../combat/fire-ship";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
 import { plotMovementPath, type MovementPath } from "../movement/path";
-import { COURSE_POINT_DEGREES, COURSES } from "../constants";
+import { previewPointsPx } from "../movement/preview";
+import { drawMovementPreview, clearMovementPreview } from "./preview-overlay";
 
 // --- Pure report formatting (unit-tested) -----------------------------------
 
@@ -140,7 +148,7 @@ interface GlobalScope {
   };
   battleframe?: RoundControlApi;
   canvas?: {
-    tokens?: { controlled?: any[] };
+    tokens?: { controlled?: any[]; placeables?: any[] };
     scene?: { grid?: { size?: number; distance?: number } };
   };
   ui?: { notifications?: { warn?: (t: string) => void; error?: (t: string) => void; info?: (t: string) => void } };
@@ -249,18 +257,48 @@ export async function fireAction(): Promise<void> {
   await g().ChatMessage?.create({ content: html });
 }
 
-/** Plot-tool action: prompt for a movement order and apply it to the ship. */
+/** The scene grid pixels-per-mu for the token's scene. */
+function tokenScale(token: any): number {
+  return pixelsPerMu(token?.document?.parent?.grid ?? g().canvas?.scene?.grid);
+}
+
+/** The token's centre in pixels (falls back to its top-left document position). */
+function tokenStartPx(token: any): { x: number; y: number } {
+  return token?.center ?? { x: token?.document?.x ?? 0, y: token?.document?.y ?? 0 };
+}
+
+/**
+ * Plot-tool action (Order Plotting phase): the owner enters a movement order and
+ * sees a LOCAL preview line-and-arrow of the resulting pivot-move-pivot path form
+ * as they type. The order is stored SECRETLY on the ship (an owner/GM-only flag);
+ * the token does NOT move. All plotted ships move together later, on Execute
+ * Maneuvers -- so the opponent sees nothing until the reveal.
+ */
 export async function plotAction(): Promise<void> {
   const token = controlledToken();
   if (!token?.actor) {
     return;
   }
+  const system = token.actor.system ?? {};
+  const scale = tokenScale(token);
+  const startPx = tokenStartPx(token);
+
+  const redraw = (orderText: string): void => {
+    const path = resolveMovementPath(system, orderText);
+    drawMovementPreview(previewPointsPx(startPx, path, scale), path.legal);
+  };
+
   const dialog = g().foundry?.applications?.api?.DialogV2;
   let orderText = "";
   if (dialog?.prompt) {
+    redraw(""); // show the "no change" start state
     const value = (await dialog.prompt({
-      window: { title: "Full Thrust: Movement Order" },
+      window: { title: "Full Thrust: Plot Movement (hidden until execute)" },
       content: `<p>Order (e.g. <code>+4,P2</code>):</p><input type="text" name="order" autofocus />`,
+      render: (_event: unknown, dlg: any) => {
+        const input = dlg?.element?.querySelector?.('input[name="order"]');
+        input?.addEventListener?.("input", (e: any) => redraw(e?.target?.value ?? ""));
+      },
       ok: {
         label: "Plot",
         callback: (_event: unknown, button: any) => button?.form?.elements?.order?.value ?? ""
@@ -269,16 +307,52 @@ export async function plotAction(): Promise<void> {
     orderText = value ?? "";
   }
 
-  const system = token.actor.system ?? {};
+  clearMovementPreview();
+
   const path = resolveMovementPath(system, orderText);
   if (!path.legal) {
     notify("warn", `${MODULE_ID} | illegal order (${path.reason})`);
     return;
   }
+  // Store secretly; the token stays put until maneuvers are executed.
+  await token.actor.setFlag?.(MODULE_ID, PLOTTED_ORDER_FLAG, orderText);
+  notify("info", `${MODULE_ID} | plotted "${orderText || "no change"}" (hidden until execute)`);
+}
 
-  await token.actor.update({ "system.velocity": path.velocity, "system.course": path.course });
-  await executeMovementPath(token, path);
-  notify("info", `${MODULE_ID} | velocity ${path.velocity}, course ${path.course}`);
+/**
+ * Execute-tool action (GM): reveal and run every ship's secretly-plotted order at
+ * once -- update its velocity/course and trace its path on the canvas, then clear
+ * the plotted-order flag. This is the simultaneous reveal: no ship moved during
+ * plotting, so both players see all maneuvers happen together here.
+ */
+export async function executeManeuversAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM executes maneuvers`);
+    return;
+  }
+  const tokens = g().canvas?.tokens?.placeables ?? [];
+  let moved = 0;
+
+  for (const token of tokens) {
+    const actor = token?.actor;
+    if (typeof actor?.type !== "string" || !actor.type.endsWith(SHIP_ACTOR_TYPE)) {
+      continue;
+    }
+    const orderText = actor.getFlag?.(MODULE_ID, PLOTTED_ORDER_FLAG);
+    if (typeof orderText !== "string") {
+      continue;
+    }
+    const path = resolveMovementPath(actor.system ?? {}, orderText);
+    if (path.legal) {
+      await actor.update({ "system.velocity": path.velocity, "system.course": path.course });
+      await executeMovementPath(token, path);
+      moved += 1;
+    }
+    await actor.unsetFlag?.(MODULE_ID, PLOTTED_ORDER_FLAG);
+  }
+
+  clearMovementPreview();
+  notify("info", `${MODULE_ID} | executed ${moved} maneuver(s)`);
 }
 
 /** Course heading as a token rotation angle (degrees, clockwise from up). */
@@ -340,6 +414,17 @@ export function addSceneControl(controls: unknown): void {
     onClick: () => void plotAction(),
     onChange: () => void plotAction()
   };
+  // Execute reveals every ship's secretly-plotted move at once -- GM only.
+  const executeTool = {
+    name: "full-thrust-execute",
+    title: "battleframe-full-thrust.controls.execute",
+    icon: "fas fa-play",
+    button: true,
+    visible: gm,
+    order: 2,
+    onClick: () => void executeManeuversAction(),
+    onChange: () => void executeManeuversAction()
+  };
 
   const control = {
     name: MODULE_ID,
@@ -353,12 +438,16 @@ export function addSceneControl(controls: unknown): void {
   };
 
   if (Array.isArray(controls)) {
-    control.tools = [fireTool, plotTool];
+    control.tools = [fireTool, plotTool, executeTool];
     controls.push(control);
     return;
   }
   if (controls && typeof controls === "object") {
-    control.tools = { [fireTool.name]: fireTool, [plotTool.name]: plotTool };
+    control.tools = {
+      [fireTool.name]: fireTool,
+      [plotTool.name]: plotTool,
+      [executeTool.name]: executeTool
+    };
     (controls as Record<string, unknown>)[MODULE_ID] = control;
   }
 }

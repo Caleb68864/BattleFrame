@@ -15,5 +15,6 @@
   "battleframe-full-thrust.status.destroyed": "Destroyed",
   "battleframe-full-thrust.controls.title": "Full Thrust",
   "battleframe-full-thrust.controls.fire": "Fire selected ship at target",
-  "battleframe-full-thrust.controls.plot": "Plot movement order"
+  "battleframe-full-thrust.controls.plot": "Plot movement order (hidden until execute)",
+  "battleframe-full-thrust.controls.execute": "Execute maneuvers (reveal all plotted moves)"
 }
