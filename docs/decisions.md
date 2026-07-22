@@ -211,7 +211,7 @@ reader would otherwise re-derive or re-break.
   real Foundry — init ordering, the v14 tracker base class, `getSceneControlButtons`,
   ApplicationV2 availability, and whether base-to-base measurement was even reachable.
 - Fix: deployed the **real packages** (not the throwaway `spike/`) into the live v14.363
-  container via Portainer's Docker archive API, created a world, enabled the module, and
+  container via a container management API, created a world, enabled the module, and
   probed running code with Playwright. **The spike was obsolete the moment real packages
   existed** — it would have tested code we are deleting. Results are recorded as `confirmed`
   in `vault/foundry-systems/spike-results-live-v14.md`.

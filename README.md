@@ -18,7 +18,7 @@ blocks, no army lists, no points values, no artwork. The code implements
 *mechanics*; the *data* is yours to bring. Playing a given game means owning its
 rulebook and entering the numbers yourself. Reference rulebooks used during
 development are kept strictly local and are never committed, released, or
-redistributed (see the `vault/` note below and `.gitignore`).
+redistributed (they are kept local and git-ignored).
 
 ## Layout
 
@@ -48,9 +48,9 @@ An [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) monorepo:
     tactical skirmish game by Echo Dark Studios. In progress.
   - `packages/battleframe-simple-skirmish/` — **Simple Skirmish**, the Basic
     Game of Simple Fantasy Skirmish by Peter Vodden (CC BY-NC 4.0).
-- `vault/` — research and design notes (tracked on purpose; they are the
-  project's own writing). Source rulebooks are **not** tracked.
-- `docs/` — design decisions, specs, and authoring guides.
+- `docs/` — the decision log, the two authoring guides
+  ([building a ruleset module](docs/building-a-ruleset-module.md),
+  [engine API reference](docs/engine-api-reference.md)), and the roadmaps.
 
 ## Engine capabilities
 

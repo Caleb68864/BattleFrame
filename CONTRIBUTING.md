@@ -27,9 +27,8 @@ packages/
   battleframe-full-thrust/      # Full Thrust ruleset module
   battleframe-incountry/        # InCountry ruleset module
   battleframe-simple-skirmish/  # Simple Skirmish ruleset module
-docs/                           # decisions, specs, plans, authoring guides
+docs/                           # decision log, authoring guides, roadmaps
 scripts/hooks/                  # the pre-commit hook (see Workflow)
-vault/                          # research + design notes (the project's own writing)
 ```
 
 The engine (`packages/battleframe`) owns the things every wargame needs — base-to-base
@@ -116,8 +115,8 @@ This is the load-bearing proof that the platform stays neutral.
 What this means in practice:
 
 - **Building a ruleset must require zero changes to `packages/battleframe/src`.** If it
-  seems to need one, that's a genuine design finding — write it up in `docs/plans/` as a
-  design question. Do not quietly patch core.
+  seems to need one, that's a genuine design finding — raise it as a design question (an
+  issue or a note in `docs/decisions.md`), not a quiet patch to core.
 - A capability that looks generic from *your* ruleset alone is probably your ruleset's
   shape. The engine generalizes a primitive only when a **second** ruleset independently
   needs the same thing.

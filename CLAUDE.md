@@ -9,8 +9,7 @@ for what Foundry genuinely lacks (and say so in a comment).
 
 The recurring failure mode this project has hit is holding game state in private
 JavaScript and drawing our own version of something Foundry ships. The audit and
-plan for undoing it live in **`docs/roadmap-foundry-integration.md`**; the
-curated Foundry-API research lives in **`vault/foundry-systems/`** — consult both
+plan for undoing it live in **`docs/roadmap-foundry-integration.md`** — consult it
 before designing anything below.
 
 ### Reimplementation smell test — STOP and check the Foundry native if you are about to:

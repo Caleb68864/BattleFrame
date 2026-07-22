@@ -1,20 +1,14 @@
 # ---------------------------------------------------------------------------
-# Research vault
-#
-# The NOTES are tracked on purpose — they are our own writing, they are the
-# project's reasoning, and factory workers spawn a worktree from HEAD and must
-# be able to read them. See docs/specs/*-redteam-report.md finding C-1.
-#
-# The SOURCE DOCUMENTS are not. Rulebooks obtained for reference are
-# copyrighted and must never be redistributed — not in this repo, not in a
-# release, not anywhere. Keep them local.
+# Local-only, never published: private research vault, throwaway spike, and
+# internal docs (deploy runbook + the design/spec/red-team "factory" artifacts).
+# Kept on disk for local reference; scrubbed from git tracking + history so the
+# repo can be open-sourced without exposing private notes, source rulebooks, or
+# the internal process. (Source rulebooks under vault/ were never redistributable
+# anyway — copyrighted — and now the whole vault stays local.)
 # ---------------------------------------------------------------------------
-vault/**/*.pdf
-vault/**/*.epub
-vault/**/*.mobi
-vault/**/*.cbz
-vault/**/*.cbr
-vault/**/*.zip
+vault/
+spike/
+internal-docs/
 
 # Node
 node_modules/
