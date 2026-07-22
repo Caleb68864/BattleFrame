@@ -11,16 +11,16 @@
  * here — those are engine artefacts, not GZG design data.
  */
 
-export const MODULE_ID = "battleframe-dirtside";
+export const MODULE_ID = "battleframe-dirtside-ii";
 
 /**
  * The three element/grouping Actor subtypes this module registers. Foundry
- * namespaces each as `<MODULE_ID>.<subtype>` (e.g. `battleframe-dirtside.unit`);
+ * namespaces each as `<MODULE_ID>.<subtype>` (e.g. `battleframe-dirtside-ii.unit`);
  * that full string is the Actor `type` and the `CONFIG.Actor.dataModels` key.
  *
  * NOTE (naming reconciliation): the build plan writes these as `dirtside-ii.*`,
  * but Foundry v14 keys module document subtypes by the manifest `id`, which is
- * `battleframe-dirtside`. The subtype namespace therefore MUST be the module id,
+ * `battleframe-dirtside-ii`. The subtype namespace therefore MUST be the module id,
  * exactly as InCountry registers `battleframe-incountry.unit`. Flag scope is the
  * same string for the same reason (`actor.setFlag(MODULE_ID, "unitId", …)`).
  */

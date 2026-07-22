@@ -8,7 +8,7 @@ export default defineConfig({
     lib: {
       entry: resolve(__dirname, "src/main.ts"),
       formats: ["es"],
-      fileName: () => "dirtside.js"
+      fileName: () => "dirtside-ii.js"
     },
     target: "es2022",
     minify: false

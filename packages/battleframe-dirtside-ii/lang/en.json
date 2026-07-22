@@ -1,12 +1,12 @@
 {
   "TYPES": {
     "Actor": {
-      "battleframe-dirtside.vehicle": "Vehicle",
-      "battleframe-dirtside.infantry": "Infantry",
-      "battleframe-dirtside.unit": "Unit"
+      "battleframe-dirtside-ii.vehicle": "Vehicle",
+      "battleframe-dirtside-ii.infantry": "Infantry",
+      "battleframe-dirtside-ii.unit": "Unit"
     }
   },
-  "battleframe-dirtside": {
+  "battleframe-dirtside-ii": {
     "sheets": {
       "vehicle": "Vehicle",
       "infantry": "Infantry",

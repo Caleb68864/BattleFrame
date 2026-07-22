@@ -105,9 +105,9 @@ describe("registerDataModels — all three subtypes under the module id", () => 
     (globalThis as any).CONFIG = {};
     registerDataModels();
     const models = (globalThis as any).CONFIG.Actor.dataModels;
-    expect(models).toHaveProperty("battleframe-dirtside.vehicle");
-    expect(models).toHaveProperty("battleframe-dirtside.infantry");
-    expect(models).toHaveProperty("battleframe-dirtside.unit");
+    expect(models).toHaveProperty("battleframe-dirtside-ii.vehicle");
+    expect(models).toHaveProperty("battleframe-dirtside-ii.infantry");
+    expect(models).toHaveProperty("battleframe-dirtside-ii.unit");
   });
 
   it("is a no-op when CONFIG is absent (not a browser)", () => {

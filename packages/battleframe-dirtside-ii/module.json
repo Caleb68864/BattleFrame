@@ -1,5 +1,5 @@
 {
-  "id": "battleframe-dirtside",
+  "id": "battleframe-dirtside-ii",
   "title": "BattleFrame: Dirtside II",
   "description": "Dirtside II (GZG) ruleset for the BattleFrame system — a battalion-scale sci-fi armour engine. This module implements the game MECHANICS only; it ships no rulebook text, no artwork, no cost tables, no colour-validity tables, and no proprietary unit stat blocks. You supply your own unit data and populate the damage-chit pot yourself. Free and non-commercial.",
   "version": "0.1.0",
@@ -17,7 +17,7 @@
     ]
   },
   "esmodules": [
-    "dist/dirtside.js"
+    "dist/dirtside-ii.js"
   ],
   "styles": [
     "styles/dirtside.css"

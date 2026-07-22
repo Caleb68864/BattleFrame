@@ -3228,3 +3228,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   G6 Stage-1/Stage-2 fire path wiring, G7 chat cards, G8 status effects, G9 command-loss
   hook firing A11, G10 finishing main.ts init) + live-verify in a v14 world — parent-handled.
 - Commit: this commit.
+
+## 2026-07-22 — Rename module battleframe-dirtside → battleframe-dirtside-ii
+- Context: coordinator asked to rename for consistency with the Stargrunt module
+  (`battleframe-stargrunt-ii`) and the game's real name ("Dirtside II").
+- Change: `git mv packages/battleframe-dirtside packages/battleframe-dirtside-ii`; replaced
+  every `battleframe-dirtside` reference with `battleframe-dirtside-ii` — module.json `id`
+  + TYPES keys, package.json name, constants.ts MODULE_ID (which is BOTH the Actor-subtype
+  namespace `battleframe-dirtside-ii.{vehicle,infantry,unit}` AND the flag scope, since
+  Foundry keys module subtypes by manifest id), lang/en.json keys, styles selector, the
+  data-model registration assertion strings. Vite bundle output renamed
+  `dirtside.js → dirtside-ii.js` (vite.config fileName + module.json esmodules). No external
+  repo references existed. Prior decision-log entries above keep the old name as historical
+  record (append-only log; not rewritten).
+- Gates: `npm run typecheck` clean, `npm run build` green (dist/dirtside-ii.js), 86 DS2
+  tests pass.
+- Commit: this commit.
