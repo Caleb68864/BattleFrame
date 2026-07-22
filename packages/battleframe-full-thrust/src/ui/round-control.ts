@@ -44,6 +44,7 @@ import { fireNeedleAtSystem, type NeedleReport } from "../combat/needle";
 import { resolveSalvoAtTarget, type SalvoReport } from "../combat/salvo";
 import { resolveDogfight, type DogfightReport } from "../combat/dogfight";
 import { previewTargeting, type TargetingRow } from "../combat/targeting";
+import { toggleArcPin, isArcPinned } from "./arc-overlay";
 import { resolveDamageControl, damageControlRepairs } from "../combat/damage-control";
 import { syncShipStatuses } from "../status";
 import type { SystemRef } from "../ship/systems";
@@ -633,6 +634,28 @@ export async function checkTargetingAction(): Promise<void> {
   });
 }
 
+/**
+ * Fire-Arcs tool: pin/unpin the fire-arc ring on ship tokens so a player can see
+ * their fleet's arcs at a glance (hovering already shows a ship's arcs transiently
+ * — this keeps them on). Toggles the controlled ships, or every ship on the scene
+ * if none is selected: if any are pinned it clears all, else it pins all.
+ */
+export function toggleArcsAction(): void {
+  const isShip = (t: any) => typeof t?.actor?.type === "string" && t.actor.type.endsWith(SHIP_ACTOR_TYPE);
+  const controlled = (g().canvas?.tokens?.controlled ?? []).filter(isShip);
+  const ships = controlled.length > 0 ? controlled : (g().canvas?.tokens?.placeables ?? []).filter(isShip);
+  if (ships.length === 0) {
+    notify("info", `${MODULE_ID} | no ship tokens to show fire arcs for`);
+    return;
+  }
+  const wantPinned = !ships.some(isArcPinned);
+  for (const t of ships) {
+    if (isArcPinned(t) !== wantPinned) {
+      toggleArcPin(t);
+    }
+  }
+}
+
 /** The scene grid pixels-per-mu for the token's scene. */
 function tokenScale(token: any): number {
   return pixelsPerMu(token?.document?.parent?.grid ?? g().canvas?.scene?.grid);
@@ -1051,6 +1074,16 @@ export function addSceneControl(controls: unknown): void {
     order: 1,
     onClick: () => void splitFireAction(),
   };
+  // Toggle the fire-arc ring overlay on ship tokens -- any player.
+  const arcsTool = {
+    name: "full-thrust-arcs",
+    title: "battleframe-full-thrust.controls.arcs",
+    icon: "fas fa-compass-drafting",
+    button: true,
+    visible: true,
+    order: 2,
+    onClick: () => void toggleArcsAction(),
+  };
   // Pre-fire targeting check: which weapons bear + their range band -- any player
   // (it only reads their own ship's reach; the card is whispered to them).
   const targetingTool = {
@@ -1141,7 +1174,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, targetingTool, needleTool, salvoTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
+  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);

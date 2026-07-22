@@ -5,6 +5,7 @@ import { registerShipSheet } from "./sheets/ship-sheet";
 import { registerFighterSheet } from "./sheets/fighter-sheet";
 import { registerRoundControl } from "./ui/round-control";
 import { registerOwnershipWarning } from "./ui/ownership-warning";
+import { registerArcOverlay } from "./ui/arc-overlay";
 import { registerShipStatusEffects } from "./status";
 
 interface BattleframeRegisterResult {
@@ -129,5 +130,7 @@ globalHooks?.once("init", () => {
   registerRoundControl();
   // Warn if a ship's ownership is changed so an opponent could read its plot.
   registerOwnershipWarning();
+  // Fire-arc ring overlay on ship tokens (hover to show, "Fire Arcs" tool to pin).
+  registerArcOverlay();
   registerFullThrustRuleset();
 });

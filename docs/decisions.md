@@ -2503,3 +2503,23 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   fire needs no new number (reuses the existing "A" FireArc). +20 tests (aft-fire 12, variable-hull
   8); 990 passing; typecheck clean. COVERAGE.md / roadmap-full-thrust.md left untouched per scope.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: fire-arc ring overlay on ship tokens (user request)
+- Ask: show the 6 fire arcs around a ship token (the GZG "FTring" firing-arc diagram) on the
+  canvas — on hover, and pinnable — so players see their fleet's arcs at a glance ("and it looks
+  cool").
+- Fix: `ui/arc-overlay.ts`. PURE geometry (unit-tested): `arcRayAngles` (boundaries at
+  facing+30/90/150/210/270/330, matching `arcForBearing`'s F-at-±30 bucketing), `arcLabelAngles`
+  (F/FS/AS/A/AP/FP at sector midpoints), `polarToScreen` (clockwise-from-up → y-down screen point,
+  the engine `facing` convention). Defensive PIXI glue (never throws): draws 3 beam range rings
+  (12/24/36mu via grid scale), the 6 arc-boundary rays oriented to the token's facing, and arc
+  labels. `registerArcOverlay` hooks `hoverToken` (draw/clear), `updateToken`/`refreshToken`
+  (redraw pinned), `deleteToken` (cleanup); a player-visible "Fire Arcs" scene tool
+  (`toggleArcsAction`) pins/unpins rings on the controlled ships (or all ships if none selected).
+- Surfaces: ui/arc-overlay.ts (new), ui/round-control.ts (tool + `toggleArcsAction`), main.ts
+  (registerArcOverlay), lang/en.json (controls.arcs).
+- Watch: PIXI drawing is live-only — verify the ring renders oriented to the token's heading, the
+  arcs match the fire math (F dead-ahead), hover shows/hides, and the tool pins. A drawing failure
+  is swallowed so it can never break the canvas.
+- +5 tests (arc-overlay.test.ts geometry); 1011 passing; typecheck clean.
+- Commit: this commit.

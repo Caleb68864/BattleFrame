@@ -25,6 +25,7 @@
   "battleframe-full-thrust.controls.fire": "Fire selected ship at target",
   "battleframe-full-thrust.controls.targeting": "Check targeting (which weapons bear + range)",
   "battleframe-full-thrust.controls.splitFire": "Split fire across targets (multi-FCS)",
+  "battleframe-full-thrust.controls.arcs": "Toggle fire-arc rings on ships",
   "battleframe-full-thrust.controls.needle": "Needle beam (snipe a target system)",
   "battleframe-full-thrust.controls.salvo": "Fire salvo missiles at target",
   "battleframe-full-thrust.controls.plot": "Plot movement order (hidden until execute)",
