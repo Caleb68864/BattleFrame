@@ -54,7 +54,9 @@ deferred. Nothing is silently missing.
 | Needle beams: 9mu, knock a nominated system on a 6, ignore screens/armour | ✅ | `combat/needle.ts` `fireNeedleAtSystem` + "Needle Beam" scene tool with a system-type picker |
 | Salvo missiles: salvo of 6, PDS interception, per-missile damage | ✅ | `combat/salvo.ts` `resolveSalvoAtTarget` + "salvo" weapon kind + "Fire Salvo" tool (direct-target; point-of-aim counter deferred) |
 | Independent (More Thrust) missiles: one-shot craft, own phase, 18mu + mid-point 2-pt turn, 3-turn life, strike ≤6mu & not in rear arc, PDS kills on a 6, Normal warhead 2d6 (ignores screens) | 🟡 | `combat/missile.ts` `missileCanAttack`/`resolveMissileAttack` + `movement/missile-path.ts` `plotMissilePath` (pure + tested). Missile-phase launch/track/remove-after-3-turns UI (a Foundry token orchestrator) deferred; EMP/Needle warheads not yet modelled |
-| Nova cannon / wave gun / K-guns | ⏳ | Not yet built |
+| Spinal-mount Nova Cannon: 3-turn forward sweep (6/4/2 D6, 2"/4"/6" template), damage = die score, screens ignored | 🟡 | `combat/spinal.ts` `novaCannonDamage`/`novaCannonDiceForTurn`/`novaCannonTemplateInches`/`novaCannonSweep` (pure math + tests); template geometry, arming bookkeeping, and a scene tool deferred |
+| Wave Gun: 36mu expanding template (4/3/2 D6, 2"/3"/4"), charge-then-fire, knock-out feedback, damage = die score, screens/armour ignored | 🟡 | `combat/spinal.ts` `waveGunDamage`/`waveGunDiceAtRange`/`waveGunTemplateInches`/`waveGunIsCharged`/`waveGunChargeAfterTurn`/`waveGunChargeAfterFiring`/`waveGunFeedbackDamage` (pure math + tests); template geometry, charge state on a Document, and a scene tool deferred |
+| K-guns / xeno (Kra'Vak / Sa'Vasku / Phalon) weapons | ⏳ | Not yet built |
 
 ## Defences
 | Rule | Status | Where |

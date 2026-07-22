@@ -163,3 +163,71 @@ export const FIGHTER_GROUP_MAX = 6;
 /** Fighter group move (mu) and attack range (mu, fore arc only). */
 export const FIGHTER_MOVE_MU = 12;
 export const FIGHTER_ATTACK_RANGE_MU = 6;
+
+// --- Spinal-mount Nova Cannon (FT2 "VERY optional" mega-weapon) --------------
+
+/**
+ * The spinal-mount Nova Cannon: a capital-only forward mega-weapon. Its self-
+ * sustaining plasma "sun" arms 6mu ahead of the bow then a template sweeps
+ * straight forward over a 3-turn life, widening while its damage falls off.
+ * Damage per die = the actual face rolled (like pulse torpedoes); screens give
+ * NO protection, so the module carries no screen parameter for it.
+ *
+ * Sources (user's FT2 notes, "Spinal-Mount Nova Cannon"): "MASS 16, 50 Points.",
+ * "Projectile arms 6mu ahead of the bow", and the per-turn sweep table:
+ *   Turn 1: 2" template, move 18" (24" total), 6D6.
+ *   Turn 2: 4" template, move 24", 4D6.
+ *   Turn 3: 6" template, move 24", 2D6, then burns out.
+ * "Damage per die = the face rolled (6D6 = 6-36 points on turn 1). Screens give
+ * no protection."
+ */
+export const NOVA_CANNON_MASS = 16;
+export const NOVA_CANNON_POINTS = 50;
+export const NOVA_CANNON_LIFE_TURNS = 3;
+/** The plasma arms this far ahead of the bow before the sweep begins (mu). */
+export const NOVA_CANNON_ARMING_OFFSET_MU = 6;
+/** Damage dice by turn of life (index 0 = turn 1): 6D6, 4D6, 2D6. */
+export const NOVA_CANNON_DICE_BY_TURN = [6, 4, 2] as const;
+/** Template diameter (inches) by turn of life (index 0 = turn 1): 2", 4", 6". */
+export const NOVA_CANNON_TEMPLATE_INCHES_BY_TURN = [2, 4, 6] as const;
+/**
+ * How far the template travels each turn (mu), index 0 = turn 1. Turn 1 travels
+ * 18mu from the 6mu arming point (24mu total from the bow); turns 2 and 3 travel
+ * 24mu each. ASSUMPTION: the note gives an explicit "24" total" only for turn 1;
+ * turns 2 and 3 are modelled as continuing from the previous turn's end point
+ * (a contiguous forward sweep), which matches "replace with a [wider] template,
+ * move it 24"" — the plasma keeps moving forward, it does not restart at the bow.
+ */
+export const NOVA_CANNON_TRAVEL_MU_BY_TURN = [18, 24, 24] as const;
+
+// --- Wave Gun (More Thrust: the tamer Nova Cannon variant) -------------------
+
+/**
+ * The Wave Gun: a smaller forward plasma weapon that expands as it travels along
+ * the ship's axis, resolved in a single turn (life = 1 turn). Like the Nova
+ * Cannon its damage = the actual die score and neither screens nor armour reduce
+ * it, so no screen parameter. It must be charged first: each charging turn rolls
+ * 1d6 and accumulates; at 6+ stored it is fully charged and may fire on any later
+ * turn, and firing fully discharges it. If knocked out while charging/charged the
+ * ship takes damage equal to the stored charge.
+ *
+ * Sources (user's More Thrust notes, "Wave Gun"): "Full range: 36mu" with bands
+ *   0-12mu: 2" template, 4D6.
+ *   12-24mu: 3" template, 3D6.
+ *   24-36mu: 4" template, 2D6.
+ * "Damage = actual score on each die." "Charging: each turn noted as charging,
+ * roll one die and accumulate; at 6+ total it is fully charged... Firing fully
+ * discharges it (recharge from zero)." "If knocked out... while charging/charged,
+ * the ship takes damage equal to the current stored charge." "MASS 10, 30 Points."
+ */
+export const WAVE_GUN_MASS = 10;
+export const WAVE_GUN_POINTS = 30;
+export const WAVE_GUN_MAX_RANGE_MU = 36;
+/** Range band width (mu); index 0 = 0-12mu. */
+export const WAVE_GUN_BAND_MU = 12;
+/** Damage dice by range band (index 0 = 0-12mu): 4D6, 3D6, 2D6. */
+export const WAVE_GUN_DICE_BY_BAND = [4, 3, 2] as const;
+/** Template diameter (inches) by range band (index 0 = 0-12mu): 2", 3", 4". */
+export const WAVE_GUN_TEMPLATE_INCHES_BY_BAND = [2, 3, 4] as const;
+/** Stored-charge total at or above which the Wave Gun is fully charged. */
+export const WAVE_GUN_FULL_CHARGE = 6;

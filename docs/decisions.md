@@ -2197,3 +2197,23 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   "PDS vs missiles" coverage row to ✅ (pdsKillsVsMissiles now has a live consumer).
 - +14 tests (missile-path.test.ts 5, missile.test.ts 9); 827 passing; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: big spinal weapons (Nova Cannon + Wave Gun) pure math (roadmap P2 #20 subset)
+- Added `combat/spinal.ts` (+ `tests/spinal.test.ts`, 22 tests) implementing the FT2 spinal-mount
+  Nova Cannon and the More Thrust Wave Gun as PURE functions over range / turn-of-life / die
+  faces, mirroring `combat/beam.ts` + `combat/weapons.ts`. Rules numbers appended to
+  `constants.ts` (NOVA_CANNON_* / WAVE_GUN_*) with the note quotes in the "Sources:" headers.
+- Both weapons deal damage = the ACTUAL die score (like pulse torpedoes) with NO screen (and for
+  the Wave Gun, no armour) reduction, so the damage functions carry no screen parameter — a shared
+  private `sumFaces` expresses "damage = die score" once. Nova sweep: 3-turn life, 6/4/2 D6,
+  2"/4"/6" template. Wave Gun: 36mu, 4/3/2 D6, 2"/3"/4" by 12mu band, plus charge-then-fire
+  (accumulate 1d6/turn, fire at 6+, discharge to 0) and knock-out feedback = stored charge.
+- ASSUMPTION: the Nova note gives an explicit "24" total" distance only for turn 1 (6mu arming +
+  18mu travel); turns 2 & 3 ("move it 24"" each) are modelled as a contiguous forward sweep
+  continuing from the prior turn's end point (bow offsets 6→24, 24→48, 48→72mu), documented on
+  `NOVA_CANNON_TRAVEL_MU_BY_TURN`.
+- SCOPE: pure math only — template canvas geometry, arming/charging bookkeeping on a Document, and
+  a scene tool are DEFERRED (glue, out of scope). Did NOT add a WEAPON_KIND (would be an unused
+  token while unwired). COVERAGE.md Nova/Wave rows updated to 🟡 (math + tests; UI deferred).
+- Full suite 835 passing; typecheck clean. Worktree branch worktree-agent-a7479a4b5a4b870cf.
+- Commit: this commit.
