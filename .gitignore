@@ -48,3 +48,7 @@ docs/_local-foundry-access.md
 *-post-fix.png
 *-check.png
 .playwright-mcp/
+
+# Generated TypeDoc API reference (run: npm run docs)
+docs/api/
+docs/api-full-thrust/

@@ -22,6 +22,11 @@ victory condition. Those are yours. If hosting your ruleset needs a change to
 
 ## What core gives you
 
+> **Full catalog + "don't duplicate this" reference:** `docs/engine-api-reference.md` lists
+> every `game.battleframe` service with a reimplementation smell test. The browsable generated
+> reference is `npm run docs` → `docs/api/`. **Check those before building any turn/geometry/dice
+> logic** — a module reimplementing an engine capability is this project's costliest mistake.
+
 Everything lives under `game.battleframe`, built at the system's module top level so it is
 reachable before *any* module's `init` runs, regardless of Foundry's load order.
 

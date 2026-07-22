@@ -8,9 +8,12 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "build": "npm run typecheck && npm run build --workspaces --if-present",
-    "test": "vitest run"
+    "test": "vitest run",
+    "docs": "typedoc",
+    "docs:module": "typedoc --options typedoc.full-thrust.json"
   },
   "devDependencies": {
+    "typedoc": "^0.26.11",
     "typescript": "^5.5.4",
     "vite": "^5.4.0",
     "vitest": "^2.0.5"

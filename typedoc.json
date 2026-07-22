@@ -1,0 +1,33 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "BattleFrame API",
+  "entryPoints": [
+    "packages/battleframe/src/api/index.ts",
+    "packages/battleframe/src/measurement/measure.ts",
+    "packages/battleframe/src/measurement/facing.ts",
+    "packages/battleframe/src/dice/dice.ts",
+    "packages/battleframe/src/dice/chat.ts",
+    "packages/battleframe/src/areas/area.ts",
+    "packages/battleframe/src/rounds/activation.ts",
+    "packages/battleframe/src/vision/los.ts",
+    "packages/battleframe/src/ui/hover-registry.ts",
+    "packages/battleframe/src/base/base-model.ts",
+    "packages/battleframe/src/base/types.ts",
+    "packages/battleframe/src/areas/types.ts",
+    "packages/battleframe/src/measurement/types.ts",
+    "packages/battleframe/src/rulesets/types.ts"
+  ],
+  "entryPointStrategy": "expand",
+  "out": "docs/api",
+  "readme": "docs/engine-api-reference.md",
+  "tsconfig": "tsconfig.json",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "excludeExternals": true,
+  "skipErrorChecking": true,
+  "categorizeByGroup": true,
+  "navigationLinks": {
+    "Module-author guide": "https://github.com/"
+  },
+  "hideGenerator": true
+}

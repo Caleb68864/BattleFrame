@@ -1,0 +1,14 @@
+{
+  "$schema": "https://typedoc.org/schema.json",
+  "name": "BattleFrame: Full Thrust — module API",
+  "entryPoints": ["packages/battleframe-full-thrust/src"],
+  "entryPointStrategy": "expand",
+  "out": "docs/api-full-thrust",
+  "readme": "packages/battleframe-full-thrust/COVERAGE.md",
+  "tsconfig": "tsconfig.json",
+  "excludePrivate": true,
+  "excludeInternal": true,
+  "skipErrorChecking": true,
+  "categorizeByGroup": true,
+  "hideGenerator": true
+}
