@@ -318,8 +318,20 @@ export async function offerOrphanConversion(
     }
 
     for (const orphan of group) {
-      await convertOrphanToGeneric(orphan.actor as UpdatableActor, orphan);
-      converted += 1;
+      try {
+        await convertOrphanToGeneric(orphan.actor as UpdatableActor, orphan);
+        converted += 1;
+      } catch (error) {
+        // actor.update rejects in the wild (a locked document, a validation
+        // failure, a lost permission). This runs fire-and-forget from the `ready`
+        // hook, so one rejection must NOT bubble out as an unhandled rejection or
+        // abort the batch and leave the remaining orphans un-converted -- warn and
+        // move on to the next Actor.
+        console.warn(
+          `${SYSTEM_ID} | failed to convert orphaned Actor "${orphan.actor.id ?? "?"}"`,
+          error
+        );
+      }
     }
   }
 

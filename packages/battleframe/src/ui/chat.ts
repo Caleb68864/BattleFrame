@@ -19,9 +19,16 @@
 
 import { battleframeNamespace } from "../api/index";
 
-/** Escapes the five HTML-significant characters. */
+/**
+ * Escapes the five HTML-significant characters. Coerces its argument with
+ * `String()` first: this is the shared escaper six modules feed dynamic values
+ * into (a numeric stat, a possibly-missing field), and a non-string must render
+ * safely, not throw `value.replace is not a function` and take the whole chat
+ * card down. Mirrors the internal hover caller, which already `String()`s before
+ * escaping.
+ */
 export function escapeHtml(value: string): string {
-  return value
+  return String(value)
     .replace(/&/g, "&amp;")
     .replace(/</g, "&lt;")
     .replace(/>/g, "&gt;")

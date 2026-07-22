@@ -3598,3 +3598,23 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - The default-token rollout initially skipped Simple Skirmish; added it for consistency so
   all six rulesets give fresh actors a game-icon. SS unit -> squad.svg (dark-squad, Lorc,
   CC-BY), same engine token-defaults registry pattern + shipped icon/CREDITS as the others. +4 tests.
+
+## 2026-07-22 — Engine hardening: orphan-conversion unhandled rejection + escaper bad-input crash
+- Two real, test-reproduced defects in the ruleset-neutral engine (`packages/battleframe/src`).
+- (1) `rulesets/orphan-check.ts` `offerOrphanConversion` awaited `convertOrphanToGeneric`
+  (-> `actor.update`) inside its per-Actor loop with NO try-catch. `actor.update` rejects in
+  the wild (locked document, validation failure, lost permission). Because the orphan check
+  runs fire-and-forget from the `ready` hook (`void registerOrphanCheck()`), a single rejecting
+  update both surfaced as an UNHANDLED promise rejection and aborted the batch, leaving every
+  later orphan (same group and subsequent groups) silently un-converted. Fix: wrap the per-Actor
+  conversion in try/catch — warn and continue; the function now resolves with the count of
+  SUCCESSFUL conversions. Test: a two-Actor group where the first update rejects still converts
+  the second and returns 1 (previously the call rejected).
+- (2) `ui/chat.ts` `escapeHtml` — the shared HTML escaper all six modules feed dynamic values
+  into — did `value.replace(...)`, throwing `value.replace is not a function` on any non-string
+  (a numeric stat, a missing field), which would take a whole chat/card post down. Fix:
+  `String(value)` first, matching the internal hover caller which already `String()`s before
+  escaping. Strings are unaffected. Test: `escapeHtml(5)` -> "5", `escapeHtml(undefined)` -> "undefined".
+- TDD: both tests written first and watched fail (`Error: no permission`; `value.replace is not
+  a function`), then the minimal fixes. Gates: vitest 1480 green (1478 + 2), typecheck 0, build 0.
+  Neutrality test still green — no ruleset vocabulary added.

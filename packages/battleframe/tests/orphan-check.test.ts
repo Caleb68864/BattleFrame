@@ -242,6 +242,33 @@ describe("offerOrphanConversion", () => {
     expect(converted).toBe(0);
     expect(update).not.toHaveBeenCalled();
   });
+
+  it("keeps converting the rest of a group when one Actor's update rejects, and never rejects itself", async () => {
+    // actor.update genuinely rejects in the wild -- a locked document, a
+    // validation failure, or a lost permission all reject the promise. The orphan
+    // check runs fire-and-forget from the `ready` hook (`void registerOrphanCheck()`),
+    // so an un-caught rejection here becomes an UNHANDLED promise rejection AND
+    // aborts the rest of the batch, leaving later orphans silently un-converted.
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    const failing = vi.fn().mockRejectedValue(new Error("no permission"));
+    const good = vi.fn().mockResolvedValue(undefined);
+    const orphanA = findOrphanedActors(
+      [{ ...actor({ id: "a1", type: "ruleset-a.trooper" }), update: failing } as ActorLike],
+      [module({ id: "ruleset-a", active: false })]
+    )[0];
+    const orphanB = findOrphanedActors(
+      [{ ...actor({ id: "a2", type: "ruleset-a.squad" }), update: good } as ActorLike],
+      [module({ id: "ruleset-a", active: false })]
+    )[0];
+    const confirm = vi.fn().mockResolvedValue(true);
+
+    // Must resolve (not reject) even though the first Actor's update throws.
+    const converted = await offerOrphanConversion([orphanA, orphanB], { confirm });
+
+    expect(converted).toBe(1); // only the successful conversion is counted
+    expect(failing).toHaveBeenCalledTimes(1);
+    expect(good).toHaveBeenCalledTimes(1); // the failure did not abort the batch
+  });
 });
 
 describe("registerOrphanCheck GM gate", () => {
