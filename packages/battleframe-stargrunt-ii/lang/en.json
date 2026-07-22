@@ -12,6 +12,52 @@
       "quality": "Quality",
       "confidence": "Confidence",
       "suppression": "Suppression"
+    },
+    "status": {
+      "suppressed": "Suppressed",
+      "inPosition": "In Position",
+      "disorganised": "Disorganised"
+    },
+    "controls": {
+      "round": {
+        "title": "STARGRUNT II",
+        "tool": "New Turn",
+        "gmOnly": "Only the GM can run a Stargrunt II turn.",
+        "noApi": "BattleFrame's dice and round services are unavailable, so a turn cannot be run.",
+        "noCombat": "Start a combat encounter before running a Stargrunt II turn.",
+        "noUnits": "No Stargrunt II units on the canvas to run a turn for.",
+        "started": "Turn {turn}: {side} activates first. Select one of your units and activate it.",
+        "nextTurn": "Turn {turn}: markers reset. {side} activates first.",
+        "inProgress": "A turn is already in progress. Finish activating every unit (or pass) before advancing.",
+        "turnComplete": "Turn complete — advance to the next turn."
+      },
+      "ready": {
+        "tool": "Ready to Advance",
+        "status": "You are {state} ({ready}/{total} players ready). When all are ready, the turn advances."
+      },
+      "activate": {
+        "tool": "Activate Unit",
+        "noRound": "No turn is in progress. Run a turn first.",
+        "noSelection": "Select one of your units to activate.",
+        "notYourTurn": "It is not this side's activation slot.",
+        "activated": "{unit} activated."
+      },
+      "fire": {
+        "tool": "Fire",
+        "noTarget": "Target an enemy unit to fire at.",
+        "noWeapon": "This unit has no weapon or no figures able to fire.",
+        "outOfRange": "The target is beyond effective range.",
+        "noLof": "No line of fire to the target.",
+        "coverPrompt": "Cover",
+        "lofConfirm": "Line of fire — engine suggests: {suggestion}. Confirm to fire.",
+        "lofClear": "clear",
+        "lofBlocked": "blocked",
+        "cover": {
+          "none": "None",
+          "soft": "Soft (+1)",
+          "hard": "Hard (+2)"
+        }
+      }
     }
   }
 }

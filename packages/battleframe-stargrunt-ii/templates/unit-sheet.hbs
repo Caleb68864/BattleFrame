@@ -1,0 +1,129 @@
+<div class="battleframe-stargrunt-ii sheet unit sg2-dossier">
+  <header class="sg2-dossier__header">
+    <h1 class="sg2-dossier__name">{{actor.name}}</h1>
+    <span class="sg2-dossier__tag">STARGRUNT II</span>
+  </header>
+
+  <section class="sg2-block">
+    <h2 class="sg2-block__title">Command</h2>
+    <div class="sg2-stats">
+      <label class="sg2-stat">
+        <span class="sg2-stat__label">Quality</span>
+        <select name="system.quality">
+          {{#each qualityOptions}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+      </label>
+      <label class="sg2-stat">
+        <span class="sg2-stat__label">Leadership</span>
+        <input type="number" name="system.leadership" value="{{system.leadership}}" min="1" max="3" step="1" />
+      </label>
+      <label class="sg2-stat">
+        <span class="sg2-stat__label">Confidence</span>
+        <input type="number" name="system.confidence" value="{{system.confidence}}" min="0" max="4" step="1" />
+      </label>
+      <label class="sg2-stat">
+        <span class="sg2-stat__label">Suppression</span>
+        <input type="number" name="system.suppression" value="{{system.suppression}}" min="0" max="3" step="1" />
+      </label>
+    </div>
+    <div class="sg2-toggles">
+      <label class="sg2-toggle">
+        <input type="checkbox" name="system.inPosition" {{#if system.inPosition}}checked{{/if}} />
+        <span>In Position</span>
+      </label>
+      <label class="sg2-toggle">
+        <input type="checkbox" name="system.disorganised" {{#if system.disorganised}}checked{{/if}} />
+        <span>Disorganised</span>
+      </label>
+      <label class="sg2-toggle">
+        <input type="checkbox" name="system.activated" {{#if system.activated}}checked{{/if}} />
+        <span>Activated</span>
+      </label>
+    </div>
+    <div class="sg2-stats">
+      <label class="sg2-stat">
+        <span class="sg2-stat__label">Motivation</span>
+        <select name="system.missionMotivation">
+          {{#each motivationOptions}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+      </label>
+      <label class="sg2-stat">
+        <span class="sg2-stat__label">Fatigue</span>
+        <select name="system.fatigue">
+          {{#each fatigueOptions}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+      </label>
+    </div>
+  </section>
+
+  <section class="sg2-block">
+    <h2 class="sg2-block__title">
+      Figures
+      <button type="button" class="sg2-add" data-action="addFigure" title="Add a figure">+ Add</button>
+    </h2>
+    <div class="sg2-rows">
+      <div class="sg2-rows__head">
+        <span>Name</span><span>Armour</span><span>Weapon</span><span>Wounds</span><span>Status</span><span></span>
+      </div>
+      {{#each figures as |figure|}}
+      <div class="sg2-row">
+        <input type="text" name="system.figures.{{figure.index}}.name" value="{{figure.name}}" />
+        <select name="system.figures.{{figure.index}}.armour">
+          {{#each figure.armourOptions}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+        <input type="text" name="system.figures.{{figure.index}}.weaponId" value="{{figure.weaponId}}" title="Weapon id" />
+        <input type="number" name="system.figures.{{figure.index}}.wounds" value="{{figure.wounds}}" min="0" max="2" step="1" />
+        <select name="system.figures.{{figure.index}}.status">
+          {{#each figure.statusOptions}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+        <button type="button" class="sg2-remove" data-action="removeFigure" data-index="{{figure.index}}" title="Remove">&times;</button>
+      </div>
+      {{else}}
+      <p class="sg2-rows__empty">No figures. Add one to muster this unit.</p>
+      {{/each}}
+    </div>
+  </section>
+
+  <section class="sg2-block">
+    <h2 class="sg2-block__title">
+      Weapons
+      <button type="button" class="sg2-add" data-action="addWeapon" title="Add a weapon">+ Add</button>
+    </h2>
+    <div class="sg2-rows">
+      <div class="sg2-rows__head sg2-rows__head--weapon">
+        <span>Id</span><span>Label</span><span>FP</span><span>Impact</span><span>Range</span><span>Spt</span><span></span>
+      </div>
+      {{#each weapons as |weapon|}}
+      <div class="sg2-row sg2-row--weapon">
+        <input type="text" name="system.weapons.{{weapon.index}}.id" value="{{weapon.id}}" />
+        <input type="text" name="system.weapons.{{weapon.index}}.label" value="{{weapon.label}}" />
+        <input type="number" name="system.weapons.{{weapon.index}}.firepower" value="{{weapon.firepower}}" min="0" step="1" title="Firepower rating (per figure)" />
+        <select name="system.weapons.{{weapon.index}}.impact">
+          {{#each weapon.impactOptions}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+        <select name="system.weapons.{{weapon.index}}.rangeClass">
+          {{#each weapon.rangeClassOptions}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
+          {{/each}}
+        </select>
+        <input type="checkbox" name="system.weapons.{{weapon.index}}.isSupport" {{#if weapon.isSupport}}checked{{/if}} title="Support weapon" />
+        <button type="button" class="sg2-remove" data-action="removeWeapon" data-index="{{weapon.index}}" title="Remove">&times;</button>
+      </div>
+      {{else}}
+      <p class="sg2-rows__empty">No weapons. Add one to arm this unit.</p>
+      {{/each}}
+    </div>
+  </section>
+</div>

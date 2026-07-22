@@ -3237,4 +3237,45 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   without a registered data model.
 - Surfaces: `packages/battleframe-stargrunt-ii/src/data/unit.ts`, `tests/unit-data.test.ts`,
   `module.json`, `lang/en.json`. +6 tests (65 SG2 / 1285 repo total); typecheck clean.
+- Commit: d827625.
+
+## 2026-07-22 — SG2 E-series glue: adopt the engine services, keep the round on the Combat doc
+- Decision: built the Foundry glue so the module is buildable + playable (`npm run build` now
+  green). `main.ts` wires init in order (data models → sheet → status → hover → round control →
+  `registerAdvance` → `registerRuleset` last + loud), and IS the vite entry, so the build
+  produces `dist/stargrunt-ii.js` (36.65 kB) with every pure fn reachable (grep-verified:
+  resolveDispersedFire/createStargruntRound/resolveFireAction/beatsAgainst/rangeDieFromDistance/
+  placeSuppression/firstActivator all present — the tree-shake / dead-code guard).
+- Adopted the engine services the reconciliation calls for, none reimplemented: outcomes post
+  through `game.battleframe.chat.postCard` (persistent ChatMessage, `cssClass:
+  "stargrunt-ii-fire-report"`, names escaped via the engine `chat.escapeHtml` with a local
+  mirror for the no-Foundry test path — the same live/fallback split FT uses); the Turn-End
+  Phase registers through `game.battleframe.advance.registerAdvance(advanceTurnCore)` so play is
+  GM-less; the fire UI reads `selection`, measures base-to-base via `measure.fromPlaceable`+
+  `between`, and shows a `los.between(..,{sample:"corners"})` suggestion in a GM cover/LOF
+  prompt (cover is GM-selected 0/1/2). Round/turn state lives ONLY on the Combat document
+  (`flags.battleframe.round` = serialized `StargruntRoundState`), never a module variable — a
+  reload resumes the turn.
+- E2 status: `suppressed`/`in-position`/`disorganised` registered via `status.register` (core
+  SVGs, no artwork); `syncUnitStatuses` toggles each icon from the data (field is truth, icon is
+  view — the Simple-Skirmish `syncDefeatedStatus` pattern) plus the core `defeated` skull on a
+  wipe. Confidence + the suppression COUNT are surfaced as hover badges (E5), not statuses —
+  numeric counters stay NumberFields per §5 / decision 6; only the boolean conditions go native.
+- Reachability tested honestly: the "green tests, dead code" guard is `runRoundControl`/
+  `fireSelectedControl` (the exact functions the scene-control tools' click handlers call)
+  driving the pure session + fire engine against a stubbed world — a run click serializes a
+  turn-1 round onto the Combat flag; a fire click posts an outcome card. Tool click handlers are
+  fire-and-forget (`() => void fn()`), so the wiring test asserts the tools exist + point at the
+  functions, and the behaviour tests call those functions directly (awaitable).
+- Watch (deferred, coordinator handles): LIVE-VERIFY in a v14 world is not done — the whole
+  canvas/UI half is feature-detected and marked UNVERIFIED (scene-control payload shape,
+  DialogV2 cover/LOF prompt, `toggleStatusEffect`, measure/los token reads). The MVP live loop
+  activates a unit as one slot (marks `activated` + advances alternation) and fires via the Fire
+  tool; the D3 two-action budget is built + unit-tested but the live glue does not yet enforce
+  per-action budget spending (a Phase-2 wiring nicety). Vehicle model/sheet + `opposedShift`
+  ratio remain from prior increments.
+- Surfaces: `packages/battleframe-stargrunt-ii/src/{main.ts,status.ts,sheets/unit-sheet.ts,
+  ui/round-control.ts}`, `templates/unit-sheet.hbs`, `styles/stargrunt-ii.css`, `lang/en.json`,
+  and tests `{main,i18n,status,unit-sheet,round-control}.test.ts`. +32 tests (97 SG2 / 1317 repo
+  total); `npx vitest run`, `npm run typecheck`, and `npm run build` all green.
 - Commit: this commit.
