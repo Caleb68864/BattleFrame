@@ -23,6 +23,17 @@ describe("chat.escapeHtml", () => {
   it("leaves ordinary text unchanged", () => {
     expect(api.escapeHtml("RNS Lion 3")).toBe("RNS Lion 3");
   });
+
+  it("coerces non-string input instead of crashing (a caller escaping a numeric or missing stat)", () => {
+    // escapeHtml is the shared escaper every module uses to build chat/card markup
+    // from dynamic values. A caller escaping a numeric result or a missing field
+    // (e.g. escapeHtml(unit.models)) must not throw `value.replace is not a function`
+    // and take the whole card down with it -- coerce, exactly as the internal hover
+    // caller already String()s its values before escaping.
+    expect(api.escapeHtml(5 as unknown as string)).toBe("5");
+    expect(api.escapeHtml(undefined as unknown as string)).toBe("undefined");
+    expect(api.escapeHtml(null as unknown as string)).toBe("null");
+  });
 });
 
 describe("chat.card", () => {
