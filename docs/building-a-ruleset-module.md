@@ -31,6 +31,7 @@ reachable before *any* module's `init` runs, regardless of Foundry's load order.
 | `measure` | `between(a, b)` | Base-to-base distance on a gridless scene, in the scene's units |
 | `areas` | `circle`, `rectangle`, `contains`, `tokensInside`, `toRegionShapes` | Areas of effect and exact base-aware containment |
 | `dice` | `roll(formula, data?, options?)` | Rolls, renders a chat card, and carries the `Roll` so Dice So Nice animates |
+| `facing` | `bearingOf(observer, target)`, `facingOf`, `absoluteBearing` | Numeric bearing (degrees, clockwise, 0 = dead ahead) of a target relative to an observer's heading. Geometry only — the ruleset buckets it into arcs (Full Thrust's `combat/arcs.ts`) |
 
 Plus, as Foundry `CONFIG`/document machinery rather than a `game.battleframe` method:
 
@@ -218,9 +219,11 @@ Deliberately absent, so you neither wait for them nor assume them:
 - **Turn-order schedulers, a resolution/reaction stack** — the opt-in *toolkit*, gated until
   three structurally-different rulesets ship. Until then, hand-roll. See
   `docs/backlog/battleframe-toolkit-extraction.md`.
-- **Line of sight, cover, facing arcs, objectives, campaign, conditions** — toolkit or
-  ruleset territory. Facing *geometry* is a planned core primitive but unbuilt (see the facing
-  design note in `docs/plans/`).
+- **Cover, facing *arcs*, objectives, campaign, conditions** — toolkit or ruleset territory.
+  Note facing **geometry** IS now built (`game.battleframe.facing`, a numeric bearing — see the
+  service table above and the facing design note); what stays ruleset territory is what the
+  bearing *means* (arc counts, hit tables, rear-attack bonuses). Line of sight is
+  `game.battleframe.los`.
 - **Square / hex measurement, cones / lines** — measurement is gridless base-to-base only;
   areas are circles and rectangles only. Grid and template geometry are deferred until a
   ruleset (BattleTech-family) needs them.
