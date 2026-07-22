@@ -3265,3 +3265,28 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   saves + the add/remove-weapon actions are exactly the class of bug the unit suite can't
   see (per CLAUDE.md's sheet-save / form-nesting warning).
 - Commit: this commit.
+
+## 2026-07-22 — Dirtside II G5–G8: fire path, chit-pot draw, chat report, status effects
+- Context: increment 2 fire slice — the two-stage direct-fire loop wired end to end over
+  injected deps so it is fully unit-tested, plus the native-condition surfaces.
+- G6 src/round/fire.ts `resolveFire(input, {dice, drawChits})`: composes bandStep →
+  firerDie/targetDie (via injected dice.roll) → resolveHit → on hit drawChits(weapon.class)
+  → resolveChitDraw vs armourByFace(struck face). Short-circuits out-of-range (bandStep
+  null) and auto-miss (firerDie null off the bottom). PURE — dice + drawChits injected, so
+  the whole sequence is Foundry-free tested; the live measure→distance / RollTable→chits
+  wiring is G3 glue. resolveChitDraw stays untouched under it. stepToBand exported.
+- G7 same file `fireReportParts(result, names)`: pure chat-card title+body, dynamic names
+  escaped, cssClass `dirtside-ii-fire-report`; the single source of truth the live
+  `chat.postCard` posts (same live/fallback split InCountry uses).
+- G5 src/round/chit-pot.ts: `drawChits(table, n)` glue — sets replacement:false best-effort,
+  `drawMany(n, {displayChat:false})`, extract codes, `reset()`. Pure code extraction
+  (chitCodeOf text→description→name, chitCodesFromResults) unit-tested; the RollTable
+  without-replacement + reset behaviour is FOUNDRY-FACING → parent live-verify (else swap
+  only this fn to the module-multiset fallback, plan §2(b); resolver unaffected).
+- G8 src/status.ts: registers damaged / knocked-out / under-fire on the engine status
+  registry (core SVG icons only). Pure statusFlagsFor(system) maps the data field (truth)
+  to icons (view); knocked-out also lights Foundry DEFEATED so the token drops from the
+  turn order. syncElementStatus(actor) is the toggle glue (live-verified).
+- Surfaces: src/round/{fire,chit-pot}.ts, src/status.ts + 3 test files (fire+8, status+7,
+  chit-pot+6). 111 DS2 tests; typecheck clean.
+- Commit: this commit.
