@@ -31,6 +31,14 @@ export const PLOTTED_ORDER_FLAG = "plottedOrder";
  */
 export const FIRE_PHASE_FLAG = "firePhase";
 
+/**
+ * Scene flag holding the list of active independent missiles (position, course,
+ * life, warhead, owning side). Missiles are fire-and-forget craft advanced in
+ * their own phase; storing them on the Scene keeps the board state persistent +
+ * synced (per the project's turn-state rule) without a per-missile Actor.
+ */
+export const ACTIVE_MISSILES_FLAG = "activeMissiles";
+
 /** The die every Full Thrust roll uses. */
 export const DIE_SIZE = 6;
 

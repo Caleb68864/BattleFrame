@@ -28,6 +28,8 @@
   "battleframe-full-thrust.controls.arcs": "Toggle fire-arc rings on ships",
   "battleframe-full-thrust.controls.needle": "Needle beam (snipe a target system)",
   "battleframe-full-thrust.controls.salvo": "Fire salvo missiles at target",
+  "battleframe-full-thrust.controls.launchMissile": "Launch independent missile (forward)",
+  "battleframe-full-thrust.controls.advanceMissiles": "Missile phase (advance + resolve strikes)",
   "battleframe-full-thrust.controls.plot": "Plot movement order (hidden until execute)",
   "battleframe-full-thrust.controls.execute": "Execute maneuvers (reveal all plotted moves)",
   "battleframe-full-thrust.controls.damageControl": "Damage control (end-of-turn repairs)",

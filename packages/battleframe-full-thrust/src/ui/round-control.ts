@@ -16,6 +16,7 @@ import {
   SHIP_ACTOR_TYPE,
   PLOTTED_ORDER_FLAG,
   FIRE_PHASE_FLAG,
+  ACTIVE_MISSILES_FLAG,
   DIE_SIZE,
   COURSE_POINT_DEGREES,
   COURSES
@@ -34,6 +35,9 @@ import {
 } from "../round/fire-session";
 import { fireShipAtTarget, type FireContext, type FireReport, type FiringShip } from "../combat/fire-ship";
 import { fireShipSplit, type FireShipSplitReport } from "../combat/fire-ship-split";
+import { advanceMissile, missileExpired, type ActiveMissile } from "../combat/missile-phase";
+import { resolveMissileAttack, missileCanAttack, type MissileAttackReport } from "../combat/missile";
+import { drawMissiles, clearMissiles } from "./missile-overlay";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
 import { plotMovementPath, type MovementPath } from "../movement/path";
 import { usableThrust } from "../ship/systems";
@@ -220,6 +224,29 @@ export function buildSplitFireReportHtml(report: FireShipSplitReport, attackerNa
     blocks.push(`<p class="ft-unassigned">${report.unassigned.length} weapon(s) unassigned (no free FCS / out of arc).</p>`);
   }
   return wrapReport(`${attacker} splits fire (${report.fcsCount} FCS)`, blocks);
+}
+
+/** Builds the chat card for an independent missile's strike on a ship (#15). */
+export function buildMissileReportHtml(report: MissileAttackReport, targetName: string): string {
+  const target = escapeHtml(targetName);
+  const head = `Missile &rarr; ${target}`;
+  if (!report.attacked) {
+    return wrapReport(head, [`<p>No strike (${escapeHtml(report.reason ?? "no target")}).</p>`]);
+  }
+  if (report.intercepted) {
+    return wrapReport(head, [`<p>Point defence destroyed the missile before it struck.</p>`]);
+  }
+  const lines = [`<p>${escapeHtml(report.warhead)} warhead: <strong>${report.totalDamage}</strong> damage.</p>`];
+  if (report.nominatedSystemKnockedOut) {
+    lines.push(`<p>The nominated system was knocked out.</p>`);
+  }
+  if (report.thresholdsCrossed.length > 0) {
+    lines.push(`<p>Threshold check (row ${report.thresholdsCrossed.join(", ")}): <strong>${report.systemsKnockedOut}</strong> system(s) knocked out.</p>`);
+  }
+  if (report.destroyed) {
+    lines.push(`<p class="ft-destroyed"><strong>${target} destroyed.</strong></p>`);
+  }
+  return wrapReport(head, lines);
 }
 
 // --- Injectable actions (testable core) -------------------------------------
@@ -632,6 +659,149 @@ export async function checkTargetingAction(): Promise<void> {
     content: html,
     whisper: userId ? [userId] : undefined
   });
+}
+
+// --- Independent (More Thrust) missiles: launch + phase ---------------------
+
+/** The active scene document (holds the missile list flag). */
+function missileScene(): FlagDocLike | undefined {
+  return g().canvas?.scene as FlagDocLike | undefined;
+}
+
+/** Reads the scene's active-missile list (empty if none). */
+function loadMissiles(): ActiveMissile[] {
+  const scene = missileScene();
+  const raw = scene?.getFlag?.(MODULE_ID, ACTIVE_MISSILES_FLAG);
+  return Array.isArray(raw) ? (raw as ActiveMissile[]) : [];
+}
+
+/** Persists the missile list to the scene and redraws the markers. */
+async function saveMissiles(missiles: ActiveMissile[]): Promise<void> {
+  const scene = missileScene();
+  if (missiles.length > 0) {
+    await scene?.setFlag?.(MODULE_ID, ACTIVE_MISSILES_FLAG, missiles);
+  } else {
+    await scene?.unsetFlag?.(MODULE_ID, ACTIVE_MISSILES_FLAG);
+  }
+  drawMissiles(missiles);
+  if (missiles.length === 0) {
+    clearMissiles();
+  }
+}
+
+/** A missile's forward unit vector (screen space, y down) for a given course. */
+function courseForward(course: number): { fx: number; fy: number } {
+  const rad = (courseRotation(course) * Math.PI) / 180;
+  return { fx: Math.sin(rad), fy: -Math.cos(rad) };
+}
+
+/**
+ * Launch-Missile tool: the controlled ship fires an independent missile forward
+ * along its own course. The missile is placed just ahead of the ship and joins
+ * the active-missile list; it flies on its own in the missile phase.
+ */
+export async function launchMissileAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM launches missiles`);
+    return;
+  }
+  const token = controlledToken();
+  if (!token?.actor) {
+    return;
+  }
+  const scale = tokenScale(token);
+  const start = tokenStartPx(token);
+  const course = Number(token.actor.system?.course ?? 12);
+  const disposition = Number(token.document?.disposition ?? 0);
+  const { fx, fy } = courseForward(course);
+  // Place the missile ~2mu ahead of the ship's centre so it clears the hull.
+  const offset = (token?.w ?? 0) / 2 + 2 * scale;
+
+  const missiles = loadMissiles();
+  const id = `m${missiles.length}-${course}-${disposition}`;
+  missiles.push({
+    id,
+    x: start.x + fx * offset,
+    y: start.y + fy * offset,
+    course,
+    turnsLived: 0,
+    warhead: "normal",
+    ownerDisposition: disposition
+  });
+  await saveMissiles(missiles);
+  notify("info", `${MODULE_ID} | missile launched (course ${course})`);
+}
+
+/** A synthetic token-like object so the engine measure/facing can read a missile. */
+function missileToken(missile: ActiveMissile, scene: unknown): unknown {
+  return { center: { x: missile.x, y: missile.y }, scene, document: { rotation: courseRotation(missile.course) } };
+}
+
+/**
+ * Missile-phase tool (GM): advance every active missile one move, resolve a
+ * strike on the nearest eligible enemy ship (≤6mu, not in the missile's rear
+ * arc), and remove missiles that struck or burned out (3-turn life).
+ */
+export async function advanceMissilesAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM runs the missile phase`);
+    return;
+  }
+  const services = api();
+  if (!services) {
+    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+    return;
+  }
+  let missiles = loadMissiles();
+  if (missiles.length === 0) {
+    notify("info", `${MODULE_ID} | no missiles in flight`);
+    return;
+  }
+  const context = { measure: services.measure, facing: services.facing, dice: services.dice };
+  const scene = missileScene();
+  const scale = tokenScale(controlledToken() ?? { document: { parent: { grid: g().canvas?.scene?.grid } } });
+  const shipTokens = (g().canvas?.tokens?.placeables ?? []).filter(
+    (t: any) => typeof t?.actor?.type === "string" && t.actor.type.endsWith(SHIP_ACTOR_TYPE)
+  );
+
+  const survivors: ActiveMissile[] = [];
+  for (const before of missiles) {
+    const moved = advanceMissile(before, 0, scale);
+    const mToken = missileToken(moved, scene);
+
+    // Nearest eligible enemy ship (other disposition, in range, not in rear arc).
+    let best: { token: any; distance: number } | undefined;
+    for (const st of shipTokens) {
+      if (Number(st?.document?.disposition ?? 0) === moved.ownerDisposition) {
+        continue;
+      }
+      const distance = context.measure.between(mToken, st, "centre-to-centre").distance;
+      const bearing = context.facing.bearingOf(mToken, st);
+      if (missileCanAttack(distance, bearing) && (!best || distance < best.distance)) {
+        best = { token: st, distance };
+      }
+    }
+
+    let struck = false;
+    if (best) {
+      const target = toFiringShip(best.token);
+      if (target) {
+        const report = await resolveMissileAttack({ missile: { token: mToken }, target, warhead: moved.warhead, context });
+        struck = report.attacked;
+        await g().ChatMessage?.create({
+          content: buildMissileReportHtml(report, best.token?.name ?? "Target")
+        });
+      }
+    }
+
+    if (!struck && !missileExpired(moved)) {
+      survivors.push(moved);
+    } else if (!struck && missileExpired(moved)) {
+      notify("info", `${MODULE_ID} | a missile burned out`);
+    }
+  }
+
+  await saveMissiles(survivors);
 }
 
 /**
@@ -1113,6 +1283,26 @@ export function addSceneControl(controls: unknown): void {
     order: 3,
     onClick: () => void salvoAction(),
   };
+  // Launch an independent missile forward from the controlled ship -- GM only.
+  const launchMissileTool = {
+    name: "full-thrust-launch-missile",
+    title: "battleframe-full-thrust.controls.launchMissile",
+    icon: "fas fa-rocket",
+    button: true,
+    visible: gm,
+    order: 3,
+    onClick: () => void launchMissileAction(),
+  };
+  // Run the missile phase: advance every missile, resolve strikes -- GM only.
+  const advanceMissilesTool = {
+    name: "full-thrust-advance-missiles",
+    title: "battleframe-full-thrust.controls.advanceMissiles",
+    icon: "fas fa-forward-fast",
+    button: true,
+    visible: gm,
+    order: 3,
+    onClick: () => void advanceMissilesAction(),
+  };
   const plotTool = {
     name: "full-thrust-plot",
     title: "battleframe-full-thrust.controls.plot",
@@ -1174,7 +1364,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
+  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);

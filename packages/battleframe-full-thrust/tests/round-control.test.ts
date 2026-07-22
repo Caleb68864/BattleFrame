@@ -11,7 +11,7 @@ import {
   newTurnAction
 } from "../src/ui/round-control";
 import type { TargetingRow } from "../src/combat/targeting";
-import { buildSplitFireReportHtml } from "../src/ui/round-control";
+import { buildSplitFireReportHtml, buildMissileReportHtml } from "../src/ui/round-control";
 import type { FireShipSplitReport } from "../src/combat/fire-ship-split";
 import type { FireReport } from "../src/combat/fire-ship";
 import type { FighterFireReport } from "../src/combat/fire-fighters";
@@ -201,6 +201,33 @@ describe("buildSplitFireReportHtml", () => {
   });
 });
 
+describe("buildMissileReportHtml", () => {
+  const base = { attacked: true, warhead: "normal" as const, intercepted: false, totalDamage: 7, destroyed: false, thresholdsCrossed: [] as number[], systemsKnockedOut: 0 };
+
+  it("summarises a warhead strike with damage", () => {
+    const html = buildMissileReportHtml(base, "Enemy DD");
+    expect(html).toContain("Enemy DD");
+    expect(html).toContain("7");
+    expect(html.toLowerCase()).toContain("normal");
+  });
+
+  it("notes a point-defence interception", () => {
+    const html = buildMissileReportHtml({ ...base, intercepted: true }, "T");
+    expect(html.toLowerCase()).toContain("point defence");
+  });
+
+  it("notes no-strike when the missile did not attack", () => {
+    const html = buildMissileReportHtml({ ...base, attacked: false, reason: "out-of-range" }, "T");
+    expect(html.toLowerCase()).toContain("no strike");
+  });
+
+  it("escapes the target name", () => {
+    const html = buildMissileReportHtml(base, "<b>x</b>");
+    expect(html).not.toContain("<b>x");
+    expect(html).toContain("&lt;b&gt;");
+  });
+});
+
 describe("addSceneControl", () => {
   it("adds a Full Thrust control with fire and plot tools (array payload)", () => {
     vi.stubGlobal("game", { user: { isGM: true } });
@@ -218,6 +245,8 @@ describe("addSceneControl", () => {
     expect(toolNames).toContain("full-thrust-arcs");
     expect(toolNames).toContain("full-thrust-needle");
     expect(toolNames).toContain("full-thrust-salvo");
+    expect(toolNames).toContain("full-thrust-launch-missile");
+    expect(toolNames).toContain("full-thrust-advance-missiles");
     expect(toolNames).toContain("full-thrust-plot");
     expect(toolNames).toContain("full-thrust-execute");
     expect(toolNames).toContain("full-thrust-damage-control");

@@ -2523,3 +2523,29 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   is swallowed so it can never break the canvas.
 - +5 tests (arc-overlay.test.ts geometry); 1011 passing; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: independent-missile PHASE orchestrator (roadmap P2 #15)
+- Gap: EMP/Needle/Normal warhead math + `plotMissilePath` existed but there was no way to launch a
+  missile or fly it — the whole "fire-and-forget craft" loop was unbuilt.
+- Design choice: a missile is NOT a manually-moved token, so instead of a new Actor subtype + token
+  CRUD, missiles are lightweight SCENE-FLAG state (`ACTIVE_MISSILES_FLAG`: {id,x,y,course,
+  turnsLived,warhead,ownerDisposition}) drawn as PIXI arrowhead markers. The engine measure/facing
+  duck-type on `{center}` + `{document.rotation}`, so a SYNTHETIC token-like object
+  (`missileToken`) lets `resolveMissileAttack` measure a strike against a real ship token with no
+  missile Actor. State on the Scene = persistent + synced per the turn-state rule.
+- `combat/missile-phase.ts` (pure + tested): `advanceMissile` (fly 18mu along course with an
+  optional ≤2-pt mid turn — illegal turn flown straight — via `plotMissilePath`, bump life) and
+  `missileExpired` (≥3 turns). `ui/missile-overlay.ts` draws the markers (defensive PIXI; redrawn
+  on `canvasReady` from the scene flag). `round-control.ts`: a "Launch Missile" tool (places a
+  missile ahead of the controlled ship on its course) + a "Missile Phase" tool (advance each,
+  strike the nearest eligible enemy ship ≤6mu not in the missile's rear arc via
+  `resolveMissileAttack`, post `buildMissileReportHtml`, remove struck/burned-out). Normal warhead
+  by default (EMP/Needle selection UI deferred).
+- Surfaces: combat/missile-phase.ts (new), ui/missile-overlay.ts (new), ui/round-control.ts
+  (launch/advance actions + builder + 2 tools + missile helpers), main.ts (registerMissileOverlay),
+  constants.ts (ACTIVE_MISSILES_FLAG), lang/en.json.
+- Watch: scene-flag persistence + PIXI markers + the synthetic-token measure are live-only —
+  verify launch places a marker, the phase moves it 18mu + strikes a ship in range, and it vanishes
+  after 3 turns. A per-missile turn/warhead picker is a future refinement.
+- +10 tests (missile-phase 6, buildMissileReportHtml 4); 1021 passing; typecheck clean.
+- Commit: this commit.

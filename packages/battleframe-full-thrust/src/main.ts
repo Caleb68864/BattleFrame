@@ -6,6 +6,7 @@ import { registerFighterSheet } from "./sheets/fighter-sheet";
 import { registerRoundControl } from "./ui/round-control";
 import { registerOwnershipWarning } from "./ui/ownership-warning";
 import { registerArcOverlay } from "./ui/arc-overlay";
+import { registerMissileOverlay } from "./ui/missile-overlay";
 import { registerShipStatusEffects } from "./status";
 
 interface BattleframeRegisterResult {
@@ -132,5 +133,7 @@ globalHooks?.once("init", () => {
   registerOwnershipWarning();
   // Fire-arc ring overlay on ship tokens (hover to show, "Fire Arcs" tool to pin).
   registerArcOverlay();
+  // Redraw in-flight independent missiles when a scene loads.
+  registerMissileOverlay();
   registerFullThrustRuleset();
 });
