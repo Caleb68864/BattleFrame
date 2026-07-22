@@ -3486,3 +3486,22 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - `styles/full-thrust.css`: additive `.ft-plot-builder` styling for the Plot Movement dialog.
 - No test impact (comment/CSS only). Deployed with the 7-package push.
 - Commit: this commit.
+
+## 2026-07-22 — SG2 opposedShift ratio reconciled: 1:1 confirmed correct (no code change)
+- Follow-up to the SG2 MVP note flagging opposedShift's open-shift transfer ratio for
+  rulebook reconciliation (the build plan's worked example was internally inconsistent —
+  stated both "-2" and a "d6" result for opposedShift("d12",+2,"d8")).
+- Resolution: read the authoritative rule (SG2 Ch.2 "Closed vs. open shifts", p5-6):
+  "excess shifts beyond D12 (or below D4) are applied as OPPOSITE shifts to the opponent's
+  die" — a 1:1 transfer (one overflow rung = one opposite rung). Confirmed by the rulebook's
+  worked example: Armour D8 + 3 shifts caps at D12 with 1 excess, which drops the firer's
+  Impact die D10 → D8.
+- The build agent's implementation ALREADY does exactly this (verified by tracing
+  packages/battleframe-stargrunt-ii/src/dice/ladder.ts): opposedShift("d8",+3,"d10") →
+  {actor:"d12", opponent:"d8"}, matching the rulebook. So the 1:1 was correct; only the PLAN
+  doc's worked example had a typo ("d6" where 1:1 gives d4) — fixed in the git-ignored plan.
+- Change: added the rulebook's canonical worked example as a pinned fixture in
+  tests/ladder.test.ts (opposedShift("d8",3,"d10") → {d12,d8}) with the Ch.2 citation, and
+  rewrote the test's "must be reconciled" NOTE to "RECONCILED — 1:1 confirmed." No production
+  code change (opposedShift was already correct). SG2 ladder tests: 10 pass.
+- Commit: this commit.

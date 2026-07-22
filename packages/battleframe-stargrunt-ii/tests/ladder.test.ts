@@ -39,14 +39,19 @@ describe("shift — the die-ladder atom", () => {
  * overflow past an end of the ladder is re-expressed as an equal-and-opposite
  * shift applied to the opponent's die, with the actor pinned at the cap it hit.
  *
- * NOTE (design finding, docs/decisions.md): the build plan's worked example is
- * internally inconsistent about the transfer ratio (it states both "-2" and a
- * "d6" result for the same case). This implementation uses the clean, neutral
- * 1:1 transfer — one rung of overflow becomes one rung of opposite shift on the
- * opponent. The exact rulebook ratio must be reconciled against the GZG worked
- * example before Impact-vs-Armour/close-combat consume it (both are post-MVP).
+ * RECONCILED against the rulebook (SG2 Ch.2, "Closed vs. open shifts", p5-6): the
+ * transfer is 1:1 — "excess shifts beyond D12 (or below D4) are applied as opposite
+ * shifts to the opponent's die." The canonical worked example pins it below. (The
+ * build plan's worked example had a typo — "d6" where the 1:1 rule gives d4 — the
+ * IMPLEMENTATION was already correct; see docs/decisions.md.)
  */
 describe("opposedShift — open shift overflow onto the opponent", () => {
+  it("matches the rulebook's canonical open-shift example (SG2 Ch.2 p6)", () => {
+    // Armour D8, +3 shifts (hard cover + in position) vs Impact D10:
+    // "D8 -> D12 caps; the leftover (1) shift drops the firer's Impact die D10 -> D8."
+    expect(opposedShift("d8", 3, "d10")).toEqual({ actor: "d12", opponent: "d8" });
+  });
+
   it("leaves the opponent untouched when the actor shift stays on the ladder", () => {
     expect(opposedShift("d8", 1, "d8")).toEqual({ actor: "d10", opponent: "d8" });
     expect(opposedShift("d10", -2, "d6")).toEqual({ actor: "d6", opponent: "d6" });
