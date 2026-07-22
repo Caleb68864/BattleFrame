@@ -29,6 +29,8 @@ export interface ActiveMissile {
   /** How many missile phases it has flown (removed at MISSILE_LIFE_TURNS). */
   turnsLived: number;
   warhead: MissileWarhead;
+  /** Needle warhead only: the system type the owner nominated to snipe. */
+  systemType?: string;
   /** The launching side's token disposition — a missile only strikes other sides. */
   ownerDisposition: number;
 }

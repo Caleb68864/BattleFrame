@@ -36,7 +36,7 @@ import {
 import { fireShipAtTarget, type FireContext, type FireReport, type FiringShip } from "../combat/fire-ship";
 import { fireShipSplit, type FireShipSplitReport } from "../combat/fire-ship-split";
 import { advanceMissile, missileExpired, type ActiveMissile } from "../combat/missile-phase";
-import { resolveMissileAttack, missileCanAttack, type MissileAttackReport } from "../combat/missile";
+import { resolveMissileAttack, missileCanAttack, type MissileAttackReport, type MissileWarhead } from "../combat/missile";
 import { drawMissiles, clearMissiles } from "./missile-overlay";
 import { waveGunDiceAtRange, waveGunDamage, novaCannonDiceForTurn, novaCannonDamage } from "../combat/spinal";
 import { canReachToAttack } from "../movement/fighter-move";
@@ -741,6 +741,9 @@ export async function launchMissileAction(): Promise<void> {
   // Place the missile ~2mu ahead of the ship's centre so it clears the hull.
   const offset = (token?.w ?? 0) / 2 + 2 * scale;
 
+  // Pick the warhead (and, for Needle, the system to snipe).
+  const { warhead, systemType } = await pickWarhead();
+
   const missiles = loadMissiles();
   const id = `m${missiles.length}-${course}-${disposition}`;
   missiles.push({
@@ -749,11 +752,37 @@ export async function launchMissileAction(): Promise<void> {
     y: start.y + fy * offset,
     course,
     turnsLived: 0,
-    warhead: "normal",
+    warhead,
+    systemType,
     ownerDisposition: disposition
   });
   await saveMissiles(missiles);
-  notify("info", `${MODULE_ID} | missile launched (course ${course})`);
+  notify("info", `${MODULE_ID} | ${warhead} missile launched (course ${course})`);
+}
+
+/** Prompts for a missile warhead (and, for Needle, the target system). */
+async function pickWarhead(): Promise<{ warhead: MissileWarhead; systemType?: string }> {
+  const dialog = g().foundry?.applications?.api?.DialogV2;
+  if (!dialog?.prompt) {
+    return { warhead: "normal" };
+  }
+  const warheadOpts = ["normal", "emp", "needle"].map((w) => `<option value="${w}">${w}</option>`).join("");
+  const systemOpts = ["fcs", "drive", "screen", "pds", "weapon"].map((t) => `<option value="${t}">${t}</option>`).join("");
+  const result = (await dialog.prompt({
+    window: { title: "Full Thrust: Launch Missile -- warhead" },
+    content:
+      `<p>Warhead:</p><select name="warhead">${warheadOpts}</select>` +
+      `<p>Needle target system (Needle warhead only):</p><select name="system">${systemOpts}</select>`,
+    ok: {
+      label: "Launch",
+      callback: (_event: unknown, button: any) => ({
+        warhead: button?.form?.elements?.warhead?.value ?? "normal",
+        system: button?.form?.elements?.system?.value ?? "fcs"
+      })
+    }
+  })) as { warhead: string; system: string } | null;
+  const warhead = (result?.warhead as MissileWarhead) ?? "normal";
+  return warhead === "needle" ? { warhead, systemType: result?.system ?? "fcs" } : { warhead };
 }
 
 /** A synthetic token-like object so the engine measure/facing can read a missile. */
@@ -810,7 +839,7 @@ export async function advanceMissilesAction(): Promise<void> {
     if (best) {
       const target = toFiringShip(best.token);
       if (target) {
-        const report = await resolveMissileAttack({ missile: { token: mToken }, target, warhead: moved.warhead, context });
+        const report = await resolveMissileAttack({ missile: { token: mToken }, target, warhead: moved.warhead, systemType: moved.systemType as any, context });
         struck = report.attacked;
         await g().ChatMessage?.create({
           content: buildMissileReportHtml(report, best.token?.name ?? "Target")
