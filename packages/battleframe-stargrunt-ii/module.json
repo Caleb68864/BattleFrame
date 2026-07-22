@@ -1,0 +1,37 @@
+{
+  "id": "battleframe-stargrunt-ii",
+  "title": "BattleFrame: Stargrunt II",
+  "description": "Stargrunt II ruleset for the BattleFrame system — the science-fiction skirmish game by Ground Zero Games. This module implements the game MECHANICS only; it ships no rulebook text, no artwork, and no proprietary unit stat blocks or tables. You supply your own unit, weapon, and armour data. Free and non-commercial.",
+  "version": "0.1.0",
+  "authors": [
+    { "name": "BattleFrame Team" },
+    { "name": "Ground Zero Games", "flags": { "role": "Original ruleset author (Stargrunt II)" } }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "relationships": {
+    "systems": [
+      { "id": "battleframe", "type": "system" }
+    ]
+  },
+  "esmodules": [
+    "dist/stargrunt-ii.js"
+  ],
+  "styles": [
+    "styles/stargrunt-ii.css"
+  ],
+  "languages": [
+    { "lang": "en", "name": "English", "path": "lang/en.json" }
+  ],
+  "documentTypes": {
+    "Actor": {
+      "unit": {},
+      "vehicle": {}
+    }
+  },
+  "url": "",
+  "manifest": "",
+  "download": ""
+}

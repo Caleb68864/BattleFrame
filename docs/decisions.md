@@ -3131,3 +3131,28 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   world (ships animate the curved path, unconstrained, facing==heading). Batched with
   the pending GREATHELM + chat-card + socketlib live-verify.
 - Commit: this commit.
+
+## 2026-07-22 — Scaffolded battleframe-stargrunt-ii; the die-ladder atom is the locked cross-module contract
+- Decision: new module `packages/battleframe-stargrunt-ii` (Stargrunt II), shape copied
+  from InCountry (module.json/package.json/vite.config/lang/NOTICE). Module id and Actor
+  subtypes are `battleframe-stargrunt-ii(.unit|.vehicle)` per the build plan's LOCKED
+  data-model registration path and hover key — chosen over the parent's shorthand
+  "battleframe-stargrunt" so the id, directory, data-model key, and i18n `TYPES` all agree
+  (repo convention is dir == id, as every other module holds).
+- A1 `shift(die, steps)` at `src/dice/ladder.ts` is the Tier-0 die-ladder atom — built
+  byte-identical to the Dirtside module's copy (the agreed cross-module contract): lowercase
+  `"d4".."d12"`, symmetric, returns `null` off EITHER end with NO clamping (clamping is
+  caller-side, `shift(...) ?? cap`). Kept ruleset-free so it ports to engine `dice.shift`
+  unchanged once both MVPs land (two witnesses).
+- Watch (design finding): A2 `opposedShift` (open shift, overflow transfers to the opponent)
+  is SG2-side and composes `shift`. The build plan's worked example
+  (`opposedShift("d12",+2,"d8")`) is internally inconsistent — it states both a "-2" transfer
+  and a "d6" result (which is -1). I implemented the clean, neutral **1:1** transfer (one rung
+  of overflow → one opposite rung on the opponent → `d4`), pinned it as a fixture, and flagged
+  it here. `opposedShift` is consumed only by the post-MVP Impact-vs-Armour and close-combat
+  paths, so the exact GZG ratio must be reconciled against the rulebook worked example before
+  those ship. Not a blocker for the infantry-firefight MVP.
+- Surfaces: `packages/battleframe-stargrunt-ii/{module.json,package.json,vite.config.ts,
+  NOTICE.md,lang/en.json,styles/stargrunt-ii.css,src/constants.ts,src/dice/ladder.ts,
+  tests/ladder.test.ts}`. 9 tests; typecheck clean.
+- Commit: this commit.

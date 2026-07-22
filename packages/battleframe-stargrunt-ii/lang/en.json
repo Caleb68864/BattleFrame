@@ -1,0 +1,19 @@
+{
+  "TYPES": {
+    "Actor": {
+      "battleframe-stargrunt-ii.unit": "Unit",
+      "battleframe-stargrunt-ii.vehicle": "Vehicle"
+    }
+  },
+  "battleframe-stargrunt-ii": {
+    "sheets": {
+      "unit": "Unit",
+      "vehicle": "Vehicle"
+    },
+    "fields": {
+      "quality": "Quality",
+      "confidence": "Confidence",
+      "suppression": "Suppression"
+    }
+  }
+}
