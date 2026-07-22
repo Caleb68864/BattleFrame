@@ -11,7 +11,8 @@ import {
   newTurnAction
 } from "../src/ui/round-control";
 import type { TargetingRow } from "../src/combat/targeting";
-import { buildSplitFireReportHtml, buildMissileReportHtml, buildSpinalReportHtml } from "../src/ui/round-control";
+import { buildSplitFireReportHtml, buildMissileReportHtml, buildSpinalReportHtml, movementWaypoints } from "../src/ui/round-control";
+import type { MovementPath } from "../src/movement/path";
 import type { FireShipSplitReport } from "../src/combat/fire-ship-split";
 import type { FireReport } from "../src/combat/fire-ship";
 import type { FighterFireReport } from "../src/combat/fire-fighters";
@@ -30,6 +31,32 @@ function report(overrides: Partial<FireReport> = {}): FireReport {
     ...overrides
   };
 }
+
+describe("movementWaypoints", () => {
+  const path = (over: Partial<MovementPath> = {}): MovementPath => ({
+    legal: true,
+    velocity: 6,
+    course: 3,
+    midCourse: 2,
+    waypoint: { dx: 2, dy: -1 },
+    end: { dx: 5, dy: -3 },
+    ...over
+  });
+
+  it("builds pivot-to-mid then pivot-to-final waypoints, scaling mu displacements to px", () => {
+    const wp = movementWaypoints({ x: 100, y: 200 }, path(), 10);
+    expect(wp).toEqual([
+      { x: 120, y: 190, rotation: 60 }, // start + mid-displacement*scale; midCourse 2 -> 60deg
+      { x: 150, y: 170, rotation: 90 } //  start + end-displacement*scale; course 3 -> 90deg
+    ]);
+  });
+
+  it("wraps a full-clock course (12) to 0 degrees", () => {
+    const wp = movementWaypoints({ x: 0, y: 0 }, path({ course: 12, midCourse: 12 }), 1);
+    expect(wp[0].rotation).toBe(0);
+    expect(wp[1].rotation).toBe(0);
+  });
+});
 
 describe("buildFireReportHtml", () => {
   it("summarises the range, damage and attacker/target names", () => {

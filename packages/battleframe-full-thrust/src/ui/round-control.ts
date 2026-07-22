@@ -1747,35 +1747,73 @@ function courseRotation(course: number): number {
   return (course % COURSES) * COURSE_POINT_DEGREES;
 }
 
+/** A canvas waypoint: pixel position + the token rotation (heading) at that point. */
+export interface MovementWaypoint {
+  x: number;
+  y: number;
+  rotation: number;
+}
+
 /**
- * Traces the ship's cinematic pivot-move-pivot-move path on the canvas: pivot to
- * the mid-turn heading and move to the waypoint, then pivot to the final heading
- * and move to the end. Two sequential token updates so Foundry animates the
- * curved path (facing == heading throughout). Displacements are mu, converted to
- * pixels via the scene grid.
+ * The two canvas waypoints of a plotted path: pivot-to-mid then pivot-to-final.
+ * `start` is the token's current pixel position; `scale` is px-per-mu. The ship
+ * faces its heading throughout (rotation == course at each leg). Pure so the
+ * geometry is unit-tested independently of how the move is executed.
+ */
+export function movementWaypoints(
+  start: { x: number; y: number },
+  path: MovementPath,
+  scale: number
+): [MovementWaypoint, MovementWaypoint] {
+  return [
+    { x: start.x + path.waypoint.dx * scale, y: start.y + path.waypoint.dy * scale, rotation: courseRotation(path.midCourse) },
+    { x: start.x + path.end.dx * scale, y: start.y + path.end.dy * scale, rotation: courseRotation(path.course) }
+  ];
+}
+
+/**
+ * Traces the ship's cinematic pivot-move-pivot-move path on the canvas.
+ *
+ * v14's `TokenDocument#move` takes the whole waypoint path in one call and
+ * resolves only when the entire animation finishes (region/interruption-aware) --
+ * so we hand it both legs at once instead of hand-walking the path with sequential
+ * `update`s. Ships fly through open space, so we move unconstrained
+ * (`ignoreWalls`/`ignoreCost`) and set the rotation explicitly per leg
+ * (`autoRotate: false`, since facing == heading, not direction of travel).
+ *
+ * The pre-v14 sequential-`update` path stays as a fallback: used when `move` is
+ * absent (older Foundry / unit tests) or if a native call throws, so a
+ * signature/behaviour drift degrades to the proven animation rather than breaking
+ * movement.
  */
 async function executeMovementPath(token: any, path: MovementPath): Promise<void> {
   const doc = token?.document;
-  if (!doc?.update) {
+  if (!doc) {
     return;
   }
   const grid = doc.parent?.grid ?? g().canvas?.scene?.grid;
   const scale = pixelsPerMu(grid);
-  const startX = doc.x ?? 0;
-  const startY = doc.y ?? 0;
+  const [mid, end] = movementWaypoints({ x: doc.x ?? 0, y: doc.y ?? 0 }, path, scale);
 
-  // Leg 1: pivot to the mid-turn heading, move to the waypoint.
-  await doc.update({
-    x: startX + path.waypoint.dx * scale,
-    y: startY + path.waypoint.dy * scale,
-    rotation: courseRotation(path.midCourse)
-  });
-  // Leg 2: pivot to the final heading, move to the end.
-  await doc.update({
-    x: startX + path.end.dx * scale,
-    y: startY + path.end.dy * scale,
-    rotation: courseRotation(path.course)
-  });
+  if (typeof doc.move === "function") {
+    try {
+      // One native multi-waypoint move: animates the full curved path, resolves when done.
+      await doc.move([mid, end], {
+        autoRotate: false,
+        constrainOptions: { ignoreWalls: true, ignoreCost: true }
+      });
+      return;
+    } catch (error) {
+      console.warn(`${MODULE_ID} | TokenDocument#move failed; falling back to sequential updates`, error);
+    }
+  }
+
+  if (!doc.update) {
+    return;
+  }
+  // Fallback: two sequential updates so Foundry animates each leg (pivot then move).
+  await doc.update({ x: mid.x, y: mid.y, rotation: mid.rotation });
+  await doc.update({ x: end.x, y: end.y, rotation: end.rotation });
 }
 
 /** Adds the Full Thrust scene control, tolerating both payload shapes. */

@@ -3102,3 +3102,32 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   escapeHtml, postClashCardToChat, postClashCard wiring), styles/greathelm.css
   (.gh-clash-report). +5 tests; 1198 pass. Engine (packages/battleframe/src) untouched.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust ship movement adopts native v14 TokenDocument#move
+- Context: `executeMovementPath` hand-walked the pivot-move-pivot-move path with TWO
+  sequential `doc.update({x,y,rotation})` calls. The Foundry-ecosystem sweep
+  (internal-docs/foundry-ecosystem-research.md, finding #3) found v14 reworked token
+  movement: `TokenDocument#move(waypoints, options)` takes the whole path in one call
+  and resolves (Promise<boolean>) only when the ENTIRE animation finishes
+  (region/interruption-aware). Verified the exact v14 signature against the API docs
+  before adopting (waypoints = array of {x,y,rotation,...}; options incl.
+  constrainOptions {ignoreWalls, ignoreCost}, autoRotate).
+- Change: extracted a pure `movementWaypoints(start, path, scale)` -> the two
+  {x,y,rotation} legs (unit-tested). `executeMovementPath` now feature-detects
+  `doc.move`: when present it issues ONE `doc.move([mid,end], {autoRotate:false,
+  constrainOptions:{ignoreWalls:true, ignoreCost:true}})` -- ships fly open space so
+  movement is unconstrained, and rotation is set explicitly per leg (facing==heading,
+  not travel direction). The pre-v14 sequential-`update` path stays as a fallback,
+  used when `move` is absent (older Foundry / unit tests) OR if the native call
+  throws -- so a signature/behaviour drift degrades to the proven animation instead of
+  breaking movement.
+- Why keep computation ours: we still compute WHICH path (the tactical plot); only the
+  animated walk is handed to Foundry, per the research recommendation ("keep only the
+  path computation ours"). No custom engine movement primitive was built -- the native
+  API is the right home (avoids reinventing what v14 now ships).
+- Surfaces: packages/battleframe-full-thrust/src/ui/round-control.ts (movementWaypoints,
+  executeMovementPath), tests/round-control.test.ts (+2). 1220 pass; typecheck clean.
+- Live-verify: Foundry-facing -- the native `move` path needs confirming in a live v14
+  world (ships animate the curved path, unconstrained, facing==heading). Batched with
+  the pending GREATHELM + chat-card + socketlib live-verify.
+- Commit: this commit.
