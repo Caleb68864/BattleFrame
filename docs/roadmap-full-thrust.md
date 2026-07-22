@@ -71,8 +71,10 @@ in a live Foundry.
     `buildTargetingReportHtml`) shows which weapons bear + their range band before you commit.
     Pure core + HTML builder unit-tested; the scene-tool click is live-unverified.
 12. **[qol]** 🟡 PARTIAL: a "New Turn" GM tool clears leftover plots + ends the fire phase
-    (`newTurnAction`). Still to do: a visible turn/phase tracker, a full "New Battle" reset, and
-    localized chat cards.
+    (`newTurnAction`), and (2026-07-22, live-verified) a **visible fire-phase turn tracker** —
+    `firePhaseStatusLine`/`sideLabel` post a persistent "Friendly/Hostile to fire — N ships left"
+    chat card on begin + each activation, plus a "Phase Status" tool to re-post on demand. Still to
+    do: a full "New Battle" reset and fully localized chat cards.
 13. **[qol] Friendlier plot entry** (click-to-set thrust/turn) alongside the raw `+4,P2` text.
 
 ## P2 — Advanced rules (need new math)
@@ -95,7 +97,11 @@ in a live Foundry.
     `warhead` param: EMP scrambles systems via a screen-reduced effect die, Needle snipes a
     nominated system — both pure + tested). Still to do: the dedicated missile-phase launch + a
     Foundry token orchestrator that moves/tracks the craft and removes it after the 3-turn life.
-16. **[build] Fighter movement + dogfights** (`dogfightKills` exists, unwired).
+16. **[build] Fighter movement + dogfights** — 🟡 PARTIAL (2026-07-22). Dogfights are wired
+    (`resolveDogfight` + the Fire tool). Fighter MOVEMENT now has a pure core `movement/fighter-move.ts`
+    (`fighterMaxMove`, `moveToward`, `canReachToAttack` — flat move any direction, 12mu / 18mu Fast,
+    close to within 6mu to strike; +11 tests). Still to do: a Foundry token orchestrator that moves
+    the group each turn (as ship `path.ts` defers its token move).
 17. **[build] Vector movement** (optional FT2 mode) — 🟡 PARTIAL (2026-07-22). `movement/vector.ts`
     pure library: persistent `{vx,vy}` velocity, `advance`/`applyMainDrive` (burn along facing),
     `applyPush`/`rotateFacing` (manoeuvring thrusters = ½ rating rounded DOWN), `resolveTurn`
@@ -112,10 +118,12 @@ in a live Foundry.
     possible future refinement.
 19. **[build] Fleet Book optional layers** — 🟡 PARTIAL (2026-07-22). `ship/fleet-book.ts` adds the
     three damage layers — reroll/penetrating damage (chaining 6s), armour bypass (direct-to-hull),
-    core-systems +1 (buried systems tougher at threshold) — as pure opt-in functions off the
-    default path (+22 tests). Still to do: variable-hull design system, conditional aft fire, and
-    the deferred bits (Needle-Beam core immunity, Enhanced Pulse Torpedo split, Fleet Book PDS
-    reroll).
+    core-systems +1. **Conditional aft fire** (`combat/aft-fire.ts` — all-round turrets fire aft
+    only on a no-main-thrust turn) and the **variable-hull design system** (`ship/variable-hull.ts`
+    — 10–50%-of-mass hull grades, cost = 2×boxes, 4-row layout; verified vs the notes' worked
+    example) are now built too, all pure + tested (+42 tests total). Still deferred: Needle-Beam
+    core immunity, Enhanced Pulse Torpedo split, Fleet Book PDS reroll, and wiring these opt-in
+    layers into the live combat/design path (a world setting + branch).
 20. **[build] Big/xeno weapons** — 🟡 PARTIAL (2026-07-22). `combat/spinal.ts` implements the
     spinal-mount Nova Cannon (3-turn forward sweep, 6/4/2 D6, 2"/4"/6" template) and the More
     Thrust Wave Gun (36mu expanding template, 4/3/2 D6, charge-then-fire + knock-out feedback) as

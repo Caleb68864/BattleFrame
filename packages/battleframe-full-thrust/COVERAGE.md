@@ -45,6 +45,7 @@ deferred. Nothing is silently missing.
 |---|---|---|
 | 6 × 60° arcs (F, FS, AS, A, AP, FP), weapon must bear | ✅ | `combat/arcs.ts` over the engine bearing |
 | Pre-fire targeting preview (which weapons bear + range band, no roll) | ✅ | `combat/targeting.ts` `previewTargeting` (mirrors `resolveWeaponFire` precedence) + a player-visible "Check Targeting" tool whispering `buildTargetingReportHtml` |
+| Fleet Book conditional aft fire (all-round turrets fire aft on a no-thrust turn) | 🟡 | `combat/aft-fire.ts` `aftFirePermitted`/`weaponBearsOnWithAftFire` (pure + tested; opt-in, default `weaponBearsOn` unchanged); the "did the ship thrust this turn" fact is caller-supplied — live wiring deferred |
 
 ## Weapons
 | Rule | Status | Where |
@@ -93,13 +94,14 @@ deferred. Nothing is silently missing.
 | Specialised types: Heavy (screen), Interceptor (+1/die dogfight), Long-range (endurance 5) | ✅ | `combat/fighters.ts` `dogfightKillsAgainst`/`enduranceForType`, applied in `combat/dogfight.ts` |
 | Specialised types: Fast (18mu) / Torpedo (one-shot run, spent-mode dogfight) | 🟡 | `combat/fighter-types.ts` `fighterMoveForType`/`torpedoHitCount`/`torpedoRunDamage`/`attackFighterDogfightKills` (pure + tested); the token movement + spent-marking orchestrator is deferred |
 | Pilot quality: Ace / Turkey / average (attack, morale, dogfight, initiative) | ✅ | `combat/pilot.ts` (1D6/group: 6=Ace, 1=Turkey) WIRED into `fire-fighters.ts` (Ace +1 attack die, Ace/Turkey morale mod, Turkey 2-fail break) + `dogfight.ts` (Turkey −1/die, Ace extra die); optional `pilotQuality` field on the group model + sheet. Fighter-fire UI live-unverified |
+| Fighter movement (flat move any direction, 12mu / 18mu Fast, close to strike) | 🟡 | `movement/fighter-move.ts` `fighterMaxMove`/`moveToward`/`canReachToAttack` (pure + tested); the token-mover orchestrator is deferred (as ship `path.ts` defers its token move) |
 | Carrier launch/recover | ⏳ | Not yet built |
 
 ## Ship Design
 | Rule | Status | Where |
 |---|---|---|
 | FT2 Mass/Points: hull, drives, FCS, batteries, systems | ✅ | `ship/design.ts` (verified vs worked example → 267 pts); `shipPointsFromSystem` derives a ship's Points from its live systems, shown on the sheet |
-| Fleet Book variable-hull design system | ⏳ | Not modelled (not balance-compatible with FT2) |
+| Fleet Book variable-hull design system | 🟡 | `ship/variable-hull.ts` (10–50%-of-mass hull grades; boxes = mass used; points = 2×boxes; 4-row layout via `rowBoundaries`; verified vs the notes' MASS-60 worked example) — pure + tested, opt-in; default FT2 design path unchanged; live design-builder wiring deferred |
 
 ## Status effects (Foundry-native)
 | Rule | Status | Where |
