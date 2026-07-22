@@ -1,4 +1,5 @@
 import { getStatVisibilitySetting } from "../settings";
+import { escapeHtml } from "./chat";
 import { installHoverApi } from "./hover-registry";
 import type { HoverProvider } from "./hover-registry";
 import { isVisibleTo, resolveVisibility, type VisibilitySetting } from "./hover-visibility";
@@ -40,15 +41,9 @@ function configStatusResolver(): StatusResolver {
   };
 }
 
-/** Escapes the five HTML-significant characters so interpolated values can't inject markup. */
-export function escapeHtml(value: string): string {
-  return value
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;")
-    .replace(/"/g, "&quot;")
-    .replace(/'/g, "&#39;");
-}
+// The HTML escaper is the canonical one on the chat service (engine-extraction
+// scan #2, finding 4); re-exported so existing importers keep working.
+export { escapeHtml };
 
 /**
  * Builds the panel's inner HTML from a model. Pure + testable: every dynamic

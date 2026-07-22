@@ -9,6 +9,8 @@ import { installRoundsApi } from "./rounds/activation";
 import { installLosApi } from "./vision/los";
 import { installHoverApi } from "./ui/hover-registry";
 import { installStatusApi } from "./ui/status";
+import { installSelectionApi } from "./ui/selection";
+import { installChatApi } from "./ui/chat";
 import { registerBattleframeSettings } from "./settings";
 import {
   createSetupWizardClass,
@@ -54,6 +56,8 @@ installRoundsApi();
 installLosApi();
 installHoverApi();
 installStatusApi();
+installSelectionApi();
+installChatApi();
 
 function hooksAvailable(): boolean {
   return typeof Hooks !== "undefined";

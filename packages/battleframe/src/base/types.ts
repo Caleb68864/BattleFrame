@@ -30,6 +30,8 @@ export interface TokenDocumentLike {
    */
   width?: number;
   height?: number;
+  /** Heading in degrees, as Foundry's `TokenDocument#rotation`; read by `facing`. */
+  rotation?: number;
 }
 
 /**

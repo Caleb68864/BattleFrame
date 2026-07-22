@@ -5,7 +5,8 @@ import type {
   MeasurableToken,
   MeasurementApi,
   MeasurementMode,
-  MeasurementResult
+  MeasurementResult,
+  PointSpec
 } from "./types";
 
 export class SceneMismatchError extends Error {
@@ -91,13 +92,13 @@ export function between(
   assertGridlessScene(tokenA.scene);
 
   const scene = tokenA.scene;
-  const pxPerUnit = scene.grid.size / scene.grid.distance;
+  const pxPerUnitValue = pxPerUnit(scene);
 
   const centreToCentrePx = Math.hypot(
     tokenB.center.x - tokenA.center.x,
     tokenB.center.y - tokenA.center.y
   );
-  const centreToCentreUnits = centreToCentrePx / pxPerUnit;
+  const centreToCentreUnits = centreToCentrePx / pxPerUnitValue;
 
   // Centre-to-centre stops here: base sizes are irrelevant, and a centre
   // distance is never negative so it needs no clamp. Base-to-base subtracts
@@ -106,8 +107,8 @@ export function between(
   let distance = centreToCentreUnits;
 
   if (mode === "base-to-base") {
-    const radiusAUnits = radiusPx(tokenA, scene) / pxPerUnit;
-    const radiusBUnits = radiusPx(tokenB, scene) / pxPerUnit;
+    const radiusAUnits = radiusPx(tokenA, scene) / pxPerUnitValue;
+    const radiusBUnits = radiusPx(tokenB, scene) / pxPerUnitValue;
     distance = Math.max(0, centreToCentreUnits - (radiusAUnits + radiusBUnits));
   }
 
@@ -123,8 +124,61 @@ export function between(
   };
 }
 
+/**
+ * Pixels per scene distance-unit — the ratio `between` applies internally. Reads
+ * a scene's `grid` (or a bare grid), defaulting to 1 for a missing/degenerate
+ * grid so a caller crossing px<->units never divides by zero.
+ */
+export function pxPerUnit(sceneOrGrid: unknown): number {
+  const src = sceneOrGrid as { grid?: { size?: number; distance?: number }; size?: number; distance?: number } | undefined;
+  const grid = src?.grid ?? src;
+  const size = grid?.size;
+  const distance = grid?.distance;
+  if (!size || !distance || size <= 0 || distance <= 0) {
+    return 1;
+  }
+  return size / distance;
+}
+
+/** The active scene, when a caller does not supply one. */
+function activeScene(): MeasurableToken["scene"] | undefined {
+  return (globalThis as unknown as { canvas?: { scene?: MeasurableToken["scene"] } }).canvas?.scene;
+}
+
+/**
+ * Adapts a live placeable to a `MeasurableToken`: its pixel centre + the scene it
+ * lives on (falling back to the active scene) plus its base model. Returns
+ * undefined when the placeable has no centre (nothing to measure from).
+ */
+export function fromPlaceable(placeable: unknown): MeasurableToken | undefined {
+  const p = placeable as
+    | { center?: { x: number; y: number }; scene?: MeasurableToken["scene"]; document?: { flags?: unknown; width?: number; height?: number; rotation?: number }; flags?: unknown; width?: number; height?: number }
+    | undefined;
+  if (!p?.center) {
+    return undefined;
+  }
+  const scene = p.scene ?? activeScene();
+  return {
+    center: p.center,
+    scene: scene as MeasurableToken["scene"],
+    flags: (p.flags ?? p.document?.flags) as MeasurableToken["flags"],
+    width: p.width ?? p.document?.width,
+    height: p.height ?? p.document?.height,
+    document: p.document as MeasurableToken["document"]
+  };
+}
+
+/** Wraps a bare coordinate as a `MeasurableToken` (with an optional heading). */
+export function point(spec: PointSpec): MeasurableToken {
+  return {
+    center: { x: spec.x, y: spec.y },
+    scene: (spec.scene ?? activeScene()) as MeasurableToken["scene"],
+    document: { rotation: spec.rotation }
+  };
+}
+
 export function createMeasurementApi(): MeasurementApi {
-  return { between };
+  return { between, pxPerUnit, fromPlaceable, point };
 }
 
 declare global {

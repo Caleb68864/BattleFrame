@@ -44,10 +44,33 @@ export interface MeasurementResult {
   mode: MeasurementMode;
 }
 
+/** A bare coordinate wrapped as something `measure`/`facing` can read. */
+export interface PointSpec {
+  x: number;
+  y: number;
+  scene?: MeasurementScene;
+  /** Optional heading (degrees) so `facing` can read the point's rotation. */
+  rotation?: number;
+}
+
 export interface MeasurementApi {
   between(
     tokenA: MeasurableToken,
     tokenB: MeasurableToken,
     mode?: MeasurementMode
   ): MeasurementResult;
+  /**
+   * Pixels per scene distance-unit (`grid.size / grid.distance`) — the exact
+   * conversion `between` uses internally. Accepts a scene (`{ grid }`) or a bare
+   * grid (`{ size, distance }`); defaults to 1 when missing or degenerate.
+   */
+  pxPerUnit(sceneOrGrid: unknown): number;
+  /**
+   * Projects a live placeable (its `center` + `scene`, plus its base
+   * `flags`/`width`/`height`) onto a `MeasurableToken`, or undefined if it has no
+   * centre. Saves every module hand-assembling that shape.
+   */
+  fromPlaceable(placeable: unknown): MeasurableToken | undefined;
+  /** Wraps a bare `{ x, y, scene?, rotation? }` coordinate as a `MeasurableToken`. */
+  point(spec: PointSpec): MeasurableToken;
 }
