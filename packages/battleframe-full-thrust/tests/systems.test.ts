@@ -78,9 +78,17 @@ describe("applySystemKnockouts (produces the actor update for lost systems)", ()
     expect(update["system.screens"]).toBe(1);
   });
 
-  it("halves thrust when the drives are knocked out (FT2: a drive hit cuts thrust)", () => {
+  it("halves thrust and flags the drive crippled on the first knockout (FT2)", () => {
     const update = applySystemKnockouts(system, [{ type: "drive" }]);
     expect(update["system.thrust"]).toBe(2);
+    expect(update["system.driveCrippled"]).toBe(true);
+  });
+
+  it("kills the drive outright on the second knockout (already crippled)", () => {
+    const crippled = { ...system, thrust: 2, driveCrippled: true };
+    const update = applySystemKnockouts(crippled, [{ type: "drive" }]);
+    expect(update["system.thrust"]).toBe(0);
+    expect(update["system.driveCrippled"]).toBe(true);
   });
 
   it("never drops a count below zero", () => {

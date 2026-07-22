@@ -23,7 +23,11 @@ function normalise(angle: number): number {
  * 30 is fore-starboard).
  */
 export function arcForBearing(bearing: number): FireArc {
-  const index = Math.floor(normalise(bearing + ARC_DEGREES / 2) / ARC_DEGREES);
+  // A non-finite bearing (degenerate geometry) must still yield a valid arc, not
+  // `undefined` -- default to dead ahead. The firing orchestrators separately
+  // reject a non-finite range, so this never produces a spurious in-arc hit.
+  const safe = Number.isFinite(bearing) ? bearing : 0;
+  const index = Math.floor(normalise(safe + ARC_DEGREES / 2) / ARC_DEGREES);
   return FIRE_ARCS[index];
 }
 

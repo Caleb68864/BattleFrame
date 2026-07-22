@@ -1960,3 +1960,25 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   from the bundle until a repair/morale UI calls them) -- COVERAGE.md marks them
   🟡 with file locations, honestly, rather than claiming full integration.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust hardening + rules-fidelity fixes (review pass 1)
+- Ran 4 parallel review agents (hardening, polish, 2x rules-fidelity vs the notes),
+  cross-verified findings, rejected one misread (free-FCS-by-class IS correct per
+  the design cheat sheet; the 267pt worked example confirms it).
+- Hardening (edge-case guards on exported pure fns, all TDD): non-finite distance ->
+  beamDiceAtRange/torpedoToHit/submunitionDiceAtRange return 0/null (no NaN into
+  rollPool; torpedo no longer auto-hits on undefined); arcForBearing(NaN)->"F";
+  thresholdKillOn clamps worst>=1 (no NaN killOn); rowBoundaries treats rows<1 as 1
+  (no div-by-zero disabling thresholds); beamDamageForFace(<0 screen)->unscreened;
+  parseOrder tolerates nullish; fire-fighters rejects non-finite range.
+- Rules fixes: (1) enforce "lose all FCS -> cannot fire" in fireShipAtTarget
+  (refused:"no-fcs"); missing fcs defaults to 1 (schema default) so only explicit 0
+  refuses. (2) faithful drive "half then dead": added schema `driveCrippled`; first
+  drive threshold-hit halves thrust + flags, second kills outright (was repeated
+  halving). (3) wired fighter morale (depleted group rolls <= size or aborts),
+  endurance spend on a fired attack, and Attack-type +1/die into fireFighterGroupAtTarget.
+  (4) MAX_THRUST=8 now enforced on the thrust schema field.
+- Also H4: attacker spent-weapon write now uses targeted `system.weapons.N.spent`
+  paths instead of clobbering the whole array from a pre-await snapshot.
+- 729 tests passing. XSS handling reviewed and confirmed sound (no change).
+- Commit: this commit.

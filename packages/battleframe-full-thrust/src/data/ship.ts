@@ -1,4 +1,12 @@
-import { MODULE_ID, SHIP_ACTOR_TYPE, FIRE_ARCS, WEAPON_KINDS, MAX_SCREEN_LEVEL, COURSES } from "../constants";
+import {
+  MODULE_ID,
+  SHIP_ACTOR_TYPE,
+  FIRE_ARCS,
+  WEAPON_KINDS,
+  MAX_SCREEN_LEVEL,
+  MAX_THRUST,
+  COURSES
+} from "../constants";
 
 /**
  * The Full Thrust ship (SSD) Actor data model. Only the systems the rules
@@ -57,7 +65,12 @@ export function createShipDataClass(
       }
 
       schema.mass = new NumberField({ required: true, nullable: false, integer: true, min: 1, initial: 30 });
-      schema.thrust = new NumberField(nonNegativeInt(4));
+      schema.thrust = new NumberField({
+        required: true, nullable: false, integer: true, min: 0, max: MAX_THRUST, initial: 4
+      });
+      // Set once the drives take their first threshold hit (thrust halved); a
+      // second drive hit then kills them outright.
+      schema.driveCrippled = new BooleanField({ required: true, initial: false });
 
       // The hull damage track: total boxes, boxes crossed off, and the number of
       // threshold rows the track is divided into.

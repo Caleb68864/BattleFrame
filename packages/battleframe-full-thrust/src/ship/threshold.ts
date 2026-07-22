@@ -18,8 +18,10 @@ import { THRESHOLD_KILL_ON } from "../constants";
  * drops below 2 -- a system is never lost automatically.
  */
 export function thresholdKillOn(worst: number, extra: number): number {
-  const index = Math.min(worst, THRESHOLD_KILL_ON.length) - 1;
-  const base = THRESHOLD_KILL_ON[index];
+  // Clamp `worst` into [1, table length] so a degenerate call cannot index off
+  // the table and return NaN (which would silently disable every knockout).
+  const clamped = Math.min(Math.max(1, Math.floor(worst)), THRESHOLD_KILL_ON.length);
+  const base = THRESHOLD_KILL_ON[clamped - 1];
   return Math.max(2, base - extra);
 }
 

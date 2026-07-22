@@ -35,6 +35,28 @@ function context(distance: number, bearing: number, dice: FighterFireContext["di
 
 const group = { token: {}, system: { size: 6 } };
 
+function fakeGroup(system: Record<string, any>) {
+  return {
+    token: {},
+    system,
+    update: (data: Record<string, unknown>) => {
+      for (const [k, v] of Object.entries(data)) {
+        system[k.replace(/^system\./, "")] = v;
+      }
+      return Promise.resolve();
+    }
+  };
+}
+
+function targetHull() {
+  return fakeTarget({
+    screens: 0, thrust: 0, fcs: 0, pds: 0,
+    armour: { boxes: 0, damage: 0 },
+    hull: { boxes: 18, damage: 0, rows: 3 },
+    weapons: []
+  });
+}
+
 describe("fireFighterGroupAtTarget", () => {
   it("rolls one die per fighter and applies damage (screens apply)", async () => {
     vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
@@ -76,5 +98,47 @@ describe("fireFighterGroupAtTarget", () => {
     const report = await fireFighterGroupAtTarget({ group: empty, target, context: ctx });
     expect(report.fired).toBe(false);
     expect(report.reason).toBe("no-fighters");
+  });
+
+  it("cannot attack from a non-finite range (degenerate geometry)", async () => {
+    const target = targetHull();
+    const ctx = context(NaN, 0, scriptedDice([[6, 6, 6, 6, 6, 6]]));
+    const report = await fireFighterGroupAtTarget({ group, target, context: ctx });
+    expect(report.fired).toBe(false);
+    expect(report.reason).toBe("out-of-range");
+  });
+
+  it("a depleted group aborts when its morale die exceeds the fighters remaining", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const depleted = fakeGroup({ size: 3 });
+    const target = targetHull();
+    // First pool = morale die (5 > size 3 -> abort); attack dice never rolled.
+    const ctx = context(4, 0, scriptedDice([[5], [6, 6, 6]]));
+    const report = await fireFighterGroupAtTarget({ group: depleted, target, context: ctx });
+    expect(report.fired).toBe(false);
+    expect(report.reason).toBe("morale");
+    expect(target.system.hull.damage).toBe(0);
+  });
+
+  it("a depleted group that passes morale attacks, then spends an endurance", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const depleted = fakeGroup({ size: 3, endurance: 3 });
+    const target = targetHull();
+    // morale die 2 (<= 3 -> pass); attack dice 6,5,4 -> 2+1+1 = 4.
+    const ctx = context(4, 0, scriptedDice([[2], [6, 5, 4]]));
+    const report = await fireFighterGroupAtTarget({ group: depleted, target, context: ctx });
+    expect(report.fired).toBe(true);
+    expect(report.totalDamage).toBe(4);
+    expect(depleted.system.endurance).toBe(2); // one active turn spent
+  });
+
+  it("an Attack-type group adds +1 to each attack die (vs ships)", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const attackWing = fakeGroup({ size: 6, fighterType: "attack" });
+    const target = targetHull();
+    // Faces 3,3,3,3,3,3: unscreened score 0 each, but +1 -> all 4s -> 1 each = 6.
+    const ctx = context(4, 0, scriptedDice([[3, 3, 3, 3, 3, 3]]));
+    const report = await fireFighterGroupAtTarget({ group: attackWing, target, context: ctx });
+    expect(report.totalDamage).toBe(6);
   });
 });

@@ -48,12 +48,16 @@ export function thresholdRows(cls: ShipClass): number {
  * boundaries [7, 14, 20, 26]. The last entry equals `boxes` (destruction).
  */
 export function rowBoundaries(boxes: number, rows: number): number[] {
-  const base = Math.floor(boxes / rows);
-  const extra = boxes % rows;
+  // A row count below 1 (a bad import / manual edit) would divide by zero and
+  // yield NaN boundaries, permanently disabling threshold checks -- treat it as
+  // a single row (the whole track completes at once).
+  const safeRows = rows >= 1 ? Math.floor(rows) : 1;
+  const base = Math.floor(boxes / safeRows);
+  const extra = boxes % safeRows;
 
   const boundaries: number[] = [];
   let cumulative = 0;
-  for (let r = 0; r < rows; r++) {
+  for (let r = 0; r < safeRows; r++) {
     cumulative += base + (r < extra ? 1 : 0);
     boundaries.push(cumulative);
   }

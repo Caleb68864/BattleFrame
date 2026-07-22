@@ -46,7 +46,8 @@ export function parseOrder(text: string): MovementOrder {
   let accel = 0;
   let turn = 0;
 
-  const tokens = text.toUpperCase().match(/[+-]\d+|[PS]\d+/g) ?? [];
+  // Coerce defensively: the exported parser may be handed a nullish value.
+  const tokens = String(text ?? "").toUpperCase().match(/[+-]\d+|[PS]\d+/g) ?? [];
   for (const token of tokens) {
     const value = parseInt(token.slice(1), 10);
     switch (token[0]) {

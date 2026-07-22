@@ -116,6 +116,28 @@ describe("fireShipAtTarget", () => {
     expect(attacker.system.weapons[0].spent).toBe(true);
   });
 
+  it("refuses to fire when the attacker has lost all fire control", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const attacker = fakeShip({
+      screens: 0,
+      fcs: 0, // all fire control knocked out
+      weapons: [{ kind: "beam", weaponClass: 3, arcs: ["F"], destroyed: false, spent: false }]
+    });
+    const target = fakeShip({
+      screens: 0, thrust: 0, fcs: 0, pds: 0,
+      armour: { boxes: 0, damage: 0 },
+      hull: { boxes: 18, damage: 0, rows: 3 },
+      weapons: []
+    });
+    const ctx = context(10, 0, scriptedDice([[6, 6, 6]]));
+
+    const report = await fireShipAtTarget({ attacker, target, context: ctx });
+
+    expect(report.refused).toBe("no-fcs");
+    expect(report.totalDamage).toBe(0);
+    expect(target.system.hull.damage).toBe(0); // no damage applied
+  });
+
   it("does no threshold check when the attack destroys the ship outright", async () => {
     vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
     const attacker = fakeShip({

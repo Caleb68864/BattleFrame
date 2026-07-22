@@ -4,10 +4,10 @@
  * the actor-update that records the losses. Pure -- the dice roll and the
  * actor.update call live in the combat orchestrator.
  *
- * Drives are modelled as one system whose knockout halves the ship's thrust
- * (FT2's "first hit halves, second kills"; repeated halving reaches 0, a small
- * documented simplification of the exact two-hit rule). Each FCS, PDS and screen
- * generator is its own icon, rolled separately, per FT2.
+ * Drives are one system: the first knockout cuts thrust to half and flags the
+ * drive crippled; a second knockout kills it outright (thrust 0), per FT2's
+ * "first hit halves, second kills". Each FCS, PDS and screen generator is its
+ * own icon, rolled separately.
  *
  * Sources: FT2 "Threshold Check", "Fire Control System", "Screens".
  */
@@ -29,6 +29,7 @@ interface ShipSystemLike {
   fcs?: number;
   pds?: number;
   screens?: number;
+  driveCrippled?: boolean;
   weapons?: WeaponEntryLike[];
 }
 
@@ -77,6 +78,7 @@ export function applySystemKnockouts(
   let pds = system.pds ?? 0;
   let screens = system.screens ?? 0;
   let thrust = system.thrust ?? 0;
+  let driveCrippled = system.driveCrippled ?? false;
 
   for (const ref of knocked) {
     switch (ref.type) {
@@ -95,7 +97,12 @@ export function applySystemKnockouts(
         screens = Math.max(0, screens - 1);
         break;
       case "drive":
-        thrust = Math.floor(thrust / 2);
+        if (driveCrippled) {
+          thrust = 0; // second hit -- drives dead
+        } else {
+          thrust = Math.floor(thrust / 2); // first hit -- half
+          driveCrippled = true;
+        }
         break;
     }
   }
@@ -105,6 +112,7 @@ export function applySystemKnockouts(
     "system.fcs": fcs,
     "system.pds": pds,
     "system.screens": screens,
-    "system.thrust": thrust
+    "system.thrust": thrust,
+    "system.driveCrippled": driveCrippled
   };
 }

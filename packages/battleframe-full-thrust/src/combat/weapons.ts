@@ -28,10 +28,12 @@ function bandIndex(distanceMu: number, bandWidth: number): number {
  * band), or null beyond the 30mu maximum range.
  */
 export function torpedoToHit(distanceMu: number): number | null {
-  if (distanceMu > TORPEDO_MAX_RANGE_MU) {
+  if (!Number.isFinite(distanceMu) || distanceMu > TORPEDO_MAX_RANGE_MU) {
     return null;
   }
-  return TORPEDO_TO_HIT_BY_BAND[bandIndex(distanceMu, TORPEDO_BAND_MU)];
+  // `?? null` guards a band index that falls off the table -- never return
+  // `undefined`, which a `=== null` caller would read as "in range" (auto-hit).
+  return TORPEDO_TO_HIT_BY_BAND[bandIndex(distanceMu, TORPEDO_BAND_MU)] ?? null;
 }
 
 /** Count of dice at or above a to-hit / kill number. */
@@ -45,7 +47,7 @@ export function countHits(faces: readonly number[], target: number): number {
  * uses the unscreened beam table.
  */
 export function submunitionDiceAtRange(distanceMu: number): number {
-  if (distanceMu > SUBMUNITION_MAX_RANGE_MU) {
+  if (!Number.isFinite(distanceMu) || distanceMu > SUBMUNITION_MAX_RANGE_MU) {
     return 0;
   }
   return SUBMUNITION_DICE_BY_BAND[bandIndex(distanceMu, SUBMUNITION_BAND_MU)] ?? 0;

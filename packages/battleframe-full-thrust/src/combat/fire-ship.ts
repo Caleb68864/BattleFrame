@@ -47,6 +47,8 @@ export interface FireReport {
   thresholdsCrossed: number[];
   /** How many of the target's systems the threshold check knocked out. */
   systemsKnockedOut: number;
+  /** Set when the ship could not fire at all (e.g. it has lost all fire control). */
+  refused?: "no-fcs";
 }
 
 export async function fireShipAtTarget(params: FireShipParams): Promise<FireReport> {
@@ -54,6 +56,23 @@ export async function fireShipAtTarget(params: FireShipParams): Promise<FireRepo
 
   const distance = context.measure.between(attacker.token, target.token, "centre-to-centre").distance;
   const bearing = context.facing.bearingOf(attacker.token, target.token);
+
+  // A ship that has lost ALL its fire control may not fire, even with working
+  // weapons (FT2 "Fire Control System"). A missing fcs field defaults to 1 (the
+  // schema default) so only an explicit zero refuses.
+  const fcs = (attacker.system?.fcs as number | undefined) ?? 1;
+  if (fcs < 1) {
+    return {
+      distance,
+      bearing,
+      totalDamage: 0,
+      shots: [],
+      destroyed: false,
+      thresholdsCrossed: [],
+      systemsKnockedOut: 0,
+      refused: "no-fcs"
+    };
+  }
   const targetScreenLevel = (target.system?.screens as number | undefined) ?? 0;
   const weapons = ((attacker.system?.weapons ?? []) as WeaponMount[]);
 
@@ -65,12 +84,15 @@ export async function fireShipAtTarget(params: FireShipParams): Promise<FireRepo
     dice: context.dice
   });
 
-  // Flag any one-shot weapons that fired as spent on the attacker.
+  // Flag any one-shot weapons that fired as spent on the attacker. Write only the
+  // changed indices (targeted paths), not the whole array rebuilt from a
+  // pre-await snapshot -- a full-array write would clobber any concurrent change.
   if (fire.spent.length > 0) {
-    const updatedWeapons = weapons.map((w, i) =>
-      fire.spent.includes(i) ? { ...w, spent: true } : { ...w }
-    );
-    await attacker.update({ "system.weapons": updatedWeapons });
+    const spentUpdate: Record<string, boolean> = {};
+    for (const i of fire.spent) {
+      spentUpdate[`system.weapons.${i}.spent`] = true;
+    }
+    await attacker.update(spentUpdate);
   }
 
   const outcome = await applyDamageAndThreshold(target, fire.totalDamage, context.dice);
