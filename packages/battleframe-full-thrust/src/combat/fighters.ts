@@ -53,6 +53,25 @@ export function dogfightKills(faces: readonly number[]): number {
 }
 
 /**
+ * Dogfight kills against a defender of a given specialised type: a Heavy group
+ * counts as a Level-1 screen (its "4" hits are ignored), so it takes fewer kills;
+ * every other type uses the universal kill die.
+ *
+ * Source: More Thrust "Specialised Fighter Types" (Heavy).
+ */
+export function dogfightKillsAgainst(faces: readonly number[], defenderType?: string): number {
+  return poolBeamDamage(faces, defenderType === "heavy" ? 1 : 0);
+}
+
+/**
+ * Active-turn endurance for a specialised type: Long-Range carries 5, every other
+ * type 3 (More Thrust). Used to seed a group's endurance at import.
+ */
+export function enduranceForType(fighterType?: string): number {
+  return fighterType === "long-range" ? 5 : 3;
+}
+
+/**
  * Fighter-group morale (More Thrust): a depleted group rolls 1D6 before
  * attacking; it attacks if the roll is at or under the number of fighters
  * remaining, and aborts (no fire) if the roll is higher.

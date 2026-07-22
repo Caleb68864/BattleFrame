@@ -4,6 +4,8 @@ import {
   pdsKillsVsFighters,
   pdsKillsVsMissiles,
   dogfightKills,
+  dogfightKillsAgainst,
+  enduranceForType,
   fighterMoralePasses,
   enduranceAfterActiveTurn,
   enduranceExhausted
@@ -44,6 +46,24 @@ describe("fighterMoralePasses (More Thrust: roll <= fighters remaining = attack)
   });
   it("fails (aborts the attack) when the die exceeds the group size", () => {
     expect(fighterMoralePasses(5, 4)).toBe(false);
+  });
+});
+
+describe("dogfightKillsAgainst (defender type modifies the kill table)", () => {
+  it("scores like the universal table against a standard defender", () => {
+    expect(dogfightKillsAgainst([6, 5, 4, 1], "standard")).toBe(2 + 1 + 1 + 0);
+  });
+  it("treats a Heavy defender as a level-1 screen (4s are ignored)", () => {
+    // Heavy = level-1 screen: 4 ignored, 5 = 1, 6 = 2.
+    expect(dogfightKillsAgainst([6, 5, 4, 4], "heavy")).toBe(2 + 1 + 0 + 0);
+  });
+});
+
+describe("enduranceForType (More Thrust specialised types)", () => {
+  it("gives Long-Range 5 active turns, others 3", () => {
+    expect(enduranceForType("long-range")).toBe(5);
+    expect(enduranceForType("standard")).toBe(3);
+    expect(enduranceForType("heavy")).toBe(3);
   });
 });
 

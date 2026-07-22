@@ -83,7 +83,8 @@ deferred. Nothing is silently missing.
 | PDS thins the group before it strikes | ✅ | `combat/fire-fighters.ts` rolls the target's PDS first (`pdsKillsVsFighters`); casualties persist; a fully-killed group makes no attack |
 | Dogfights (fighter vs fighter) | ✅ | `combat/dogfight.ts` `resolveDogfight` (6mu fore arc, simultaneous, defender returns fire if it bears); the Fire tool dispatches it when both are fighter groups |
 | PDS vs missiles | 🟡 | `combat/fighters.ts` `pdsKillsVsMissiles` (math); waits on the missile/salvo flow |
-| Other specialised types (Heavy/Interceptor/Torpedo/Fast/Long-range) | ⏳ | Documented deferral in `combat/fire-fighters.ts` |
+| Specialised types: Heavy (screen), Interceptor (+1/die dogfight), Long-range (endurance 5) | ✅ | `combat/fighters.ts` `dogfightKillsAgainst`/`enduranceForType`, applied in `combat/dogfight.ts` |
+| Specialised types: Fast/Torpedo (movement / one-shot modes) | ⏳ | Need fighter movement + a torpedo-run mode (deferred) |
 | Carrier launch/recover | ⏳ | Not yet built |
 
 ## Ship Design

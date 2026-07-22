@@ -13,7 +13,7 @@
  */
 
 import { DIE_SIZE, FIGHTER_ATTACK_RANGE_MU } from "../constants";
-import { dogfightKills } from "./fighters";
+import { dogfightKillsAgainst } from "./fighters";
 import { arcForBearing } from "./arcs";
 
 export interface DogfightContext {
@@ -24,8 +24,13 @@ export interface DogfightContext {
 
 export interface DogfightGroup {
   token: unknown;
-  system?: { size?: number };
+  system?: { size?: number; fighterType?: string };
   update?: (data: Record<string, unknown>) => Promise<unknown>;
+}
+
+/** An Interceptor adds +1 to each of its dogfight dice; others roll as-is. */
+function dogfightFaces(faces: readonly number[], fighterType?: string): number[] {
+  return fighterType === "interceptor" ? faces.map((f) => f + 1) : [...faces];
 }
 
 export interface DogfightParams {
@@ -60,15 +65,19 @@ export async function resolveDogfight(params: DogfightParams): Promise<DogfightR
     return { ...idle, reason: "out-of-arc" };
   }
 
+  const attackerType = attacker.system?.fighterType;
+  const defenderType = defender.system?.fighterType;
+
   // Attacker fires; the defender returns fire only if IT bears on the attacker.
-  const attackerFaces = await context.dice.rollPool(attackerSize, DIE_SIZE);
-  const attackerKills = Math.min(defenderSize, dogfightKills(attackerFaces));
+  // Interceptors roll +1/die; a Heavy target is screened (dogfightKillsAgainst).
+  const attackerFaces = dogfightFaces(await context.dice.rollPool(attackerSize, DIE_SIZE), attackerType);
+  const attackerKills = Math.min(defenderSize, dogfightKillsAgainst(attackerFaces, defenderType));
 
   const defenderReturned = arcForBearing(context.facing.bearingOf(defender.token, attacker.token)) === "F";
   let defenderKills = 0;
   if (defenderReturned) {
-    const defenderFaces = await context.dice.rollPool(defenderSize, DIE_SIZE);
-    defenderKills = Math.min(attackerSize, dogfightKills(defenderFaces));
+    const defenderFaces = dogfightFaces(await context.dice.rollPool(defenderSize, DIE_SIZE), defenderType);
+    defenderKills = Math.min(attackerSize, dogfightKillsAgainst(defenderFaces, attackerType));
   }
 
   // Simultaneous: apply both sets of casualties from the pre-combat strengths.
