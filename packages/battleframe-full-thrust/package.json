@@ -1,0 +1,15 @@
+{
+  "name": "battleframe-full-thrust",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Full Thrust ruleset module for the BattleFrame system. Implements the Full Thrust starship-combat mechanics by Jon Tuffley / Ground Zero Games. Free and non-commercial; ships no rulebook text, stat blocks, faction data, or artwork.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "vite build"
+  },
+  "devDependencies": {
+    "typescript": "^5.5.4",
+    "vite": "^5.4.0"
+  }
+}

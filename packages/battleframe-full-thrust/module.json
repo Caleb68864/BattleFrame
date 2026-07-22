@@ -1,0 +1,37 @@
+{
+  "id": "battleframe-full-thrust",
+  "title": "BattleFrame: Full Thrust",
+  "description": "Full Thrust ruleset for the BattleFrame system. An implementation of the Full Thrust starship-combat game by Jon Tuffley / Ground Zero Games (gzg.com). This module implements the game mechanics only; it ships no rulebook text, stat blocks, faction ship lists, or artwork. Bring your own ship designs. Free and non-commercial; it must not be sold.",
+  "version": "0.1.0",
+  "authors": [
+    { "name": "BattleFrame Team" },
+    { "name": "Jon Tuffley / Ground Zero Games", "url": "https://www.gzg.com", "flags": { "role": "Original game author (Full Thrust)" } }
+  ],
+  "compatibility": {
+    "minimum": "14",
+    "verified": "14"
+  },
+  "relationships": {
+    "systems": [
+      { "id": "battleframe", "type": "system" }
+    ]
+  },
+  "esmodules": [
+    "dist/full-thrust.js"
+  ],
+  "styles": [
+    "styles/full-thrust.css"
+  ],
+  "languages": [
+    { "lang": "en", "name": "English", "path": "lang/en.json" }
+  ],
+  "documentTypes": {
+    "Actor": {
+      "ship": {},
+      "fighter-group": {}
+    }
+  },
+  "url": "",
+  "manifest": "",
+  "download": ""
+}

@@ -1,0 +1,66 @@
+{{!-- Full Thrust ship SSD. ApplicationV2 supplies the <form> root; do not wrap. --}}
+<div class="ft-ship-sheet">
+  <section class="ft-core">
+    <div class="ft-field">
+      <label>{{localize "battleframe-full-thrust.fields.mass"}}</label>
+      <input type="number" name="system.mass" value="{{system.mass}}" min="1" step="1" />
+    </div>
+    <div class="ft-field">
+      <label>{{localize "battleframe-full-thrust.fields.thrust"}}</label>
+      <input type="number" name="system.thrust" value="{{system.thrust}}" min="0" step="1" />
+    </div>
+    <div class="ft-field">
+      <label>{{localize "battleframe-full-thrust.fields.fcs"}}</label>
+      <input type="number" name="system.fcs" value="{{system.fcs}}" min="0" step="1" />
+    </div>
+    <div class="ft-field">
+      <label>{{localize "battleframe-full-thrust.fields.screens"}}</label>
+      <input type="number" name="system.screens" value="{{system.screens}}" min="0" max="3" step="1" />
+    </div>
+    <div class="ft-field">
+      <label>{{localize "battleframe-full-thrust.fields.pds"}}</label>
+      <input type="number" name="system.pds" value="{{system.pds}}" min="0" step="1" />
+    </div>
+  </section>
+
+  <section class="ft-track">
+    <h3>{{localize "battleframe-full-thrust.fields.armour"}}</h3>
+    <div class="ft-boxes">
+      <input type="number" name="system.armour.damage" value="{{system.armour.damage}}" min="0" step="1" />
+      <span>/</span>
+      <input type="number" name="system.armour.boxes" value="{{system.armour.boxes}}" min="0" step="1" />
+    </div>
+    <h3>{{localize "battleframe-full-thrust.fields.hull"}}</h3>
+    <div class="ft-boxes">
+      <input type="number" name="system.hull.damage" value="{{system.hull.damage}}" min="0" step="1" />
+      <span>/</span>
+      <input type="number" name="system.hull.boxes" value="{{system.hull.boxes}}" min="1" step="1" />
+      <label>rows</label>
+      <input type="number" name="system.hull.rows" value="{{system.hull.rows}}" min="1" step="1" />
+    </div>
+  </section>
+
+  <section class="ft-movement">
+    <div class="ft-field">
+      <label>{{localize "battleframe-full-thrust.fields.velocity"}}</label>
+      <input type="number" name="system.velocity" value="{{system.velocity}}" min="0" step="1" />
+    </div>
+    <div class="ft-field">
+      <label>{{localize "battleframe-full-thrust.fields.course"}}</label>
+      <input type="number" name="system.course" value="{{system.course}}" min="1" max="12" step="1" />
+    </div>
+  </section>
+
+  <section class="ft-weapons">
+    <h3>Weapons</h3>
+    <ol>
+      {{#each system.weapons as |weapon|}}
+        <li class="ft-weapon {{#if weapon.destroyed}}ft-destroyed{{/if}}">
+          <span class="ft-weapon-kind">{{weapon.kind}}</span>
+          {{#if weapon.weaponClass}}<span class="ft-weapon-class">Cl.{{weapon.weaponClass}}</span>{{/if}}
+          <span class="ft-weapon-arcs">{{#each weapon.arcs}}{{this}} {{/each}}</span>
+        </li>
+      {{/each}}
+    </ol>
+  </section>
+</div>

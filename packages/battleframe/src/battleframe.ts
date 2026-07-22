@@ -4,6 +4,7 @@ import { SYSTEM_ID } from "./constants";
 import { installAreaApi } from "./areas/area";
 import { installDiceApi } from "./dice/dice";
 import { installMeasurementApi } from "./measurement/measure";
+import { installFacingApi } from "./measurement/facing";
 import { installRoundsApi } from "./rounds/activation";
 import { installLosApi } from "./vision/los";
 import { installHoverApi } from "./ui/hover-registry";
@@ -45,6 +46,7 @@ import "./ui/hover-panel";
 // installers touch `game`; `game` does not exist yet here.
 installBattleframeApi();
 installMeasurementApi();
+installFacingApi();
 installDiceApi();
 installAreaApi();
 installRoundsApi();

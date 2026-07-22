@@ -1886,3 +1886,31 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Watch: field labels must be existing i18n keys (the glue localizes them); the
   panel is read-only; no per-player/per-token visibility overrides (YAGNI).
 - Commits: ec09403..a2cb833 (design, plan, 11 feature commits).
+
+## 2026-07-22 — Full Thrust ruleset module + engine facing/bearing primitive (in progress)
+- What: new `battleframe-full-thrust` module implementing the Full Thrust
+  starship-combat game (Jon Tuffley / GZG). Mechanics only — ships NO rulebook
+  text, stat blocks, faction lists, or artwork (bring-your-own ship designs).
+  Design + autonomous decision log: docs/plans/2026-07-22-full-thrust-ruleset-design.md.
+- Edition baseline: FT2 core (superset of Full Thrust Light). Where FTL/FT2
+  disagree we take FT2 — notably the threshold check rolls HIGH (6 / 5-6 / 4-6),
+  not FTL's low rolls. Recorded so a rules correction is unambiguous.
+- Engine addition (authorised by the user: "add generic engine support for space
+  battles, as generic as possible"): a **facing/bearing geometry primitive**
+  (`game.battleframe.facing` — `facingOf`, `absoluteBearing`, `bearingOf`). This
+  is the geometry half of docs/plans/2026-07-17-facing-geometry-design.md, built
+  in the note's most-neutral shape (Q3): core exposes a numeric bearing (degrees,
+  clockwise, 0 = dead ahead); the ruleset buckets it into arcs. No arc counts and
+  no fore/aft vocabulary in core — the neutrality vocabulary test still passes.
+  The gate ("build with Alpha Strike") is superseded: Full Thrust is a real
+  facing consumer, and its 6x60° fire arcs are exactly what the primitive answers.
+- Built + tested so far (TDD, all green — 630 tests total): pure combat math
+  (hull damage track + row thresholds; threshold-check kill numbers; beam dice
+  by range band + screen downgrade; torpedo to-hit + submunition dice; armour
+  absorbs before hull; 6-arc bucketing), the ship Actor data model + SSD sheet,
+  ship-state damage I/O with native `defeated`-on-destruction, hover fields, and
+  the init-hook wiring (reachability-tested). NOT yet done: firing orchestration
+  reachable via a scene control (so the combat math is currently tree-shaken from
+  the bundle — same COVERAGE caveat as Simple Skirmish), the turn/initiative loop,
+  movement-order validation, fighters/missiles/PDS/needle, ship-design helpers.
+- Commit: this commit (first milestone: skeleton + facing primitive + combat math).
