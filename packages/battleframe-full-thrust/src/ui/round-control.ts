@@ -46,6 +46,7 @@ import { drawMissiles, clearMissiles } from "./missile-overlay";
 import { waveGunDiceAtRange, waveGunDamage, novaCannonDiceForTurn, novaCannonDamage, waveGunChargeAfterTurn, waveGunIsCharged, waveGunChargeAfterFiring } from "../combat/spinal";
 import { canReachToAttack } from "../movement/fighter-move";
 import { bayCapacity } from "../combat/carrier";
+import { parseVectorOrder, resolveTurn, velocityMagnitude } from "../movement/vector";
 import { applyDamageAndThreshold } from "../combat/apply-damage";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
 import { plotMovementPath, type MovementPath } from "../movement/path";
@@ -1096,6 +1097,53 @@ export async function recoverFightersAction(): Promise<void> {
 }
 
 /**
+ * Vector-Move tool (optional FT2 vector mode): the controlled ship advances by
+ * its persistent velocity vector, then a vector order (e.g. `MD6,TP2`) nudges the
+ * velocity/facing. Distinct from the cinematic Plot/Execute flow — for groups
+ * that play true Newtonian movement. Reuses the pure `movement/vector.ts`.
+ */
+export async function vectorMoveAction(): Promise<void> {
+  const token = controlledToken();
+  if (!token?.actor) {
+    return;
+  }
+  const system = token.actor.system ?? {};
+  const facing = Number(system.course ?? 12);
+  const velocity = { vx: Number(system.vx ?? 0), vy: Number(system.vy ?? 0) };
+
+  let orderText = "";
+  const dialog = g().foundry?.applications?.api?.DialogV2;
+  if (dialog?.prompt) {
+    orderText = ((await dialog.prompt({
+      window: { title: "Full Thrust: Vector Move (MD = burn, TP/TS = turn, PP/PS/PR = thrusters)" },
+      content: `<p>Vector order (e.g. <code>MD6,TP2</code>):</p><input type="text" name="order" value="" autofocus />`,
+      ok: { label: "Move", callback: (_e: unknown, button: any) => button?.form?.elements?.order?.value ?? "" }
+    })) as string) ?? "";
+  }
+
+  const manoeuvres = parseVectorOrder(orderText);
+  const next = resolveTurn({ position: { vx: 0, vy: 0 }, velocity, facing }, manoeuvres);
+
+  const scale = tokenScale(token);
+  const doc = token.document;
+  const startX = doc?.x ?? 0;
+  const startY = doc?.y ?? 0;
+  await doc?.update?.({
+    x: startX + next.position.vx * scale,
+    y: startY + next.position.vy * scale,
+    rotation: courseRotation(next.facing)
+  });
+  const speed = Math.round(velocityMagnitude(next.velocity));
+  await token.actor.update({
+    "system.vx": next.velocity.vx,
+    "system.vy": next.velocity.vy,
+    "system.course": next.facing,
+    "system.velocity": speed
+  });
+  notify("info", `${MODULE_ID} | vector move -- speed ${speed}mu, course ${next.facing}`);
+}
+
+/**
  * Fire-Arcs tool: pin/unpin the fire-arc ring on ship tokens so a player can see
  * their fleet's arcs at a glance (hovering already shows a ship's arcs transiently
  * — this keeps them on). Toggles the controlled ships, or every ship on the scene
@@ -1750,6 +1798,16 @@ export function addSceneControl(controls: unknown): void {
     order: 3,
     onClick: () => void fighterMoveAction(),
   };
+  // Vector-mode movement (optional) -- the ship's owner.
+  const vectorMoveTool = {
+    name: "full-thrust-vector-move",
+    title: "battleframe-full-thrust.controls.vectorMove",
+    icon: "fas fa-arrows-up-down-left-right",
+    button: true,
+    visible: true,
+    order: 2,
+    onClick: () => void vectorMoveAction(),
+  };
   const plotTool = {
     name: "full-thrust-plot",
     title: "battleframe-full-thrust.controls.plot",
@@ -1821,7 +1879,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, chargeWaveGunTool, waveGunTool, launchFightersTool, recoverFightersTool, fighterMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, newBattleTool, importTool];
+  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, chargeWaveGunTool, waveGunTool, launchFightersTool, recoverFightersTool, fighterMoveTool, vectorMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, newBattleTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);

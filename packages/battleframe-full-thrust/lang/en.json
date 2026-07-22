@@ -37,6 +37,7 @@
   "battleframe-full-thrust.controls.fighterMove": "Move fighter group toward target",
   "battleframe-full-thrust.controls.launchFighters": "Launch a fighter group from this carrier",
   "battleframe-full-thrust.controls.recoverFighters": "Recover a nearby fighter group to this carrier",
+  "battleframe-full-thrust.controls.vectorMove": "Vector move (optional Newtonian mode)",
   "battleframe-full-thrust.controls.plot": "Plot movement order (hidden until execute)",
   "battleframe-full-thrust.controls.execute": "Execute maneuvers (reveal all plotted moves)",
   "battleframe-full-thrust.controls.damageControl": "Damage control (end-of-turn repairs)",

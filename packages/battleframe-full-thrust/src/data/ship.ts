@@ -79,6 +79,10 @@ export function createShipDataClass(
       schema.course = new NumberField({
         required: true, nullable: false, integer: true, min: 1, max: COURSES, initial: 12
       });
+      // Vector movement (optional mode): the persistent velocity vector (mu/turn,
+      // screen space; may be negative). Distinct from the cinematic scalar velocity.
+      schema.vx = new NumberField({ required: true, nullable: false, initial: 0 });
+      schema.vy = new NumberField({ required: true, nullable: false, initial: 0 });
 
       schema.pointsValue = new NumberField(nonNegativeInt(0));
 
