@@ -80,6 +80,8 @@ const DEFAULT_TIMER = 5;
 interface FlagDoc {
   getFlag?: (scope: string, key: string) => unknown;
   setFlag?: (scope: string, key: string, value: unknown) => Promise<unknown>;
+  unsetFlag?: (scope: string, key: string) => Promise<unknown>;
+  update?: (data: Record<string, unknown>) => Promise<unknown>;
 }
 
 interface Glob {
@@ -171,7 +173,9 @@ async function performAdvance(): Promise<void> {
   cancelCountdown();
   try {
     // Clear ready flags first so the advance starts a fresh round for everyone.
-    await readyDoc()?.setFlag?.(SYSTEM_ID, READY_FLAG, {});
+    // unsetFlag REMOVES the whole flag -- `setFlag(..., {})` would deep-MERGE and
+    // leave every existing key, so it must not be used to clear a flag map.
+    await readyDoc()?.unsetFlag?.(SYSTEM_ID, READY_FLAG);
     await advanceCallback?.();
   } catch {
     /* an advance failure must not wedge the ready state */
@@ -196,10 +200,18 @@ export function createReadyAdvanceApi(): ReadyAdvanceApi {
     },
     async toggleReady() {
       const me = glob().game?.user?.id;
-      if (!me) {
+      const doc = readyDoc();
+      if (!me || !doc) {
         return;
       }
-      await readyDoc()?.setFlag?.(SYSTEM_ID, READY_FLAG, toggledReady(readyMap(), me));
+      if (readyMap()[me]) {
+        // Un-ready: DELETE my key. setFlag deep-merges, so it cannot remove a key;
+        // the `-=` update prefix is Foundry's key-deletion syntax.
+        await doc.update?.({ [`flags.${SYSTEM_ID}.${READY_FLAG}.-=${me}`]: null });
+      } else {
+        // Ready: setFlag merges my key into the existing map.
+        await doc.setFlag?.(SYSTEM_ID, READY_FLAG, { [me]: true });
+      }
     },
     isReady(userId) {
       const id = userId ?? glob().game?.user?.id;
