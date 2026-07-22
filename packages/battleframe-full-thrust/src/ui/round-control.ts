@@ -13,7 +13,7 @@
 import { MODULE_ID, FIGHTER_GROUP_ACTOR_TYPE } from "../constants";
 import { fireShipAtTarget, type FireContext, type FireReport, type FiringShip } from "../combat/fire-ship";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
-import { parseOrder, applyOrder } from "../movement/orders";
+import { plotMovementPath, type MovementPath } from "../movement/path";
 import { COURSE_POINT_DEGREES, COURSES } from "../constants";
 
 // --- Pure report formatting (unit-tested) -----------------------------------
@@ -105,16 +105,30 @@ export async function resolveFireBetween(
   return { report, html };
 }
 
-/** Applies a plotted movement order to a ship's velocity/course. */
-export function resolvePlotOrder(
+/**
+ * Resolves a ship's plotted movement into the pivot-move-pivot-move path (final
+ * velocity/course + the displacement waypoints), reading the ship's current
+ * state off its system.
+ */
+export function resolveMovementPath(
   system: { velocity?: number; course?: number; thrust?: number },
   orderText: string
-): ReturnType<typeof applyOrder> {
-  return applyOrder(
+): MovementPath {
+  return plotMovementPath(
     { velocity: system.velocity ?? 0, course: system.course ?? COURSES },
-    parseOrder(orderText),
+    orderText,
     system.thrust ?? 0
   );
+}
+
+/** Pixels per mu for a scene grid ({size} px per {distance} units), floored at 1. */
+export function pixelsPerMu(grid: { size?: number; distance?: number } | undefined): number {
+  const size = grid?.size;
+  const distance = grid?.distance;
+  if (!size || !distance || size <= 0 || distance <= 0) {
+    return 1;
+  }
+  return size / distance;
 }
 
 // --- Foundry glue -----------------------------------------------------------
@@ -125,7 +139,10 @@ interface GlobalScope {
     battleframe?: RoundControlApi;
   };
   battleframe?: RoundControlApi;
-  canvas?: { tokens?: { controlled?: any[] } };
+  canvas?: {
+    tokens?: { controlled?: any[] };
+    scene?: { grid?: { size?: number; distance?: number } };
+  };
   ui?: { notifications?: { warn?: (t: string) => void; error?: (t: string) => void; info?: (t: string) => void } };
   Hooks?: { on?: (event: string, cb: (...args: unknown[]) => void) => void };
   ChatMessage?: { create: (data: Record<string, unknown>) => Promise<unknown> };
@@ -253,16 +270,51 @@ export async function plotAction(): Promise<void> {
   }
 
   const system = token.actor.system ?? {};
-  const result = resolvePlotOrder(system, orderText);
-  if (!result.legal) {
-    notify("warn", `${MODULE_ID} | illegal order (${result.reason})`);
+  const path = resolveMovementPath(system, orderText);
+  if (!path.legal) {
+    notify("warn", `${MODULE_ID} | illegal order (${path.reason})`);
     return;
   }
 
-  await token.actor.update({ "system.velocity": result.velocity, "system.course": result.course });
-  // Face the ship along its new course (cinematic movement: facing == heading).
-  await token.document?.update?.({ rotation: (result.course % COURSES) * COURSE_POINT_DEGREES });
-  notify("info", `${MODULE_ID} | velocity ${result.velocity}, course ${result.course}`);
+  await token.actor.update({ "system.velocity": path.velocity, "system.course": path.course });
+  await executeMovementPath(token, path);
+  notify("info", `${MODULE_ID} | velocity ${path.velocity}, course ${path.course}`);
+}
+
+/** Course heading as a token rotation angle (degrees, clockwise from up). */
+function courseRotation(course: number): number {
+  return (course % COURSES) * COURSE_POINT_DEGREES;
+}
+
+/**
+ * Traces the ship's cinematic pivot-move-pivot-move path on the canvas: pivot to
+ * the mid-turn heading and move to the waypoint, then pivot to the final heading
+ * and move to the end. Two sequential token updates so Foundry animates the
+ * curved path (facing == heading throughout). Displacements are mu, converted to
+ * pixels via the scene grid.
+ */
+async function executeMovementPath(token: any, path: MovementPath): Promise<void> {
+  const doc = token?.document;
+  if (!doc?.update) {
+    return;
+  }
+  const grid = doc.parent?.grid ?? g().canvas?.scene?.grid;
+  const scale = pixelsPerMu(grid);
+  const startX = doc.x ?? 0;
+  const startY = doc.y ?? 0;
+
+  // Leg 1: pivot to the mid-turn heading, move to the waypoint.
+  await doc.update({
+    x: startX + path.waypoint.dx * scale,
+    y: startY + path.waypoint.dy * scale,
+    rotation: courseRotation(path.midCourse)
+  });
+  // Leg 2: pivot to the final heading, move to the end.
+  await doc.update({
+    x: startX + path.end.dx * scale,
+    y: startY + path.end.dy * scale,
+    rotation: courseRotation(path.course)
+  });
 }
 
 /** Adds the Full Thrust scene control, tolerating both payload shapes. */

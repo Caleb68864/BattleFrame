@@ -33,7 +33,7 @@ deferred. Nothing is silently missing.
 | Course = 12-point clockface; ship faces its heading | ✅ | `movement/orders.ts`, token rotated to course |
 | Order notation `+N/-N/PN/SN`; no reverse | ✅ | `movement/orders.ts` `parseOrder` |
 | Thrust budget: total ≤ thrust, turning ≤ half (rounded up) | ✅ | `movement/orders.ts` `applyOrder`, `turningCap` |
-| Pivot-move-pivot-move curved path drawing on canvas | ⏳ | We set course/velocity + rotate; auto-drawing the split move is deferred |
+| Pivot-move-pivot-move curved path executed on canvas | ✅ | `movement/path.ts` `plotMovementPath` (verified vs both worked examples) + `ui/round-control.ts` `executeMovementPath` traces the two half-moves + pivots |
 | Vector movement (optional FT2 system) | ⏳ | Cinematic only for now |
 | Measurement to/from stand centre | ✅ | core `measure.between(..., "centre-to-centre")` |
 

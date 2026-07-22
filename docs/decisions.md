@@ -1997,4 +1997,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   / most specialised fighter types are out of FT2-core scope.
 - Added a centre-to-centre regression test on the fire path; SYSTEM_POINTS/designPoints cite
   their source and scope.
+- Commit: d4ee981.
+
+## 2026-07-22 — Full Thrust: cinematic pivot-move-pivot movement now executed (was deferred)
+- The previously-deferred cinematic course-change DISPLACEMENT is implemented. movement/path.ts
+  `plotMovementPath` computes the pivot-move-pivot-move path per "Making Course Changes" (pivot
+  half the turn rounded DOWN, move half the resulting velocity, pivot the rest, move the rest),
+  returning the mid-turn waypoint + final displacement in mu (screen space, course N faces
+  (N mod 12)x30deg clockwise from up). Verified numerically against BOTH worked examples
+  (P3 v10 from C3 -> C12; S1 v14 from C8 -> C9).
+- The Plot tool now traces it on the canvas: ui/round-control.ts `executeMovementPath` does two
+  sequential token updates (pivot to mid-course + move to waypoint, then pivot to final course +
+  move to end), converting mu->px via `pixelsPerMu(scene.grid)` (floored at 1, never /0). So the
+  ship actually curves to its new position, not just rotates. Move distance = the RESULTING
+  (post-order) velocity, matching FT "move the full velocity".
+- 738 tests passing. Still canvas-only-unverified live (like the rest of the scene-control glue),
+  but the geometry itself is unit-tested against the rulebook examples.
 - Commit: this commit.

@@ -52,6 +52,33 @@ describe("buildFireReportHtml", () => {
   });
 });
 
+import { resolveMovementPath, pixelsPerMu } from "../src/ui/round-control";
+
+describe("pixelsPerMu", () => {
+  it("converts scene grid units to pixels per mu", () => {
+    expect(pixelsPerMu({ size: 50, distance: 1 })).toBe(50); // 1mu = 1in, 50px/in
+    expect(pixelsPerMu({ size: 100, distance: 2 })).toBe(50);
+  });
+  it("falls back to 1 when the grid is unusable (never divides by zero)", () => {
+    expect(pixelsPerMu({ size: 0, distance: 0 })).toBe(1);
+    expect(pixelsPerMu(undefined)).toBe(1);
+  });
+});
+
+describe("resolveMovementPath", () => {
+  it("reads velocity/course/thrust off the ship system and returns the traced path", () => {
+    const path = resolveMovementPath({ velocity: 10, course: 3, thrust: 6 }, "P3");
+    expect(path.legal).toBe(true);
+    expect(path.course).toBe(12);
+    expect(path.end.dy).toBeCloseTo(-7.5, 2);
+  });
+  it("reports an illegal order", () => {
+    const path = resolveMovementPath({ velocity: 0, course: 6, thrust: 6 }, "S4");
+    expect(path.legal).toBe(false);
+    expect(path.reason).toBe("turn-cap");
+  });
+});
+
 describe("buildFighterReportHtml", () => {
   const base: FighterFireReport = {
     fired: true,
