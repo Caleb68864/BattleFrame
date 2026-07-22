@@ -2277,3 +2277,32 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - +16 tests (fcs-allocation.test.ts); 896 passing; typecheck clean. Pure core is unit-tested; no
   Foundry glue added this commit (scene-tool wiring is later work). roadmap P2 #18 → core done.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: Fleet Book optional damage layers (roadmap P2 #19)
+- Added `ship/fleet-book.ts`: three PURE, opt-in Fleet Book 1 damage variants layered ON TOP of
+  the FT2 default combat path (beam.ts / damage.ts / threshold.ts unchanged). (1) Reroll /
+  penetrating damage ("Reroll Damage Rules"): a rolled 6 scores its damage AND spawns a reroll
+  die, cumulatively with NO cap on the chain of 6s — replacing FT2's "6 = 2, done". `poolPenetrating
+  Damage(initialFaces, rerollFaces, screenLevel)` sums the initial dice (screened) plus, for each
+  6, one unscreened reroll from the caller-supplied list, chaining while rerolls show 6s. The
+  reroll die reuses `beamDamageForFace(face, 0)` (1-3=0, 4-5=1, 6=2) so the base table is never
+  duplicated; screens downgrade only the initial dice (reroll "already penetrated the screen"), and
+  a screened 6 still triggers a reroll (trigger is the physical face). Worked chain 6→6→3 = 2+2+0 =
+  4. (2) Armour bypass ("Armour"): `applyDamageBypassingArmour` (all points straight to hull, armour
+  untouched) plus `applyPenetratingDamageWithArmour({normalDamage, penetratingDamage})` (normal
+  spends armour then overflows to hull; penetrating goes direct) — one hull application on the
+  combined hull-bound total so a threshold sees it as one attack; penetratingDamage 0 reduces
+  exactly to `applyDamageWithArmour`. (3) Core Systems +1 ("Core Systems"): `coreThresholdKillOn` =
+  `thresholdKillOn` + 1 (1st threshold → 7 = immune on a d6), and `knockedOutIndicesWithCore` which
+  applies the surface kill number to surface systems and +1 to core-flagged ones.
+- Only new rules number: `CORE_SYSTEM_THRESHOLD_BONUS = 1` appended to constants.ts with a source
+  quote; the reroll + armour-bypass layers introduce no new damage numbers (they reuse DIE_* and
+  DIE_TWO_DAMAGE). DEFERRED per the notes: Needle-Beam immunity for core systems (a targeting-layer
+  concern, not threshold survival); Enhanced Pulse Torpedo vs-armour half-split; Fleet Book PDS
+  reroll-on-6 — none implemented here, only the three layers the notes describe for this ticket.
+  ASSUMED: reroll faces are supplied by the caller (pure functions don't roll); "core" = the three
+  named buried systems flagged by `isCore[]`, not derived here; armour bypass modelled as an
+  application variant (weapon-agnostic), the per-weapon "is penetrating" flag living in the caller.
+- +22 tests (tests/fleet-book.test.ts); 902 passing; typecheck clean. Default combat path untouched.
+  COVERAGE.md / roadmap-full-thrust.md left for the main session on integration.
+- Commit: this commit.

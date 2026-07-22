@@ -245,3 +245,23 @@ export const MANOEUVRING_THRUSTER_DIVISOR = 2;
 export const PUSH_MU_PER_POINT = 1;
 /** A facing ROTATION costs a flat 1 thruster point for any heading change. */
 export const ROTATION_THRUSTER_COST = 1;
+
+// --- Fleet Book optional damage layers (roadmap P2 #19) ---------------------
+
+/**
+ * Core Systems (Fleet Book 1, optional): the three deep-buried systems (Command
+ * Bridge, Power Core, Life Support) roll at +1 to the current threshold kill
+ * number, one step tougher than surface systems. 1st threshold: surface lost on
+ * 6, core on "7" = safe; 2nd: surface 5-6, core 6; 3rd: surface 4-6, core 5-6. A
+ * core kill number above DIE_SIZE (6) is unreachable on a d6 -- i.e. immune.
+ * Source (user's "Core Systems" note): "At each Threshold Check, core systems
+ * roll at +1 to the current threshold number, so they are one step tougher than
+ * surface systems ... 1st threshold (surface lost on 6): core lost only on a '7'".
+ *
+ * The reroll / penetrating-damage and armour-bypass layers (also Fleet Book 1)
+ * introduce NO new damage numbers: the reroll die scores on the ordinary
+ * unscreened per-die table (DIE_ONE_DAMAGE_* / DIE_TWO_DAMAGE above) and a rolled
+ * 6 (DIE_TWO_DAMAGE) is the reroll trigger, so `ship/fleet-book.ts` builds on
+ * those existing constants rather than adding duplicates here.
+ */
+export const CORE_SYSTEM_THRESHOLD_BONUS = 1;
