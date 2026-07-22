@@ -3131,3 +3131,151 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   world (ships animate the curved path, unconstrained, facing==heading). Batched with
   the pending GREATHELM + chat-card + socketlib live-verify.
 - Commit: this commit.
+
+## 2026-07-22 — Scaffolded battleframe-stargrunt-ii; the die-ladder atom is the locked cross-module contract
+- Decision: new module `packages/battleframe-stargrunt-ii` (Stargrunt II), shape copied
+  from InCountry (module.json/package.json/vite.config/lang/NOTICE). Module id and Actor
+  subtypes are `battleframe-stargrunt-ii(.unit|.vehicle)` per the build plan's LOCKED
+  data-model registration path and hover key — chosen over the parent's shorthand
+  "battleframe-stargrunt" so the id, directory, data-model key, and i18n `TYPES` all agree
+  (repo convention is dir == id, as every other module holds).
+- A1 `shift(die, steps)` at `src/dice/ladder.ts` is the Tier-0 die-ladder atom — built
+  byte-identical to the Dirtside module's copy (the agreed cross-module contract): lowercase
+  `"d4".."d12"`, symmetric, returns `null` off EITHER end with NO clamping (clamping is
+  caller-side, `shift(...) ?? cap`). Kept ruleset-free so it ports to engine `dice.shift`
+  unchanged once both MVPs land (two witnesses).
+- Watch (design finding): A2 `opposedShift` (open shift, overflow transfers to the opponent)
+  is SG2-side and composes `shift`. The build plan's worked example
+  (`opposedShift("d12",+2,"d8")`) is internally inconsistent — it states both a "-2" transfer
+  and a "d6" result (which is -1). I implemented the clean, neutral **1:1** transfer (one rung
+  of overflow → one opposite rung on the opponent → `d4`), pinned it as a fixture, and flagged
+  it here. `opposedShift` is consumed only by the post-MVP Impact-vs-Armour and close-combat
+  paths, so the exact GZG ratio must be reconciled against the rulebook worked example before
+  those ship. Not a blocker for the infantry-firefight MVP.
+- Surfaces: `packages/battleframe-stargrunt-ii/{module.json,package.json,vite.config.ts,
+  NOTICE.md,lang/en.json,styles/stargrunt-ii.css,src/constants.ts,src/dice/ladder.ts,
+  tests/ladder.test.ts}`. 9 tests; typecheck clean.
+- Commit: 0f811ba.
+
+## 2026-07-22 — SG2 fire engine (B1-B9): representative armour die for impact, per-figure for allocation
+- Decision: built the pure fire engine test-first — B1 `beatsAgainst` (strict `>`, a tie is
+  not a beat), B2 `fireTier` (0 miss / 1 suppress / 2+ effective), B3 `potentialHits` (full
+  firer sum — losers INCLUDED — divided by the Range-Die TYPE, not the rolled value), B4
+  `extraHitFromRemainder` (range reroll `<=` remainder; zero remainder never fires), B5
+  `impactOutcome` (`>` armour wounds, `> 2*armour` kills, `2*armour` is a wound), B6
+  `rangeDieFromDistance` (band = Quality-die faces in inches, `ceil` bands -> d4..d12, cover
+  `+1/+2` and In-Position `+1` shift the die UP via the A1 atom, past-d12 or >5 bands ->
+  "impossible"), B7 `computeFirepowerDie` (FP*figures rounded UP the ladder, cap d12), B8
+  `allocateCasualties` (random over living figures, kills-first, 2nd wound this resolution
+  kills, never hits the dead, input not mutated, wiped reported), and B9 `resolveDispersedFire`
+  composing all of them with dice + rng injected.
+- Key decision (B9): dispersed fire resolves each hit's Impact-vs-Armour against a SINGLE
+  representative `targetArmourDie`, then hands the aggregate {wounds, kills} to
+  `allocateCasualties` to distribute onto the per-figure roster. Per-figure armour stays on the
+  roster (sheet + allocation surface) but is NOT used per-hit in MVP — rolling each hit against
+  its allocated figure's own armour is a Phase-2 refinement. This keeps B5 and B8 as the clean,
+  separately-tested primitives the plan specifies rather than merging impact+allocation.
+- Watch: divisor is the Range-Die TYPE (4/6/8/10/12), never the rolled range face — the
+  easy-to-miss bit flagged as design risk 7.4; pinned explicitly in `potentialHits` fixtures.
+  Cover/In-Position shift the range die UP (bigger die = harder to beat), so a max-band d12 plus
+  any shift correctly reads as out-of-effect.
+- Surfaces: `packages/battleframe-stargrunt-ii/src/combat/{fire.ts,impact.ts,range.ts,
+  casualties.ts}`, `tests/{fire,impact,range,casualties}.test.ts`. +26 tests (35 total);
+  typecheck clean.
+- Commit: 7c5f4de.
+
+## 2026-07-22 — SG2 morale (C1-C3): confidence grades a failure, reaction is a bare pass/fail
+- Decision: built the pure state/morale primitives test-first. C1 suppression is a 0..3
+  counter: `placeSuppression` stacks capped at 3, `removeSuppression` decrements floored at 0,
+  `clearSuppressionRoll(qualityRoll, lv)` succeeds on a STRICT exceed (caller decrements on
+  true — one marker per success). C2 `confidenceTest(qualityRoll, lv, threatLevel)` grades a
+  failure: score = lv+threat, `roll > score` holds (drop 0), `<=` drops 1, `<= floor(score/2)`
+  drops 2 (the half-or-less branch — design risk 7). C3 `reactionTest` reuses the identical
+  `roll > lv+threat` comparison but returns a bare boolean and NEVER touches confidence — the
+  distinct return type is deliberate so a lost-action reaction can never be miswired into a
+  confidence drop. Mission Motivation is not consulted in the reaction test (it only scales how
+  often confidence tests occur).
+- Surfaces: `packages/battleframe-stargrunt-ii/src/round/{suppression.ts,morale.ts}`,
+  `tests/{suppression,morale}.test.ts`. +9 tests (44 total); typecheck clean.
+- Commit: 56fb133.
+
+## 2026-07-22 — SG2 activation session (D1-D5): extend the skirmish shape, don't generalise it
+- Decision: built the two-action alternating session by COPYING the shape of Simple Skirmish's
+  `createSkirmishRound` (continuous alternation + serialize/restore to a Combat flag) and adding
+  the three SG2 extensions as separable predicates so a future engine port is a lift, not a
+  rewrite. D1 `firstActivator` — the smaller force goes first, equal counts return `"tie"`
+  (caller rolls off). D2 `canPass` — legal only when strictly outnumbered in face-up
+  (un-activated) units. D3 the two-action budget as a nested immutable state machine
+  (`startActivation`/`spendMove`/`spendFire`/`isActivationComplete`): opens at 2, a weapon may
+  fire only once per activation, moving with BOTH actions sets `reactionEligible` (the Phase-2
+  reaction-fire hook), over-spend throws. D4 `beginNextTurn` — pure Turn-End reset (clear
+  activation, reset the pass track, bump the turn number, pick the next first activator fresh);
+  the glue registers this through `advance`. D5 `createStargruntRound`/`restoreStargruntRound`
+  serialize `{firstSideId, activatedIds, turnPointer, turn, consecutivePasses}` to the Combat
+  document — a turn ends when everyone is resolved OR both sides pass in succession
+  (`consecutivePasses >= sides.length`), so a mid-round reload resumes rather than restarts.
+- Watch: kept ruleset-local per design risk 7.2 — NOT extracted to core. Reaction fire is only
+  a stored eligibility flag here (Phase 2 consumes it); the budget is a nested per-activation
+  state the glue persists alongside the round state at wiring time.
+- Surfaces: `packages/battleframe-stargrunt-ii/src/round/session.ts`, `tests/session.test.ts`.
+  +15 tests (59 total); typecheck clean.
+- Commit: 7b380a9.
+
+## 2026-07-22 — SG2 unit data model: figures[] is the casualty surface; vehicle deferred to Phase 3
+- Decision: built the `battleframe-stargrunt-ii.unit` TypeDataModel test-first, copying
+  InCountry's resolver shape verbatim (`resolveTypeDataModelBase`/`resolveFieldsNamespace`/the
+  `intField` helper) so the schema builds against injected `foundry.data.fields` in unit tests.
+  Schema follows the plan's §2.1: `quality` (die string, drives band size + firer die + morale),
+  `leadership` (LV 1..3), `figures[]` (per-figure armour die + wounds + status — the roster is
+  BOTH the dice thrown and the casualty surface, matching B8), user-defined `weapons[]` (no
+  stats shipped — neutrality), and the live counters `confidence` 0..4 / `suppression` 0..3 plus
+  the posture booleans and scenario background. Die values are ALWAYS strings so shifts stay
+  WYSIWYG.
+- Deferred: the `stargrunt-ii.vehicle` model (plan §2.2) is Phase 3 — it consumes the shared
+  `battleframe-gzg-vehicle-core` damage lib (not built yet). Trimmed `module.json` +
+  `lang/en.json` back to declaring only the `unit` subtype so no Actor subtype is advertised
+  without a registered data model.
+- Surfaces: `packages/battleframe-stargrunt-ii/src/data/unit.ts`, `tests/unit-data.test.ts`,
+  `module.json`, `lang/en.json`. +6 tests (65 SG2 / 1285 repo total); typecheck clean.
+- Commit: d827625.
+
+## 2026-07-22 — SG2 E-series glue: adopt the engine services, keep the round on the Combat doc
+- Decision: built the Foundry glue so the module is buildable + playable (`npm run build` now
+  green). `main.ts` wires init in order (data models → sheet → status → hover → round control →
+  `registerAdvance` → `registerRuleset` last + loud), and IS the vite entry, so the build
+  produces `dist/stargrunt-ii.js` (36.65 kB) with every pure fn reachable (grep-verified:
+  resolveDispersedFire/createStargruntRound/resolveFireAction/beatsAgainst/rangeDieFromDistance/
+  placeSuppression/firstActivator all present — the tree-shake / dead-code guard).
+- Adopted the engine services the reconciliation calls for, none reimplemented: outcomes post
+  through `game.battleframe.chat.postCard` (persistent ChatMessage, `cssClass:
+  "stargrunt-ii-fire-report"`, names escaped via the engine `chat.escapeHtml` with a local
+  mirror for the no-Foundry test path — the same live/fallback split FT uses); the Turn-End
+  Phase registers through `game.battleframe.advance.registerAdvance(advanceTurnCore)` so play is
+  GM-less; the fire UI reads `selection`, measures base-to-base via `measure.fromPlaceable`+
+  `between`, and shows a `los.between(..,{sample:"corners"})` suggestion in a GM cover/LOF
+  prompt (cover is GM-selected 0/1/2). Round/turn state lives ONLY on the Combat document
+  (`flags.battleframe.round` = serialized `StargruntRoundState`), never a module variable — a
+  reload resumes the turn.
+- E2 status: `suppressed`/`in-position`/`disorganised` registered via `status.register` (core
+  SVGs, no artwork); `syncUnitStatuses` toggles each icon from the data (field is truth, icon is
+  view — the Simple-Skirmish `syncDefeatedStatus` pattern) plus the core `defeated` skull on a
+  wipe. Confidence + the suppression COUNT are surfaced as hover badges (E5), not statuses —
+  numeric counters stay NumberFields per §5 / decision 6; only the boolean conditions go native.
+- Reachability tested honestly: the "green tests, dead code" guard is `runRoundControl`/
+  `fireSelectedControl` (the exact functions the scene-control tools' click handlers call)
+  driving the pure session + fire engine against a stubbed world — a run click serializes a
+  turn-1 round onto the Combat flag; a fire click posts an outcome card. Tool click handlers are
+  fire-and-forget (`() => void fn()`), so the wiring test asserts the tools exist + point at the
+  functions, and the behaviour tests call those functions directly (awaitable).
+- Watch (deferred, coordinator handles): LIVE-VERIFY in a v14 world is not done — the whole
+  canvas/UI half is feature-detected and marked UNVERIFIED (scene-control payload shape,
+  DialogV2 cover/LOF prompt, `toggleStatusEffect`, measure/los token reads). The MVP live loop
+  activates a unit as one slot (marks `activated` + advances alternation) and fires via the Fire
+  tool; the D3 two-action budget is built + unit-tested but the live glue does not yet enforce
+  per-action budget spending (a Phase-2 wiring nicety). Vehicle model/sheet + `opposedShift`
+  ratio remain from prior increments.
+- Surfaces: `packages/battleframe-stargrunt-ii/src/{main.ts,status.ts,sheets/unit-sheet.ts,
+  ui/round-control.ts}`, `templates/unit-sheet.hbs`, `styles/stargrunt-ii.css`, `lang/en.json`,
+  and tests `{main,i18n,status,unit-sheet,round-control}.test.ts`. +32 tests (97 SG2 / 1317 repo
+  total); `npx vitest run`, `npm run typecheck`, and `npm run build` all green.
+- Commit: this commit.

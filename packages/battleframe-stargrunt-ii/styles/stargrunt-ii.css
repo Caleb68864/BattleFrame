@@ -1,0 +1,112 @@
+/* BattleFrame: Stargrunt II — module styles.
+ * Minimal, structural sheet layout (no theme art — the module ships no artwork).
+ * Visual polish is a live-verify follow-up. */
+
+.sg2-dossier {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  padding: 0.5rem;
+}
+
+.sg2-dossier__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  border-bottom: 2px solid var(--color-border-dark, #555);
+  padding-bottom: 0.25rem;
+}
+
+.sg2-dossier__name {
+  margin: 0;
+  font-size: 1.3rem;
+}
+
+.sg2-dossier__tag {
+  font-size: 0.7rem;
+  letter-spacing: 0.15em;
+  opacity: 0.65;
+}
+
+.sg2-block {
+  border: 1px solid var(--color-border-light-tertiary, #999);
+  border-radius: 4px;
+  padding: 0.4rem 0.5rem;
+}
+
+.sg2-block__title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  border-bottom: 1px solid var(--color-border-light-tertiary, #ccc);
+}
+
+.sg2-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.sg2-stat {
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+  flex: 1 1 5rem;
+}
+
+.sg2-stat__label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  opacity: 0.7;
+}
+
+.sg2-toggles {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.4rem;
+}
+
+.sg2-toggle {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.sg2-rows {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+
+.sg2-rows__head,
+.sg2-row {
+  display: grid;
+  grid-template-columns: 1.4fr 0.8fr 1fr 0.7fr 0.9fr 1.6rem;
+  gap: 0.3rem;
+  align-items: center;
+}
+
+.sg2-rows__head--weapon,
+.sg2-row--weapon {
+  grid-template-columns: 0.8fr 1.4fr 0.6fr 0.9fr 0.9fr 0.6fr 1.6rem;
+}
+
+.sg2-rows__head {
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  opacity: 0.65;
+}
+
+.sg2-rows__empty {
+  font-style: italic;
+  opacity: 0.6;
+  margin: 0.2rem 0;
+}
+
+.sg2-add,
+.sg2-remove {
+  cursor: pointer;
+}
