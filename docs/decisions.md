@@ -2677,3 +2677,38 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   separate task and not built.
 - +25 tests (savasku.test.ts, hand-computed from the notes); 1086 passing (was 1061); typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: Phalon plasma bolts + multi-layer shell pure math (roadmap P2 #20, xeno subset)
+- Scope: second of the FB2 Xeno races (after Kra'Vak). New pure file
+  `packages/battleframe-full-thrust/src/combat/phalon.ts` + `tests/phalon.test.ts`
+  (27 tests, hand-computed from the notes' worked wording). No engine/sheet/dice glue.
+- Plasma Bolt Launcher (placed-marker area weapon). Interception wears the bolt down
+  BEFORE it bursts: `plasmaBoltPdsReduction` (PDS 6 = -1), `plasmaBoltInterceptReduction`
+  (scattergun/interceptor "roll like a beam die": 4-5 = -1, 6 = -2), `plasmaBoltStrength`
+  (reduced size = launched size - all reductions, floored at 0). Burst is "full dice"
+  (DP = die score) — NOT the beam 4-5/6 table — so `plasmaBoltDamageForFace` returns the
+  face itself and screens/shrouds NEGATE high faces outright (level-1 kills 6s; level-2 /
+  vapour shroud kills 5s and 6s); `poolPlasmaBoltDamage` sums. Shroud = level-2 screen vs
+  energy, so level 2 is the strongest plasma entry (`PLASMA_BOLT_SCREEN_MAX_LEVEL`).
+- Multi-layer shell armour, layers ordered OUTERMOST-first (inner "layer 1" last):
+  `applyShellHit` (normal/non-piercing — outermost layer spent first, then inward, overflow
+  to hull), `applyKgunShellHit` (Kra'Vak rule confirmed in the K-guns note: "takes one box
+  from each shell layer, remainder to hull" — one box per still-boxed layer, capped by DP,
+  rest to hull), `applyHalfArmourShellHit` (half to outer / half to next layer). All route
+  their overflow through the shared `applyDamageWithArmour` (zero-armour ship) so hull
+  thresholds/destruction stay consistent with the rest of the system.
+- Constants: Phalon block appended at the END of `constants.ts`, each with a source-quote
+  comment. Per the Kra'Vak/PDS precedent the interceptor 4/5/6 thresholds keep their own
+  constants even though they coincide with the scattergun-vs-plasma numbers; the negated
+  plasma faces reuse existing DIE_ONE_DAMAGE_MAX (5) / DIE_TWO_DAMAGE (6).
+- Assumed (notes silent — flagged, not invented): half-armour odd-DP rounding puts the extra
+  point on the OUTER layer (ceil outer / floor next), and each half that exceeds its target
+  layer overflows inward then to hull.
+- Deferred (in the notes, not implemented): pulsers (an energy/beam variant — reuse beam.ts,
+  full dice over whole range, config L/M/C; belongs to the beam + design layer, not re-modelled
+  here); vapour shroud own-fire/launch penalties, MASS/points costs, ADFC lend-PDS, and PBL
+  recharge/every-other-turn cadence (orchestration/design state, not pure damage math); the
+  shell "reroll steps down one layer per reroll" rule (rerolls are a deferred optional layer
+  throughout beam.ts / ship/damage.ts, and nothing here rerolls).
+- +27 tests (phalon.test.ts); 1088 passing (was 1061); typecheck clean.
+- Commit: this commit.

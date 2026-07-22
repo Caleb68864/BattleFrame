@@ -646,3 +646,38 @@ export const SAVASKU_DRONE_DICE_PER = 1;
  */
 export const SAVASKU_BIOMASS_MASS_PER_BOX = 1;
 export const SAVASKU_BIOMASS_POINTS_PER_BOX = 2;
+
+// --- Phalon bio-tech (Fleet Book 2 — Xeno File 3; roadmap P2 #20) ------------
+
+/**
+ * Plasma Bolt Launcher marker placement and burst/intercept radii. Source
+ * (user's "Phalon Systems" note): "Launches a bolt marker ... up to 30mu" and
+ * "any ship within 6mu of the marker may PDS it ... all ships within 6mu burst
+ * radius take full dice of damage". Range/radius checks live in the firing
+ * orchestration; these are exported for it, not used by the pure damage math.
+ */
+export const PLASMA_BOLT_MAX_RANGE_MU = 30;
+export const PLASMA_BOLT_BURST_RADIUS_MU = 6;
+export const PLASMA_BOLT_INTERCEPT_RADIUS_MU = 6;
+
+/**
+ * Plasma bolt interception: how PDS and scattergun/interceptor dice wear down a
+ * bolt's strength before it bursts. Source (user's "Phalon Systems" note): "each
+ * PDS 6 = -1 to bolt strength; scatterguns/interceptor pods roll like a beam
+ * die, 4-5 = -1, 6 = -2". The 4/5/6 interceptor thresholds coincide with the
+ * scattergun-vs-plasma numbers (SCATTERGUN_PLASMA_*) but are an
+ * independently-sourced Phalon rule, so they live in this block.
+ */
+export const PLASMA_BOLT_PDS_REDUCE_ON = 6;
+export const PLASMA_BOLT_INTERCEPT_ONE_REDUCE_MIN = 4;
+export const PLASMA_BOLT_INTERCEPT_TWO_REDUCE = 6;
+
+/**
+ * Plasma bolt burst is "full dice" (DP = die score) and screens/shrouds negate
+ * the high faces outright. Source (user's "Phalon Systems" note): "full dice of
+ * damage (DP = die score) ... screens/shrouds negate high rolls (level-1 negates
+ * 6s; level-2 / shroud negate 5s and 6s). No rerolls." The negated faces reuse
+ * DIE_TWO_DAMAGE (6) and DIE_ONE_DAMAGE_MAX (5) above; a vapour shroud "acts as
+ * a level-2 screen vs all energy attacks", so level 2 is the strongest entry.
+ */
+export const PLASMA_BOLT_SCREEN_MAX_LEVEL = 2;
