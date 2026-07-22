@@ -87,8 +87,9 @@ describe("entry point wiring (the init hook actually reaches every registration)
     for (const cb of inits) cb();
 
     expect(CONFIG.Actor.dataModels["battleframe-full-thrust.ship"]).toBeTypeOf("function");
-    expect(registerSheet).toHaveBeenCalledTimes(1);
-    expect(hoverRegister).toHaveBeenCalledTimes(1);
+    expect(CONFIG.Actor.dataModels["battleframe-full-thrust.fighter-group"]).toBeTypeOf("function");
+    expect(registerSheet).toHaveBeenCalledTimes(2); // ship + fighter-group
+    expect(hoverRegister).toHaveBeenCalledTimes(2); // ship + fighter-group
     expect(registerRuleset).toHaveBeenCalledTimes(1);
     // The scene control was registered -- the trigger that keeps combat reachable.
     expect(on).toHaveBeenCalledWith("getSceneControlButtons", expect.any(Function));

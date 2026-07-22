@@ -1,10 +1,12 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   buildFireReportHtml,
+  buildFighterReportHtml,
   addSceneControl,
   registerRoundControl
 } from "../src/ui/round-control";
 import type { FireReport } from "../src/combat/fire-ship";
+import type { FighterFireReport } from "../src/combat/fire-fighters";
 
 afterEach(() => vi.unstubAllGlobals());
 
@@ -47,6 +49,32 @@ describe("buildFireReportHtml", () => {
     const html = buildFireReportHtml(report(), { attacker: "<img src=x onerror=alert(1)>", target: "B" });
     expect(html).not.toContain("<img");
     expect(html).toContain("&lt;img");
+  });
+});
+
+describe("buildFighterReportHtml", () => {
+  const base: FighterFireReport = {
+    fired: true,
+    distance: 5,
+    totalDamage: 4,
+    destroyed: false,
+    thresholdsCrossed: [],
+    systemsKnockedOut: 0
+  };
+
+  it("summarises a fighter group's attack", () => {
+    const html = buildFighterReportHtml(base, { attacker: "Alpha Wing", target: "Enemy CA" });
+    expect(html).toContain("Alpha Wing");
+    expect(html).toContain("fighters");
+    expect(html).toContain("4");
+  });
+
+  it("reports when the group could not attack, escaping the reason", () => {
+    const html = buildFighterReportHtml(
+      { ...base, fired: false, reason: "out-of-range" },
+      { attacker: "A", target: "B" }
+    );
+    expect(html).toContain("out-of-range");
   });
 });
 

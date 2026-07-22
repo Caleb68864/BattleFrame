@@ -11,11 +11,9 @@
  * "Threshold Check".
  */
 
-import { DIE_SIZE } from "../constants";
-import { applyDamageToShip, type ShipActorLike } from "../data/ship-state";
+import { type ShipActorLike } from "../data/ship-state";
 import { resolveWeaponFire, type WeaponMount, type WeaponShot } from "./fire";
-import { thresholdKillOn, knockedOutIndices } from "../ship/threshold";
-import { enumerateSurvivingSystems, applySystemKnockouts } from "../ship/systems";
+import { applyDamageAndThreshold } from "./apply-damage";
 
 export interface FireContext {
   measure: {
@@ -75,36 +73,15 @@ export async function fireShipAtTarget(params: FireShipParams): Promise<FireRepo
     await attacker.update({ "system.weapons": updatedWeapons });
   }
 
-  const damageResult = await applyDamageToShip(target, fire.totalDamage);
-
-  let systemsKnockedOut = 0;
-  const thresholdsCrossed = damageResult.hull.thresholdsCrossed;
-
-  if (!damageResult.destroyed && thresholdsCrossed.length > 0) {
-    const worst = Math.max(...thresholdsCrossed);
-    const extra = thresholdsCrossed.length - 1;
-    const killOn = thresholdKillOn(worst, extra);
-
-    const refs = enumerateSurvivingSystems(target.system ?? {});
-    if (refs.length > 0) {
-      const faces = await context.dice.rollPool(refs.length, DIE_SIZE);
-      const lostIndices = knockedOutIndices(faces, killOn);
-      const lostRefs = lostIndices.map((i) => refs[i]);
-      systemsKnockedOut = lostRefs.length;
-
-      if (lostRefs.length > 0) {
-        await target.update(applySystemKnockouts(target.system ?? {}, lostRefs));
-      }
-    }
-  }
+  const outcome = await applyDamageAndThreshold(target, fire.totalDamage, context.dice);
 
   return {
     distance,
     bearing,
     totalDamage: fire.totalDamage,
     shots: fire.shots,
-    destroyed: damageResult.destroyed,
-    thresholdsCrossed,
-    systemsKnockedOut
+    destroyed: outcome.destroyed,
+    thresholdsCrossed: outcome.thresholdsCrossed,
+    systemsKnockedOut: outcome.systemsKnockedOut
   };
 }

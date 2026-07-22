@@ -1,0 +1,28 @@
+{{!-- Full Thrust fighter group. ApplicationV2 supplies the <form> root. --}}
+<div class="ft-fighter-sheet">
+  <div class="ft-field">
+    <label>{{localize "battleframe-full-thrust.fields.size"}}</label>
+    <input type="number" name="system.size" value="{{system.size}}" min="0" max="6" step="1" />
+  </div>
+  <div class="ft-field">
+    <label>Type</label>
+    <input type="text" name="system.fighterType" value="{{system.fighterType}}" list="ft-fighter-types" />
+    <datalist id="ft-fighter-types">
+      <option value="standard"></option>
+      <option value="fast"></option>
+      <option value="heavy"></option>
+      <option value="interceptor"></option>
+      <option value="attack"></option>
+      <option value="torpedo"></option>
+      <option value="long-range"></option>
+    </datalist>
+  </div>
+  <div class="ft-field">
+    <label>Endurance</label>
+    <input type="number" name="system.endurance" value="{{system.endurance}}" min="0" step="1" />
+  </div>
+  <div class="ft-field">
+    <label>Morale broken</label>
+    <input type="checkbox" name="system.moraleBroken" {{#if system.moraleBroken}}checked{{/if}} />
+  </div>
+</div>

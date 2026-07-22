@@ -1,6 +1,8 @@
-import { MODULE_ID, SHIP_ACTOR_TYPE } from "./constants";
+import { MODULE_ID, SHIP_ACTOR_TYPE, FIGHTER_GROUP_ACTOR_TYPE } from "./constants";
 import { registerShipDataModel } from "./data/ship";
+import { registerFighterGroupDataModel } from "./data/fighter-group";
 import { registerShipSheet } from "./sheets/ship-sheet";
+import { registerFighterSheet } from "./sheets/fighter-sheet";
 import { registerRoundControl } from "./ui/round-control";
 
 interface BattleframeRegisterResult {
@@ -77,6 +79,11 @@ export function registerFullThrustHoverFields(): void {
     ],
     defaultVisibility: "everyone"
   });
+
+  registry.register(`${MODULE_ID}.${FIGHTER_GROUP_ACTOR_TYPE}`, {
+    fields: [{ key: "size", label: `${MODULE_ID}.fields.size`, max: 6 }],
+    defaultVisibility: "everyone"
+  });
 }
 
 /** Registers Full Thrust as the active ruleset via the system's public API. */
@@ -109,7 +116,9 @@ const globalHooks = (globalThis as unknown as {
 
 globalHooks?.once("init", () => {
   registerShipDataModel();
+  registerFighterGroupDataModel();
   registerShipSheet();
+  registerFighterSheet();
   registerFullThrustHoverFields();
   // The reachable trigger: a scene control answering Foundry's own hook. Without
   // it the fire/movement code is tree-shaken out (see COVERAGE.md).

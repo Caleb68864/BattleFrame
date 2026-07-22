@@ -10,8 +10,9 @@
  * Sources: FT2 "Sequence of Play" (fire phase), "Movement Orders".
  */
 
-import { MODULE_ID } from "../constants";
+import { MODULE_ID, FIGHTER_GROUP_ACTOR_TYPE } from "../constants";
 import { fireShipAtTarget, type FireContext, type FireReport, type FiringShip } from "../combat/fire-ship";
+import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
 import { parseOrder, applyOrder } from "../movement/orders";
 import { COURSE_POINT_DEGREES } from "../constants";
 
@@ -44,6 +45,33 @@ export function buildFireReportHtml(report: FireReport, names: FireReportNames):
     `<p>Range ${Math.round(report.distance)}mu &middot; <strong>${report.totalDamage}</strong> damage.</p>`
   );
 
+  if (report.thresholdsCrossed.length > 0) {
+    lines.push(
+      `<p>Threshold check (row ${report.thresholdsCrossed.join(", ")}): ` +
+        `<strong>${report.systemsKnockedOut}</strong> system(s) knocked out.</p>`
+    );
+  }
+  if (report.destroyed) {
+    lines.push(`<p class="ft-destroyed"><strong>${target} destroyed.</strong></p>`);
+  }
+  lines.push(`</div>`);
+  return lines.join("");
+}
+
+/** Builds the chat-card HTML summarising a fighter group's attack on a ship. */
+export function buildFighterReportHtml(report: FighterFireReport, names: FireReportNames): string {
+  const attacker = escapeHtml(names.attacker);
+  const target = escapeHtml(names.target);
+
+  if (!report.fired) {
+    return `<div class="ft-fire-report"><h3>${attacker} &rarr; ${target}</h3>` +
+      `<p>No attack (${escapeHtml(report.reason ?? "unable")}).</p></div>`;
+  }
+
+  const lines: string[] = [];
+  lines.push(`<div class="ft-fire-report">`);
+  lines.push(`<h3>${attacker} (fighters) &rarr; ${target}</h3>`);
+  lines.push(`<p>Range ${Math.round(report.distance)}mu &middot; <strong>${report.totalDamage}</strong> damage.</p>`);
   if (report.thresholdsCrossed.length > 0) {
     lines.push(
       `<p>Threshold check (row ${report.thresholdsCrossed.join(", ")}): ` +
@@ -179,10 +207,31 @@ export async function fireAction(): Promise<void> {
   if (!attackerToken || !targetToken) {
     return;
   }
-  const attacker = toFiringShip(attackerToken);
   const target = toFiringShip(targetToken);
-  if (!attacker || !target) {
-    notify("warn", `${MODULE_ID} | both tokens need a ship actor`);
+  if (!target) {
+    notify("warn", `${MODULE_ID} | the target needs a ship actor`);
+    return;
+  }
+
+  // A fighter group attacks differently (size dice, 6mu fore arc) than a ship.
+  const attackerType = attackerToken?.actor?.type as string | undefined;
+  if (attackerType?.endsWith(FIGHTER_GROUP_ACTOR_TYPE)) {
+    const report = await fireFighterGroupAtTarget({
+      group: { token: attackerToken, system: attackerToken.actor.system },
+      target,
+      context: { measure: services.measure, facing: services.facing, dice: services.dice }
+    });
+    const html = buildFighterReportHtml(report, {
+      attacker: attackerToken?.name ?? "Fighters",
+      target: targetToken?.name ?? "Target"
+    });
+    await g().ChatMessage?.create({ content: html });
+    return;
+  }
+
+  const attacker = toFiringShip(attackerToken);
+  if (!attacker) {
+    notify("warn", `${MODULE_ID} | the attacker needs a ship actor`);
     return;
   }
 

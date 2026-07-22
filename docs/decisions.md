@@ -1935,3 +1935,18 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   render, DialogV2 order prompt -- flagged for the user. Advanced systems
   (fighters, missiles, PDS-vs-fighters, needle, ship-design helpers) still to come.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust advanced systems: fighters, PDS, ordnance, ship design
+- Fighter & anti-fighter math (combat/fighters.ts, pure): fighter attacks on ships
+  (beam table, screens apply), PDS vs fighters (4-5=1, 6=2), PDS vs missiles (only
+  6), dogfight kills. Ordnance (combat/ordnance.ts): needle beams (9mu, knock a
+  system on a 6, ignore screens/armour) and salvo missiles (interception + damage).
+- Fighter group Actor subtype (data/fighter-group.ts) + minimal sheet; fighter
+  attack orchestrator (combat/fire-fighters.ts): 6mu fore-arc, one die per fighter,
+  shared armour/hull + threshold via extracted combat/apply-damage.ts.
+- Ship-design helpers (ship/design.ts, pure FT2 Mass/Points), verified vs the
+  worked example (MASS 36 superheavy cruiser = 267 points).
+- Scene control Fire tool dispatches ship-weapons vs fighter-attack by actor type.
+- 708 tests passing; build 31kB/21 modules. Deferred: full fighter ops, moving
+  missiles, damage control, vector movement, live Foundry verification.
+- Commit: this commit.
