@@ -63,8 +63,12 @@ in a live Foundry.
 10. **[qol] Visual SSD** — 🟡 PARTIAL: the sheet + hover now show "remaining/design" tracks for
     hull, thrust, FCS, screens, PDS (design+damage model). Still to do: clickable damage boxes
     and an arc/range diagram instead of number inputs.
-11. **[qol] Pre-fire targeting feedback** — show which weapons bear + the range band before
-    committing (arc/range math already exists); today you learn "out of arc" only after firing.
+11. ~~**[qol] Pre-fire targeting feedback.**~~ ✅ **DONE 2026-07-22.** `combat/targeting.ts`
+    `previewTargeting` returns a per-weapon row (bears? / in-range? / dice or to-hit) WITHOUT
+    rolling, mirroring `resolveWeaponFire`'s precedence exactly so it never disagrees with the
+    actual shot; a "Check Targeting" scene tool (player-visible, whispered card via
+    `buildTargetingReportHtml`) shows which weapons bear + their range band before you commit.
+    Pure core + HTML builder unit-tested; the scene-tool click is live-unverified.
 12. **[qol]** 🟡 PARTIAL: a "New Turn" GM tool clears leftover plots + ends the fire phase
     (`newTurnAction`). Still to do: a visible turn/phase tracker, a full "New Battle" reset, and
     localized chat cards.

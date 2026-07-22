@@ -44,6 +44,7 @@ deferred. Nothing is silently missing.
 | Rule | Status | Where |
 |---|---|---|
 | 6 × 60° arcs (F, FS, AS, A, AP, FP), weapon must bear | ✅ | `combat/arcs.ts` over the engine bearing |
+| Pre-fire targeting preview (which weapons bear + range band, no roll) | ✅ | `combat/targeting.ts` `previewTargeting` (mirrors `resolveWeaponFire` precedence) + a player-visible "Check Targeting" tool whispering `buildTargetingReportHtml` |
 
 ## Weapons
 | Rule | Status | Where |

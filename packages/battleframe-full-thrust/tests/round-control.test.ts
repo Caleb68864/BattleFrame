@@ -3,12 +3,14 @@ import {
   buildFireReportHtml,
   buildFighterReportHtml,
   buildNeedleReportHtml,
+  buildTargetingReportHtml,
   addSceneControl,
   registerRoundControl,
   executeManeuversAction,
   beginFirePhaseAction,
   newTurnAction
 } from "../src/ui/round-control";
+import type { TargetingRow } from "../src/combat/targeting";
 import type { FireReport } from "../src/combat/fire-ship";
 import type { FighterFireReport } from "../src/combat/fire-fighters";
 
@@ -129,6 +131,36 @@ describe("buildNeedleReportHtml", () => {
   });
 });
 
+describe("buildTargetingReportHtml", () => {
+  const rows: TargetingRow[] = [
+    { index: 0, kind: "beam", status: "will-fire", dice: 3, toHit: null, effect: "3D6" },
+    { index: 1, kind: "torpedo", status: "out-of-arc", dice: null, toHit: null, effect: "out of arc" }
+  ];
+
+  it("lists each weapon with its effect and names the ships + range", () => {
+    const html = buildTargetingReportHtml(rows, { attacker: "RNS Lion", target: "Enemy DD" }, 14);
+    expect(html).toContain("RNS Lion");
+    expect(html).toContain("Enemy DD");
+    expect(html).toContain("14"); // range
+    expect(html).toContain("3D6");
+    expect(html.toLowerCase()).toContain("out of arc");
+  });
+
+  it("notes when no weapon bears", () => {
+    const noneBear: TargetingRow[] = [
+      { index: 0, kind: "beam", status: "out-of-range", dice: null, toHit: null, effect: "out of range" }
+    ];
+    const html = buildTargetingReportHtml(noneBear, { attacker: "A", target: "B" }, 99);
+    expect(html.toLowerCase()).toContain("no weapon");
+  });
+
+  it("escapes ship names (never injects raw HTML)", () => {
+    const html = buildTargetingReportHtml(rows, { attacker: "<img src=x onerror=alert(1)>", target: "B" }, 10);
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img");
+  });
+});
+
 describe("addSceneControl", () => {
   it("adds a Full Thrust control with fire and plot tools (array payload)", () => {
     vi.stubGlobal("game", { user: { isGM: true } });
@@ -140,6 +172,7 @@ describe("addSceneControl", () => {
     const toolNames = controls[0].tools.map((t: any) => t.name);
     expect(toolNames).toContain("full-thrust-initiative");
     expect(toolNames).toContain("full-thrust-fire");
+    expect(toolNames).toContain("full-thrust-targeting");
     expect(toolNames).toContain("full-thrust-needle");
     expect(toolNames).toContain("full-thrust-salvo");
     expect(toolNames).toContain("full-thrust-plot");

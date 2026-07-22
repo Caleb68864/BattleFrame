@@ -2240,3 +2240,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   ROTATION_THRUSTER_COST). COVERAGE vector-movement row flipped from deferred to 🟡 (math built).
 - +16 tests (tests/vector.test.ts); 843 passing; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: pre-fire targeting preview (roadmap P1 #11)
+- Added `combat/targeting.ts` `previewTargeting`: a PURE per-weapon preview (bears? / in-range? /
+  dice or to-hit) computed WITHOUT rolling, so a player sees which weapons reach a target and in
+  which range band BEFORE committing to fire, rather than learning "out of arc" only afterwards.
+  The fire/no-fire precedence (destroyed → spent → out-of-arc → per-kind range) mirrors
+  `combat/fire.ts` `resolveWeaponFire` exactly, so the preview can never disagree with the actual
+  shot. Salvo (24mu) and needle (9mu) — which have their own tools — are previewed on their own
+  ranges so the whole loadout's reach shows at once.
+- Wired a "Check Targeting" scene tool (`checkTargetingAction`) — player-visible (it only reads
+  the player's own ship's reach), whispering `buildTargetingReportHtml` to the acting user so the
+  card does not clutter the shared log. Placed right after the Fire tool.
+- +15 tests (targeting.test.ts 12, round-control buildTargetingReportHtml 3); 880 passing;
+  typecheck clean. The pure core + HTML builder are unit-tested; the scene-tool click is
+  live-unverified (P3 debt). COVERAGE Fire-Arcs section gains a preview row; roadmap #11 → ✅.
+- Commit: this commit.

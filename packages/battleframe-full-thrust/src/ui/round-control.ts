@@ -41,6 +41,7 @@ import { parseFleet } from "../data/fleet-import";
 import { fireNeedleAtSystem, type NeedleReport } from "../combat/needle";
 import { resolveSalvoAtTarget, type SalvoReport } from "../combat/salvo";
 import { resolveDogfight, type DogfightReport } from "../combat/dogfight";
+import { previewTargeting, type TargetingRow } from "../combat/targeting";
 import { resolveDamageControl, damageControlRepairs } from "../combat/damage-control";
 import { syncShipStatuses } from "../status";
 import type { SystemRef } from "../ship/systems";
@@ -160,6 +161,36 @@ export function buildDogfightReportHtml(report: DogfightReport, names: FireRepor
       : `<p>${target} could not return fire.</p>`
   ];
   return wrapReport(`${attacker} &times; ${target} (dogfight)`, lines);
+}
+
+/**
+ * Builds the pre-fire targeting card: one line per weapon showing whether it
+ * bears and what it would do at this range, so a player sees their reach BEFORE
+ * committing to fire (roadmap P1 #11). Rows come from the pure `previewTargeting`.
+ */
+export function buildTargetingReportHtml(
+  rows: readonly TargetingRow[],
+  names: FireReportNames,
+  distanceMu: number
+): string {
+  const attacker = escapeHtml(names.attacker);
+  const target = escapeHtml(names.target);
+  const heading = `${attacker} &rarr; ${target} (targeting)`;
+  const range = `<p>Range <strong>${Math.round(distanceMu)}mu</strong>.</p>`;
+
+  const bearing = rows.filter((r) => r.status === "will-fire");
+  if (bearing.length === 0) {
+    return wrapReport(heading, [range, `<p><em>No weapon bears on the target.</em></p>`]);
+  }
+
+  const items = rows
+    .map((r) => {
+      const label = `${escapeHtml(r.kind)}${r.kind === "beam" && r.dice ? "" : ""}`;
+      const cls = r.status === "will-fire" ? "ft-bears" : "ft-no-bear";
+      return `<li class="${cls}">${label}: ${escapeHtml(r.effect)}</li>`;
+    })
+    .join("");
+  return wrapReport(heading, [range, `<ul class="ft-targeting">${items}</ul>`]);
 }
 
 // --- Injectable actions (testable core) -------------------------------------
@@ -464,6 +495,46 @@ export async function salvoAction(): Promise<void> {
     target: targetToken?.name ?? "Target"
   });
   await g().ChatMessage?.create({ content: html });
+}
+
+/**
+ * Targeting-tool action: preview which of the controlled ship's weapons bear on
+ * the targeted ship, and their effect at this range, WITHOUT firing (roadmap P1
+ * #11). Available to players (it only reads their own ship's reach); the card is
+ * whispered to the acting user so it does not clutter the shared log.
+ */
+export async function checkTargetingAction(): Promise<void> {
+  const services = api();
+  if (!services) {
+    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+    return;
+  }
+  const attackerToken = controlledToken();
+  const targetToken = targetedToken();
+  if (!attackerToken || !targetToken) {
+    return;
+  }
+  const attacker = toFiringShip(attackerToken);
+  if (!attacker || !attacker.system) {
+    notify("warn", `${MODULE_ID} | select one of your ships to check its targeting`);
+    return;
+  }
+
+  const distance = services.measure.between(attackerToken, targetToken, "centre-to-centre").distance;
+  const bearing = services.facing.bearingOf(attackerToken, targetToken);
+  const weapons = (attacker.system.weapons ?? []) as any[];
+  const rows = previewTargeting({ weapons, distanceMu: distance, bearing });
+
+  const html = buildTargetingReportHtml(
+    rows,
+    { attacker: attackerToken?.name ?? "Attacker", target: targetToken?.name ?? "Target" },
+    distance
+  );
+  const userId = g().game?.user?.id;
+  await g().ChatMessage?.create({
+    content: html,
+    whisper: userId ? [userId] : undefined
+  });
 }
 
 /** The scene grid pixels-per-mu for the token's scene. */
@@ -842,6 +913,17 @@ export function addSceneControl(controls: unknown): void {
     order: 1,
     onClick: () => void fireAction(),
   };
+  // Pre-fire targeting check: which weapons bear + their range band -- any player
+  // (it only reads their own ship's reach; the card is whispered to them).
+  const targetingTool = {
+    name: "full-thrust-targeting",
+    title: "battleframe-full-thrust.controls.targeting",
+    icon: "fas fa-bullseye",
+    button: true,
+    visible: true,
+    order: 2,
+    onClick: () => void checkTargetingAction(),
+  };
   const needleTool = {
     name: "full-thrust-needle",
     title: "battleframe-full-thrust.controls.needle",
@@ -921,7 +1003,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, fireTool, needleTool, salvoTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
+  const tools = [initiativeTool, fireTool, targetingTool, needleTool, salvoTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);
