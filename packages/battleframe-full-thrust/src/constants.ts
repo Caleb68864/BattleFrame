@@ -348,3 +348,32 @@ export const MISSILE_EMP_STRONG_KILL_ON = 4;
 export const MISSILE_NEEDLE_WARHEAD_DICE = 1;
 /** The nominated system is knocked out on a die of this or higher (the "4-6"). */
 export const MISSILE_NEEDLE_KNOCKOUT_MIN = 4;
+
+// --- Fleet Book variable hull strength (Fleet Book 1) -----------------------
+
+/**
+ * Fleet Book hull-integrity grades: each takes a percentage of the ship's total
+ * MASS, and "that same MASS figure becomes the ship's damage (hull) boxes".
+ * Source (user's "Variable Hull Strength" note table): Fragile 10, Weak 20,
+ * Average 30, Strong 40, Super 50 (percent of total MASS).
+ */
+export const VARIABLE_HULL_GRADE_PERCENT = {
+  fragile: 10,
+  weak: 20,
+  average: 30,
+  strong: 40,
+  super: 50
+} as const;
+
+/**
+ * Hull-integrity points cost per unit MASS. Source (Variable Hull Strength):
+ * "Points cost of the hull integrity is always 2 x the MASS used on it."
+ */
+export const VARIABLE_HULL_POINTS_PER_MASS = 2;
+
+/**
+ * Rows the variable damage track is split into. Source (Variable Hull Strength):
+ * "Damage boxes are split into 4 rows ... if not divisible by 4, extra boxes go
+ * in the upper rows."
+ */
+export const VARIABLE_HULL_ROWS = 4;

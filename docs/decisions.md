@@ -2472,3 +2472,34 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - TDD: tests/fighter-move.test.ts first (hand-computed vectors), watched fail (missing module),
   then implemented. +11 tests; 981 passing; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: Fleet Book conditional aft fire + variable hull (P2 #19, pure)
+- Gap: two Fleet Book pure-math layers were unbuilt. (a) `combat/arcs.ts weaponBearsOn` had no
+  notion of whether the firer thrusted, so the Fleet Book conditional aft-fire rule could not be
+  expressed. (b) `ship/hull.ts`/`ship/design.ts` only modelled FT2's fixed hull-boxes-by-MASS,
+  not the Fleet Book variable-hull design choice.
+- Both rules are explicitly described in the user's notes (verified, not invented):
+  - Conditional aft fire — "Fire Arcs" note: "Fleet Book optional aft-arc fire: all-round turret
+    weapons may fire aft on a turn in which the ship applied no main-drive thrust (course changes /
+    thruster use are fine; any accel/decel blocks aft fire that turn)."
+  - Variable hull — "Variable Hull Strength" note: five grades taking 10/20/30/40/50% of MASS,
+    "that same MASS figure becomes the ship's damage (hull) boxes ... Points cost of the hull
+    integrity is always 2 x the MASS used on it ... split into 4 rows; if not divisible by 4,
+    extra boxes go in the upper rows." Verified against the MASS-60 worked example.
+- New PURE files, both OPT-IN (default paths untouched): `src/combat/aft-fire.ts` (isAllRoundTurret,
+  aftFirePermitted, additive weaponBearsOnWithAftFire — reduces to weaponBearsOn when the ship
+  thrusted or the target is not aft), `src/ship/variable-hull.ts` (hullBoxesForGrade,
+  variableHullMassUsed, variableHullPointsCost, hullPointsForGrade, variableHullLayout reusing
+  ship/hull.ts rowBoundaries).
+- Modelling choices: an "all-round turret" = a mount covering all five non-aft arcs (the FTL aft
+  blind spot blacks out A on every icon; the conditional rule reopens it). aftFirePermitted is the
+  conditional GRANT only — a mount already listing "A" bears via weaponBearsOn, so the grant adds
+  nothing there.
+- ASSUMPTION (flagged in code): the note's cost = "2 x MASS used" and boxes == MASS used, so cost =
+  2 x boxes, independent of total MASS (total MASS only bounds legal grades, 10-50%). Fractional box
+  counts (non-MASS-60 ships) round to nearest integer (Math.round); floor/ceil would be a one-liner.
+- New rules numbers appended to END of `constants.ts` (VARIABLE_HULL_GRADE_PERCENT,
+  VARIABLE_HULL_POINTS_PER_MASS, VARIABLE_HULL_ROWS) with source-quote comments. Conditional aft
+  fire needs no new number (reuses the existing "A" FireArc). +20 tests (aft-fire 12, variable-hull
+  8); 990 passing; typecheck clean. COVERAGE.md / roadmap-full-thrust.md left untouched per scope.
+- Commit: this commit.
