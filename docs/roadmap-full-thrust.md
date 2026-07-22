@@ -65,7 +65,9 @@ in a live Foundry.
     and an arc/range diagram instead of number inputs.
 11. **[qol] Pre-fire targeting feedback** — show which weapons bear + the range band before
     committing (arc/range math already exists); today you learn "out of arc" only after firing.
-12. **[qol] Turn/phase tracker, "new battle" reset, clear-all-plots, localized chat cards.**
+12. **[qol]** 🟡 PARTIAL: a "New Turn" GM tool clears leftover plots + ends the fire phase
+    (`newTurnAction`). Still to do: a visible turn/phase tracker, a full "New Battle" reset, and
+    localized chat cards.
 13. **[qol] Friendlier plot entry** (click-to-set thrust/turn) alongside the raw `+4,P2` text.
 
 ## P2 — Advanced rules (need new math)

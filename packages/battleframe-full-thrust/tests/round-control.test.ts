@@ -6,7 +6,8 @@ import {
   addSceneControl,
   registerRoundControl,
   executeManeuversAction,
-  beginFirePhaseAction
+  beginFirePhaseAction,
+  newTurnAction
 } from "../src/ui/round-control";
 import type { FireReport } from "../src/combat/fire-ship";
 import type { FighterFireReport } from "../src/combat/fire-fighters";
@@ -144,6 +145,7 @@ describe("addSceneControl", () => {
     expect(toolNames).toContain("full-thrust-plot");
     expect(toolNames).toContain("full-thrust-execute");
     expect(toolNames).toContain("full-thrust-damage-control");
+    expect(toolNames).toContain("full-thrust-new-turn");
     expect(toolNames).toContain("full-thrust-import");
   });
 
@@ -267,6 +269,37 @@ describe("beginFirePhaseAction (roll initiative, persist the fire phase)", () =>
 
     await beginFirePhaseAction();
     expect(warn).toHaveBeenCalled();
+  });
+});
+
+describe("newTurnAction", () => {
+  it("clears plotted orders and the fire phase", async () => {
+    const shipFlags: Record<string, any> = { plottedOrder: "+4" };
+    const sceneFlags: Record<string, any> = { firePhase: { firstSideId: "1" } };
+    const ship = {
+      actor: {
+        type: "battleframe-full-thrust.ship",
+        getFlag: (_m: string, k: string) => shipFlags[k],
+        unsetFlag: (_m: string, k: string) => {
+          delete shipFlags[k];
+          return Promise.resolve();
+        }
+      }
+    };
+    const scene = {
+      unsetFlag: (_m: string, k: string) => {
+        delete sceneFlags[k];
+        return Promise.resolve();
+      }
+    };
+    vi.stubGlobal("game", { user: { isGM: true }, combats: { active: undefined } });
+    vi.stubGlobal("canvas", { tokens: { placeables: [ship] }, scene });
+    vi.stubGlobal("ui", { notifications: { info: vi.fn(), warn: vi.fn() } });
+
+    await newTurnAction();
+
+    expect(shipFlags.plottedOrder).toBeUndefined();
+    expect(sceneFlags.firePhase).toBeUndefined();
   });
 });
 

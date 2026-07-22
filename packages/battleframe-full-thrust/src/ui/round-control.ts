@@ -612,6 +612,33 @@ export async function executeManeuversAction(): Promise<void> {
 }
 
 /**
+ * New-turn action (GM): clears any leftover secretly-plotted orders and ends the
+ * fire phase, so the next turn starts clean. (Movement/damage persist -- this
+ * only resets the per-turn plotting + fire-order bookkeeping.)
+ */
+export async function newTurnAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM starts a new turn`);
+    return;
+  }
+  const tokens = g().canvas?.tokens?.placeables ?? [];
+  let cleared = 0;
+  for (const token of tokens) {
+    const actor = token?.actor;
+    if (typeof actor?.type !== "string" || !actor.type.endsWith(SHIP_ACTOR_TYPE)) {
+      continue;
+    }
+    if (actor.getFlag?.(MODULE_ID, PLOTTED_ORDER_FLAG) !== undefined) {
+      await actor.unsetFlag?.(MODULE_ID, PLOTTED_ORDER_FLAG);
+      cleared += 1;
+    }
+  }
+  await firePhaseDoc()?.unsetFlag(MODULE_ID, FIRE_PHASE_FLAG);
+  clearMovementPreview();
+  notify("info", `${MODULE_ID} | new turn -- cleared ${cleared} plot(s) and ended the fire phase`);
+}
+
+/**
  * Damage-control action (GM, end of turn): each ship's Damage Control Parties
  * roll (a 6 repairs a system); repairs restore knocked-out systems in priority
  * order. Reads `damageControl` (party count) off each ship.
@@ -819,6 +846,17 @@ export function addSceneControl(controls: unknown): void {
     onClick: () => void executeManeuversAction(),
     onChange: () => void executeManeuversAction()
   };
+  // Start a fresh turn: clear leftover plots + end the fire phase -- GM only.
+  const newTurnTool = {
+    name: "full-thrust-new-turn",
+    title: "battleframe-full-thrust.controls.newTurn",
+    icon: "fas fa-forward",
+    button: true,
+    visible: gm,
+    order: 7,
+    onClick: () => void newTurnAction(),
+    onChange: () => void newTurnAction()
+  };
   // Import a fleet from JSON -- any player (subject to Foundry's create-actor perm).
   const importTool = {
     name: "full-thrust-import",
@@ -842,7 +880,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, fireTool, needleTool, salvoTool, plotTool, executeTool, damageControlTool, importTool];
+  const tools = [initiativeTool, fireTool, needleTool, salvoTool, plotTool, executeTool, damageControlTool, newTurnTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);
