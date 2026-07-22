@@ -4,6 +4,7 @@ import { registerFighterGroupDataModel } from "./data/fighter-group";
 import { registerShipSheet } from "./sheets/ship-sheet";
 import { registerFighterSheet } from "./sheets/fighter-sheet";
 import { registerRoundControl } from "./ui/round-control";
+import { registerOwnershipWarning } from "./ui/ownership-warning";
 
 interface BattleframeRegisterResult {
   ok: boolean;
@@ -123,5 +124,7 @@ globalHooks?.once("init", () => {
   // The reachable trigger: a scene control answering Foundry's own hook. Without
   // it the fire/movement code is tree-shaken out (see COVERAGE.md).
   registerRoundControl();
+  // Warn if a ship's ownership is changed so an opponent could read its plot.
+  registerOwnershipWarning();
   registerFullThrustRuleset();
 });

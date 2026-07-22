@@ -23,6 +23,7 @@ import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire
 import { plotMovementPath, type MovementPath } from "../movement/path";
 import { previewPointsPx } from "../movement/preview";
 import { drawMovementPreview, clearMovementPreview } from "./preview-overlay";
+import { parseFleet } from "../data/fleet-import";
 
 // --- Pure report formatting (unit-tested) -----------------------------------
 
@@ -143,7 +144,7 @@ export function pixelsPerMu(grid: { size?: number; distance?: number } | undefin
 
 interface GlobalScope {
   game?: {
-    user?: { isGM?: boolean; targets?: { first?: () => unknown } };
+    user?: { isGM?: boolean; id?: string; targets?: { first?: () => unknown } };
     battleframe?: RoundControlApi;
   };
   battleframe?: RoundControlApi;
@@ -154,6 +155,7 @@ interface GlobalScope {
   ui?: { notifications?: { warn?: (t: string) => void; error?: (t: string) => void; info?: (t: string) => void } };
   Hooks?: { on?: (event: string, cb: (...args: unknown[]) => void) => void };
   ChatMessage?: { create: (data: Record<string, unknown>) => Promise<unknown> };
+  Actor?: { createDocuments: (data: any[]) => Promise<unknown> };
   foundry?: { applications?: { api?: { DialogV2?: { prompt: (opts: unknown) => Promise<unknown> } } } };
 }
 
@@ -355,6 +357,64 @@ export async function executeManeuversAction(): Promise<void> {
   notify("info", `${MODULE_ID} | executed ${moved} maneuver(s)`);
 }
 
+/**
+ * Import-tool action: the player pastes their own fleet JSON and it becomes ship
+ * Actors they own. Bring-your-own-data -- we ship no fleet lists. Actor creation
+ * is gated by Foundry's "Create New Actors" world permission; if the player
+ * lacks it, we say so rather than failing silently (the GM enables it or imports
+ * for them).
+ */
+export async function importFleetAction(): Promise<void> {
+  const dialog = g().foundry?.applications?.api?.DialogV2;
+  let json = "";
+  if (dialog?.prompt) {
+    json = ((await dialog.prompt({
+      window: { title: "Full Thrust: Import Fleet" },
+      content:
+        `<p>Paste your fleet JSON (an object with a <code>ships</code> array):</p>` +
+        `<textarea name="fleet" rows="14" style="width:100%"></textarea>`,
+      ok: {
+        label: "Import",
+        callback: (_event: unknown, button: any) => button?.form?.elements?.fleet?.value ?? ""
+      }
+    })) as string) ?? "";
+  }
+  if (!json.trim()) {
+    return;
+  }
+
+  const { ships, errors } = parseFleet(json);
+  for (const error of errors) {
+    notify("warn", `${MODULE_ID} | ${error}`);
+  }
+  if (ships.length === 0) {
+    notify("warn", `${MODULE_ID} | no ships imported`);
+    return;
+  }
+
+  // Owned by the importing player, so only they (and the GM) can read it.
+  const userId = g().game?.user?.id;
+  const toCreate = ships.map((ship) =>
+    userId ? { ...ship, ownership: { [userId]: 3 } } : ship
+  );
+
+  const actorClass = g().Actor;
+  if (!actorClass?.createDocuments) {
+    notify("error", `${MODULE_ID} | cannot create actors in this context`);
+    return;
+  }
+  try {
+    await actorClass.createDocuments(toCreate);
+    notify("info", `${MODULE_ID} | imported ${ships.length} ship(s)`);
+  } catch {
+    notify(
+      "error",
+      `${MODULE_ID} | could not create the ships -- ask your GM to enable "Create New Actors" ` +
+        `for players, or to import the fleet for you`
+    );
+  }
+}
+
 /** Course heading as a token rotation angle (degrees, clockwise from up). */
 function courseRotation(course: number): number {
   return (course % COURSES) * COURSE_POINT_DEGREES;
@@ -425,6 +485,17 @@ export function addSceneControl(controls: unknown): void {
     onClick: () => void executeManeuversAction(),
     onChange: () => void executeManeuversAction()
   };
+  // Import a fleet from JSON -- any player (subject to Foundry's create-actor perm).
+  const importTool = {
+    name: "full-thrust-import",
+    title: "battleframe-full-thrust.controls.import",
+    icon: "fas fa-file-import",
+    button: true,
+    visible: true,
+    order: 3,
+    onClick: () => void importFleetAction(),
+    onChange: () => void importFleetAction()
+  };
 
   const control = {
     name: MODULE_ID,
@@ -438,7 +509,7 @@ export function addSceneControl(controls: unknown): void {
   };
 
   if (Array.isArray(controls)) {
-    control.tools = [fireTool, plotTool, executeTool];
+    control.tools = [fireTool, plotTool, executeTool, importTool];
     controls.push(control);
     return;
   }
@@ -446,7 +517,8 @@ export function addSceneControl(controls: unknown): void {
     control.tools = {
       [fireTool.name]: fireTool,
       [plotTool.name]: plotTool,
-      [executeTool.name]: executeTool
+      [executeTool.name]: executeTool,
+      [importTool.name]: importTool
     };
     (controls as Record<string, unknown>)[MODULE_ID] = control;
   }

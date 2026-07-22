@@ -2031,4 +2031,21 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   against a live Foundry canvas (the pure geometry and the execute logic are unit-tested).
 - Secrecy relies on the normal ownership setup (each player owns only their own ships); documented.
 - 743 tests passing.
+- Commit: b715ec8.
+
+## 2026-07-22 — Full Thrust: ownership-secrecy warning + player fleet import (user requests)
+- Ownership warning: ui/ownership-warning.ts hooks `updateActor`; when a ship's ownership is
+  changed so 2+ non-GM players can OBSERVE it (>= level 2, the point at which a user receives the
+  document's flags), it warns via DialogV2 (notification fallback) that an opponent could now read
+  the secretly-plotted order. Pure `plotSecrecyAtRisk(ownership, users)` tested (owner-only = safe,
+  a second observer / default>=OBSERVER = at risk, GM ignored, LIMITED can't read).
+- Fleet import (self-service, answers "can players build/import their fleet"): data/fleet-import.ts
+  `parseFleet` (pure, tested) turns a bring-your-own-data JSON fleet into ship Actor create-data
+  (derives the hull track from MASS when omitted, clamps out-of-range fields, drops unknown weapon
+  kinds/arcs with a note). "Import Fleet" scene tool creates the actors owned by the importing
+  player. Foundry's "Create New Actors" world permission still gates it -- the tool says so on
+  failure. Format documented in FLEET-FORMAT.md. We ship no fleet data.
+- Prior state (now answered): ship building was sheet-only and actor CREATION is GM-gated by
+  default, so the GM prepped ships; the importer + the permission note give players a self-serve path.
+- 757 tests passing.
 - Commit: this commit.

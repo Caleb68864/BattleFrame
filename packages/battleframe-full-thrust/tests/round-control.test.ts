@@ -118,6 +118,7 @@ describe("addSceneControl", () => {
     expect(toolNames).toContain("full-thrust-fire");
     expect(toolNames).toContain("full-thrust-plot");
     expect(toolNames).toContain("full-thrust-execute");
+    expect(toolNames).toContain("full-thrust-import");
   });
 
   it("adds the control under the keyed-record payload shape too", () => {

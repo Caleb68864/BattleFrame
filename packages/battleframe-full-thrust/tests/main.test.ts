@@ -93,5 +93,7 @@ describe("entry point wiring (the init hook actually reaches every registration)
     expect(registerRuleset).toHaveBeenCalledTimes(1);
     // The scene control was registered -- the trigger that keeps combat reachable.
     expect(on).toHaveBeenCalledWith("getSceneControlButtons", expect.any(Function));
+    // The ownership-secrecy guard was registered too.
+    expect(on).toHaveBeenCalledWith("updateActor", expect.any(Function));
   });
 });
