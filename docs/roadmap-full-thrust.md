@@ -132,8 +132,10 @@ in a live Foundry.
     card. Live-verified in Foundry (2 FCS: per-target damage + threshold, targets Set read, zero
     errors). The greedy allocation concentrates fire; an explicit per-weapon target-picker UI is a
     possible future refinement.
-19. **[build] Fleet Book optional layers** — 🟡 PARTIAL (2026-07-22). `ship/fleet-book.ts` adds the
-    three damage layers — reroll/penetrating damage (chaining 6s), armour bypass (direct-to-hull),
+19. **[build] Fleet Book optional layers** — 🟡 PARTIAL (2026-07-22). **Penetrating damage is now
+    WIRED behind a world setting** ("Fleet Book: penetrating damage", default off) — beams reroll
+    chaining 6s via `poolPenetratingDamage`, threaded through the fire pipeline; the default path is
+    byte-identical. `ship/fleet-book.ts` adds the three damage layers — reroll/penetrating damage (chaining 6s), armour bypass (direct-to-hull),
     core-systems +1. **Conditional aft fire** (`combat/aft-fire.ts` — all-round turrets fire aft
     only on a no-main-thrust turn) and the **variable-hull design system** (`ship/variable-hull.ts`
     — 10–50%-of-mass hull grades, cost = 2×boxes, 4-row layout; verified vs the notes' worked
