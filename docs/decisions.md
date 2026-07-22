@@ -3182,4 +3182,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Surfaces: `packages/battleframe-stargrunt-ii/src/combat/{fire.ts,impact.ts,range.ts,
   casualties.ts}`, `tests/{fire,impact,range,casualties}.test.ts`. +26 tests (35 total);
   typecheck clean.
+- Commit: 7c5f4de.
+
+## 2026-07-22 — SG2 morale (C1-C3): confidence grades a failure, reaction is a bare pass/fail
+- Decision: built the pure state/morale primitives test-first. C1 suppression is a 0..3
+  counter: `placeSuppression` stacks capped at 3, `removeSuppression` decrements floored at 0,
+  `clearSuppressionRoll(qualityRoll, lv)` succeeds on a STRICT exceed (caller decrements on
+  true — one marker per success). C2 `confidenceTest(qualityRoll, lv, threatLevel)` grades a
+  failure: score = lv+threat, `roll > score` holds (drop 0), `<=` drops 1, `<= floor(score/2)`
+  drops 2 (the half-or-less branch — design risk 7). C3 `reactionTest` reuses the identical
+  `roll > lv+threat` comparison but returns a bare boolean and NEVER touches confidence — the
+  distinct return type is deliberate so a lost-action reaction can never be miswired into a
+  confidence drop. Mission Motivation is not consulted in the reaction test (it only scales how
+  often confidence tests occur).
+- Surfaces: `packages/battleframe-stargrunt-ii/src/round/{suppression.ts,morale.ts}`,
+  `tests/{suppression,morale}.test.ts`. +9 tests (44 total); typecheck clean.
 - Commit: this commit.
