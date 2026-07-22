@@ -34,8 +34,9 @@ export function registerShipStatusEffects(): void {
   if (!registry) {
     return;
   }
-  registry.register({ id: CRIPPLED_STATUS, name: "battleframe-full-thrust.status.crippled", img: "icons/svg/downgrade.svg" });
-  registry.register({ id: WEAPONS_OFFLINE_STATUS, name: "battleframe-full-thrust.status.weaponsOffline", img: "icons/svg/explosion.svg" });
+  // Icons are game-icons.net (CC BY 3.0, see ATTRIBUTIONS.md), shipped in the module.
+  registry.register({ id: CRIPPLED_STATUS, name: "battleframe-full-thrust.status.crippled", img: "modules/battleframe-full-thrust/icons/crippled.svg" });
+  registry.register({ id: WEAPONS_OFFLINE_STATUS, name: "battleframe-full-thrust.status.weaponsOffline", img: "modules/battleframe-full-thrust/icons/weapons-offline.svg" });
 }
 
 export interface StatusShipLike {

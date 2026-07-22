@@ -59,3 +59,6 @@ docs/api-full-thrust/
 /local-test/
 playwright-report/
 test-results/
+
+# Agent worktrees + Claude local state
+.claude/

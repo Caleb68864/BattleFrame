@@ -16,3 +16,11 @@ the BattleFrame system, provided free of charge and **not for sale**.
 
 *Full Thrust © Jon M. Tuffley / Ground Zero Games.* This module is an unofficial,
 non-commercial fan implementation and is not endorsed by or affiliated with Ground Zero Games.
+
+## Bundled icons (CC BY 3.0)
+
+The `icons/` directory contains icon artwork from **[game-icons.net](https://game-icons.net)**
+by **Lorc** and **Delapouite**, licensed **[CC BY 3.0](https://creativecommons.org/licenses/by/3.0/)**
+and used with attribution (unmodified aside from renaming / runtime recoloring). Full per-icon
+credits are in the repository-root `ATTRIBUTIONS.md`. This artwork is freely licensed community
+work — it is NOT copyrighted Full Thrust / GZG artwork, of which the module ships none.

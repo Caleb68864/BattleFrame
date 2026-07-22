@@ -1,0 +1,16 @@
+Icons from game-icons.net, licensed CC BY 3.0 (https://creativecommons.org/licenses/by/3.0/).
+Authors: Lorc and Delapouite. Source: https://github.com/game-icons/icons
+
+ship.svg             spaceship        Delapouite
+rocket.svg           rocket           Lorc
+destroyed.svg        death-zone       Lorc
+explosion.svg        explosion-rays   Lorc
+screens.svg          cracked-shield   Lorc
+weapons-offline.svg  screen-impact    Lorc
+power.svg            power-lightning  Lorc
+beam.svg             laser-blast      Lorc
+missiles.svg         missile-swarm    Lorc
+system.svg           cog              Lorc
+crippled.svg         despair          Lorc
+
+Used unmodified aside from renaming and runtime recoloring. Attribution required by CC BY 3.0.

@@ -2156,4 +2156,18 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Net: alternation logic + tests now live once, in the engine (activation.test.ts), not
   duplicated in the module. 799 tests (807 − 8 deleted fire-phase tests + new engine-glue tests).
   Live-verify the round trip in a real world (engine rounds is runtime-only).
+- Commit: 4e4be59.
+
+## 2026-07-22 — Full Thrust: game-icons.net artwork (CC BY 3.0) with attribution
+- Added 11 icons from game-icons.net (Lorc + Delapouite) to
+  packages/battleframe-full-thrust/icons/ under CC BY 3.0. Legally safe: CC BY 3.0 permits
+  commercial + non-commercial use WITH attribution. Attribution shipped in three places:
+  repo-root ATTRIBUTIONS.md (master per-icon table), the module's icons/CREDITS.txt (travels
+  with the deployed module), and the module NOTICE.md. The "ships no artwork" claim is updated
+  -- these are freely-licensed COMMUNITY icons, not copyrighted GZG/Full Thrust art (of which the
+  module still ships none).
+- Wired: the crippled + weapons-offline status effects now use icons/crippled.svg (despair) +
+  icons/weapons-offline.svg (screen-impact) instead of core Foundry SVGs. The other icons (ship,
+  beam, missiles, system, etc.) are shipped for future sheet/token use. Deploy includes icons/
+  (not in the exclude list).
 - Commit: this commit.
