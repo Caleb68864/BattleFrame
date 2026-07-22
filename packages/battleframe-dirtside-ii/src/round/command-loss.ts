@@ -94,26 +94,33 @@ export async function onActorUpdate(actor: any, changes: any): Promise<void> {
     return;
   }
 
-  const disposition = sideOfVehicleToken(actor.id);
-  const actors = (glob().game?.actors?.contents ?? glob().game?.actors ?? []) as any[];
-  const unitId = actor.getFlag?.(FLAG_SCOPE, UNIT_ID_FLAG) ?? actor.flags?.[FLAG_SCOPE]?.[UNIT_ID_FLAG];
+  // A Foundry hook must never reject: an actor update (or the C3 setFlag) that
+  // fails cannot be allowed to surface an unhandled rejection into the updateActor
+  // pipeline. Guard the whole effectful body and log instead.
+  try {
+    const disposition = sideOfVehicleToken(actor.id);
+    const actors = (glob().game?.actors?.contents ?? glob().game?.actors ?? []) as any[];
+    const unitId = actor.getFlag?.(FLAG_SCOPE, UNIT_ID_FLAG) ?? actor.flags?.[FLAG_SCOPE]?.[UNIT_ID_FLAG];
 
-  // The force = every unit whose elements share this side. Approximated by the
-  // command vehicle's own unit's side; MVP treats all units on the same token
-  // disposition as one force.
-  const losingUnits = actors.filter((a: any) => {
-    if (a?.type !== UNIT_TYPE) return false;
-    if (a.id === unitId) return true;
-    // side match via any element token of that unit
-    const placeables = (glob().canvas?.tokens?.placeables ?? []) as any[];
-    return placeables.some(
-      (t) =>
-        (t?.actor?.getFlag?.(FLAG_SCOPE, UNIT_ID_FLAG) ?? t?.actor?.flags?.[FLAG_SCOPE]?.[UNIT_ID_FLAG]) === a.id &&
-        t?.document?.disposition === disposition
-    );
-  });
+    // The force = every unit whose elements share this side. Approximated by the
+    // command vehicle's own unit's side; MVP treats all units on the same token
+    // disposition as one force.
+    const losingUnits = actors.filter((a: any) => {
+      if (a?.type !== UNIT_TYPE) return false;
+      if (a.id === unitId) return true;
+      // side match via any element token of that unit
+      const placeables = (glob().canvas?.tokens?.placeables ?? []) as any[];
+      return placeables.some(
+        (t) =>
+          (t?.actor?.getFlag?.(FLAG_SCOPE, UNIT_ID_FLAG) ?? t?.actor?.flags?.[FLAG_SCOPE]?.[UNIT_ID_FLAG]) === a.id &&
+          t?.document?.disposition === disposition
+      );
+    });
 
-  await applyForceCommandLoss(losingUnits);
+    await applyForceCommandLoss(losingUnits);
+  } catch (error) {
+    console.error(`${MODULE_ID} | command-loss ripple failed`, error);
+  }
 }
 
 export function registerCommandLossHook(): void {

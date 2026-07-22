@@ -179,4 +179,22 @@ describe("fireReportParts — the chat card content (names escaped)", () => {
     );
     expect(parts.lines.join("").toLowerCase()).toContain("miss");
   });
+
+  it("escapes user-supplied chit codes drawn from the pot (no HTML injection)", () => {
+    // Chit codes are USER-entered RollTable text; a code carrying HTML must not
+    // reach the card markup unescaped.
+    const res = {
+      outOfRange: false,
+      autoMiss: false,
+      band: "medium" as const,
+      firerFace: 7,
+      targetFaces: [5],
+      hit: true,
+      drawn: ['<img src=x onerror="alert(1)">', "R2"],
+      chit: { outcome: "knocked-out" as const, specials: [] },
+    };
+    const html = fireReportParts(res, { firer: "A", target: "B" }).lines.join("");
+    expect(html).not.toContain("<img");
+    expect(html).toContain("&lt;img");
+  });
 });

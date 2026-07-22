@@ -169,8 +169,9 @@ export function fireReportParts(result: FireResult, names: FireReportNames): Fir
   lines.push(`<p>${band(result)} &middot; ${roll} &mdash; <strong>hit.</strong></p>`);
   const chit = result.chit;
   if (chit) {
+    const drawn = (result.drawn ?? []).map(escapeHtml).join(", ");
     lines.push(
-      `<p>Chits [${(result.drawn ?? []).join(", ")}] &rarr; <strong>${chit.outcome}</strong>.</p>`
+      `<p>Chits [${drawn}] &rarr; <strong>${chit.outcome}</strong>.</p>`
     );
     if (chit.specials.length > 0) {
       lines.push(`<p class="ds2-specials">Specials: ${chit.specials.join(", ")}.</p>`);
