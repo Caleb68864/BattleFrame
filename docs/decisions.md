@@ -3155,4 +3155,31 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Surfaces: `packages/battleframe-stargrunt-ii/{module.json,package.json,vite.config.ts,
   NOTICE.md,lang/en.json,styles/stargrunt-ii.css,src/constants.ts,src/dice/ladder.ts,
   tests/ladder.test.ts}`. 9 tests; typecheck clean.
+- Commit: 0f811ba.
+
+## 2026-07-22 — SG2 fire engine (B1-B9): representative armour die for impact, per-figure for allocation
+- Decision: built the pure fire engine test-first — B1 `beatsAgainst` (strict `>`, a tie is
+  not a beat), B2 `fireTier` (0 miss / 1 suppress / 2+ effective), B3 `potentialHits` (full
+  firer sum — losers INCLUDED — divided by the Range-Die TYPE, not the rolled value), B4
+  `extraHitFromRemainder` (range reroll `<=` remainder; zero remainder never fires), B5
+  `impactOutcome` (`>` armour wounds, `> 2*armour` kills, `2*armour` is a wound), B6
+  `rangeDieFromDistance` (band = Quality-die faces in inches, `ceil` bands -> d4..d12, cover
+  `+1/+2` and In-Position `+1` shift the die UP via the A1 atom, past-d12 or >5 bands ->
+  "impossible"), B7 `computeFirepowerDie` (FP*figures rounded UP the ladder, cap d12), B8
+  `allocateCasualties` (random over living figures, kills-first, 2nd wound this resolution
+  kills, never hits the dead, input not mutated, wiped reported), and B9 `resolveDispersedFire`
+  composing all of them with dice + rng injected.
+- Key decision (B9): dispersed fire resolves each hit's Impact-vs-Armour against a SINGLE
+  representative `targetArmourDie`, then hands the aggregate {wounds, kills} to
+  `allocateCasualties` to distribute onto the per-figure roster. Per-figure armour stays on the
+  roster (sheet + allocation surface) but is NOT used per-hit in MVP — rolling each hit against
+  its allocated figure's own armour is a Phase-2 refinement. This keeps B5 and B8 as the clean,
+  separately-tested primitives the plan specifies rather than merging impact+allocation.
+- Watch: divisor is the Range-Die TYPE (4/6/8/10/12), never the rolled range face — the
+  easy-to-miss bit flagged as design risk 7.4; pinned explicitly in `potentialHits` fixtures.
+  Cover/In-Position shift the range die UP (bigger die = harder to beat), so a max-band d12 plus
+  any shift correctly reads as out-of-effect.
+- Surfaces: `packages/battleframe-stargrunt-ii/src/combat/{fire.ts,impact.ts,range.ts,
+  casualties.ts}`, `tests/{fire,impact,range,casualties}.test.ts`. +26 tests (35 total);
+  typecheck clean.
 - Commit: this commit.
