@@ -7,6 +7,7 @@ import {
 } from "./constants";
 import { registerKnightDataModel } from "./data/knight";
 import { registerKnightSheet } from "./sheets/knight-sheet";
+import { registerGreathelmTokenDefaults } from "./token-defaults";
 import { advanceRoundCore, registerRoundControl } from "./ui/round-control";
 
 interface FoundrySettingsApi {
@@ -222,6 +223,8 @@ globalHooks?.once("init", () => {
   registerKnightDataModel();
   registerKnightSheet();
   registerGreathelmSettings();
+  // Give fresh knight Actors a shipped default token image (engine token registry).
+  registerGreathelmTokenDefaults();
   // Advertise the knight's hover stat fields to the engine's hover registry.
   registerGreathelmHoverFields();
   // The round trigger: a scene control button, registered through Foundry's

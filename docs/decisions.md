@@ -3545,3 +3545,23 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   + FT ship-sheet weapon-type icons land in follow-up commits.
 - Engine tests: +3 (token-defaults); neutrality green (no ruleset vocab in the service).
 - Commit: this commit.
+
+## 2026-07-22 — Ruleset adoption of the engine token-defaults registry
+- Follow-up to the token-defaults engine work: four ruleset modules now register their
+  actor SUBTYPE -> default-token icon map at `init` via
+  `game.battleframe.tokens.registerDefaultImage(type, img)`. Each module gained a
+  `src/token-defaults.ts` (a `<ruleset>DefaultTokenImages()` data fn + a
+  `register…TokenDefaults()` that resolves the registry defensively as
+  `battleframe.tokens ?? game.battleframe.tokens`, no-op when absent), called from
+  `main.ts` right after `registerStatusEffects()` — mirroring the in-module status.ts
+  adoption pattern exactly.
+- Maps (types module-id-namespaced, paths into each module's shipped icons/, as Foundry
+  v14 requires): stargrunt-ii `.unit` -> squad.svg; incountry `.unit` -> squad.svg;
+  dirtside-ii `.vehicle` -> vehicle.svg AND `.infantry` -> infantry.svg (the token-less
+  `.unit` grouping subtype deliberately OMITTED — it never drops a token); greathelm
+  `.knight` -> knight.svg.
+- Module-only change (no `packages/battleframe/src` touched — engine neutrality intact).
+  Tests: +16 (4 per module: data-map shape, registration call pairs, game.battleframe
+  fallback, absent-registry no-op). Full suite 1464 green; typecheck + build green.
+  Live-verify (fresh actor gets its icon, chosen image not overridden) deferred to parent.
+- Commit: this commit.
