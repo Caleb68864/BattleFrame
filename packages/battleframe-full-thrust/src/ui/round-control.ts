@@ -17,6 +17,8 @@ import {
   PLOTTED_ORDER_FLAG,
   FIRE_PHASE_FLAG,
   ACTIVE_MISSILES_FLAG,
+  WAVE_GUN_CHARGE_FLAG,
+  WAVE_GUN_FULL_CHARGE,
   DIE_SIZE,
   COURSE_POINT_DEGREES,
   COURSES
@@ -38,7 +40,7 @@ import { fireShipSplit, type FireShipSplitReport } from "../combat/fire-ship-spl
 import { advanceMissile, missileExpired, type ActiveMissile } from "../combat/missile-phase";
 import { resolveMissileAttack, missileCanAttack, type MissileAttackReport, type MissileWarhead } from "../combat/missile";
 import { drawMissiles, clearMissiles } from "./missile-overlay";
-import { waveGunDiceAtRange, waveGunDamage, novaCannonDiceForTurn, novaCannonDamage } from "../combat/spinal";
+import { waveGunDiceAtRange, waveGunDamage, novaCannonDiceForTurn, novaCannonDamage, waveGunChargeAfterTurn, waveGunIsCharged, waveGunChargeAfterFiring } from "../combat/spinal";
 import { canReachToAttack } from "../movement/fighter-move";
 import { applyDamageAndThreshold } from "../combat/apply-damage";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
@@ -925,13 +927,41 @@ export async function fireNovaCannonAction(): Promise<void> {
   await resolveSpinalWeapon("Nova Cannon", novaCannonDiceForTurn(1), ctx.distance, ctx.target, ctx.targetName, novaCannonDamage, ctx.services);
 }
 
-/** Wave-Gun tool: fire at the target, dice by range band (screens/armour ignored). */
+/**
+ * Charge-Wave-Gun tool (GM): spend a turn charging the controlled ship's Wave Gun
+ * — roll 1d6 and accumulate; it is ready to fire at a stored total of 6+.
+ */
+export async function chargeWaveGunAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM charges the Wave Gun`);
+    return;
+  }
+  const services = api();
+  const ship = controlledToken();
+  if (!services || !ship?.actor) {
+    return;
+  }
+  const current = Number(ship.actor.getFlag?.(MODULE_ID, WAVE_GUN_CHARGE_FLAG) ?? 0);
+  const [face] = await services.dice.rollPool(1, DIE_SIZE, { rulesetId: MODULE_ID, flavor: "Wave Gun charge" });
+  const next = waveGunChargeAfterTurn(current, face ?? 0);
+  await ship.actor.setFlag?.(MODULE_ID, WAVE_GUN_CHARGE_FLAG, next);
+  notify("info", `${MODULE_ID} | Wave Gun charge ${next}/${WAVE_GUN_FULL_CHARGE}${waveGunIsCharged(next) ? " -- ready to fire" : ""}`);
+}
+
+/** Wave-Gun tool: fire at the target if charged (6+); firing discharges it. */
 export async function fireWaveGunAction(): Promise<void> {
   const ctx = spinalContext();
   if (!ctx) {
     return;
   }
+  const ship = controlledToken();
+  const charge = Number(ship?.actor?.getFlag?.(MODULE_ID, WAVE_GUN_CHARGE_FLAG) ?? 0);
+  if (!waveGunIsCharged(charge)) {
+    notify("warn", `${MODULE_ID} | Wave Gun not charged (${charge}/${WAVE_GUN_FULL_CHARGE}) -- use Charge Wave Gun first`);
+    return;
+  }
   await resolveSpinalWeapon("Wave Gun", waveGunDiceAtRange(ctx.distance), ctx.distance, ctx.target, ctx.targetName, waveGunDamage, ctx.services);
+  await ship?.actor?.setFlag?.(MODULE_ID, WAVE_GUN_CHARGE_FLAG, waveGunChargeAfterFiring());
 }
 
 /**
@@ -1572,6 +1602,15 @@ export function addSceneControl(controls: unknown): void {
     order: 3,
     onClick: () => void fireNovaCannonAction(),
   };
+  const chargeWaveGunTool = {
+    name: "full-thrust-charge-wave-gun",
+    title: "battleframe-full-thrust.controls.chargeWaveGun",
+    icon: "fas fa-bolt",
+    button: true,
+    visible: gm,
+    order: 3,
+    onClick: () => void chargeWaveGunAction(),
+  };
   const waveGunTool = {
     name: "full-thrust-wave-gun",
     title: "battleframe-full-thrust.controls.waveGun",
@@ -1662,7 +1701,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, waveGunTool, fighterMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, newBattleTool, importTool];
+  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, chargeWaveGunTool, waveGunTool, fighterMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, newBattleTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);

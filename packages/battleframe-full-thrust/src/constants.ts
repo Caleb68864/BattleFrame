@@ -39,6 +39,9 @@ export const FIRE_PHASE_FLAG = "firePhase";
  */
 export const ACTIVE_MISSILES_FLAG = "activeMissiles";
 
+/** Actor flag holding a ship's accumulated Wave Gun charge (fires at 6+). */
+export const WAVE_GUN_CHARGE_FLAG = "waveGunCharge";
+
 /** The die every Full Thrust roll uses. */
 export const DIE_SIZE = 6;
 
