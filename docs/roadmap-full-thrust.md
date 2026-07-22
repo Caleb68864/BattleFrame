@@ -110,11 +110,11 @@ in a live Foundry.
     synthetic token-like object lets `resolveMissileAttack` strike a real ship. Live-verified: launch
     → advance 18mu → strike a ship in the fore arc (Normal warhead, damage + threshold + destroy) →
     removed. Remaining: an EMP/Needle warhead + mid-turn picker (Normal only for now).
-16. **[build] Fighter movement + dogfights** — 🟡 PARTIAL (2026-07-22). Dogfights are wired
-    (`resolveDogfight` + the Fire tool). Fighter MOVEMENT now has a pure core `movement/fighter-move.ts`
-    (`fighterMaxMove`, `moveToward`, `canReachToAttack` — flat move any direction, 12mu / 18mu Fast,
-    close to within 6mu to strike; +11 tests). Still to do: a Foundry token orchestrator that moves
-    the group each turn (as ship `path.ts` defers its token move).
+16. ~~**[build] Fighter movement + dogfights.**~~ ✅ **DONE 2026-07-22 (live-verified).** Dogfights
+    wired (`resolveDogfight` + Fire tool); fighter MOVEMENT via `movement/fighter-move.ts` core +
+    a "Move Fighters" tool (`fighterMoveAction`) that advances the controlled group toward the
+    targeted ship up to its allowance (12/18mu Fast), stopping at the 6mu strike edge. Live-verified
+    (a Fast group moved exactly 18mu toward a ship).
 17. **[build] Vector movement** (optional FT2 mode) — 🟡 PARTIAL (2026-07-22). `movement/vector.ts`
     pure library: persistent `{vx,vy}` velocity, `advance`/`applyMainDrive` (burn along facing),
     `applyPush`/`rotateFacing` (manoeuvring thrusters = ½ rating rounded DOWN), `resolveTurn`
