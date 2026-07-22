@@ -79,6 +79,7 @@ deferred. Nothing is silently missing.
 | Fighter group (1–6), type, endurance, morale | ✅ | `data/fighter-group.ts` + sheet |
 | Attack a ship in fore arc within 6mu; die per fighter; screens apply | ✅ | `combat/fire-fighters.ts` |
 | Morale roll (depleted group), endurance spend, Attack-type +1/die | ✅ | wired into `combat/fire-fighters.ts` (aborts on failed morale, spends endurance on a fired attack) |
+| Morale broken (3 consecutive fails → disengage) + out-of-fuel exhaustion | ✅ | `combat/fire-fighters.ts` tracks `moraleFails`; a broken or endurance-0 group refuses to attack |
 | PDS thins the group before it strikes | ✅ | `combat/fire-fighters.ts` rolls the target's PDS first (`pdsKillsVsFighters`); casualties persist; a fully-killed group makes no attack |
 | Dogfights (fighter vs fighter) | ✅ | `combat/dogfight.ts` `resolveDogfight` (6mu fore arc, simultaneous, defender returns fire if it bears); the Fire tool dispatches it when both are fighter groups |
 | PDS vs missiles | 🟡 | `combat/fighters.ts` `pdsKillsVsMissiles` (math); waits on the missile/salvo flow |

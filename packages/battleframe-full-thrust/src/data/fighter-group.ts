@@ -46,6 +46,8 @@ export function createFighterGroupDataClass(
       // Active-turn endurance remaining (More Thrust: 3 for standard, 5 long-range).
       schema.endurance = new NumberField({ required: true, nullable: false, integer: true, min: 0, initial: 3 });
       schema.moraleBroken = new BooleanField({ required: true, initial: false });
+      // Consecutive failed morale checks; 3 in a row breaks the group.
+      schema.moraleFails = new NumberField({ required: true, nullable: false, integer: true, min: 0, initial: 0 });
 
       return schema;
     }

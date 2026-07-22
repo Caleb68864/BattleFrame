@@ -162,6 +162,32 @@ describe("fireFighterGroupAtTarget", () => {
     expect(report.totalDamage).toBe(6);
   });
 
+  it("a morale-broken group cannot attack", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const broken = fakeGroup({ size: 3, moraleBroken: true });
+    const report = await fireFighterGroupAtTarget({ group: broken, target: targetHull(), context: context(4, 0, scriptedDice([[6, 6, 6]])) });
+    expect(report.fired).toBe(false);
+    expect(report.reason).toBe("morale-broken");
+  });
+
+  it("an out-of-fuel group (endurance 0) cannot attack", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const spent = fakeGroup({ size: 6, endurance: 0 });
+    const report = await fireFighterGroupAtTarget({ group: spent, target: targetHull(), context: context(4, 0, scriptedDice([[6, 6, 6, 6, 6, 6]])) });
+    expect(report.fired).toBe(false);
+    expect(report.reason).toBe("exhausted");
+  });
+
+  it("breaks morale after a third consecutive failed check", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const shaky = fakeGroup({ size: 2, moraleFails: 2 }); // two prior fails
+    // Morale die 3 > size 2 -> fail; that is the third -> broken.
+    const report = await fireFighterGroupAtTarget({ group: shaky, target: targetHull(), context: context(4, 0, scriptedDice([[3]])) });
+    expect(report.reason).toBe("morale");
+    expect(shaky.system.moraleFails).toBe(3);
+    expect(shaky.system.moraleBroken).toBe(true);
+  });
+
   it("a group shot down entirely by PDS makes no attack", async () => {
     vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
     const wing = fakeGroup({ size: 2 });

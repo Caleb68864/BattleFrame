@@ -36,7 +36,13 @@ export interface FighterFireContext {
 
 export interface AttackingGroup {
   token: unknown;
-  system?: { size?: number; fighterType?: string; endurance?: number };
+  system?: {
+    size?: number;
+    fighterType?: string;
+    endurance?: number;
+    moraleBroken?: boolean;
+    moraleFails?: number;
+  };
   update?: (data: Record<string, unknown>) => Promise<unknown>;
 }
 
@@ -48,7 +54,7 @@ export interface FighterFireParams {
 
 export interface FighterFireReport {
   fired: boolean;
-  reason?: "no-fighters" | "out-of-range" | "out-of-arc" | "morale" | "shot-down";
+  reason?: "no-fighters" | "out-of-range" | "out-of-arc" | "morale" | "morale-broken" | "exhausted" | "shot-down";
   distance: number;
   totalDamage: number;
   destroyed: boolean;
@@ -80,6 +86,13 @@ export async function fireFighterGroupAtTarget(
   if (size <= 0) {
     return { ...idle, reason: "no-fighters" };
   }
+  // A broken group has disengaged; an out-of-fuel group must return to its carrier.
+  if (group.system?.moraleBroken) {
+    return { ...idle, reason: "morale-broken" };
+  }
+  if (typeof group.system?.endurance === "number" && group.system.endurance <= 0) {
+    return { ...idle, reason: "exhausted" };
+  }
   if (!Number.isFinite(distance) || distance > FIGHTER_ATTACK_RANGE_MU) {
     return { ...idle, reason: "out-of-range" };
   }
@@ -105,11 +118,19 @@ export async function fireFighterGroupAtTarget(
   }
 
   // Morale: a depleted group (below full strength) rolls before attacking and
-  // aborts if the die exceeds the fighters remaining (More Thrust).
+  // aborts if the die exceeds the fighters remaining. Three consecutive fails
+  // break the group; a passed check resets the streak (More Thrust).
   if (remaining < FIGHTER_GROUP_MAX) {
     const [moraleDie] = await context.dice.rollPool(1, DIE_SIZE);
     if (moraleDie !== undefined && !fighterMoralePasses(moraleDie, remaining)) {
+      const fails = (group.system?.moraleFails ?? 0) + 1;
+      if (typeof group.update === "function") {
+        await group.update({ "system.moraleFails": fails, "system.moraleBroken": fails >= 3 });
+      }
       return { ...idle, reason: "morale", pdsKills };
+    }
+    if ((group.system?.moraleFails ?? 0) > 0 && typeof group.update === "function") {
+      await group.update({ "system.moraleFails": 0 });
     }
   }
 
