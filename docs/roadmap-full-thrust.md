@@ -84,12 +84,22 @@ in a live Foundry.
     dedicated missile-phase launch + a Foundry token orchestrator that moves/tracks the craft and
     removes it after the 3-turn life, plus the EMP/Needle warhead variants.
 16. **[build] Fighter movement + dogfights** (`dogfightKills` exists, unwired).
-17. **[build] Vector movement** (optional FT2 mode) — cinematic only today.
+17. **[build] Vector movement** (optional FT2 mode) — 🟡 PARTIAL (2026-07-22). `movement/vector.ts`
+    pure library: persistent `{vx,vy}` velocity, `advance`/`applyMainDrive` (burn along facing),
+    `applyPush`/`rotateFacing` (manoeuvring thrusters = ½ rating rounded DOWN), `resolveTurn`
+    (advance-then-fold, written order matters), `parseVectorOrder`/`checkManoeuvres` budgets,
+    `nearestCourse`/`velocityMagnitude` for marker realignment (+16 tests). Still to do: a
+    Vector-mode scene tool + token advance/rotate orchestrator (as cinematic `path.ts` defers to
+    `ui/round-control`).
 18. **[build] Multi-FCS fire-splitting** (N FCS → N targets) — one target per action now.
 19. **[build] Fleet Book optional layers**: reroll/penetrating damage + armour bypass, core-
     systems +1, variable-hull design system, conditional aft fire.
-20. **[build] Big/xeno weapons**: Nova cannon, wave gun, K-guns; the Kra'Vak / Sa'Vasku / Phalon
-    races (different design/damage systems).
+20. **[build] Big/xeno weapons** — 🟡 PARTIAL (2026-07-22). `combat/spinal.ts` implements the
+    spinal-mount Nova Cannon (3-turn forward sweep, 6/4/2 D6, 2"/4"/6" template) and the More
+    Thrust Wave Gun (36mu expanding template, 4/3/2 D6, charge-then-fire + knock-out feedback) as
+    pure math (+22 tests); damage = die score, screens ignored. Still to do: template canvas
+    geometry, arming/charge bookkeeping on a Document, scene tools; K-guns + the Kra'Vak /
+    Sa'Vasku / Phalon races (different design/damage systems) not yet built.
 
 ## P3 — Live-verification debt
 
