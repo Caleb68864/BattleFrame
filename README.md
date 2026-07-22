@@ -24,18 +24,58 @@ redistributed (see the `vault/` note below and `.gitignore`).
 
 An [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) monorepo:
 
-- `packages/battleframe/` — the ruleset-neutral core system. Exposes its
-  services under `game.battleframe`: `api` (ruleset registry), `measure`
-  (base-to-base distance), `areas` (areas of effect and base-aware
-  containment), and `dice` (rolls rendered to chat with Dice So Nice support).
-- `packages/battleframe-greathelm/` — **GREATHELM**, the reference ruleset
-  module. A working, self-contained example of a game built on the core:
-  actor data model, sheets, settings, UI, turn loop, and victory check.
-  Mechanics only — it ships no GREATHELM rules text or stat blocks and
-  requires the official rulebook, obtained separately.
+- `packages/battleframe/` — the ruleset-neutral core system. Everything it
+  offers a module lives under `game.battleframe`; see
+  [Engine capabilities](#engine-capabilities) below.
+- The **ruleset modules** — each a separate Foundry module that registers
+  itself with the core and drives its own game. All are mechanics only: they
+  ship no rules text, stat blocks, army lists, points values, or artwork, and
+  require the official rulebook (obtained separately by the user).
+  - `packages/battleframe-greathelm/` — **GREATHELM**, the reference ruleset
+    module and the smallest complete example: actor data model, sheets,
+    settings, UI, dice-pool round loop, and victory check.
+  - `packages/battleframe-full-thrust/` — **Full Thrust**, the starship-combat
+    game by Jon Tuffley / Ground Zero Games, and the largest ruleset here. It
+    covers ships (hull rows with FT2 threshold checks, armour, screens, damage
+    control), the weapon suite (beam batteries, pulse torpedoes, submunition
+    packs, needle beams, salvo and independent missiles, spinal-mount Nova
+    Cannon / Wave Gun), fighters, bring-your-own fleet import, and both
+    cinematic clockface and vector movement. The core mechanics are built and
+    unit-tested; some weapon phases and the single guided end-to-end turn UI
+    are still in progress, and live-in-Foundry verification is pending — see
+    its `COVERAGE.md` for the honest per-rule ledger.
+  - `packages/battleframe-incountry/` — **InCountry**, the INX 2.0 modern
+    tactical skirmish game by Echo Dark Studios. In progress.
+  - `packages/battleframe-simple-skirmish/` — **Simple Skirmish**, the Basic
+    Game of Simple Fantasy Skirmish by Peter Vodden (CC BY-NC 4.0).
 - `vault/` — research and design notes (tracked on purpose; they are the
   project's own writing). Source rulebooks are **not** tracked.
 - `docs/` — design decisions, specs, and authoring guides.
+
+## Engine capabilities
+
+The core exposes one namespace, `game.battleframe`, reachable before any
+module's `init`. A ruleset consumes these services instead of rebuilding them;
+[`docs/engine-api-reference.md`](docs/engine-api-reference.md) is the full
+catalog with signatures.
+
+- `api` — ruleset registration and lookup (register, activate, list).
+- `measure` — base-to-base or centre-to-centre distance on gridless boards,
+  reading each token's real base geometry.
+- `facing` — the numeric bearing of a target relative to a heading (the core
+  owns the angle; the ruleset buckets it into whatever arcs it wants).
+- `dice` — dice pools rolled as a single `Roll` and rendered to a persistent
+  chat card, with Dice So Nice animation.
+- `areas` — circles and rectangles with exact, base-aware containment tests,
+  plus region shapes for drawing.
+- `rounds` — a serializable two-tier activation order (priority then main,
+  strict alternation by default) that rulesets use for turn/activation
+  sequencing instead of holding turn state in a variable.
+- `los` — line of sight via Foundry's wall sweep (`ClockwiseSweepPolygon`).
+- `hover` — register which `system` fields a token's hover stat panel shows;
+  the engine owns the panel itself.
+- `status` — register a battlefield condition onto `CONFIG.statusEffects` so it
+  shows as a native, syncing token icon.
 
 ## Development
 
