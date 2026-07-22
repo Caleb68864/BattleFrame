@@ -160,3 +160,19 @@
 }
 
 .ft-ship-sheet .ft-remove-weapon { margin-left: auto; }
+
+/* Click-to-set plot builder (in the Plot Movement dialog). */
+.ft-plot-builder .ft-plot-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin: 0.2rem 0;
+}
+.ft-plot-builder .ft-plot-row label {
+  min-width: 3.5rem;
+  font-weight: bold;
+}
+.ft-plot-builder .ft-thrust-val {
+  min-width: 1.5rem;
+  text-align: center;
+}

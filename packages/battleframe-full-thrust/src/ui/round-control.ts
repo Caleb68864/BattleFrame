@@ -1030,9 +1030,46 @@ export async function plotAction(): Promise<void> {
     redraw(""); // show the "no change" start state
     const value = (await dialog.prompt({
       window: { title: "Full Thrust: Plot Movement (hidden until execute)" },
-      content: `<p>Order (e.g. <code>+4,P2</code>):</p><input type="text" name="order" autofocus />`,
+      content:
+        `<div class="ft-plot-builder">` +
+        `<div class="ft-plot-row"><label>Thrust</label>` +
+        `<button type="button" data-thrust="-1">&minus;</button>` +
+        `<span class="ft-thrust-val">0</span>` +
+        `<button type="button" data-thrust="1">+</button></div>` +
+        `<div class="ft-plot-row"><label>Turn</label>` +
+        `<button type="button" data-turn="P2">P2</button>` +
+        `<button type="button" data-turn="P1">P1</button>` +
+        `<button type="button" data-turn="0">0</button>` +
+        `<button type="button" data-turn="S1">S1</button>` +
+        `<button type="button" data-turn="S2">S2</button></div>` +
+        `</div>` +
+        `<p>Order (editable — e.g. <code>+4,P2</code>):</p><input type="text" name="order" value="+0" autofocus />`,
       render: (_event: unknown, dlg: any) => {
-        const input = dlg?.element?.querySelector?.('input[name="order"]');
+        const root = dlg?.element;
+        const input = root?.querySelector?.('input[name="order"]');
+        const thrustVal = root?.querySelector?.(".ft-thrust-val");
+        let thrust = 0;
+        let turn = "0";
+        const rebuild = () => {
+          const t = `${thrust >= 0 ? "+" : ""}${thrust}`;
+          const order = turn && turn !== "0" ? `${t},${turn}` : t;
+          if (input) input.value = order;
+          if (thrustVal) thrustVal.textContent = String(thrust);
+          redraw(order);
+        };
+        root?.querySelectorAll?.("[data-thrust]").forEach((btn: any) => {
+          btn.addEventListener?.("click", () => {
+            thrust = Math.max(-8, Math.min(8, thrust + Number(btn.dataset.thrust)));
+            rebuild();
+          });
+        });
+        root?.querySelectorAll?.("[data-turn]").forEach((btn: any) => {
+          btn.addEventListener?.("click", () => {
+            turn = btn.dataset.turn;
+            rebuild();
+          });
+        });
+        // The raw input stays authoritative if the player types directly.
         input?.addEventListener?.("input", (e: any) => redraw(e?.target?.value ?? ""));
       },
       ok: {
