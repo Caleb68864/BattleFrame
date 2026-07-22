@@ -2573,3 +2573,35 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   renders, clicks fill/unfill and persist, and the number inputs still work as fallback.
 - +6 tests (ship-sheet-armour.test.ts); 1017 passing; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: carrier fighter operations pure core (roadmap P2 #14)
+- Ask: launch/recover + endurance-return for carriers holding fighter groups. PURE + tested, new
+  file, no Foundry code.
+- Fix: `combat/carrier.ts` (new). Pure functions, all unit-tested and hand-computed from the user's
+  notes ("Carriers & Fighter Bays", "Fighter Endurance"): `bayCapacity(bays)` → {groups, fighters}
+  (1 group / 6 fighters per bay, damage-aware — a knocked-out bay just lowers the count, matching
+  the note's class table BDN 1/6, SDN 2/12, Light Carrier 4/24, Fleet 6/36); `launchLimit` (2 for a
+  true carrier, 1 otherwise) + `canLaunch(carrierState)`; `carrierCanRecover` (1/turn, needs a free
+  bay); `canRecover(groupPos, carrierPos, type?, dockRangeMu?)` — the end-of-move rendezvous, REUSES
+  `movement/fighter-move.ts` `canReachToAttack` geometry (no distance re-derived); `enduranceAfterTurn`
+  (spends 1 on an ACTIVE turn only, floors at 0, REUSES `fighters.ts` `enduranceAfterActiveTurn`);
+  `mustReturn` (endurance 0, REUSES `enduranceExhausted`); `isLost` (More Thrust: lost ≥3 turns after
+  exhaustion); `recover(group)` (rearm/refuel → endurance back to type max via `enduranceForType`).
+- Notes wording vs assumptions:
+  - Bay capacity IS fully specified in the note ("each bay holds one 6-fighter group", class table);
+    modelled on functional bays rather than ship class so it stays damage-aware ("each lost bay
+    reduces capacity by six").
+  - Endurance numbers ARE specified (More Thrust: 3 turns, Long-Range 5; spent per active/combat
+    turn, loitering free) and reuse the existing `fighters.ts` seeds — no new endurance number added.
+  - ASSUMPTION: docking tolerance — the notes give no explicit dock distance, so `canRecover`
+    defaults `dockRangeMu` to 0 (group must land within its move allowance of the carrier),
+    caller-overridable for a later token-radius geometry layer.
+  - ASSUMPTION: `isLost` boundary + edition — the More Thrust "within 3 turns of exhaustion" grace
+    is read as lost once ≥3 completed turns elapse; Fleet Book 1 has NO such limit, so the predicate
+    is More-Thrust-only (documented on the constant). `recover` restores endurance only — notes
+    describe rearm/refuel, not a morale reset, so morale is left untouched.
+- New rules numbers appended to END of `constants.ts` (FIGHTERS_PER_BAY, CARRIER_LAUNCH_PER_TURN,
+  SHIP_LAUNCH_PER_TURN, FIGHTER_RECOVER_PER_TURN, FIGHTER_RETURN_GRACE_TURNS) with source quotes.
+- +16 tests (carrier.test.ts); 1027 passing (was 1011); typecheck clean. COVERAGE.md /
+  roadmap-full-thrust.md left untouched per scope. No Foundry glue, no round-control edits.
+- Commit: this commit.

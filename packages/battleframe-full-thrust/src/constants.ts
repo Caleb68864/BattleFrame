@@ -385,3 +385,46 @@ export const VARIABLE_HULL_POINTS_PER_MASS = 2;
  * in the upper rows."
  */
 export const VARIABLE_HULL_ROWS = 4;
+
+// --- Carriers & fighter bays (roadmap P2 #14) -------------------------------
+
+/**
+ * Each fighter bay holds exactly one 6-fighter group; a lost bay costs six
+ * fighters. So a carrier's group capacity equals its functional bays and its
+ * fighter capacity is that times six. Source (user's "Carriers & Fighter Bays"
+ * note): "each bay holds one 6-fighter group ... each lost bay reduces capacity
+ * by six fighters." The note's class table falls straight out of this:
+ * Battledreadnought 1 bay (6), Superdreadnought 2 (12), Light Carrier 4 (24),
+ * Fleet / Attack Carrier 6 (36).
+ */
+export const FIGHTERS_PER_BAY = 6;
+
+/**
+ * Groups launchable per turn: an actual carrier launches two, any other
+ * fighter-carrying ship one. Source ("Carriers & Fighter Bays"): "Actual
+ * carriers may launch 2 groups per turn; other ships only 1."
+ */
+export const CARRIER_LAUNCH_PER_TURN = 2;
+export const SHIP_LAUNCH_PER_TURN = 1;
+
+/**
+ * Groups recoverable per turn: every fighter-carrying ship, carrier or not,
+ * lands at most one. Source ("Carriers & Fighter Bays"): "All fighter-carrying
+ * ships may recover only 1 group per turn."
+ */
+export const FIGHTER_RECOVER_PER_TURN = 1;
+
+/**
+ * More Thrust "return or be lost" grace: an exhausted group that cannot reach
+ * its carrier within this many turns of running dry is lost (pilots eject).
+ * Source (user's "Fighter Endurance" note, More Thrust edition): "A group that
+ * cannot rendezvous within 3 turns of exhaustion is lost."
+ *
+ * NOTE (edition-specific + boundary assumption): this grace is a More Thrust
+ * rule only -- Fleet Book 1 has NO time limit once exhausted (the same note:
+ * "there is NO time limit to return once exhausted"). The count is read as
+ * completed turns since endurance hit zero, so the group is lost once three
+ * such turns have elapsed without a rendezvous (>= 3). Callers using Fleet Book
+ * endurance should not consult this constant.
+ */
+export const FIGHTER_RETURN_GRACE_TURNS = 3;
