@@ -56,3 +56,6 @@ test-results/
 
 # Agent worktrees + Claude local state
 .claude/
+
+# Deploy script with hardcoded infra hosts (local-only)
+scripts/deploy-portainer.sh
