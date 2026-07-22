@@ -14,6 +14,7 @@
 import { type ShipActorLike } from "../data/ship-state";
 import { resolveWeaponFire, type WeaponMount, type WeaponShot } from "./fire";
 import { applyDamageAndThreshold } from "./apply-damage";
+import { remainingFcs } from "../ship/systems";
 
 export interface FireContext {
   measure: {
@@ -58,10 +59,10 @@ export async function fireShipAtTarget(params: FireShipParams): Promise<FireRepo
   const bearing = context.facing.bearingOf(attacker.token, target.token);
 
   // A ship that has lost ALL its fire control may not fire, even with working
-  // weapons (FT2 "Fire Control System"). A missing fcs field defaults to 1 (the
-  // schema default) so only an explicit zero refuses.
-  const fcs = (attacker.system?.fcs as number | undefined) ?? 1;
-  if (fcs < 1) {
+  // weapons (FT2 "Fire Control System"). A missing fcs field defaults to "able"
+  // so only a ship whose remaining FCS is zero refuses.
+  const fcsRemaining = attacker.system?.fcs === undefined ? 1 : remainingFcs(attacker.system);
+  if (fcsRemaining < 1) {
     return {
       distance,
       bearing,

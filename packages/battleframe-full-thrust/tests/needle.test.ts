@@ -42,7 +42,7 @@ describe("fireNeedleAtSystem", () => {
       attacker: attacker(), target, systemType: "fcs", context: ctx(8, 0, scriptedDice([[6]]))
     });
     expect(report.hit).toBe(true);
-    expect(target.system.fcs).toBe(1); // one FCS knocked out
+    expect(target.system.fcsLost).toBe(1); // one FCS knocked out (design stays 2)
   });
 
   it("does nothing on a miss (1-5)", async () => {

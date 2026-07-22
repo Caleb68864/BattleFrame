@@ -2113,4 +2113,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - prepareDerivedData populates `pointsValue`; the sheet shows Points + an FTL checkbox; fleet
   import parses `ftl` (default true). It's an informative FT2 estimate, not a standalone designer.
 - 793 tests passing.
+- Commit: a22013e.
+
+## 2026-07-22 — Full Thrust: design+damage system model → damage control + SSD tracks (P0 #5, P1 #10)
+- User-approved refactor: repairable systems now keep a DESIGN count plus a damage counter
+  (fcs+fcsLost, pds+pdsLost, screens+screensLost, thrust+driveHits{0,1,2}); remaining is computed
+  (usableThrust/remainingFcs/…), mirroring hull boxes/damage. A plain decrement forgot the
+  original and blocked repair + an "N/M" SSD. `applySystemKnockouts` now increments the counters;
+  new `applySystemRepairs` steps them back. Readers updated: enumerate (remaining), fire-ship FCS
+  gate (remainingFcs), status (usableThrust/remainingFcs), movement (usableThrust as the thrust
+  budget). Schema swapped driveCrippled→driveHits + added the …Lost fields.
+- Damage control (#5): `resolveDamageControl(system, repairs)` restores knocked-out systems in
+  priority order (fcs → drive → weapon → screen → pds); a "Damage Control" GM tool rolls each
+  ship's DCPs (damageControl count) and applies repairs + status sync.
+- SSD tracks (#10 partial): prepareDerivedData computes hull/thrust/fcs/screens/pds "remaining/
+  design" strings, shown on the sheet (next to the design inputs) and the hover panel.
+- 800 tests passing.
 - Commit: this commit.

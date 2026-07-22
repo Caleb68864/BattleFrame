@@ -142,6 +142,7 @@ describe("addSceneControl", () => {
     expect(toolNames).toContain("full-thrust-needle");
     expect(toolNames).toContain("full-thrust-plot");
     expect(toolNames).toContain("full-thrust-execute");
+    expect(toolNames).toContain("full-thrust-damage-control");
     expect(toolNames).toContain("full-thrust-import");
   });
 

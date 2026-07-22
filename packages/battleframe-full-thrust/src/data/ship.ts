@@ -41,9 +41,8 @@ export function createShipDataClass(
       });
       // Whether the ship carries an FTL drive (affects its Points value).
       schema.ftl = new BooleanField({ required: true, initial: true });
-      // Set once the drives take their first threshold hit (thrust halved); a
-      // second drive hit then kills them outright.
-      schema.driveCrippled = new BooleanField({ required: true, initial: false });
+      // Drive damage: 0 = full thrust, 1 = half (first hit), 2 = dead (second).
+      schema.driveHits = new NumberField({ required: true, nullable: false, integer: true, min: 0, max: 2, initial: 0 });
 
       // The hull damage track: total boxes, boxes crossed off, and the number of
       // threshold rows the track is divided into.
@@ -59,11 +58,16 @@ export function createShipDataClass(
         damage: new NumberField(nonNegativeInt(0))
       });
 
+      // Each of these is a DESIGN count; the matching `…Lost` counter tracks how
+      // many were knocked out (remaining = design − lost). Repairable.
       schema.fcs = new NumberField(nonNegativeInt(1));
+      schema.fcsLost = new NumberField(nonNegativeInt(0));
       schema.screens = new NumberField({
         required: true, nullable: false, integer: true, min: 0, max: MAX_SCREEN_LEVEL, initial: 0
       });
+      schema.screensLost = new NumberField(nonNegativeInt(0));
       schema.pds = new NumberField(nonNegativeInt(0));
+      schema.pdsLost = new NumberField(nonNegativeInt(0));
       schema.damageControl = new NumberField(nonNegativeInt(0));
 
       // Cinematic movement state: current velocity (mu) and heading (course 1-12).
@@ -95,16 +99,22 @@ export function createShipDataClass(
      * a static `max` can't track the box count, so we compute the label here).
      */
     prepareDerivedData(): void {
-      const self = this as unknown as {
-        hull?: { boxes?: number; damage?: number };
-        hullTrack?: string;
-        pointsValue?: number;
-      };
+      const self = this as unknown as Record<string, any>;
       const boxes = self.hull?.boxes ?? 0;
       const damage = self.hull?.damage ?? 0;
       self.hullTrack = `${Math.max(0, boxes - damage)}/${boxes}`;
+
+      // "remaining/design" SSD readouts for the sheet + hover, and usable thrust.
+      const remaining = (design: number, lost: number): number => Math.max(0, design - lost);
+      const hits = self.driveHits ?? 0;
+      self.thrustNow = hits >= 2 ? 0 : hits === 1 ? Math.floor((self.thrust ?? 0) / 2) : self.thrust ?? 0;
+      self.thrustTrack = `${self.thrustNow}/${self.thrust ?? 0}`;
+      self.fcsTrack = `${remaining(self.fcs ?? 0, self.fcsLost ?? 0)}/${self.fcs ?? 0}`;
+      self.pdsTrack = `${remaining(self.pds ?? 0, self.pdsLost ?? 0)}/${self.pds ?? 0}`;
+      self.screensTrack = `${remaining(self.screens ?? 0, self.screensLost ?? 0)}/${self.screens ?? 0}`;
+
       // Points value derived from the ship's systems (FT2 Mass/Points estimate).
-      self.pointsValue = shipPointsFromSystem(self as Record<string, any>);
+      self.pointsValue = shipPointsFromSystem(self);
     }
   }
 

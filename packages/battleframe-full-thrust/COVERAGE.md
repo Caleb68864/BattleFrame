@@ -71,7 +71,7 @@ deferred. Nothing is silently missing.
 | Threshold check on row completion (FT2 rolls high 6/5-6/4-6) | ✅ | `ship/threshold.ts`, `ship/systems.ts` |
 | Multi-threshold in one attack: worst reached, worsened per extra | ✅ | `ship/threshold.ts` `thresholdKillOn` |
 | Drives special (half then dead) | ✅ | `ship/systems.ts` + `driveCrippled` field: first hit halves thrust, second kills |
-| Damage control (More Thrust end-of-turn repair) | 🟡 | `combat/damage-control.ts` (repair-count + free-DCP math); the end-of-turn repair-assignment UI is deferred |
+| Damage control (More Thrust end-of-turn repair) | ✅ | `combat/damage-control.ts` `resolveDamageControl` (priority repair) + a "Damage Control" GM tool. Enabled by the design+damage model (systems keep their design count + a lost/driveHits counter) |
 
 ## Fighters
 | Rule | Status | Where |

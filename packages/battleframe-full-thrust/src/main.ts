@@ -74,11 +74,11 @@ export function registerFullThrustHoverFields(): void {
   registry.register(`${MODULE_ID}.${SHIP_ACTOR_TYPE}`, {
     fields: [
       { key: "hullTrack", label: `${MODULE_ID}.fields.hull` },
-      { key: "thrust", label: `${MODULE_ID}.fields.thrust` },
+      { key: "thrustTrack", label: `${MODULE_ID}.fields.thrust` },
       { key: "velocity", label: `${MODULE_ID}.fields.velocity` },
       { key: "course", label: `${MODULE_ID}.fields.course` },
-      { key: "screens", label: `${MODULE_ID}.fields.screens` },
-      { key: "fcs", label: `${MODULE_ID}.fields.fcs` }
+      { key: "screensTrack", label: `${MODULE_ID}.fields.screens` },
+      { key: "fcsTrack", label: `${MODULE_ID}.fields.fcs` }
     ],
     defaultVisibility: "everyone"
   });

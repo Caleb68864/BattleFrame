@@ -33,10 +33,13 @@ import {
 import { fireShipAtTarget, type FireContext, type FireReport, type FiringShip } from "../combat/fire-ship";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
 import { plotMovementPath, type MovementPath } from "../movement/path";
+import { usableThrust } from "../ship/systems";
 import { previewPointsPx } from "../movement/preview";
 import { drawMovementPreview, clearMovementPreview } from "./preview-overlay";
 import { parseFleet } from "../data/fleet-import";
 import { fireNeedleAtSystem, type NeedleReport } from "../combat/needle";
+import { resolveDamageControl, damageControlRepairs } from "../combat/damage-control";
+import { syncShipStatuses } from "../status";
 import type { SystemRef } from "../ship/systems";
 
 // --- Pure report formatting (unit-tested) -----------------------------------
@@ -157,13 +160,13 @@ export async function resolveFireBetween(
  * state off its system.
  */
 export function resolveMovementPath(
-  system: { velocity?: number; course?: number; thrust?: number },
+  system: { velocity?: number; course?: number; thrust?: number; driveHits?: number },
   orderText: string
 ): MovementPath {
   return plotMovementPath(
     { velocity: system.velocity ?? 0, course: system.course ?? COURSES },
     orderText,
-    system.thrust ?? 0
+    usableThrust(system)
   );
 }
 
@@ -557,6 +560,44 @@ export async function executeManeuversAction(): Promise<void> {
 }
 
 /**
+ * Damage-control action (GM, end of turn): each ship's Damage Control Parties
+ * roll (a 6 repairs a system); repairs restore knocked-out systems in priority
+ * order. Reads `damageControl` (party count) off each ship.
+ */
+export async function damageControlAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM runs damage control`);
+    return;
+  }
+  const services = api();
+  const tokens = g().canvas?.tokens?.placeables ?? [];
+  let repairedShips = 0;
+
+  for (const token of tokens) {
+    const actor = token?.actor;
+    if (typeof actor?.type !== "string" || !actor.type.endsWith(SHIP_ACTOR_TYPE)) {
+      continue;
+    }
+    const parties = (actor.system?.damageControl as number | undefined) ?? 0;
+    if (parties < 1) {
+      continue;
+    }
+    const faces = (await services?.dice?.rollPool?.(parties, DIE_SIZE, {
+      rulesetId: MODULE_ID,
+      flavor: `damage control (${token?.name ?? "ship"})`
+    })) ?? [];
+    const repairs = damageControlRepairs(faces);
+    if (repairs > 0) {
+      await actor.update(resolveDamageControl(actor.system ?? {}, repairs));
+      await syncShipStatuses(actor);
+      repairedShips += 1;
+    }
+  }
+
+  notify("info", `${MODULE_ID} | damage control repaired systems on ${repairedShips} ship(s)`);
+}
+
+/**
  * Import-tool action: the player pastes their own fleet JSON and it becomes ship
  * Actors they own. Bring-your-own-data -- we ship no fleet lists. Actor creation
  * is gated by Foundry's "Create New Actors" world permission; if the player
@@ -694,6 +735,17 @@ export function addSceneControl(controls: unknown): void {
     onClick: () => void plotAction(),
     onChange: () => void plotAction()
   };
+  // End-of-turn damage control repair -- GM only.
+  const damageControlTool = {
+    name: "full-thrust-damage-control",
+    title: "battleframe-full-thrust.controls.damageControl",
+    icon: "fas fa-wrench",
+    button: true,
+    visible: gm,
+    order: 5,
+    onClick: () => void damageControlAction(),
+    onChange: () => void damageControlAction()
+  };
   // Execute reveals every ship's secretly-plotted move at once -- GM only.
   const executeTool = {
     name: "full-thrust-execute",
@@ -728,20 +780,14 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
+  const tools = [initiativeTool, fireTool, needleTool, plotTool, executeTool, damageControlTool, importTool];
   if (Array.isArray(controls)) {
-    control.tools = [initiativeTool, fireTool, needleTool, plotTool, executeTool, importTool];
+    control.tools = tools;
     controls.push(control);
     return;
   }
   if (controls && typeof controls === "object") {
-    control.tools = {
-      [initiativeTool.name]: initiativeTool,
-      [fireTool.name]: fireTool,
-      [needleTool.name]: needleTool,
-      [plotTool.name]: plotTool,
-      [executeTool.name]: executeTool,
-      [importTool.name]: importTool
-    };
+    control.tools = Object.fromEntries(tools.map((t) => [t.name, t]));
     (controls as Record<string, unknown>)[MODULE_ID] = control;
   }
 }

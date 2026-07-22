@@ -33,7 +33,11 @@ in a live Foundry.
    live-unverified.
 4. **[wire] Salvo missiles.** `salvoIntercepted/salvoDamage/salvoSurvivors` done; no launch
    flow (point-of-aim counter, move, resolve with PDS).
-5. **[wire] Damage control.** `damageControlRepairs` done; no end-of-turn repair phase.
+5. ~~**[wire] Damage control.**~~ ✅ **DONE 2026-07-22.** Enabled by the design+damage-counter
+   refactor (systems track a design count + a `…Lost`/`driveHits` damage counter, remaining =
+   design − damage, mirroring hull). `resolveDamageControl` restores knocked-out systems in
+   priority order (fcs → drive → weapon → screen → pds); a "Damage Control" GM tool rolls each
+   ship's DCPs and applies repairs + status sync.
 6. ~~**[wire] Ship-design points.**~~ ✅ **DONE 2026-07-22.** `shipPointsFromSystem` maps a ship's
    live systems onto a `DesignSpec` and runs `designPoints` (reproduces the worked example, 267);
    `prepareDerivedData` populates `pointsValue`, shown on the sheet, plus a new `ftl` field. (A
@@ -53,7 +57,9 @@ in a live Foundry.
 9. ~~**[qol] Battlefield status icons.**~~ ✅ **DONE 2026-07-22.** `src/status.ts` registers
    `crippled` (thrust 0) + `weapons-offline` (fcs 0) on `CONFIG.statusEffects`; `syncShipStatuses`
    toggles them after every damage/threshold resolution.
-10. **[qol] Visual SSD** — clickable damage boxes + an arc/range diagram instead of number inputs.
+10. **[qol] Visual SSD** — 🟡 PARTIAL: the sheet + hover now show "remaining/design" tracks for
+    hull, thrust, FCS, screens, PDS (design+damage model). Still to do: clickable damage boxes
+    and an arc/range diagram instead of number inputs.
 11. **[qol] Pre-fire targeting feedback** — show which weapons bear + the range band before
     committing (arc/range math already exists); today you learn "out of arc" only after firing.
 12. **[qol] Turn/phase tracker, "new battle" reset, clear-all-plots, localized chat cards.**

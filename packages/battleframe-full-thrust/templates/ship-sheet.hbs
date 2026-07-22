@@ -7,19 +7,23 @@
     </div>
     <div class="ft-field">
       <label>{{localize "battleframe-full-thrust.fields.thrust"}}</label>
-      <input type="number" name="system.thrust" value="{{system.thrust}}" min="0" step="1" />
+      <input type="number" name="system.thrust" value="{{system.thrust}}" min="0" max="8" step="1" />
+      <span class="ft-track-now" title="usable / design">{{system.thrustTrack}}</span>
     </div>
     <div class="ft-field">
       <label>{{localize "battleframe-full-thrust.fields.fcs"}}</label>
       <input type="number" name="system.fcs" value="{{system.fcs}}" min="0" step="1" />
+      <span class="ft-track-now" title="remaining / design">{{system.fcsTrack}}</span>
     </div>
     <div class="ft-field">
       <label>{{localize "battleframe-full-thrust.fields.screens"}}</label>
       <input type="number" name="system.screens" value="{{system.screens}}" min="0" max="3" step="1" />
+      <span class="ft-track-now" title="remaining / design">{{system.screensTrack}}</span>
     </div>
     <div class="ft-field">
       <label>{{localize "battleframe-full-thrust.fields.pds"}}</label>
       <input type="number" name="system.pds" value="{{system.pds}}" min="0" step="1" />
+      <span class="ft-track-now" title="remaining / design">{{system.pdsTrack}}</span>
     </div>
     <div class="ft-field">
       <label>{{localize "battleframe-full-thrust.fields.ftl"}}</label>

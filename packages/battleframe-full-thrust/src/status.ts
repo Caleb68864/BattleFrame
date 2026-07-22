@@ -8,6 +8,7 @@
  */
 
 import { MODULE_ID } from "./constants";
+import { usableThrust, remainingFcs, type ShipSystemLike } from "./ship/systems";
 
 export const CRIPPLED_STATUS = `${MODULE_ID}-crippled`;
 export const WEAPONS_OFFLINE_STATUS = `${MODULE_ID}-weapons-offline`;
@@ -39,18 +40,17 @@ export function registerShipStatusEffects(): void {
 }
 
 export interface StatusShipLike {
-  system?: { thrust?: number; fcs?: number };
+  system?: ShipSystemLike;
   toggleStatusEffect: (id: string, options: { active: boolean }) => Promise<unknown>;
 }
 
 /**
- * Toggles a ship's condition statuses to match its current systems: crippled
- * when thrust is 0, weapons-offline when fcs is 0. Called after damage/threshold
- * resolution, so the token always reflects the ship's real state.
+ * Toggles a ship's condition statuses to match its remaining systems: crippled
+ * when the drives push no thrust, weapons-offline when no fire control remains.
+ * Called after damage/threshold resolution, so the token reflects the real state.
  */
 export async function syncShipStatuses(actor: StatusShipLike): Promise<void> {
-  const thrust = actor.system?.thrust ?? 0;
-  const fcs = actor.system?.fcs ?? 0;
-  await actor.toggleStatusEffect(CRIPPLED_STATUS, { active: thrust <= 0 });
-  await actor.toggleStatusEffect(WEAPONS_OFFLINE_STATUS, { active: fcs <= 0 });
+  const system = actor.system ?? {};
+  await actor.toggleStatusEffect(CRIPPLED_STATUS, { active: usableThrust(system) <= 0 });
+  await actor.toggleStatusEffect(WEAPONS_OFFLINE_STATUS, { active: remainingFcs(system) < 1 });
 }
