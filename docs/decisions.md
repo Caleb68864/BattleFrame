@@ -2448,3 +2448,27 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   localized chat cards (the other #12 sub-items) remain deferred.
 - +5 tests (fire-phase-status.test.ts); 975 passing; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: pure fighter-movement core (P2 #16)
+- Gap: ship movement (path.ts cinematic pivot-move, vector.ts vector mode) existed, but there was
+  no geometry for how a FIGHTER group moves — and fighters move differently: a flat distance in any
+  direction each turn, no course/velocity tracked, ignoring ship turning caps.
+- Fix: new pure `movement/fighter-move.ts` — `fighterMaxMove` (reuses `fighterMoveForType`: 12 mu
+  standard / 18 mu Fast), `distance` (reuses vector.ts `velocityMagnitude` on the displacement, no
+  hypot duplicated), `moveToward` (clamp to allowance, land on target if within reach), and
+  `canReachToAttack` (can the group end within `FIGHTER_ATTACK_RANGE_MU` (6) of a ship this turn;
+  closes only to the edge of strike range, returns the intercept). Same {x,y} mu screen-space
+  convention (x right, y DOWN) as vector.ts / path.ts. No Foundry code — the token orchestrator
+  (who/when) is deferred, matching path.ts / vector.ts.
+- Notes wording vs assumptions: move/range/direction/Fast are taken verbatim from the user's
+  "Fighter Groups" + "Specialised Fighter Types" notes ("up to 12 mu in any direction ... no
+  orders, no course/velocity tracked"). ASSUMPTION — the "Fighter Attacks" note requires the target
+  in the fighters' FORE arc, yet "Fighter Groups" tracks no facing; resolved as free orientation at
+  end of move, so the fore-arc rule adds NO positional constraint and range alone gates the strike
+  (documented in the file header). Move + strike in the same turn is the normal flow (notes give no
+  "move OR attack" restriction), so nothing blocks it.
+- No new constants needed (reused `FIGHTER_MOVE_MU` / `FIGHTER_MOVE_FAST_MU` / `FIGHTER_ATTACK_RANGE_MU`);
+  `constants.ts` untouched. COVERAGE.md / roadmap-full-thrust.md left untouched per task scope.
+- TDD: tests/fighter-move.test.ts first (hand-computed vectors), watched fail (missing module),
+  then implemented. +11 tests; 981 passing; typecheck clean.
+- Commit: this commit.
