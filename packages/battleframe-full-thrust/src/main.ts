@@ -3,7 +3,7 @@ import { registerShipDataModel } from "./data/ship";
 import { registerFighterGroupDataModel } from "./data/fighter-group";
 import { registerShipSheet } from "./sheets/ship-sheet";
 import { registerFighterSheet } from "./sheets/fighter-sheet";
-import { registerRoundControl } from "./ui/round-control";
+import { registerRoundControl, advanceTurnCore } from "./ui/round-control";
 import { registerOwnershipWarning } from "./ui/ownership-warning";
 import { registerArcOverlay } from "./ui/arc-overlay";
 import { registerMissileOverlay } from "./ui/missile-overlay";
@@ -135,5 +135,8 @@ globalHooks?.once("init", () => {
   registerArcOverlay();
   // Redraw in-flight independent missiles when a scene loads.
   registerMissileOverlay();
+  // Player-driven, GM-less turn advance: register what "advance the turn" does.
+  const advance = (globalThis as any).battleframe?.advance ?? (globalThis as any).game?.battleframe?.advance;
+  advance?.registerAdvance?.(() => advanceTurnCore());
   registerFullThrustRuleset();
 });

@@ -22,6 +22,7 @@
   "battleframe-full-thrust.status.weaponsOffline": "Weapons offline (no fire control)",
   "battleframe-full-thrust.status.destroyed": "Destroyed",
   "battleframe-full-thrust.controls.title": "Full Thrust",
+  "battleframe-full-thrust.controls.ready": "Ready to advance (turn advances when all players ready)",
   "battleframe-full-thrust.controls.initiative": "Begin fire phase (roll initiative)",
   "battleframe-full-thrust.controls.phaseStatus": "Fire phase status (whose turn)",
   "battleframe-full-thrust.controls.fire": "Fire selected ship at target",

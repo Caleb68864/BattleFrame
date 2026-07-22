@@ -11,6 +11,7 @@ import { installHoverApi } from "./ui/hover-registry";
 import { installStatusApi } from "./ui/status";
 import { installSelectionApi } from "./ui/selection";
 import { installChatApi } from "./ui/chat";
+import { installReadyAdvanceApi, registerReadyAdvance } from "./rounds/ready-advance";
 import { registerBattleframeSettings } from "./settings";
 import {
   createSetupWizardClass,
@@ -58,6 +59,7 @@ installHoverApi();
 installStatusApi();
 installSelectionApi();
 installChatApi();
+installReadyAdvanceApi();
 
 function hooksAvailable(): boolean {
   return typeof Hooks !== "undefined";
@@ -118,6 +120,8 @@ export function initialiseBattleframe(): void {
 
   registerBattleframeSettings(resolveWizardClass());
   registerCombatDocumentClass();
+  // Player-driven, GM-less round advancement: the timer setting + ready-flag hooks.
+  registerReadyAdvance();
 
   console.log(`${SYSTEM_ID} | initialised`);
 }

@@ -882,14 +882,21 @@ export async function advanceMissilesAction(): Promise<void> {
     notify("warn", `${MODULE_ID} | only the GM runs the missile phase`);
     return;
   }
-  const services = api();
-  if (!services) {
-    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+  if (loadMissiles().length === 0) {
+    notify("info", `${MODULE_ID} | no missiles in flight`);
     return;
   }
-  let missiles = loadMissiles();
+  await advanceMissilesCore();
+}
+
+/** The missile-phase work, ungated (also driven by the player-ready turn advance). */
+async function advanceMissilesCore(): Promise<void> {
+  const services = api();
+  if (!services) {
+    return;
+  }
+  const missiles = loadMissiles();
   if (missiles.length === 0) {
-    notify("info", `${MODULE_ID} | no missiles in flight`);
     return;
   }
   const context = { measure: services.measure, facing: services.facing, dice: services.dice };
@@ -1505,6 +1512,42 @@ export async function newTurnAction(): Promise<void> {
     notify("warn", `${MODULE_ID} | only the GM starts a new turn`);
     return;
   }
+  const { cleared, missilesFlown } = await advanceTurnCore();
+  notify("info", `${MODULE_ID} | new turn -- cleared ${cleared} plot(s), ended the fire phase${missilesFlown > 0 ? `, flew ${missilesFlown} missile(s)` : ""}`);
+}
+
+/**
+ * Ready tool (every player): toggle "ready to advance". When all players are
+ * ready the engine runs a settable countdown and then advances the turn
+ * (`advanceTurnCore`) with no GM needed. Un-readying cancels the countdown.
+ */
+export async function readyAction(): Promise<void> {
+  const advance = (g().game as any)?.battleframe?.advance;
+  if (!advance?.toggleReady) {
+    notify("warn", `${MODULE_ID} | the battleframe advance service was not found`);
+    return;
+  }
+  await advance.toggleReady();
+  const status = advance.status?.();
+  notify(
+    "info",
+    `${MODULE_ID} | you are ${advance.isReady?.() ? "READY" : "not ready"} (${status?.ready?.length ?? 0}/${status?.participants?.length ?? 0} ready)`
+  );
+}
+
+/** Whether the current user is marked ready (for the toggle button's state). */
+function currentUserReady(): boolean {
+  return !!(g().game as any)?.battleframe?.advance?.isReady?.();
+}
+
+/**
+ * The turn-advance work, UNGATED: clear every ship's plotted order, end the fire
+ * phase, and fly any in-flight missiles. This is what the player-driven ready
+ * countdown runs (on the host client) as well as the GM's manual New Turn tool,
+ * so a GM-less table advances the game itself. Registered as the engine's advance
+ * callback via `game.battleframe.advance.registerAdvance`.
+ */
+export async function advanceTurnCore(): Promise<{ cleared: number; missilesFlown: number }> {
   const tokens = g().canvas?.tokens?.placeables ?? [];
   let cleared = 0;
   for (const token of tokens) {
@@ -1519,14 +1562,11 @@ export async function newTurnAction(): Promise<void> {
   }
   await firePhaseDoc()?.unsetFlag(MODULE_ID, FIRE_PHASE_FLAG);
   clearMovementPreview();
-  // Any independent missiles in flight fly their turn automatically as part of
-  // starting the new turn -- the player never moves them by hand. (The manual
-  // "Missile Phase" tool remains for firing them mid-turn.)
-  const missilesInFlight = loadMissiles().length;
-  if (missilesInFlight > 0) {
-    await advanceMissilesAction();
+  const missilesFlown = loadMissiles().length;
+  if (missilesFlown > 0) {
+    await advanceMissilesCore();
   }
-  notify("info", `${MODULE_ID} | new turn -- cleared ${cleared} plot(s), ended the fire phase${missilesInFlight > 0 ? `, flew ${missilesInFlight} missile(s)` : ""}`);
+  return { cleared, missilesFlown };
 }
 
 /**
@@ -1728,6 +1768,18 @@ export function addSceneControl(controls: unknown): void {
     visible: gm,
     order: 0,
     onClick: () => void beginFirePhaseAction(),
+  };
+  // Ready-to-advance toggle: when all players are ready, the turn advances on a
+  // countdown -- no GM needed. Every player.
+  const readyTool = {
+    name: "full-thrust-ready",
+    title: "battleframe-full-thrust.controls.ready",
+    icon: "fas fa-hourglass-half",
+    toggle: true,
+    active: currentUserReady(),
+    visible: true,
+    order: 0,
+    onChange: () => void readyAction(),
   };
   // Re-post the current fire-phase tracker (whose side fires next) -- GM only.
   const phaseStatusTool = {
@@ -1955,7 +2007,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, chargeWaveGunTool, waveGunTool, launchFightersTool, recoverFightersTool, fighterMoveTool, vectorMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, newBattleTool, importTool];
+  const tools = [readyTool, initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, chargeWaveGunTool, waveGunTool, launchFightersTool, recoverFightersTool, fighterMoveTool, vectorMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, newBattleTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);

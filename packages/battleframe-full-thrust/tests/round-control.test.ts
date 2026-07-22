@@ -267,6 +267,7 @@ describe("addSceneControl", () => {
     expect(controls).toHaveLength(1);
     expect(controls[0].name).toBe("battleframe-full-thrust");
     const toolNames = controls[0].tools.map((t: any) => t.name);
+    expect(toolNames).toContain("full-thrust-ready");
     expect(toolNames).toContain("full-thrust-initiative");
     expect(toolNames).toContain("full-thrust-phase-status");
     expect(toolNames).toContain("full-thrust-fire");
