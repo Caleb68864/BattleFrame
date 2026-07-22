@@ -37,6 +37,13 @@
 
   <section class="ft-track">
     <h3>{{localize "battleframe-full-thrust.fields.armour"}}</h3>
+    <div class="ft-hull-track ft-armour-track" title="{{localize "battleframe-full-thrust.armour.trackHint"}}">
+      {{#each armourBoxes}}
+        <button type="button" class="ft-hull-box ft-armour-box{{#if this.damaged}} ft-damaged{{/if}}"
+          data-action="toggleArmourBox" data-number="{{this.number}}"
+          aria-label="armour box {{this.number}}"></button>
+      {{/each}}
+    </div>
     <div class="ft-boxes">
       <input type="number" name="system.armour.damage" value="{{system.armour.damage}}" min="0" step="1" />
       <span>/</span>

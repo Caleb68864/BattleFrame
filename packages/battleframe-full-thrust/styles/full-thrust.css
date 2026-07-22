@@ -73,6 +73,16 @@
   border-color: #7b241c;
 }
 
+/* Armour boxes reuse the hull-box shape with a cooler intact tint, since armour
+ * absorbs damage before the hull. Damaged state stays the shared red. */
+.ft-ship-sheet .ft-armour-box {
+  background: rgba(174, 214, 241, 0.65);
+}
+
+.ft-ship-sheet .ft-armour-box:hover {
+  border-color: #2471a3;
+}
+
 /* A gap marking where an FT2 threshold row ends. */
 .ft-ship-sheet .ft-threshold-sep {
   width: 2px;

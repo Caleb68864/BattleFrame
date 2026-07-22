@@ -49,6 +49,48 @@ export async function onToggleHullBox(this: any, _event: unknown, target: any): 
   await actor.update({ "system.hull.damage": next });
 }
 
+/** One rendered armour box: its 1-based number and whether it is crossed off.
+ * Armour has no thresholds, so — unlike the hull — there is no `rowEnd`. */
+export interface ArmourBoxView {
+  number: number;
+  damaged: boolean;
+}
+
+/**
+ * The clickable armour track for the SSD (roadmap #10): `boxes` boxes, the first
+ * `damage` of them crossed off. Simpler than the hull track — armour rows carry
+ * no threshold separators. Pure so the view-model is unit-tested without Foundry.
+ */
+export function prepareArmourBoxes(boxes: number, damage: number): ArmourBoxView[] {
+  const total = Math.max(0, Math.floor(boxes));
+  const crossed = Math.max(0, Math.min(total, Math.floor(damage)));
+  const view: ArmourBoxView[] = [];
+  for (let i = 0; i < total; i++) {
+    const number = i + 1;
+    view.push({ number, damaged: number <= crossed });
+  }
+  return view;
+}
+
+/**
+ * Action handler: a click on armour box N sets `system.armour.damage`. Clicking
+ * an intact box fills damage through it (damage = N); clicking an already-damaged
+ * box unfills it and everything beyond (damage = N-1). `this` is the sheet app.
+ */
+export async function onToggleArmourBox(this: any, _event: unknown, target: any): Promise<void> {
+  const actor = this?.actor;
+  if (!actor?.update) {
+    return;
+  }
+  const number = Number(target?.dataset?.number);
+  if (!Number.isInteger(number) || number < 1) {
+    return;
+  }
+  const current = actor.system?.armour?.damage ?? 0;
+  const next = number <= current ? number - 1 : number;
+  await actor.update({ "system.armour.damage": next });
+}
+
 /** Action handler: append a default weapon to the ship. `this` is the sheet app. */
 export async function onAddWeapon(this: any): Promise<void> {
   const actor = this?.actor;
@@ -163,7 +205,12 @@ export function createShipSheetClass(
       classes: [MODULE_ID, "sheet", "actor", SHIP_ACTOR_TYPE],
       position: { width: 560, height: 620 },
       form: { submitOnChange: true },
-      actions: { addWeapon: onAddWeapon, removeWeapon: onRemoveWeapon, toggleHullBox: onToggleHullBox }
+      actions: {
+        addWeapon: onAddWeapon,
+        removeWeapon: onRemoveWeapon,
+        toggleHullBox: onToggleHullBox,
+        toggleArmourBox: onToggleArmourBox
+      }
     };
 
     static PARTS = {
@@ -181,6 +228,9 @@ export function createShipSheetClass(
       // Clickable hull damage track (visual SSD).
       const hull = actor?.system?.hull ?? {};
       context.hullBoxes = prepareHullBoxes(hull.boxes ?? 0, hull.damage ?? 0, hull.rows ?? 1);
+      // Clickable armour damage track (no threshold rows).
+      const armour = actor?.system?.armour ?? {};
+      context.armourBoxes = prepareArmourBoxes(armour.boxes ?? 0, armour.damage ?? 0);
 
       return context;
     }

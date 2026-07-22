@@ -2549,3 +2549,27 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   after 3 turns. A per-missile turn/warhead picker is a future refinement.
 - +10 tests (missile-phase 6, buildMissileReportHtml 4); 1021 passing; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: clickable armour damage track (roadmap P1 #10, extends hull)
+- Ask: extend the ship sheet's clickable-box SSD UI from the hull track to ARMOUR (and,
+  if clean, the design-count systems), matching the established hull pattern exactly.
+- Fix: `prepareArmourBoxes(boxes, damage)` (pure view-model — a `{number, damaged}[]`, no
+  `rowEnd`, since armour has no threshold rows) + `onToggleArmourBox` (same fill/unfill
+  semantics as the hull handler, writing `system.armour.damage`). Registered as the
+  `toggleArmourBox` sheet action; `_prepareContext` now supplies `context.armourBoxes`.
+  Template gains a `.ft-hull-track.ft-armour-track` block of `data-action="toggleArmourBox"
+  buttons above the existing armour number inputs (kept as an exact fallback). CSS reuses
+  `.ft-hull-box`/`.ft-damaged` with a cool `.ft-armour-box` intact tint (armour absorbs
+  before the hull); damaged pips stay the shared red.
+- Scope: ARMOUR ONLY. The design-count systems (FCS/PDS/screens) were SKIPPED as awkward,
+  not clean: their damage counter is the combat-driven `…Lost` field, which — unlike hull
+  `damage`/armour `damage` — has NO existing number-input fallback on the sheet (only the
+  design count is an input; the track is a read-only `…Track` span). Adding pip editing would
+  introduce a brand-new hand-edit surface for three systems plus their fallback inputs and
+  risk divergence from combat-driven damage — beyond mirroring the hull pattern. Deferred.
+- Surfaces: src/sheets/ship-sheet.ts, templates/ship-sheet.hbs, styles/full-thrust.css,
+  lang/en.json (armour.trackHint), tests/ship-sheet-armour.test.ts (new).
+- Watch: PIXI-free but Foundry-facing (sheet action wiring) — live-verify the armour row
+  renders, clicks fill/unfill and persist, and the number inputs still work as fallback.
+- +6 tests (ship-sheet-armour.test.ts); 1017 passing; typecheck clean.
+- Commit: this commit.
