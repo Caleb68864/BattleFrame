@@ -2908,3 +2908,32 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   tests/round-control.test.ts (scene-control assertions).
 - 1159 tests pass; typecheck clean.
 - Commit: this commit.
+
+## 2026-07-22 — GM-less advance delegates the privileged write to a GM via socketlib
+- Context: the player-driven round advance runs on a *player* host, but advancing
+  writes shared docs (Scene/Combat/units). Foundry forbids a plain Player from those
+  writes, so the original design required the players to be **Assistant GMs**. The
+  Foundry-ecosystem sweep (`internal-docs/foundry-ecosystem-research.md`) found the
+  ecosystem-standard fix: **socketlib** (`executeAsGM`).
+- Change: `performAdvance` now consults a new pure `advanceStrategy({socketlibReady,
+  gmConnected})` → `"delegate" | "local"`. When socketlib is registered AND a GM is
+  connected (`gmConnected(users)` — any active `isGM`), the host calls
+  `socket.executeAsGM("performAdvance")` and a real GM runs the privileged half
+  (`privilegedAdvance` = unsetFlag ready map + advanceCallback). Otherwise it runs
+  locally (the pre-socketlib Assistant-GM path). Registration is in a
+  `Hooks.once("socketlib.ready")` listener added at init; absent socketlib the hook
+  never fires and `socket` stays undefined, so the local path is used — no behaviour
+  change for existing worlds.
+- Why the two-witness/native rules are satisfied: socketlib is the standard library
+  for GM-delegated actions (not a reinvented `game.socket` protocol), declared as a
+  **soft** `relationships.recommends` in system.json (offered, never required —
+  graceful degradation). This EXTENDS GM-less play from "Assistant-GM players" to
+  "plain players + one connected GM"; the truly GM-absent Assistant-GM path is
+  untouched.
+- Surfaces: src/rounds/ready-advance.ts (`gmConnected`, `advanceStrategy`,
+  `privilegedAdvance`, `registerAdvanceSocket`, socket routing), system.json
+  (recommends socketlib), docs/gm-less-play.md (both permission paths).
+- Tests: +6 (gmConnected ×3, advanceStrategy ×3); 1180 pass, typecheck clean. The
+  socketlib delegate path itself is Foundry-facing and **not yet live-verified**
+  (needs a 2-player + idle-GM world with socketlib installed).
+- Commit: this commit.

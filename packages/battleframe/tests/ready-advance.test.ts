@@ -7,7 +7,14 @@
  */
 
 import { describe, expect, it } from "vitest";
-import { participantsOf, allReady, advancingHost, toggledReady } from "../src/rounds/ready-advance";
+import {
+  participantsOf,
+  allReady,
+  advancingHost,
+  toggledReady,
+  gmConnected,
+  advanceStrategy
+} from "../src/rounds/ready-advance";
 
 describe("participantsOf", () => {
   const users = [
@@ -59,5 +66,41 @@ describe("toggledReady", () => {
 
   it("removes it when present (un-ready)", () => {
     expect(toggledReady({ p1: true, p2: true }, "p1")).toEqual({ p2: true });
+  });
+});
+
+describe("gmConnected", () => {
+  it("is true when an active GM (assistant or full) is present", () => {
+    const users = [
+      { id: "gm", active: true, isGM: true },
+      { id: "p1", active: true, isGM: false }
+    ];
+    expect(gmConnected(users)).toBe(true);
+  });
+
+  it("is false when the only GM is disconnected", () => {
+    const users = [
+      { id: "gm", active: false, isGM: true },
+      { id: "p1", active: true, isGM: false }
+    ];
+    expect(gmConnected(users)).toBe(false);
+  });
+
+  it("is false at an all-player table (no GM to receive a delegated advance)", () => {
+    expect(gmConnected([{ id: "p1", active: true, isGM: false }])).toBe(false);
+  });
+});
+
+describe("advanceStrategy", () => {
+  it("delegates the privileged write to a GM when socketlib is ready and a GM is connected", () => {
+    expect(advanceStrategy({ socketlibReady: true, gmConnected: true })).toBe("delegate");
+  });
+
+  it("runs locally when socketlib is unavailable (the pre-socketlib Assistant-GM path)", () => {
+    expect(advanceStrategy({ socketlibReady: false, gmConnected: true })).toBe("local");
+  });
+
+  it("runs locally when no GM is connected to receive the delegation", () => {
+    expect(advanceStrategy({ socketlibReady: true, gmConnected: false })).toBe("local");
   });
 });

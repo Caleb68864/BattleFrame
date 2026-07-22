@@ -21,6 +21,16 @@
       "generic": {}
     }
   },
+  "relationships": {
+    "recommends": [
+      {
+        "id": "socketlib",
+        "type": "module",
+        "manifest": "https://github.com/farling42/foundryvtt-socketlib/releases/latest/download/module.json",
+        "reason": "Lets a plain-player host advance the round on a connected GM's behalf (GM-less play). Without it, only an Assistant GM can drive the advance."
+      }
+    ]
+  },
   "grid": {
     "type": 0,
     "distance": 1,

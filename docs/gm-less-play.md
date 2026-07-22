@@ -43,20 +43,39 @@ Find it under *Game Settings → Configure Settings → System Settings*.
 **This is the GM's one-time setup, and it matters.** The round advance runs on a
 *player's* client (the host), and advancing the round updates shared documents
 (the Scene, the Combat, ships/units). By default Foundry reserves those updates for
-a Gamemaster, so a plain Player-role account cannot perform the advance.
+a Gamemaster, so a plain Player-role account cannot perform the advance. There are
+two ways to satisfy that, in order of preference:
 
-For GM-less play, give the players enough permission to advance:
+### Preferred: socketlib (a GM is present, plain players drive)
+
+Install the free **[socketlib](https://foundryvtt.com/packages/socketlib)** module
+(BattleFrame recommends it in its manifest, so Foundry offers to install it
+alongside the system). When socketlib is active **and at least one GM is
+connected**, the host player hands the privileged write to that GM over a socket
+(`executeAsGM`) — so the players can be plain **Player**-role accounts and still
+run the whole game. The GM only has to be *logged in*; they never touch the
+controls. This is the recommended setup for a table where a GM is around but not
+running the game.
+
+### Fallback: Assistant-GM players (no GM needs to be present at all)
+
+Without socketlib — or with no GM connected — the host performs the write itself,
+which requires the host to have permission:
 
 - **Simplest:** set each playing account to the **Assistant Gamemaster** role
   (*Configure Players → Role*). Assistant GMs can update the round/scene documents,
-  so the host player can advance the round. This is the recommended GM-less setup —
-  the GM builds the world, then hands the players Assistant-GM accounts to play.
+  so the host player can advance the round with **no full GM connected at all** —
+  the truly GM-absent table. The GM builds the world, then hands the players
+  Assistant-GM accounts to play.
 - **Or:** grant the players ownership of the relevant Scene / Actors so they can
   update them. (More granular, more fiddly — Assistant GM is usually enough.)
 
-If the players lack the needed permission, the ready check + countdown still run,
-but the advance will silently fail to take effect (the host can't write the update).
-If advancement seems to "stick", check the players' role/permissions first.
+The engine degrades gracefully between the two: it delegates through socketlib when
+it can, and runs locally otherwise. If the players are plain Players, socketlib is
+absent, and no GM is connected, the ready check + countdown still run but the
+advance silently fails to take effect (no one can write the update). If advancement
+seems to "stick", check that either socketlib + a GM is present, or the players hold
+Assistant-GM/ownership.
 
 > The engine treats Assistant GMs as participants when no plain-Player account is
 > active, so two Assistant-GM players readying will advance the round between them
@@ -73,6 +92,11 @@ The mechanism is live-verified in a real Foundry v14 world:
   (`allReady: true`); after the countdown, **both** clients saw the ready flags
   cleared — the host advanced the round and the cleared state synced to both
   sessions.
+
+The **socketlib delegation path** (plain-player host → `executeAsGM` → connected
+GM performs the write) is implemented and unit-covered but **not yet live-verified**
+— verifying it needs a three-seat world (two plain players + one idle GM) with
+socketlib installed.
 
 ## For ruleset-module authors
 

@@ -59,6 +59,24 @@ export function advancingHost(participantIds: readonly string[]): string | undef
   return [...participantIds].sort()[0];
 }
 
+/** True when at least one GM (assistant or full) is connected to receive a delegated advance. */
+export function gmConnected(users: readonly UserLike[]): boolean {
+  return users.some((u) => u.active && u.isGM);
+}
+
+/**
+ * How the host should perform the privileged advance (the Combat/Scene writes a
+ * plain player is forbidden to make): DELEGATE it to a connected GM over socketlib,
+ * or run it LOCALLY (the pre-socketlib path — works only if the host is itself an
+ * Assistant GM). Delegation needs both socketlib present AND a GM online to run it.
+ */
+export function advanceStrategy(opts: {
+  socketlibReady: boolean;
+  gmConnected: boolean;
+}): "delegate" | "local" {
+  return opts.socketlibReady && opts.gmConnected ? "delegate" : "local";
+}
+
 /** Flips a user's ready flag in the ready map (returns a new map). */
 export function toggledReady(map: Record<string, boolean>, userId: string): Record<string, boolean> {
   const next = { ...map };
@@ -84,19 +102,30 @@ interface FlagDoc {
   update?: (data: Record<string, unknown>) => Promise<unknown>;
 }
 
+/** The slice of socketlib we use: register a system handler, run it on a GM. */
+interface SocketReg {
+  register?: (name: string, fn: (...args: any[]) => unknown) => void;
+  executeAsGM?: (name: string, ...args: any[]) => Promise<unknown>;
+}
+
 interface Glob {
   game?: {
     user?: { id?: string };
     users?: UserLike[] | { filter?: (fn: (u: UserLike) => boolean) => UserLike[]; [Symbol.iterator]?: unknown };
     combats?: { active?: FlagDoc };
+    modules?: { get?: (id: string) => { active?: boolean } | undefined };
     settings?: {
       get?: (scope: string, key: string) => unknown;
       register?: (scope: string, key: string, data: Record<string, unknown>) => void;
     };
   };
   canvas?: { scene?: FlagDoc };
-  Hooks?: { on?: (event: string, cb: (...args: any[]) => void) => void };
+  Hooks?: {
+    on?: (event: string, cb: (...args: any[]) => void) => void;
+    once?: (event: string, cb: (...args: any[]) => void) => void;
+  };
   ui?: { notifications?: { info?: (m: string) => void } };
+  socketlib?: { registerSystem?: (id: string) => SocketReg | undefined };
 }
 
 function glob(): Glob {
@@ -130,9 +159,14 @@ function timerSeconds(): number {
   return Number.isFinite(n) && n >= 0 ? n : DEFAULT_TIMER;
 }
 
+/** The socketlib handler name for the privileged advance (system-scoped). */
+const SOCKET_ADVANCE = "performAdvance";
+
 /** The ruleset's "advance the round" behaviour, registered at init. */
 let advanceCallback: (() => void | Promise<void>) | undefined;
 let countdownTimer: ReturnType<typeof setTimeout> | undefined;
+/** socketlib registration, set once socketlib fires `socketlib.ready` (undefined if absent). */
+let socket: SocketReg | undefined;
 
 function cancelCountdown(): void {
   if (countdownTimer !== undefined) {
@@ -169,17 +203,53 @@ async function evaluate(): Promise<void> {
   }
 }
 
+/**
+ * The privileged half of an advance: the Combat/Scene writes Foundry forbids a
+ * plain player to make. Runs either on the host directly (local strategy, host is
+ * an Assistant GM) or on a connected GM via socketlib (delegate strategy).
+ *
+ * Clear ready flags first so the advance starts a fresh round for everyone.
+ * unsetFlag REMOVES the whole flag -- `setFlag(..., {})` would deep-MERGE and
+ * leave every existing key, so it must not be used to clear a flag map.
+ */
+async function privilegedAdvance(): Promise<void> {
+  await readyDoc()?.unsetFlag?.(SYSTEM_ID, READY_FLAG);
+  await advanceCallback?.();
+}
+
 async function performAdvance(): Promise<void> {
   cancelCountdown();
   try {
-    // Clear ready flags first so the advance starts a fresh round for everyone.
-    // unsetFlag REMOVES the whole flag -- `setFlag(..., {})` would deep-MERGE and
-    // leave every existing key, so it must not be used to clear a flag map.
-    await readyDoc()?.unsetFlag?.(SYSTEM_ID, READY_FLAG);
-    await advanceCallback?.();
+    // socketlib lets a plain-player host hand the privileged writes to a connected
+    // GM (`executeAsGM`), so a truly player-only-driven table works as long as one
+    // GM is online. Without socketlib (or without a GM) we fall back to running the
+    // writes locally -- which only succeeds if this host is itself an Assistant GM.
+    const strategy = advanceStrategy({
+      socketlibReady: !!socket,
+      gmConnected: gmConnected(usersList())
+    });
+    if (strategy === "delegate") {
+      await socket?.executeAsGM?.(SOCKET_ADVANCE);
+    } else {
+      await privilegedAdvance();
+    }
   } catch {
     /* an advance failure must not wedge the ready state */
   }
+}
+
+/**
+ * Registers the privileged-advance handler with socketlib once it is ready, so a
+ * GM client can run it on a player host's behalf. A system uses `registerSystem`
+ * (modules use `registerModule`). No-op if socketlib is not installed.
+ */
+function registerAdvanceSocket(): void {
+  const reg = glob().socketlib?.registerSystem?.(SYSTEM_ID);
+  if (!reg) {
+    return;
+  }
+  reg.register?.(SOCKET_ADVANCE, () => privilegedAdvance());
+  socket = reg;
 }
 
 export interface ReadyAdvanceApi {
@@ -254,4 +324,8 @@ export function registerReadyAdvance(): void {
     hooks.on("updateScene", () => void evaluate());
     hooks.on("userConnected", () => void evaluate());
   }
+  // socketlib fires this once it is ready (it loads as a module, after this system's
+  // init). We register our GM-run advance handler then; absent socketlib, this hook
+  // never fires and we keep the local Assistant-GM fallback.
+  hooks?.once?.("socketlib.ready", () => registerAdvanceSocket());
 }
