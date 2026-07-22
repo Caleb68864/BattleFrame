@@ -2605,3 +2605,31 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - +16 tests (carrier.test.ts); 1027 passing (was 1011); typecheck clean. COVERAGE.md /
   roadmap-full-thrust.md left untouched per scope. No Foundry glue, no round-control edits.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust: Kra'Vak kinetic weapons pure math (roadmap P2 #20, xeno subset)
+- Ask: build PURE, tested math for the Kra'Vak race's signature kinetic weapons (K-guns /
+  railguns / scatterguns) and their armour-piercing damage rule; NEW file, no Foundry code.
+  Verified every number against the user's notes (Factions & Ships/Xeno/K-guns.md,
+  Scatterguns.md, Kra'Vak.md, Kra'Vak Armour.md).
+- Fix: `combat/kravak.ts` (new). K-gun: `kgunToHit` (2+/3+/4+/5+/6 by 6mu band, max 30mu, shared by
+  all classes — mirrors `torpedoToHit`), `kgunDamageForFace` (roll>class = class DP, roll<=class =
+  class×2, natural 6 always = class — the cap that matters for K-6/K-6+), `applyKgunHit` (armour
+  PIERCE: only the first DP hits armour, remainder straight to hull — reuses `applyDamageWithArmour`
+  by routing the pierced remainder through a zero-armour ship), `kgunK1PointDefenceKills` (5-6, one
+  kill per hit, via `countHits`). MKP pack: `mkpHits` (4-5=1, 6=2), each flat 4 DP via `applyKgunHit`.
+  Scattergun (all-arc one-shot, no FC): `scattergunFighterKills` (1D6, halve round-up vs heavy),
+  `scattergunPlasmaReduction` (4-5=−1, 6=−2), `scattergunShipDamageForFace` (4-5=1, 6=2 DP; NOT
+  piercing — absorbed by armour normally), `scattergunFriendlyFireHit` (area-defence roll of 1).
+  Screens are kinetically irrelevant throughout, so there is no screen parameter anywhere.
+- Constants: Kra'Vak block appended at the END of `constants.ts`, each number with a source-quote
+  comment. Per PDS precedent, the K-gun to-hit table keeps its own constants even though it
+  coincides numerically with pulse torpedoes.
+- Deferred (in the notes, not implemented — flagged, not invented): the More Thrust "railgun" edition
+  variant (classes 1-3, "−1 per armour level" from the die) is a superseded edition layer, so FB2 is
+  the baseline (mirrors beam.ts taking FT2 core); Phalon multi-layer-shell interaction ("one box per
+  shell layer") is out of scope (Phalon/Sa'Vasku excluded); the More Thrust scattergun profile
+  (12mu, FC-required, damage=die) likewise superseded by FB2. No engine glue / sheet / dice wiring
+  (that is the orchestration layer's job).
+- +18 tests (kravak.test.ts, hand-computed from the notes' worked examples); 1029 passing (was 1011);
+  typecheck clean.
+- Commit: this commit.

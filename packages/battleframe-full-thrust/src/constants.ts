@@ -428,3 +428,93 @@ export const FIGHTER_RECOVER_PER_TURN = 1;
  * endurance should not consult this constant.
  */
 export const FIGHTER_RETURN_GRACE_TURNS = 3;
+
+// --- Kra'Vak kinetic weapons (Fleet Book 2 — Xeno File 1; roadmap P2 #20) ----
+
+/**
+ * K-gun (railgun) range/to-hit. All K-gun CLASSES share one to-hit table; class
+ * only sets the damage a penetrating hit does. These numbers coincide with the
+ * pulse-torpedo table but are an independently-sourced Kra'Vak rule (mirroring
+ * how PDS keeps its own constants), so they live here in their own block.
+ * Source (user's "K-guns" note): "To hit (roll 1 die per K-gun): 0-6mu 2+, 6-12
+ * 3+, 12-18 4+, 18-24 5+, 24-30 6." and "All classes share the same range bands
+ * and to-hit numbers; class only affects the damage a penetrating hit does."
+ */
+export const KGUN_MAX_RANGE_MU = 30;
+export const KGUN_BAND_MU = 6;
+export const KGUN_TO_HIT_BY_BAND = [2, 3, 4, 5, 6] as const;
+
+/**
+ * K-gun penetration/damage: on a hit a second die is rolled against gun class.
+ * Source (user's "K-guns" note): "roll greater than gun class -> damage = class;
+ * roll <= class -> damage = class x 2. A natural 6 always = class (even for
+ * K-6+)." and the worked examples "class-3 K-gun does 6 DP on 1-3, 3 DP on 4-6.
+ * Class-5 does 10 DP on 1-5, 5 DP on 6." The natural-6 cap uses DIE_SIZE.
+ */
+export const KGUN_DAMAGE_MULTIPLIER = 2;
+
+/**
+ * K-gun armour piercing. Source (user's "K-guns" / "Kra'Vak Armour" notes):
+ * "only the first DP of each single hit is taken on armour/carapace; the entire
+ * remainder goes straight to hull. (Per-hit, not per-salvo.)"
+ */
+export const KGUN_ARMOUR_PIERCE_DP = 1;
+
+/**
+ * K-1 limited point-defence mode. Source (user's "K-guns" note): the K-1 "can
+ * also fire in a limited point-defence mode (hit on 5-6, one kill per hit, no
+ * rerolls, can't also do anti-ship fire that turn)."
+ */
+export const KGUN_K1_POINT_DEFENCE_KILL_ON = 5;
+
+/**
+ * Multiple Kinetic Penetrator (MKP) Pack: a one-shot Kra'Vak kinetic weapon.
+ * Source (user's "K-guns" note): "12mu, 1 arc, roll 1 die (4-5 = 1 hit, 6 = 2
+ * hits), each hit = 4 DP resolved like a class-4 K-gun. 1 MASS, 4 pts." The "4
+ * DP" is flat (not rolled); "resolved like a class-4 K-gun" means the pierce
+ * rule applies (1 DP to armour, remainder to hull) -- see applyKgunHit.
+ */
+export const MKP_RANGE_MU = 12;
+export const MKP_ONE_HIT_MIN = 4;
+export const MKP_TWO_HIT = 6;
+export const MKP_HIT_DP = 4;
+
+/**
+ * Scattergun: the Kra'Vak one-shot, all-arc, no-fire-control kinetic PD weapon;
+ * 6mu in every mode. Source (user's "Scatterguns" note, Fleet Book 2): "Range:
+ * 6mu in point-defence / area-defence / anti-ship modes."
+ */
+export const SCATTERGUN_RANGE_MU = 6;
+
+/**
+ * Scattergun vs fighters / salvo missiles. Source (user's "Scatterguns" note):
+ * "Vs fighters / salvo missiles: kills 1D6 elements (halve, round up, vs heavy
+ * fighters)." The die roll itself is the kill count; heavy fighters halve it
+ * (round up) via this divisor.
+ */
+export const SCATTERGUN_HEAVY_FIGHTER_DIVISOR = 2;
+
+/**
+ * Scattergun vs plasma bolts. Source (user's "Scatterguns" note): "Vs plasma
+ * bolts: 4-5 reduces bolt strength by 1, 6 reduces by 2 (no rerolls)."
+ */
+export const SCATTERGUN_PLASMA_ONE_REDUCE_MIN = 4;
+export const SCATTERGUN_PLASMA_TWO_REDUCE = 6;
+
+/**
+ * Scattergun point-blank anti-ship fire (kinetic, but NOT armour-piercing --
+ * unlike a K-gun the burst is absorbed by armour normally). Source (user's
+ * "Scatterguns" note): "Vs ships ...: 4-5 = 1 DP, 6 = 2 DP (two separate hits,
+ * so both taken on armour if present). No rerolls." The two hits of a 6 absorb
+ * identically to one 2-DP hit against non-piercing armour, so the applier takes
+ * the total.
+ */
+export const SCATTERGUN_SHIP_ONE_DP_MIN = 4;
+export const SCATTERGUN_SHIP_TWO_DP = 6;
+
+/**
+ * Scattergun area-defence friendly-fire quirk. Source (user's "Scatterguns"
+ * note): "in area-defence, an effect roll of 1 means stray projectiles hit the
+ * defended ship for 1 DP."
+ */
+export const SCATTERGUN_FRIENDLY_FIRE_ON = 1;
