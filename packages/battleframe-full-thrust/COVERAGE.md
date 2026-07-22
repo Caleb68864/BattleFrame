@@ -65,7 +65,7 @@ deferred. Nothing is silently missing.
 | Screens (level 1–3) downgrade each beam die | ✅ | `combat/beam.ts` `beamDamageForFace` |
 | Armour absorbs point-for-point before hull | ✅ | `ship/damage.ts` `applyDamageWithArmour` |
 | Fire control: lost all FCS = cannot fire | ✅ | `combat/fire-ship.ts` refuses fire (`refused: "no-fcs"`) when `fcs < 1` |
-| Fire control: 1 FCS = 1 target / multi-FCS fire-splitting | 🟡 | FCS count tracked; the split-among-N-targets UI is deferred |
+| Fire control: 1 FCS = 1 target / multi-FCS fire-splitting | 🟡 | `combat/fcs-allocation.ts` `allocateFcsFire`/`validateAllocation` split weapons across ≤ N targets (N = working FCS), reusing `previewTargeting` for bears/range (pure + tested); the scene-tool wiring is deferred |
 | Point defence (PDAF/ADAF) vs fighters and missiles | 🟡 | `combat/fighters.ts` (math); PDS interception step in the fire UI deferred |
 
 ## Damage
@@ -76,6 +76,9 @@ deferred. Nothing is silently missing.
 | Multi-threshold in one attack: worst reached, worsened per extra | ✅ | `ship/threshold.ts` `thresholdKillOn` |
 | Drives special (half then dead) | ✅ | `ship/systems.ts` + `driveCrippled` field: first hit halves thrust, second kills |
 | Damage control (More Thrust end-of-turn repair) | ✅ | `combat/damage-control.ts` `resolveDamageControl` (priority repair) + a "Damage Control" GM tool. Enabled by the design+damage model (systems keep their design count + a lost/driveHits counter) |
+| Fleet Book 1 — reroll / penetrating damage (a 6 scores + rerolls, chaining) | 🟡 | `ship/fleet-book.ts` `poolPenetratingDamage` (opt-in; reroll die scores on the unscreened table, no cap; screens hit only the initial dice) — pure + tested, not on the default combat path |
+| Fleet Book 1 — armour bypass (penetrating hits go direct to hull) | 🟡 | `ship/fleet-book.ts` `applyDamageBypassingArmour` / `applyPenetratingDamageWithArmour` (normal spends armour then overflows, penetrating goes direct) — pure + tested |
+| Fleet Book 1 — Core Systems +1 (buried systems one step tougher at threshold) | 🟡 | `ship/fleet-book.ts` `coreThresholdKillOn` / `knockedOutIndicesWithCore` (1st threshold → core immune on a d6); `CORE_SYSTEM_THRESHOLD_BONUS` — pure + tested |
 
 ## Fighters
 | Rule | Status | Where |
@@ -88,7 +91,8 @@ deferred. Nothing is silently missing.
 | Dogfights (fighter vs fighter) | ✅ | `combat/dogfight.ts` `resolveDogfight` (6mu fore arc, simultaneous, defender returns fire if it bears); the Fire tool dispatches it when both are fighter groups |
 | PDS vs missiles | ✅ | `combat/fighters.ts` `pdsKillsVsMissiles` (a 6 kills), consumed by `combat/salvo.ts` (salvo) and `combat/missile.ts` (independent missiles) |
 | Specialised types: Heavy (screen), Interceptor (+1/die dogfight), Long-range (endurance 5) | ✅ | `combat/fighters.ts` `dogfightKillsAgainst`/`enduranceForType`, applied in `combat/dogfight.ts` |
-| Specialised types: Fast/Torpedo (movement / one-shot modes) | ⏳ | Need fighter movement + a torpedo-run mode (deferred) |
+| Specialised types: Fast (18mu) / Torpedo (one-shot run, spent-mode dogfight) | 🟡 | `combat/fighter-types.ts` `fighterMoveForType`/`torpedoHitCount`/`torpedoRunDamage`/`attackFighterDogfightKills` (pure + tested); the token movement + spent-marking orchestrator is deferred |
+| Pilot quality: Ace / Turkey / average (attack, morale, dogfight, initiative) | 🟡 | `combat/pilot.ts` (1D6/group: 6=Ace, 1=Turkey; Ace +1 attack die & −1 morale, Turkey +1 morale, breaks on 2 fails, −1 dogfight die; ±1 initiative/group) — pure + tested; surfacing in the fighter fire/dogfight UI deferred |
 | Carrier launch/recover | ⏳ | Not yet built |
 
 ## Ship Design

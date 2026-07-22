@@ -76,10 +76,13 @@ in a live Foundry.
 
 ## P2 — Advanced rules (need new math)
 
-14. **[build] Fighter operations**: carrier launch/recover, endurance depletion + return-to-
-    carrier (`enduranceExhausted` computed, unused), morale-broken disengage (`moraleBroken`
-    stub), pilot quality (Ace/Turkey), remaining specialised types (Heavy/Interceptor/Torpedo/
-    Fast/Long-range).
+14. **[build] Fighter operations** — 🟡 PARTIAL (2026-07-22). Pilot quality (Ace/Turkey/average)
+    now in `combat/pilot.ts` (1D6/group; Ace +1 attack die & −1 morale, Turkey +1 morale / breaks
+    on 2 fails / −1 dogfight die; ±1 initiative per Ace/Turkey), and the remaining specialised
+    types Fast (18mu) + Torpedo (one-shot run + spent-mode dogfight) in `combat/fighter-types.ts`
+    (Heavy/Interceptor/Long-range already done). All pure + tested. Still to do: carrier
+    launch/recover, endurance return-to-carrier orchestration, and surfacing pilot/type effects in
+    the fighter fire + dogfight UI.
 15. **[build] Independent (More Thrust) missiles** — 🟡 PARTIAL (2026-07-22). Pure combat +
     movement built + tested: `movement/missile-path.ts` `plotMissilePath` (18mu with one mid-point
     2-point turn) and `combat/missile.ts` `missileCanAttack` (≤6mu, not in the missile's rear arc)
@@ -95,9 +98,17 @@ in a live Foundry.
     `nearestCourse`/`velocityMagnitude` for marker realignment (+16 tests). Still to do: a
     Vector-mode scene tool + token advance/rotate orchestrator (as cinematic `path.ts` defers to
     `ui/round-control`).
-18. **[build] Multi-FCS fire-splitting** (N FCS → N targets) — one target per action now.
-19. **[build] Fleet Book optional layers**: reroll/penetrating damage + armour bypass, core-
-    systems +1, variable-hull design system, conditional aft fire.
+18. **[build] Multi-FCS fire-splitting** — 🟡 PARTIAL (2026-07-22). `combat/fcs-allocation.ts`
+    `allocateFcsFire` splits weapons across ≤ N targets (N = working FCS) with a greedy
+    caller-priority strategy, `validateAllocation` enforces the cap + bears/range (reusing
+    `previewTargeting`); one weapon's dice never split. Pure + tested. Still to do: the scene-tool
+    UI to pick the N targets and drive the split fire.
+19. **[build] Fleet Book optional layers** — 🟡 PARTIAL (2026-07-22). `ship/fleet-book.ts` adds the
+    three damage layers — reroll/penetrating damage (chaining 6s), armour bypass (direct-to-hull),
+    core-systems +1 (buried systems tougher at threshold) — as pure opt-in functions off the
+    default path (+22 tests). Still to do: variable-hull design system, conditional aft fire, and
+    the deferred bits (Needle-Beam core immunity, Enhanced Pulse Torpedo split, Fleet Book PDS
+    reroll).
 20. **[build] Big/xeno weapons** — 🟡 PARTIAL (2026-07-22). `combat/spinal.ts` implements the
     spinal-mount Nova Cannon (3-turn forward sweep, 6/4/2 D6, 2"/4"/6" template) and the More
     Thrust Wave Gun (36mu expanding template, 4/3/2 D6, charge-then-fire + knock-out feedback) as
