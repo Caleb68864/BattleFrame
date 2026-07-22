@@ -212,3 +212,31 @@
   font-style: italic;
   color: var(--inx-ink-dim);
 }
+
+/* ---- Attack-outcome chat card --------------------------------------- *
+ * Accents only: the base .battleframe-card look (frame, padding, title)
+ * comes from the engine stylesheet. This layers the INX "field dossier"
+ * palette on the card and colours the suppression / wipe outcome lines,
+ * matching the amber / olive-drab / danger accents used on the unit sheet.
+ * -------------------------------------------------------------------- */
+
+.battleframe-card.incountry-attack-report {
+  --inx-ink: #cfc9b4;
+  --inx-amber: #c8922a;
+  --inx-danger: #b4472f;
+  border-left: 3px solid var(--inx-amber);
+}
+
+.battleframe-card.incountry-attack-report .battleframe-card__title {
+  font-family: "DIN Condensed", "Oswald", "Roboto Condensed", "Arial Narrow", sans-serif;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.battleframe-card.incountry-attack-report .inx-suppressed {
+  color: var(--inx-amber);
+}
+
+.battleframe-card.incountry-attack-report .inx-wiped {
+  color: var(--inx-danger);
+}

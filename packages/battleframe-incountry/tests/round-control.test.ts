@@ -180,6 +180,54 @@ describe("beginRound + resolveActivation — a played round to victory", () => {
       resolveActivation({ order, attacker: b1, target: a1, dice, units: [a1, b1] })
     ).rejects.toThrow();
   });
+
+  it("posts an attack-outcome card via the injected postCard seam when an attack resolves", async () => {
+    const a1 = unit("a1", "A", system({ modelsRemaining: 2 }));
+    const b1 = unit("b1", "B", system({ modelsRemaining: 1 }));
+    const units = [a1, b1];
+    const dice = fakeDice([2, 8, 3, 4, 1]); // A first; a1 wipes b1's last model
+    const posted: Array<{ title?: string; lines?: readonly string[]; cssClass?: string }> = [];
+
+    const { order } = await beginRound({ units, dice, roundsApi, rng: () => 0 });
+    await resolveActivation({
+      order,
+      attacker: a1,
+      target: b1,
+      dice,
+      units,
+      postCard: (spec) => {
+        posted.push(spec);
+      }
+    });
+
+    expect(posted).toHaveLength(1);
+    expect(posted[0].cssClass).toBe("incountry-attack-report");
+    expect(posted[0].title).toContain("a1");
+    expect(posted[0].title).toContain("b1");
+    expect((posted[0].lines ?? []).join("").toLowerCase()).toContain("wiped");
+  });
+
+  it("does not post a card when there is no attack (no target)", async () => {
+    const a1 = unit("a1", "A", system());
+    const b1 = unit("b1", "B", system());
+    const units = [a1, b1];
+    const dice = fakeDice([2, 8]); // A first
+    let posts = 0;
+
+    const { order } = await beginRound({ units, dice, roundsApi, rng: () => 0 });
+    await resolveActivation({
+      order,
+      attacker: a1,
+      target: null,
+      dice,
+      units,
+      postCard: () => {
+        posts += 1;
+      }
+    });
+
+    expect(posts).toBe(0);
+  });
 });
 
 describe("addSceneControl — player-driven ready-to-advance tool", () => {

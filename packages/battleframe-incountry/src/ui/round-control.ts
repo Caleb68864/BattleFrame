@@ -73,6 +73,119 @@ function label(unit: RoundControlUnit): string {
   return unit.name ?? unit.id;
 }
 
+/* ------------------------------------------------------------------------ *
+ * Attack-outcome chat card (pure, unit-tested).
+ *
+ * A persistent ChatMessage card is the CLAUDE.md-mandated surface for a
+ * result (not a GM-only toast). The card's CONTENT is built here, UI-free, so
+ * it is testable without a running Foundry; the live glue below hands the
+ * assembled parts to the engine's `game.battleframe.chat.postCard`.
+ * ------------------------------------------------------------------------ */
+
+/** The ruleset accent class layered onto the engine's base `battleframe-card`. */
+const ATTACK_REPORT_CLASS = "incountry-attack-report";
+
+/**
+ * Escapes the five HTML-significant characters. Unit names are user-editable, so
+ * they must be escaped before landing in card markup. Mirrors the engine's
+ * `chat.escapeHtml`; declared locally so the pure builder needs no running
+ * Foundry (the same live/fallback split the card wrapper uses).
+ */
+function escapeHtml(value: string): string {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#39;");
+}
+
+export interface AttackReportNames {
+  attacker: string;
+  target: string;
+}
+
+/**
+ * The card's title + body lines. `attacker`/`target` are escaped here; the
+ * lines mix that escaped text with safe static markup. This is the single
+ * source of truth for the card's content -- both the live `postCard` seam and
+ * the tested `buildAttackReportHtml` renderer read it.
+ */
+function attackReportParts(
+  result: AttackFlowResult,
+  names: AttackReportNames
+): { title: string; lines: string[] } {
+  const attacker = escapeHtml(names.attacker);
+  const target = escapeHtml(names.target);
+  const a = result.attack;
+
+  const lines: string[] = [
+    `<p><strong>${a.hits}</strong> hit(s) &middot; <strong>${a.damage}</strong> damage.</p>`
+  ];
+  if (a.hits > 0) {
+    lines.push(
+      `<p>Armor ${a.armorTotal} vs ${a.damage} &mdash; ` +
+        `${a.destroyed ? "model destroyed" : "model holds"}.</p>`
+    );
+  }
+  if (a.destroyed && !result.targetDestroyed) {
+    lines.push(`<p>Model down &mdash; ${result.targetModelsAfter} model(s) left.</p>`);
+  }
+  if (result.suppressionRoll !== undefined) {
+    lines.push(
+      result.suppressed
+        ? `<p class="inx-suppressed">Suppression check ${result.suppressionRoll}: ` +
+            `<strong>${target} suppressed.</strong></p>`
+        : `<p>Suppression check ${result.suppressionRoll}: ${target} holds.</p>`
+    );
+  }
+  if (result.targetDestroyed) {
+    lines.push(`<p class="inx-wiped"><strong>${target} wiped out.</strong></p>`);
+  }
+
+  return { title: `${attacker} &rarr; ${target}`, lines };
+}
+
+/**
+ * Wraps a title + body lines in the outcome-card container. Delegates to the
+ * engine's neutral `chat.card()` when the runtime services are present (so all
+ * rulesets share one card shape + stylesheet), falling back to the engine
+ * card's markup inline for the no-engine unit-test path -- the same live/fallback
+ * split the other rulesets use. The accent class rides along either way.
+ */
+function wrapCard(title: string, lines: string[]): string {
+  const card = globalScope().game?.battleframe?.chat?.card;
+  if (card) {
+    return card({ title, lines, cssClass: ATTACK_REPORT_CLASS });
+  }
+  return (
+    `<div class="battleframe-card ${ATTACK_REPORT_CLASS}">` +
+    `<h3 class="battleframe-card__title">${title}</h3>${lines.join("")}</div>`
+  );
+}
+
+/**
+ * Builds the chat-card HTML summarising one unit's attack on another: the
+ * heading (attacker &rarr; target), hits/damage, the armor check, any model
+ * loss, suppression, and a wipe notice. Pure + exported so the exact markup
+ * (classes, content, name-escaping) is unit-tested; it renders the same card
+ * the live flow posts through the engine.
+ */
+export function buildAttackReportHtml(
+  result: AttackFlowResult,
+  names: AttackReportNames
+): string {
+  const { title, lines } = attackReportParts(result, names);
+  return wrapCard(title, lines);
+}
+
+/** A card spec the pure flow hands to the injected postCard seam. */
+export interface AttackCardSpec {
+  title: string;
+  lines: readonly string[];
+  cssClass: string;
+}
+
 export class InitiativeUnresolvedError extends Error {
   constructor(rerolls: number) {
     super(`${MODULE_ID} | initiative stayed tied after ${rerolls} re-rolls`);
@@ -202,6 +315,12 @@ export interface ResolveActivationParams {
     state: { modelsRemaining: number; suppressed: boolean }
   ) => void | Promise<void>;
   notify?: (message: string, level?: "info" | "warn") => void;
+  /**
+   * Posts a persistent attack-outcome card. Injected seam (default no-op) so the
+   * pure flow stays UI-free; the Foundry glue wires it to
+   * `game.battleframe.chat.postCard`.
+   */
+  postCard?: (spec: AttackCardSpec) => void | Promise<void>;
 }
 
 export interface ActivationResult {
@@ -219,6 +338,7 @@ export interface ActivationResult {
 export async function resolveActivation(params: ResolveActivationParams): Promise<ActivationResult> {
   const { order, attacker, target, dice, units } = params;
   const notify = params.notify ?? (() => undefined);
+  const postCard = params.postCard ?? (() => undefined);
 
   if (order.activeSideId() !== attacker.sideId) {
     throw new IllegalActivationError(
@@ -250,6 +370,14 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
         (attack.suppressed ? " -- target suppressed" : "") +
         (attack.targetDestroyed ? ` -- ${label(target)} wiped` : "")
     );
+
+    // Persistent outcome card (survives reload, syncs to every client) in
+    // addition to the transient toast above.
+    const parts = attackReportParts(attack, {
+      attacker: label(attacker),
+      target: label(target)
+    });
+    await postCard({ ...parts, cssClass: ATTACK_REPORT_CLASS });
   } else if (target && !weapon) {
     notify(`${label(attacker)} has no weapon to attack with.`, "warn");
   }
@@ -288,10 +416,20 @@ function distinct(values: readonly string[]): string[] {
 
 const UNIT_TYPE = `${MODULE_ID}.${UNIT_ACTOR_TYPE}`;
 
+/** Minimal structural view of the engine's chat service (game.battleframe.chat). */
+interface ChatApiLike {
+  card(spec: { title?: string; lines?: readonly string[]; cssClass?: string }): string;
+  postCard(spec: {
+    title?: string;
+    lines?: readonly string[];
+    cssClass?: string;
+  }): Promise<void>;
+}
+
 function globalScope(): {
   game?: {
     user?: { isGM?: boolean; targets?: Set<unknown> };
-    battleframe?: { dice?: DiceApiLike; rounds?: RoundsApiLike };
+    battleframe?: { dice?: DiceApiLike; rounds?: RoundsApiLike; chat?: ChatApiLike };
     i18n?: { localize?: (k: string) => string; format?: (k: string, d: Record<string, unknown>) => string };
   };
   canvas?: { tokens?: { controlled?: unknown[]; placeables?: unknown[] }; scene?: unknown };
@@ -591,6 +729,7 @@ export async function activateSelectedControl(): Promise<void> {
   });
 
   try {
+    const chat = globalScope().game?.battleframe?.chat;
     const result = await resolveActivation({
       order,
       attacker,
@@ -598,7 +737,11 @@ export async function activateSelectedControl(): Promise<void> {
       dice,
       units,
       applyState: applyStateToActor,
-      notify: notifyUser
+      notify: notifyUser,
+      // Post the persistent outcome card through the engine's neutral chat
+      // service, which wraps the parts in the shared `battleframe-card` and
+      // renders it as a ChatMessage.
+      postCard: chat ? (spec) => chat.postCard(spec) : undefined
     });
 
     // Persist the advanced order back onto the Combat document.

@@ -3004,3 +3004,33 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   (.battleframe-card), packages/battleframe-full-thrust/src/ui/round-control.ts
   (RoundControlApi.chat, wrapReport). +8 tests; 1193 pass.
 - Commit: this commit.
+
+## 2026-07-22 — InCountry adopts the engine chat-card primitive (witness 2)
+- Context: the "chat cards in all games" rollout (see the entry above) — InCountry
+  resolved attacks but only surfaced the outcome as a transient `ui.notifications`
+  toast (GM-only, lost on reload, never synced). CLAUDE.md mandates a persistent
+  ChatMessage card as the result surface.
+- Change: added a persistent attack-outcome card, posted whenever an attack
+  resolves in `resolveActivation` — attacker → target heading, hits/damage, the
+  armor check, model-down / models-left, the suppression check + result, and a
+  wipe notice. The toast stays (transient convenience); the card is added ALONGSIDE.
+- Purity + seam: content is built by a pure, unit-tested `buildAttackReportHtml`
+  (and its shared `attackReportParts`) that renders the engine card's markup —
+  delegating to `game.battleframe.chat.card()` when the runtime engine is present,
+  inlining the identical `battleframe-card incountry-attack-report` fallback markup
+  for the no-Foundry unit path (the same live/fallback split FT's `wrapReport` and
+  `tr()` use). The pure flow gets an injected `postCard?` seam (default no-op,
+  mirroring the existing `notify?` seam); the Foundry glue (`activateSelectedControl`)
+  wires the real `game.battleframe.chat.postCard`. Unit names are HTML-escaped via a
+  local `escapeHtml` (InCountry had none; mirrors the engine's + FT's) before landing
+  in markup — a unit-named `<script>` must not inject.
+- CSS: only `.incountry-attack-report` ACCENTS (amber left border, stencil title,
+  amber suppression / danger wipe lines) — the base card frame comes from the engine
+  stylesheet.
+- Surfaces: packages/battleframe-incountry/src/ui/round-control.ts (buildAttackReportHtml,
+  attackReportParts, escapeHtml, wrapCard, ResolveActivationParams.postCard seam,
+  glue wiring), styles/incountry.css (.incountry-attack-report accents),
+  tests/attack-report.test.ts (+7), tests/round-control.test.ts (+2 seam). 1202 pass.
+- Live-verify: DEFERRED — the parent batch-deploys; the card render + escaping in a
+  live world is the outstanding check.
+- Commit: this commit.
