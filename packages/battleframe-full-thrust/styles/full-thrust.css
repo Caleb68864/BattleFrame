@@ -85,3 +85,28 @@
 .ft-fire-report .ft-destroyed {
   color: var(--color-level-error, #a33);
 }
+
+.ft-ship-sheet .ft-weapons h3 {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0.4rem 0 0.2rem;
+}
+
+.ft-ship-sheet .ft-weapon {
+  align-items: center;
+}
+
+.ft-ship-sheet .ft-weapon-kind { flex: 0 0 6.5rem; }
+.ft-ship-sheet .ft-weapon-class { width: 3rem; }
+.ft-ship-sheet .ft-weapon-arcs { flex: 1 1 auto; min-width: 6rem; height: 1.6rem; }
+
+.ft-ship-sheet .ft-add-weapon,
+.ft-ship-sheet .ft-remove-weapon {
+  cursor: pointer;
+  font-size: 12px;
+  line-height: 1;
+  padding: 0.1rem 0.4rem;
+}
+
+.ft-ship-sheet .ft-remove-weapon { margin-left: auto; }

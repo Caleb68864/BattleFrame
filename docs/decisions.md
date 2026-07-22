@@ -2085,4 +2085,14 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   panel renders a value verbatim and a static field `max` can't track the box count), registered
   as the first hover field so hull damage is the headline at-a-glance stat.
 - 774 tests passing.
+- Commit: cb8c667.
+
+## 2026-07-22 — Full Thrust QoL: editable-weapons ship sheet (roadmap P1 #7)
+- The ship sheet's weapon list was read-only; now it has Add/Remove buttons (ApplicationV2
+  `actions` → `onAddWeapon`/`onRemoveWeapon` over the pure `addWeaponTo`/`removeWeaponAt` ops) and
+  per-weapon editing: kind (select), class (number), arcs (multi-select). `_prepareContext` builds
+  `prepareWeaponRows` (kind/arc options with selected flags) so the template needs no `eq`/
+  `includes` Handlebars helpers. Array ops + row prep + handlers unit-tested (782 total).
+- Live-unverified: the ApplicationV2 action-button dispatch and the multi-select
+  `system.weapons.N.arcs` → array form binding (needs a real Foundry v14 sheet).
 - Commit: this commit.

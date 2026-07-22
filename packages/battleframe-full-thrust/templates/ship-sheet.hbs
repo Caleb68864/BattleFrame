@@ -52,13 +52,24 @@
   </section>
 
   <section class="ft-weapons">
-    <h3>Weapons</h3>
+    <h3>Weapons <button type="button" class="ft-add-weapon" data-action="addWeapon" title="Add weapon">+ Add</button></h3>
     <ol>
-      {{#each system.weapons as |weapon|}}
+      {{#each weapons as |weapon|}}
         <li class="ft-weapon {{#if weapon.destroyed}}ft-destroyed{{/if}}">
-          <span class="ft-weapon-kind">{{weapon.kind}}</span>
-          {{#if weapon.weaponClass}}<span class="ft-weapon-class">Cl.{{weapon.weaponClass}}</span>{{/if}}
-          <span class="ft-weapon-arcs">{{#each weapon.arcs}}{{this}} {{/each}}</span>
+          <select name="system.weapons.{{weapon.index}}.kind" class="ft-weapon-kind">
+            {{#each weapon.kinds as |k|}}
+              <option value="{{k.value}}" {{#if k.selected}}selected{{/if}}>{{k.value}}</option>
+            {{/each}}
+          </select>
+          <input type="number" name="system.weapons.{{weapon.index}}.weaponClass"
+                 value="{{weapon.weaponClass}}" min="1" step="1" class="ft-weapon-class" placeholder="cls" />
+          <select name="system.weapons.{{weapon.index}}.arcs" multiple class="ft-weapon-arcs" size="1">
+            {{#each weapon.arcs as |arc|}}
+              <option value="{{arc.value}}" {{#if arc.selected}}selected{{/if}}>{{arc.value}}</option>
+            {{/each}}
+          </select>
+          <button type="button" class="ft-remove-weapon" data-action="removeWeapon"
+                  data-index="{{weapon.index}}" title="Remove">&times;</button>
         </li>
       {{/each}}
     </ol>

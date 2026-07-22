@@ -1,4 +1,35 @@
-import { MODULE_ID, SHIP_ACTOR_TYPE } from "../constants";
+import { MODULE_ID, SHIP_ACTOR_TYPE, FIRE_ARCS, WEAPON_KINDS } from "../constants";
+import { addWeaponTo, removeWeaponAt, type WeaponMountData } from "./weapon-edit";
+
+/** Action handler: append a default weapon to the ship. `this` is the sheet app. */
+export async function onAddWeapon(this: any): Promise<void> {
+  const actor = this?.actor;
+  if (!actor?.update) {
+    return;
+  }
+  await actor.update({ "system.weapons": addWeaponTo(actor.system?.weapons) });
+}
+
+/** Action handler: remove the weapon at the button's data-index. */
+export async function onRemoveWeapon(this: any, _event: unknown, target: any): Promise<void> {
+  const actor = this?.actor;
+  if (!actor?.update) {
+    return;
+  }
+  const index = Number(target?.dataset?.index);
+  await actor.update({ "system.weapons": removeWeaponAt(actor.system?.weapons, index) });
+}
+
+/** Builds the per-weapon view rows: kind options + arc options with selected flags. */
+export function prepareWeaponRows(weapons: readonly WeaponMountData[] | undefined): unknown[] {
+  return (weapons ?? []).map((weapon, index) => ({
+    index,
+    weaponClass: weapon.weaponClass ?? null,
+    destroyed: weapon.destroyed,
+    kinds: WEAPON_KINDS.map((k) => ({ value: k, selected: k === weapon.kind })),
+    arcs: FIRE_ARCS.map((a) => ({ value: a, selected: (weapon.arcs ?? []).includes(a) }))
+  }));
+}
 
 /**
  * The Full Thrust ship sheet -- a live SSD. Renders the ship's mass/thrust,
@@ -82,8 +113,9 @@ export function createShipSheetClass(
     static DEFAULT_OPTIONS = {
       id: `${MODULE_ID}-ship-sheet`,
       classes: [MODULE_ID, "sheet", "actor", SHIP_ACTOR_TYPE],
-      position: { width: 520, height: 560 },
-      form: { submitOnChange: true }
+      position: { width: 560, height: 620 },
+      form: { submitOnChange: true },
+      actions: { addWeapon: onAddWeapon, removeWeapon: onRemoveWeapon }
     };
 
     static PARTS = {
@@ -94,8 +126,10 @@ export function createShipSheetClass(
       const context: Record<string, unknown> =
         typeof super._prepareContext === "function" ? await super._prepareContext(options) : {};
 
-      const actor = (this as unknown as { actor?: { system?: unknown } }).actor;
+      const actor = (this as unknown as { actor?: { system?: any } }).actor;
       context.system = actor?.system ?? {};
+      // Editable weapon rows: kind/arc options with selected flags for the template.
+      context.weapons = prepareWeaponRows(actor?.system?.weapons);
 
       return context;
     }

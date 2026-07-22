@@ -37,9 +37,11 @@ in a live Foundry.
 
 ## P1 — QoL / UX
 
-7. **[qol] Editable-weapons sheet.** The ship sheet's weapon list is READ-ONLY — you cannot add/
-   remove/edit weapons in-app (only via fleet import or the data default). Biggest build-a-ship
-   gap.
+7. ~~**[qol] Editable-weapons sheet.**~~ ✅ **DONE 2026-07-22.** The ship sheet now has Add/Remove
+   weapon buttons (ApplicationV2 `actions` → `addWeaponTo`/`removeWeaponAt`) and per-weapon kind
+   (select), class (number), and arc (multi-select) editing. Pure array ops + `prepareWeaponRows`
+   are tested; the ApplicationV2 action wiring + the `system.weapons.N.arcs` multi-select form
+   binding want live-Foundry verification.
 8. ~~**[qol] Hull damage on the hover panel.**~~ ✅ **DONE 2026-07-22.** The ship's
    `prepareDerivedData` computes a `hullTrack` "remaining/total" string, registered as the first
    hover field.
