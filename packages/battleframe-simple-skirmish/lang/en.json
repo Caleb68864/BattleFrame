@@ -38,6 +38,11 @@
         "noRound": "No round is in progress. Run a round first.",
         "noSelection": "Select one of your units to activate.",
         "noLegalAttack": "The targeted enemy is out of range for any of this unit's attacks."
+      },
+      "ready": {
+        "tool": "Ready to Advance",
+        "noApi": "BattleFrame's player-driven advance service is unavailable.",
+        "status": "You are {state} to advance ({ready}/{total} players ready)."
       }
     },
     "attackTypes": {

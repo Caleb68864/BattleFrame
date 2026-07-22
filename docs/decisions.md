@@ -2875,3 +2875,36 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   engine glue exercised only in production).
 - Commit: this commit.
 
+
+## 2026-07-22 — Simple Skirmish wired to the engine's GM-less player-ready round advance
+- Change: Registered SS with `game.battleframe.advance.registerAdvance(...)` and
+  added a player-visible "Ready to Advance" scene-control toggle, mirroring the
+  Full Thrust wiring so a GM-less table can advance the game itself.
+- What "advance the round" means for SS: opening the NEXT round (roll initiative +
+  seat combatants on the Combat document). Extracted the ungated `advanceRoundCore`
+  out of `runRoundControl` — `runRoundControl` is now just the `isGM()` gate calling
+  it — and registered that core as the engine's advance callback in `main.ts` init.
+  The in-progress guard stays inside the core, so a player-driven advance opens a
+  fresh round only once the current round's every unit has acted (a no-op warning
+  otherwise); this matches `performAdvance`'s "start a fresh round for everyone".
+- KEY VISIBILITY CHANGE: the SS scene control was `visible: gm`, which would have
+  hidden the Ready toggle from players. Changed the control to `visible: true`
+  (mirroring Full Thrust) while keeping the Run Round / Activate tools individually
+  `visible: gm`. Updated the scene-control test accordingly: the control is visible
+  to a non-GM, the `simple-skirmish-ready` toggle is `visible: true`/`toggle: true`,
+  and Run/Activate stay `visible: false`; added a case asserting the toggle's
+  `active` flag reflects `advance.isReady()`.
+- Lang: added `controls.ready.tool`/`noApi`/`status` to `lang/en.json`; only
+  `.tool` is a literal key (referenced by the tool title), the others build at
+  runtime via `localize`/`format`, so the i18n-completeness test is satisfied.
+- CAVEAT (shared with Full Thrust, not introduced here): the ready countdown runs
+  `advanceCallback` on the deterministic host client, which in GM-less play is a
+  player; `advanceRoundCore` creates/updates the Combat + Combatants, operations
+  Foundry normally reserves for a GM. Live-verification in a real world (a player
+  host actually advancing the round) is still pending.
+- Surfaces: packages/battleframe-simple-skirmish/src/ui/round-control.ts
+  (`advanceRoundCore`, `readyAction`, `currentUserReady`, `readyTool`, control
+  visibility), src/main.ts (registerAdvance at init), lang/en.json (+3 keys),
+  tests/round-control.test.ts (scene-control assertions).
+- 1159 tests pass; typecheck clean.
+- Commit: this commit.

@@ -252,10 +252,18 @@ function distinct(values: readonly string[]): string[] {
 
 const UNIT_TYPE = `${MODULE_ID}.${UNIT_ACTOR_TYPE}`;
 
+/** The engine's player-driven, GM-less advance service (game.battleframe.advance). */
+interface AdvanceApiLike {
+  toggleReady?: () => Promise<void>;
+  isReady?: (userId?: string) => boolean;
+  status?: () => { ready: string[]; participants: string[]; allReady: boolean };
+  registerAdvance?: (fn: () => void | Promise<void>) => void;
+}
+
 function globalScope(): {
   game?: {
     user?: { isGM?: boolean; targets?: Set<{ id?: string; actor?: unknown }> };
-    battleframe?: { dice?: DiceApiLike; measure?: MeasureApiLike };
+    battleframe?: { dice?: DiceApiLike; measure?: MeasureApiLike; advance?: AdvanceApiLike };
   };
   canvas?: { tokens?: { controlled?: unknown[]; placeables?: unknown[] }; scene?: unknown };
   ui?: { notifications?: Record<string, ((m: string) => void) | undefined> };
@@ -449,7 +457,19 @@ export async function runRoundControl(): Promise<void> {
     notifyUser(localize("controls.round.gmOnly"), "warn");
     return;
   }
+  await advanceRoundCore();
+}
 
+/**
+ * The round-advance work, UNGATED (no GM check): roll initiative and open the
+ * next round on the Combat document. This is what the player-driven ready
+ * countdown runs on the host client -- so a GM-less table advances to the next
+ * round itself -- as well as the GM's manual Run Round tool. Registered as the
+ * engine's advance callback via `game.battleframe.advance.registerAdvance`. A
+ * round still in progress is respected: advancing only opens a fresh round once
+ * the current one's every unit has acted.
+ */
+export async function advanceRoundCore(): Promise<void> {
   // A round in progress is not silently thrown away (a footgun a GM hits by
   // reflex). The check now reads the persisted state off the Combat document, so
   // it survives a reload -- a round is "in progress" until its last unit acts.
@@ -586,12 +606,52 @@ function format(suffix: string, data: Record<string, string | number>): string {
 }
 
 /**
+ * Ready tool (every player): toggle "ready to advance the round". When all active
+ * players are ready the engine runs a settable countdown and then advances the
+ * round (`advanceRoundCore`) on the host client -- no GM needed. Un-readying
+ * cancels the countdown.
+ */
+export async function readyAction(): Promise<void> {
+  const advance = globalScope().game?.battleframe?.advance;
+  if (!advance?.toggleReady) {
+    notifyUser(localize("controls.ready.noApi"), "warn");
+    return;
+  }
+  await advance.toggleReady();
+  const status = advance.status?.();
+  notifyUser(
+    format("controls.ready.status", {
+      state: advance.isReady?.() ? "READY" : "not ready",
+      ready: status?.ready?.length ?? 0,
+      total: status?.participants?.length ?? 0
+    })
+  );
+}
+
+/** Whether the current user is marked ready (for the toggle button's state). */
+function currentUserReady(): boolean {
+  return globalScope().game?.battleframe?.advance?.isReady?.() === true;
+}
+
+/**
  * The scene-control entry. Accommodates both known `getSceneControlButtons`
  * payload shapes (array of controls with array tools; keyed record of both) and
  * asserts neither -- see the UNVERIFIED note at the top of the glue.
  */
 export function addSceneControl(controls: unknown): void {
   const gm = isGM();
+  // Ready-to-advance toggle: when all players are ready, the round advances on a
+  // countdown -- no GM needed. Visible to every player (the control itself is too).
+  const readyTool = {
+    name: "simple-skirmish-ready",
+    title: "battleframe-simple-skirmish.controls.ready.tool",
+    icon: "fas fa-hourglass-half",
+    toggle: true,
+    active: currentUserReady(),
+    visible: true,
+    order: 0,
+    onChange: () => void readyAction()
+  };
   const runTool = {
     name: "simple-skirmish-run-round",
     title: "battleframe-simple-skirmish.controls.round.tool",
@@ -618,20 +678,26 @@ export function addSceneControl(controls: unknown): void {
     title: "battleframe-simple-skirmish.controls.round.title",
     icon: "fas fa-chess-board",
     layer: "tokens",
-    visible: gm,
+    // Visible to every player so the Ready toggle is reachable in GM-less play;
+    // the GM-only Run/Activate tools stay individually gated (`visible: gm`).
+    visible: true,
     order: 0,
     activeTool: runTool.name,
     tools: {} as Record<string, unknown> | unknown[]
   };
 
   if (Array.isArray(controls)) {
-    control.tools = [runTool, activateTool];
+    control.tools = [readyTool, runTool, activateTool];
     controls.push(control);
     return;
   }
 
   if (controls && typeof controls === "object") {
-    control.tools = { [runTool.name]: runTool, [activateTool.name]: activateTool };
+    control.tools = {
+      [readyTool.name]: readyTool,
+      [runTool.name]: runTool,
+      [activateTool.name]: activateTool
+    };
     (controls as Record<string, unknown>)[MODULE_ID] = control;
   }
 }

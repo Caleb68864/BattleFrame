@@ -1,7 +1,7 @@
 import { MODULE_ID, UNIT_ACTOR_TYPE } from "./constants";
 import { registerUnitDataModel } from "./data/unit";
 import { registerUnitSheet } from "./sheets/unit-sheet";
-import { registerRoundControl } from "./ui/round-control";
+import { registerRoundControl, advanceRoundCore } from "./ui/round-control";
 
 interface BattleframeRegisterResult {
   ok: boolean;
@@ -121,5 +121,11 @@ globalHooks?.once("init", () => {
   // what makes the combat/round/victory logic reachable in the shipped bundle
   // -- without it, all of it is tree-shaken out (see COVERAGE.md).
   registerRoundControl();
+  // Player-driven, GM-less round advance: tell the engine what "advance the round"
+  // means for Simple Skirmish (roll initiative and open the next round). Resolved
+  // defensively off either namespace, same as the api/hover lookups above.
+  const advance =
+    (globalThis as any).battleframe?.advance ?? (globalThis as any).game?.battleframe?.advance;
+  advance?.registerAdvance?.(() => advanceRoundCore());
   registerSimpleSkirmishRuleset();
 });

@@ -378,8 +378,8 @@ describe("sideFromDisposition", () => {
   });
 });
 
-describe("addSceneControl -- GM-only, both payload shapes, both tools", () => {
-  it("appends a control with the run + activate tools to an array payload", () => {
+describe("addSceneControl -- both payload shapes, ready + run + activate tools", () => {
+  it("appends a control with the ready + run + activate tools to an array payload", () => {
     vi.stubGlobal("game", { user: { isGM: true } });
     const controls: Array<{ name: string; tools: Array<{ name: string }>; visible: boolean }> = [];
 
@@ -388,6 +388,7 @@ describe("addSceneControl -- GM-only, both payload shapes, both tools", () => {
     expect(controls).toHaveLength(1);
     expect(controls[0].visible).toBe(true);
     expect(controls[0].tools.map((t) => t.name)).toEqual([
+      "simple-skirmish-ready",
       "simple-skirmish-run-round",
       "simple-skirmish-activate"
     ]);
@@ -399,16 +400,44 @@ describe("addSceneControl -- GM-only, both payload shapes, both tools", () => {
 
     addSceneControl(controls);
 
+    expect(controls[MODULE_ID].tools).toHaveProperty("simple-skirmish-ready");
     expect(controls[MODULE_ID].tools).toHaveProperty("simple-skirmish-run-round");
     expect(controls[MODULE_ID].tools).toHaveProperty("simple-skirmish-activate");
   });
 
-  it("marks the control invisible to a non-GM and never throws on odd payloads", () => {
+  it("exposes the player-driven Ready toggle to every player while gating the GM-only tools", () => {
     vi.stubGlobal("game", { user: { isGM: false } });
-    const controls: Record<string, { visible?: boolean }> = {};
+    const controls: Array<{
+      name: string;
+      visible: boolean;
+      tools: Array<{ name: string; visible?: boolean; toggle?: boolean }>;
+    }> = [];
+
     addSceneControl(controls);
-    expect(controls[MODULE_ID].visible).toBe(false);
+
+    // The control is visible to a non-GM so the Ready toggle is reachable...
+    expect(controls[0].visible).toBe(true);
+    const byName = new Map(controls[0].tools.map((t) => [t.name, t]));
+    const ready = byName.get("simple-skirmish-ready");
+    expect(ready?.visible).toBe(true);
+    expect(ready?.toggle).toBe(true);
+    // ...but Run Round / Activate stay GM-only.
+    expect(byName.get("simple-skirmish-run-round")?.visible).toBe(false);
+    expect(byName.get("simple-skirmish-activate")?.visible).toBe(false);
 
     expect(() => addSceneControl(undefined)).not.toThrow();
+  });
+
+  it("reflects the engine's ready state in the Ready toggle's active flag", () => {
+    vi.stubGlobal("game", {
+      user: { isGM: false },
+      battleframe: { advance: { isReady: () => true } }
+    });
+    const controls: Array<{ tools: Array<{ name: string; active?: boolean }> }> = [];
+
+    addSceneControl(controls);
+
+    const ready = controls[0].tools.find((t) => t.name === "simple-skirmish-ready");
+    expect(ready?.active).toBe(true);
   });
 });
