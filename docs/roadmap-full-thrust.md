@@ -86,6 +86,17 @@ The pure logic is unit-tested; these UI shells need a real Foundry v14 world: sc
 payload shape, sheet render, both DialogV2 prompts (plot + import), the **PIXI preview overlay**,
 token move/rotate, the ownership-warning dialog, actor creation.
 
+## Engine-extraction findings (move functionality module → engine)
+
+Surfaced in `docs/plans/2026-07-22-full-thrust-engine-extraction-findings.md` (per the guide,
+engine changes are design findings, not quiet patches):
+1. **Adopt the engine's activation order** — the module reimplements `game.battleframe.rounds`
+   (strict alternation). Two-witness bar MET (InCountry already consumes it). Best first win.
+2. **Engine status-effect register helper** — InCountry + Full Thrust duplicate the
+   CONFIG.statusEffects push. Two witnesses. Small, neutral.
+3. **Engine outcome chat-card helper** (`escapeHtml` + `card`) — known gap in
+   roadmap-foundry-integration; pair with a second ruleset's chat work.
+
 ## Recommended order
 
 Wire **#2 (PDS)** and **#1 (fire-phase order)** first — they make already-tested code play. Then
