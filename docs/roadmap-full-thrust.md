@@ -60,9 +60,10 @@ in a live Foundry.
 9. ~~**[qol] Battlefield status icons.**~~ ✅ **DONE 2026-07-22.** `src/status.ts` registers
    `crippled` (thrust 0) + `weapons-offline` (fcs 0) on `CONFIG.statusEffects`; `syncShipStatuses`
    toggles them after every damage/threshold resolution.
-10. **[qol] Visual SSD** — 🟡 PARTIAL: the sheet + hover now show "remaining/design" tracks for
-    hull, thrust, FCS, screens, PDS (design+damage model). Still to do: clickable damage boxes
-    and an arc/range diagram instead of number inputs.
+10. **[qol] Visual SSD** — 🟡 PARTIAL: the sheet + hover show "remaining/design" tracks for hull,
+    thrust, FCS, screens, PDS, and (2026-07-22, live-verified) a **clickable hull damage track**
+    (`prepareHullBoxes` + `onToggleHullBox`) with FT2 threshold-row separators replaces the bare
+    number input. Still to do: an arc/range diagram, and clickable boxes for armour/systems too.
 11. ~~**[qol] Pre-fire targeting feedback.**~~ ✅ **DONE 2026-07-22.** `combat/targeting.ts`
     `previewTargeting` returns a per-weapon row (bears? / in-range? / dice or to-hit) WITHOUT
     rolling, mirroring `resolveWeaponFire`'s precedence exactly so it never disagrees with the
@@ -80,16 +81,20 @@ in a live Foundry.
     now in `combat/pilot.ts` (1D6/group; Ace +1 attack die & −1 morale, Turkey +1 morale / breaks
     on 2 fails / −1 dogfight die; ±1 initiative per Ace/Turkey), and the remaining specialised
     types Fast (18mu) + Torpedo (one-shot run + spent-mode dogfight) in `combat/fighter-types.ts`
-    (Heavy/Interceptor/Long-range already done). All pure + tested. Still to do: carrier
-    launch/recover, endurance return-to-carrier orchestration, and surfacing pilot/type effects in
-    the fighter fire + dogfight UI.
+    (Heavy/Interceptor/Long-range already done). Pilot quality is now WIRED into `fire-fighters.ts`
+    (Ace +1 attack die, Ace/Turkey morale mods, Turkey 2-fail break) and `dogfight.ts` (Turkey −1
+    die, Ace extra die), with an optional `pilotQuality` field on the fighter-group model + sheet.
+    Still to do: carrier launch/recover, endurance return-to-carrier orchestration, and a fighter
+    MOVEMENT orchestrator that uses `fighterMoveForType` (#16).
 15. **[build] Independent (More Thrust) missiles** — 🟡 PARTIAL (2026-07-22). Pure combat +
     movement built + tested: `movement/missile-path.ts` `plotMissilePath` (18mu with one mid-point
     2-point turn) and `combat/missile.ts` `missileCanAttack` (≤6mu, not in the missile's rear arc)
     + `resolveMissileAttack` (target PDS kills on a 6 via `pdsKillsVsMissiles`; surviving missile
-    detonates a Normal warhead — 2d6 total, screens ignored, armour absorbs). Still to do: the
-    dedicated missile-phase launch + a Foundry token orchestrator that moves/tracks the craft and
-    removes it after the 3-turn life, plus the EMP/Needle warhead variants.
+    detonates a Normal warhead — 2d6 total, screens ignored, armour absorbs). The **EMP and Needle
+    warhead variants** are now built too (`combat/missile.ts` `resolveMissileAttack` takes a
+    `warhead` param: EMP scrambles systems via a screen-reduced effect die, Needle snipes a
+    nominated system — both pure + tested). Still to do: the dedicated missile-phase launch + a
+    Foundry token orchestrator that moves/tracks the craft and removes it after the 3-turn life.
 16. **[build] Fighter movement + dogfights** (`dogfightKills` exists, unwired).
 17. **[build] Vector movement** (optional FT2 mode) — 🟡 PARTIAL (2026-07-22). `movement/vector.ts`
     pure library: persistent `{vx,vy}` velocity, `advance`/`applyMainDrive` (burn along facing),
@@ -98,11 +103,13 @@ in a live Foundry.
     `nearestCourse`/`velocityMagnitude` for marker realignment (+16 tests). Still to do: a
     Vector-mode scene tool + token advance/rotate orchestrator (as cinematic `path.ts` defers to
     `ui/round-control`).
-18. **[build] Multi-FCS fire-splitting** — 🟡 PARTIAL (2026-07-22). `combat/fcs-allocation.ts`
-    `allocateFcsFire` splits weapons across ≤ N targets (N = working FCS) with a greedy
-    caller-priority strategy, `validateAllocation` enforces the cap + bears/range (reusing
-    `previewTargeting`); one weapon's dice never split. Pure + tested. Still to do: the scene-tool
-    UI to pick the N targets and drive the split fire.
+18. ~~**[build] Multi-FCS fire-splitting.**~~ ✅ **DONE 2026-07-22 (live-verified).**
+    `combat/fcs-allocation.ts` `allocateFcsFire` (greedy caller-priority, one weapon's dice never
+    split) + `combat/fire-ship-split.ts` `fireShipSplit` orchestrator + a GM "Split Fire" scene
+    tool that reads every targeted ship and fires the split in one action, posting a per-target
+    card. Live-verified in Foundry (2 FCS: per-target damage + threshold, targets Set read, zero
+    errors). The greedy allocation concentrates fire; an explicit per-weapon target-picker UI is a
+    possible future refinement.
 19. **[build] Fleet Book optional layers** — 🟡 PARTIAL (2026-07-22). `ship/fleet-book.ts` adds the
     three damage layers — reroll/penetrating damage (chaining 6s), armour bypass (direct-to-hull),
     core-systems +1 (buried systems tougher at threshold) — as pure opt-in functions off the
