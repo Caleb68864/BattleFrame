@@ -25,6 +25,7 @@ import { checkVictory } from "../round/victory";
 import type { CheckVictoryKnight } from "../round/victory-types";
 import { isKnightRemoved, resetKnight } from "../round/removal";
 import {
+  promptAttackTarget,
   promptFirstOrSecond,
   promptResetConfirmation,
   type WorldSettingsLike,
@@ -439,6 +440,8 @@ export interface BeginRoundFromControlOptions {
   minDicePoolFloorEnabled?: boolean;
   /** Seam for the initiative winner's first-or-second choice. See resolveFirstPlayer. */
   chooseOrder?: (outcome: InitiativeOutcome) => "first" | "second" | Promise<"first" | "second">;
+  /** World settings, forwarded to the session so the attack-target prompt honours its toggle. */
+  settings?: WorldSettingsLike;
   notify?: (message: string) => void;
 }
 
@@ -529,6 +532,11 @@ export async function beginRoundFromControl(
     firstPlayerId,
     dice,
     measure,
+    settings: options.settings,
+    // Wire the shipped attack-target picker: when 2+ enemies touch, the attacker
+    // is asked which to hit (honouring SETTING_PROMPT_ATTACK_TARGET), instead of
+    // silently taking the nearest.
+    chooseAttackTarget: (promptOptions) => promptAttackTarget(promptOptions),
   });
 
   const session = wrapRoundSession(baseSession, {
@@ -639,6 +647,8 @@ export interface ResumeRoundFromControlOptions {
   combat: CombatDocumentLike;
   dice: DiceApiLike;
   measure: MeasureApiLike;
+  /** World settings, forwarded to the session so the attack-target prompt honours its toggle. */
+  settings?: WorldSettingsLike;
   notify?: (message: string) => void;
 }
 
@@ -656,6 +666,10 @@ export function resumeRoundFromControl(
       knights: options.knights.map(toSessionKnight),
       dice: options.dice,
       measure: options.measure,
+      settings: options.settings,
+      // Same attack-target wiring as a fresh round -- a resumed round must offer
+      // the picker too, not silently fall back to nearest.
+      chooseAttackTarget: (promptOptions) => promptAttackTarget(promptOptions),
     },
     state
   );
@@ -687,14 +701,19 @@ export function isGM(): boolean {
   return currentUser()?.isGM === true;
 }
 
+/** The engine's measurement surface, plus the `fromPlaceable` adapter this file consumes. */
+type RoundControlMeasureApi = MeasureApiLike & {
+  fromPlaceable?: (placeable: unknown) => unknown;
+};
+
 function resolveGame(): {
-  battleframe?: { dice?: DiceApiLike; measure?: MeasureApiLike };
+  battleframe?: { dice?: DiceApiLike; measure?: RoundControlMeasureApi };
   combat?: CombatDocumentLike | null;
   settings?: { get: (namespace: string, key: string) => unknown };
 } | undefined {
   const globalScope = globalThis as unknown as {
     game?: {
-      battleframe?: { dice?: DiceApiLike; measure?: MeasureApiLike };
+      battleframe?: { dice?: DiceApiLike; measure?: RoundControlMeasureApi };
       combat?: CombatDocumentLike | null;
       settings?: { get: (namespace: string, key: string) => unknown };
     };
@@ -772,16 +791,38 @@ export function gatherKnightsFromCanvas(): RoundKnight[] {
         name: actor.name ?? placeable.name,
         actor,
         placeable,
-        token: {
-          flags: placeable.document?.flags,
-          width: placeable.document?.width,
-          height: placeable.document?.height,
-          center: placeable.center,
-          scene: placeable.scene ?? globalScope.canvas?.scene,
-        },
+        token: measurableFromPlaceable(placeable, globalScope.canvas?.scene),
       },
     ];
   });
+}
+
+/**
+ * The measurement double `measure.between` wants for a canvas placeable. Prefers
+ * the engine's own adapter (`game.battleframe.measure.fromPlaceable`), which
+ * reads exactly these fields (centre + scene-or-active-scene + base
+ * flags/width/height + document); falls back to the hand-built shape only when
+ * the engine surface is absent -- the no-engine unit path -- so this file no
+ * longer keeps its own copy of the engine's MeasurableToken assembly.
+ */
+function measurableFromPlaceable(placeable: CanvasTokenLike, fallbackScene: unknown): unknown {
+  const fromPlaceable = resolveGame()?.battleframe?.measure?.fromPlaceable;
+
+  if (typeof fromPlaceable === "function") {
+    const measurable = fromPlaceable(placeable);
+
+    if (measurable) {
+      return measurable;
+    }
+  }
+
+  return {
+    flags: placeable.document?.flags,
+    width: placeable.document?.width,
+    height: placeable.document?.height,
+    center: placeable.center,
+    scene: placeable.scene ?? fallbackScene,
+  };
 }
 
 /** i18n with interpolation; falls back to the bare key like `localize`. */
@@ -977,7 +1018,7 @@ export async function advanceRoundCore(
       | undefined;
     if (roundState && !roundState.complete) {
       const session = resumeRoundFromControl(
-        { knights, combat, dice, measure, notify: (message) => notifyUser(message) },
+        { knights, combat, dice, measure, settings, notify: (message) => notifyUser(message) },
         roundState
       );
       return openPoolPanel(session, panelKnights, () =>
@@ -993,6 +1034,7 @@ export async function advanceRoundCore(
       minDicePoolFloorEnabled: minDicePoolFloorEnabled(),
       notify: (message) => notifyUser(message),
       chooseOrder: (outcome) => promptFirstOrSecond({ outcome, settings }),
+      settings,
     });
 
     return openPoolPanel(session, panelKnights, () =>

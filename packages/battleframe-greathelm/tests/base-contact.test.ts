@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   BASE_CONTACT_TOLERANCE_PX,
   baseContactToleranceUnits,
@@ -160,5 +160,39 @@ describe("base contact tolerance -- derived from the scene, not hardcoded", () =
 
   it("still treats an exact zero as contact", () => {
     expect(isBaseContactDistance(0, tokenAt(0))).toBe(true);
+  });
+});
+
+describe("base contact tolerance -- delegates to the engine's pxPerUnit at runtime", () => {
+  const globalScope = globalThis as unknown as { game?: unknown };
+
+  afterEach(() => {
+    delete globalScope.game;
+  });
+
+  it("routes through game.battleframe.measure.pxPerUnit when the engine is present", () => {
+    // The engine copy is the single source of truth (roadmap: delete the module's
+    // duplicate). Prove clash.ts calls it rather than re-deriving size/distance:
+    // a stub that returns a distinctive ratio must drive the tolerance.
+    const pxPerUnit = vi.fn((sceneOrGrid: unknown) => {
+      const grid = (sceneOrGrid as { grid?: { size?: number; distance?: number } }).grid;
+      return (grid?.size ?? 0) / (grid?.distance ?? 1);
+    });
+    globalScope.game = { battleframe: { measure: { between: () => ({ distance: 0 }), pxPerUnit } } };
+
+    // 100px / 5 units = 20px/unit, via the engine stub.
+    expect(baseContactToleranceUnits(tokenAt(0, 100, 5))).toBe(BASE_CONTACT_TOLERANCE_PX / 20);
+    expect(pxPerUnit).toHaveBeenCalledWith(tokenAt(0, 100, 5).scene);
+  });
+
+  it("still falls back to the local 100px default for a scene-less token even with the engine present", () => {
+    // fromPlaceable/pxPerUnit only apply when there is a scene to read; a
+    // scene-less plain-object token keeps the documented DEFAULT_PX_PER_SCENE_UNIT.
+    globalScope.game = {
+      battleframe: { measure: { between: () => ({ distance: 0 }), pxPerUnit: () => 1 } },
+    };
+
+    expect(baseContactToleranceUnits(undefined)).toBe(BASE_CONTACT_TOLERANCE_PX / 100);
+    expect(baseContactToleranceUnits({})).toBe(BASE_CONTACT_TOLERANCE_PX / 100);
   });
 });

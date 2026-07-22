@@ -2937,3 +2937,40 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   socketlib delegate path itself is Foundry-facing and **not yet live-verified**
   (needs a 2-player + idle-GM world with socketlib installed).
 - Commit: this commit.
+
+## 2026-07-22 — GREATHELM QoL audit DO-NOWs: engine measure dedup + wiring the dormant attack-target prompt
+- Context: the GREATHELM QoL/engine-alignment audit (internal-docs/greathelm-qol-audit.md)
+  named three DO-NOW findings. All three landed here.
+- #1 (measure.pxPerUnit): `combat/clash.ts` `pxPerSceneUnit` was a verbatim copy
+  of the engine's ratio (its own comment admitted it). The value is consumed
+  *inside* the pure, unit-tested `baseContactToleranceUnits(token)` -- not at a
+  single runtime glue site -- so option (a) "lift to the caller" did not fit; took
+  option (b): delegate to `game.battleframe.measure.pxPerUnit(token.scene)` when
+  the engine surface is present, keep the local formula as the fallback ONLY for
+  the no-engine (test) path and the scene-less token (which must still resolve to
+  `DEFAULT_PX_PER_SCENE_UNIT = 100`, a value the engine's degenerate-grid default
+  of 1 would break -- but a real canvas token never has a degenerate grid, so the
+  numbers agree everywhere they can actually meet).
+- #2 (measure.fromPlaceable): `ui/round-control.ts` `gatherKnightsFromCanvas`
+  hand-built the `MeasurableToken` literal per placeable. Replaced with
+  `game.battleframe.measure.fromPlaceable(placeable)` when the engine is present,
+  same hand-built shape as fallback for the no-engine path. The engine adapter
+  reads the same centre/scene/base fields (and additionally carries `document`),
+  so base-to-base measures identically.
+- #3 (dormant `promptAttackTarget` -- the latent bug): traced the real defender
+  selection to `round/session.ts` `spendDie` (NOT the caller-less
+  `round-control.ts findDefenderInBaseContact`): it took `choices.defenderKnightId`
+  or silently fell to the nearest touching enemy, so the registered, defaulted-ON
+  `SETTING_PROMPT_ATTACK_TARGET` did nothing. Added `enemiesInBaseContact`
+  (all touching enemies, nearest-first -- `candidates[0]` equals the old nearest,
+  so behaviour is unchanged when nothing is injected) and an injectable
+  `chooseAttackTarget` seam on `CreateRoundSessionOptions` (default: nearest, no
+  prompt -- keeps the pure session UI-free). The glue layer (`beginRoundFromControl`
+  / `resumeRoundFromControl`, both reached from `advanceRoundCore`) injects
+  `promptAttackTarget` bound to the world `settings`, so 2+ touching enemies now
+  raise the picker. An explicit declared defender still bypasses the prompt.
+- Files: src/combat/clash.ts, src/ui/round-control.ts, src/round/session.ts;
+  tests/base-contact.test.ts (+2), tests/session.test.ts (+3).
+- 1172 tests pass (was 1167); typecheck clean. Foundry-facing wiring (#3) still
+  needs live-verify in a world.
+- Commit: this commit.

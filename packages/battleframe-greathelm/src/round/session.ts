@@ -40,6 +40,15 @@ export interface CreateRoundSessionOptions {
   firstPlayerId: string;
   dice: DiceApiLike;
   measure: MeasureApiLike;
+  /** World settings, forwarded to the attack-target prompt so its toggle is honoured. */
+  settings?: AttackTargetSettingsLike;
+  /**
+   * Which touching enemy a clash die hits when 2+ are in base contact. Injected
+   * by ui/round-control.ts as `promptAttackTarget`; defaults to the nearest
+   * candidate (no prompt) so a session with nothing injected -- every unit test,
+   * and any headless caller -- keeps the old silent "nearest" behaviour.
+   */
+  chooseAttackTarget?: ChooseAttackTarget;
 }
 
 /** A die as the session tracks it: no knight assigned until `spendDie` says so. */
@@ -75,6 +84,29 @@ export interface LegalTarget {
 export interface SpendChoices {
   defenderKnightId?: string;
 }
+
+/** A defender the attack-target prompt can offer. Structural, so ui/choice-prompts.ts AttackTargetCandidate assigns to it without this pure module importing the UI. */
+export interface AttackTargetCandidateLike {
+  id: string;
+  name?: string;
+}
+
+/** The world-settings read the prompt needs, structurally matching ui/choice-prompts.ts WorldSettingsLike. */
+export interface AttackTargetSettingsLike {
+  get: (namespace: string, key: string) => unknown;
+}
+
+/**
+ * Chooses which of several touching enemies a clash die hits. Injected by the
+ * glue layer (ui/round-control.ts) as ui/choice-prompts.ts `promptAttackTarget`,
+ * bound to the world settings; the pure session stays UI-free and defaults to
+ * the nearest candidate (candidates[0]) when nothing is injected, so a headless
+ * session behaves exactly as it did before this seam existed.
+ */
+export type ChooseAttackTarget = (options: {
+  candidates: readonly AttackTargetCandidateLike[];
+  settings?: AttackTargetSettingsLike;
+}) => Promise<AttackTargetCandidateLike | undefined>;
 
 /**
  * Thrown by `spendDie`/`discardDie` on any illegal use: wrong player's turn,
@@ -171,6 +203,30 @@ function findDefenderInContact(
 }
 
 /**
+ * Every living enemy in base contact, nearest first. `candidates[0]` is exactly
+ * `findDefenderInContact`'s answer -- the nearest enemy is in contact iff any is
+ * (a farther one cannot touch when the nearest does not), so the two agree on the
+ * default target and only differ in that this also surfaces the *other* touching
+ * enemies for the attacker to choose between (QSR: the attacker picks which
+ * touching enemy to hit).
+ */
+function enemiesInBaseContact(
+  knight: RoundSessionKnight,
+  knights: readonly RoundSessionKnight[],
+  measure: MeasureApiLike
+): RoundSessionKnight[] {
+  return knights
+    .filter(
+      (other) =>
+        other.playerId !== knight.playerId && other.id !== knight.id && !isRemoved(other)
+    )
+    .map((other) => ({ other, distance: measure.between(knight.token, other.token).distance }))
+    .filter((entry) => isBaseContactDistance(entry.distance, knight.token))
+    .sort((a, b) => a.distance - b.distance)
+    .map((entry) => entry.other);
+}
+
+/**
  * Turns one GREATHELM round into a session the UI pulls from one die at a
  * time, instead of one atomic call that blocks on a `chooseKnight` callback
  * (rejected -- see the sub-spec). All the actual rules are unchanged:
@@ -182,7 +238,33 @@ export function createRoundSession(
   options: CreateRoundSessionOptions,
   restore?: SerializedRoundSession
 ): RoundSession {
-  const { knights, pools, firstPlayerId, dice, measure } = options;
+  const { knights, pools, firstPlayerId, dice, measure, settings } = options;
+  // Default to the nearest touching enemy (candidates[0]) so a session with no
+  // prompt injected is byte-for-byte the old behaviour; the live path injects
+  // ui/choice-prompts.ts promptAttackTarget here.
+  const chooseAttackTarget: ChooseAttackTarget =
+    options.chooseAttackTarget ?? (async ({ candidates }) => candidates[0]);
+
+  /**
+   * The defender for a clash die: the nearest touching enemy when only one is in
+   * contact, otherwise the attacker's chosen one via `chooseAttackTarget`.
+   */
+  async function chooseDefenderInContact(
+    attacker: RoundSessionKnight
+  ): Promise<RoundSessionKnight | undefined> {
+    const candidates = enemiesInBaseContact(attacker, knights, measure);
+
+    if (candidates.length <= 1) {
+      return candidates[0];
+    }
+
+    const chosen = await chooseAttackTarget({
+      candidates: candidates.map((candidate) => ({ id: candidate.id, name: candidate.name })),
+      settings,
+    });
+
+    return candidates.find((candidate) => candidate.id === chosen?.id) ?? candidates[0];
+  }
 
   // A restored round seeds its unspent pools + turn from the persisted state; a
   // fresh round rolls them from the initiative pools. Everything else is the
@@ -440,7 +522,9 @@ export function createRoundSession(
       const declaredDefender = choices?.defenderKnightId
         ? knights.find((candidate) => candidate.id === choices.defenderKnightId)
         : undefined;
-      const defender = declaredDefender ?? findDefenderInContact(knight, knights, measure);
+      // An explicit UI declaration wins outright; otherwise the attacker is asked
+      // which touching enemy to hit when 2+ qualify (nearest by default).
+      const defender = declaredDefender ?? (await chooseDefenderInContact(knight));
 
       if (!defender || defender.playerId === knight.playerId || isRemoved(defender)) {
         throw new IllegalDieSpendError(

@@ -216,6 +216,110 @@ describe("createRoundSession", () => {
     await expect(session.spendDie("a-d1", "a1")).rejects.toThrow(IllegalDieSpendError);
   });
 
+  it("prompts for the attack target when 2+ enemies are in base contact, and hits the chosen one", async () => {
+    const b1Actor = makeActor(0);
+    const b2Actor = makeActor(0);
+    const knights = [
+      knight("a1", "a"),
+      knight("b1", "b", { actor: b1Actor }),
+      knight("b2", "b", { actor: b2Actor }),
+    ];
+    const pools = new Map([
+      ["a", pool(2)], // light melee -> 1 damage
+      ["b", pool(1)],
+    ]);
+    // Both enemies are touching a1, so the nearest-default is ambiguous and the
+    // attacker must be asked which one to hit.
+    const measure = makeMeasure([
+      ["a1", "b1"],
+      ["a1", "b2"],
+    ]);
+
+    const offered: string[] = [];
+    const chooseAttackTarget = async ({
+      candidates,
+    }: {
+      candidates: readonly { id: string; name?: string }[];
+    }) => {
+      offered.push(...candidates.map((candidate) => candidate.id));
+      // Pick the *farther-listed* candidate, not the default candidates[0], so
+      // the assertion proves the prompt's choice actually routed the damage.
+      return candidates.find((candidate) => candidate.id === "b2");
+    };
+
+    const session = createRoundSession({
+      ...baseOptions(knights, pools, "a", fixedDice(6), measure),
+      chooseAttackTarget,
+    });
+
+    await expect(session.spendDie("a-d1", "a1")).resolves.toBeUndefined();
+
+    expect(offered).toEqual(["b1", "b2"]); // every touching enemy is offered
+    expect(b2Actor.system.damage).toBe(1); // the chosen defender took the hit
+    expect(b1Actor.system.damage).toBe(0); // the nearest-default did not
+  });
+
+  it("does not prompt for an attack target when only one enemy is in base contact", async () => {
+    const knights = [knight("a1", "a"), knight("b1", "b"), knight("b2", "b")];
+    const pools = new Map([
+      ["a", pool(2)],
+      ["b", pool(1)],
+    ]);
+    const measure = makeMeasure([["a1", "b1"]]); // only b1 touching; b2 is far
+
+    let prompted = false;
+    const chooseAttackTarget = async ({
+      candidates,
+    }: {
+      candidates: readonly { id: string; name?: string }[];
+    }) => {
+      prompted = true;
+      return candidates[0];
+    };
+
+    const session = createRoundSession({
+      ...baseOptions(knights, pools, "a", fixedDice(6), measure),
+      chooseAttackTarget,
+    });
+
+    await expect(session.spendDie("a-d1", "a1")).resolves.toBeUndefined();
+
+    expect(prompted).toBe(false); // one candidate -> nothing to choose
+  });
+
+  it("an explicit declared defender bypasses the attack-target prompt", async () => {
+    const knights = [knight("a1", "a"), knight("b1", "b"), knight("b2", "b")];
+    const pools = new Map([
+      ["a", pool(2)],
+      ["b", pool(1)],
+    ]);
+    const measure = makeMeasure([
+      ["a1", "b1"],
+      ["a1", "b2"],
+    ]);
+
+    let prompted = false;
+    const chooseAttackTarget = async ({
+      candidates,
+    }: {
+      candidates: readonly { id: string; name?: string }[];
+    }) => {
+      prompted = true;
+      return candidates[0];
+    };
+
+    const session = createRoundSession({
+      ...baseOptions(knights, pools, "a", fixedDice(6), measure),
+      chooseAttackTarget,
+    });
+
+    await expect(
+      session.spendDie("a-d1", "a1", { defenderKnightId: "b2" })
+    ).resolves.toBeUndefined();
+
+    expect(prompted).toBe(false); // the UI already declared the target
+  });
+
   it("a clash die activates cleanly against an enemy in base contact", async () => {
     const knights = [knight("a1", "a"), knight("b1", "b")];
     const pools = new Map([

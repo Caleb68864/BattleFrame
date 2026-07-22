@@ -20,11 +20,16 @@ export interface MeasureApiLike {
   between(tokenA: unknown, tokenB: unknown): MeasureResultLike;
 }
 
+/** The engine's measurement surface, plus the `pxPerUnit` conversion this file delegates to. */
+type ClashMeasureApi = MeasureApiLike & {
+  pxPerUnit?: (sceneOrGrid: unknown) => number;
+};
+
 function resolveGame():
-  | { battleframe?: { dice?: DiceApiLike; measure?: MeasureApiLike } }
+  | { battleframe?: { dice?: DiceApiLike; measure?: ClashMeasureApi } }
   | undefined {
   const globalScope = globalThis as unknown as {
-    game?: { battleframe?: { dice?: DiceApiLike; measure?: MeasureApiLike } };
+    game?: { battleframe?: { dice?: DiceApiLike; measure?: ClashMeasureApi } };
   };
 
   return globalScope.game;
@@ -100,18 +105,39 @@ interface SceneScaledTokenLike {
 }
 
 /**
- * Pixels per one unit of scene grid distance -- the same conversion the core
- * measurement service applies (packages/battleframe/src/measurement/measure.ts
- * `pxPerUnit`). Read structurally and defensively rather than typed: this
- * package hands `unknown` tokens to `measure.between` on purpose, and reading
- * the scene here must not turn the token into a contract.
+ * Pixels per one unit of scene grid distance.
+ *
+ * This is the SAME conversion the core measurement service applies, and it is
+ * now public as `game.battleframe.measure.pxPerUnit(sceneOrGrid)`
+ * (packages/battleframe/src/measurement/measure.ts). Modules reach the engine
+ * only through the runtime `game.battleframe` surface (separate package, no
+ * build-time import -- the neutrality contract), so this DELEGATES to the engine
+ * whenever that surface is present, and keeps the local formula below purely as
+ * the fallback for the no-engine path: the unit suite runs without
+ * `game.battleframe`, and a scene-less plain-object token must still resolve to
+ * `DEFAULT_PX_PER_SCENE_UNIT`.
+ *
+ * The engine helper takes a scene/grid, while callers here hand a token, so its
+ * `.scene` is passed through. Read structurally and defensively rather than
+ * typed: this package hands `unknown` tokens to `measure.between` on purpose,
+ * and reading the scene here must not turn the token into a contract.
  *
  * Unit-agnostic by construction: `measure.between` reports its distance in
  * scene units, so dividing a pixel tolerance by this ratio lands in the same
  * units on an inches scene or a feet one, with no unit table of its own.
  */
 function pxPerSceneUnit(token: unknown): number {
-  const grid = (token as SceneScaledTokenLike | undefined)?.scene?.grid;
+  const scene = (token as SceneScaledTokenLike | undefined)?.scene;
+  const enginePxPerUnit = resolveGame()?.battleframe?.measure?.pxPerUnit;
+
+  // Real canvas tokens always carry a scene with a positive grid, so the engine
+  // and the local formula agree numerically; the fallback only matters where the
+  // engine is absent (tests) or a token has no scene at all.
+  if (typeof enginePxPerUnit === "function" && scene) {
+    return enginePxPerUnit(scene);
+  }
+
+  const grid = scene?.grid;
   const size = grid?.size;
   const distance = grid?.distance;
 
