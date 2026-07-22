@@ -92,12 +92,18 @@ export function buildFighterReportHtml(report: FighterFireReport, names: FireRep
   const attacker = escapeHtml(names.attacker);
   const target = escapeHtml(names.target);
 
+  const pdsLine = report.pdsKills > 0 ? [`<p>Point defence shot down ${report.pdsKills} fighter(s).</p>`] : [];
+
   if (!report.fired) {
     return wrapReport(`${attacker} &rarr; ${target}`, [
+      ...pdsLine,
       `<p>No attack (${escapeHtml(report.reason ?? "unable")}).</p>`
     ]);
   }
-  return wrapReport(`${attacker} (fighters) &rarr; ${target}`, reportBodyLines(report, target));
+  return wrapReport(`${attacker} (fighters) &rarr; ${target}`, [
+    ...pdsLine,
+    ...reportBodyLines(report, target)
+  ]);
 }
 
 // --- Injectable actions (testable core) -------------------------------------

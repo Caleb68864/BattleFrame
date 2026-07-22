@@ -141,4 +141,43 @@ describe("fireFighterGroupAtTarget", () => {
     const report = await fireFighterGroupAtTarget({ group: attackWing, target, context: ctx });
     expect(report.totalDamage).toBe(6);
   });
+
+  it("the target's PDS thins the group before it strikes, and casualties persist", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const wing = fakeGroup({ size: 6 });
+    const target = fakeTarget({
+      screens: 0, thrust: 0, fcs: 0, pds: 2,
+      armour: { boxes: 0, damage: 0 },
+      hull: { boxes: 18, damage: 0, rows: 3 },
+      weapons: []
+    });
+    // PDS 2 dice: 6,4 -> 2+1 = 3 kills -> 3 fighters left (now depleted).
+    // Morale die 1 (<= 3 pass). Attack 3 dice 6,6,6 -> 6 damage.
+    const ctx = context(4, 0, scriptedDice([[6, 4], [1], [6, 6, 6]]));
+    const report = await fireFighterGroupAtTarget({ group: wing, target, context: ctx });
+
+    expect(report.pdsKills).toBe(3);
+    expect(wing.system.size).toBe(3); // casualties applied
+    expect(report.fired).toBe(true);
+    expect(report.totalDamage).toBe(6);
+  });
+
+  it("a group shot down entirely by PDS makes no attack", async () => {
+    vi.stubGlobal("CONFIG", { specialStatusEffects: { DEFEATED: "dead" } });
+    const wing = fakeGroup({ size: 2 });
+    const target = fakeTarget({
+      screens: 0, thrust: 0, fcs: 0, pds: 2,
+      armour: { boxes: 0, damage: 0 },
+      hull: { boxes: 18, damage: 0, rows: 3 },
+      weapons: []
+    });
+    // PDS 2 dice: 6,6 -> 4 kills, capped at 2 -> all fighters gone.
+    const ctx = context(4, 0, scriptedDice([[6, 6]]));
+    const report = await fireFighterGroupAtTarget({ group: wing, target, context: ctx });
+
+    expect(report.fired).toBe(false);
+    expect(report.reason).toBe("shot-down");
+    expect(wing.system.size).toBe(0);
+    expect(target.system.hull.damage).toBe(0);
+  });
 });

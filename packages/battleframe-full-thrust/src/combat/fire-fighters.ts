@@ -1,10 +1,11 @@
 /**
  * A fighter group attacks a ship: it must be within 6mu with the target in its
- * FORE arc; a depleted group first passes a morale roll; then it rolls one die
- * per fighter, an Attack-type group adding +1 to each die, the target's screens
- * reducing the hits as against beams, and the damage runs through the shared
- * armour/hull + threshold path. A fired attack spends one endurance. Engine
- * services injected; the carrier bookkeeping (launch/recover) is layered above.
+ * FORE arc; the target's POINT DEFENCE fires first (shooting down fighters before
+ * they strike); a depleted group then passes a morale roll; then the survivors
+ * roll one die per fighter, an Attack-type group adding +1 to each die, the
+ * target's screens reducing the hits as against beams, and the damage runs
+ * through the shared armour/hull + threshold path. A fired attack spends one
+ * endurance. Engine services injected; carrier bookkeeping is layered above.
  *
  * DEFERRED specialised types: only Attack (+1/die vs ships) is applied here.
  * Heavy (counts as a Level-1 screen vs incoming fire), Interceptor/Torpedo
@@ -17,7 +18,12 @@
  */
 
 import { DIE_SIZE, FIGHTER_ATTACK_RANGE_MU, FIGHTER_GROUP_MAX } from "../constants";
-import { fighterAttackDamage, fighterMoralePasses, enduranceAfterActiveTurn } from "./fighters";
+import {
+  fighterAttackDamage,
+  fighterMoralePasses,
+  enduranceAfterActiveTurn,
+  pdsKillsVsFighters
+} from "./fighters";
 import { arcForBearing } from "./arcs";
 import { applyDamageAndThreshold } from "./apply-damage";
 import type { ShipActorLike } from "../data/ship-state";
@@ -42,12 +48,14 @@ export interface FighterFireParams {
 
 export interface FighterFireReport {
   fired: boolean;
-  reason?: "no-fighters" | "out-of-range" | "out-of-arc" | "morale";
+  reason?: "no-fighters" | "out-of-range" | "out-of-arc" | "morale" | "shot-down";
   distance: number;
   totalDamage: number;
   destroyed: boolean;
   thresholdsCrossed: number[];
   systemsKnockedOut: number;
+  /** Fighters the target's point defence shot down on the way in. */
+  pdsKills: number;
 }
 
 export async function fireFighterGroupAtTarget(
@@ -65,7 +73,8 @@ export async function fireFighterGroupAtTarget(
     totalDamage: 0,
     destroyed: false,
     thresholdsCrossed: [],
-    systemsKnockedOut: 0
+    systemsKnockedOut: 0,
+    pdsKills: 0
   };
 
   if (size <= 0) {
@@ -79,16 +88,32 @@ export async function fireFighterGroupAtTarget(
     return { ...idle, reason: "out-of-arc" };
   }
 
+  // Point defence fires FIRST -- the target's PDS/anti-fighter systems shoot down
+  // fighters before they strike (FT2). Casualties are permanent; persist them.
+  const pds = (target.system?.pds as number | undefined) ?? 0;
+  let pdsKills = 0;
+  if (pds > 0) {
+    const pdsFaces = await context.dice.rollPool(pds, DIE_SIZE);
+    pdsKills = Math.min(size, pdsKillsVsFighters(pdsFaces));
+  }
+  const remaining = size - pdsKills;
+  if (pdsKills > 0 && typeof group.update === "function") {
+    await group.update({ "system.size": remaining });
+  }
+  if (remaining <= 0) {
+    return { ...idle, reason: "shot-down", pdsKills };
+  }
+
   // Morale: a depleted group (below full strength) rolls before attacking and
   // aborts if the die exceeds the fighters remaining (More Thrust).
-  if (size < FIGHTER_GROUP_MAX) {
+  if (remaining < FIGHTER_GROUP_MAX) {
     const [moraleDie] = await context.dice.rollPool(1, DIE_SIZE);
-    if (moraleDie !== undefined && !fighterMoralePasses(moraleDie, size)) {
-      return { ...idle, reason: "morale" };
+    if (moraleDie !== undefined && !fighterMoralePasses(moraleDie, remaining)) {
+      return { ...idle, reason: "morale", pdsKills };
     }
   }
 
-  const rolled = await context.dice.rollPool(size, DIE_SIZE);
+  const rolled = await context.dice.rollPool(remaining, DIE_SIZE);
   // An Attack-type group adds +1 to each attack die versus ships.
   const faces = group.system?.fighterType === "attack" ? rolled.map((f) => f + 1) : rolled;
   const screenLevel = (target.system?.screens as number | undefined) ?? 0;
@@ -108,6 +133,7 @@ export async function fireFighterGroupAtTarget(
     totalDamage: damage,
     destroyed: outcome.destroyed,
     thresholdsCrossed: outcome.thresholdsCrossed,
-    systemsKnockedOut: outcome.systemsKnockedOut
+    systemsKnockedOut: outcome.systemsKnockedOut,
+    pdsKills
   };
 }

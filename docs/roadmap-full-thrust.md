@@ -22,9 +22,11 @@ in a live Foundry.
    active-side + eligibility (`canShipFire`) and advances strict alternation after each ship
    fires, auto-clearing when complete. Sides = token disposition. (Still to layer on: a visible
    phase/turn tracker, and #18 multi-FCS split.)
-2. **[wire] PDS / anti-fighter interception.** `pdsKillsVsFighters` / `pdsKillsVsMissiles` are
-   never called. Fighter attacks should let the target's PDS thin the group first; missiles
-   should be intercepted. `combat/fire-fighters.ts` skips it.
+2. ~~**[wire] PDS / anti-fighter interception.**~~ ✅ **DONE 2026-07-22 (fighter path).** The
+   target's PDS now fires first in `combat/fire-fighters.ts`: rolls `pds` dice, `pdsKillsVsFighters`
+   removes fighters (casualties persist to the group), and a group shot down entirely makes no
+   attack (`reason: "shot-down"`); the chat card reports the kills. **Still pending:**
+   `pdsKillsVsMissiles` against missiles — waits on the missile/salvo flow (#4/#15).
 3. **[wire] Needle beams.** `needleHit` + range done; no action to fire one at a *chosen enemy
    system* (needs a system picker).
 4. **[wire] Salvo missiles.** `salvoIntercepted/salvoDamage/salvoSurvivors` done; no launch

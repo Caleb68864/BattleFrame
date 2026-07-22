@@ -79,7 +79,9 @@ deferred. Nothing is silently missing.
 | Fighter group (1–6), type, endurance, morale | ✅ | `data/fighter-group.ts` + sheet |
 | Attack a ship in fore arc within 6mu; die per fighter; screens apply | ✅ | `combat/fire-fighters.ts` |
 | Morale roll (depleted group), endurance spend, Attack-type +1/die | ✅ | wired into `combat/fire-fighters.ts` (aborts on failed morale, spends endurance on a fired attack) |
-| PDS thins the group; dogfights; universal kill die | 🟡 | `combat/fighters.ts` (math); dogfight/PDS-order session deferred |
+| PDS thins the group before it strikes | ✅ | `combat/fire-fighters.ts` rolls the target's PDS first (`pdsKillsVsFighters`); casualties persist; a fully-killed group makes no attack |
+| Dogfights (fighter vs fighter) | 🟡 | `combat/fighters.ts` `dogfightKills` (math); dogfight session deferred |
+| PDS vs missiles | 🟡 | `combat/fighters.ts` `pdsKillsVsMissiles` (math); waits on the missile/salvo flow |
 | Other specialised types (Heavy/Interceptor/Torpedo/Fast/Long-range) | ⏳ | Documented deferral in `combat/fire-fighters.ts` |
 | Carrier launch/recover | ⏳ | Not yet built |
 

@@ -2064,4 +2064,14 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   per the project's turn-state-on-a-Document rule (Scene fallback avoids forcing an encounter).
 - 765 tests passing. Enforcement/initiative logic unit-tested; the scene-tool clicks + Document
   flag round-trip still want live-Foundry verification.
+- Commit: 5b02bc2.
+
+## 2026-07-22 — Full Thrust: PDS interception vs fighters (roadmap P0 #2)
+- combat/fire-fighters.ts now fires the target's point defence FIRST: rolls `pds` dice,
+  `pdsKillsVsFighters` (4-5=1, 6=2) removes fighters (capped at the group size), casualties
+  persist to the group (system.size), and a group shot down to zero makes no attack
+  (reason "shot-down"). PDS losses feed the morale check (depleted-group threshold uses the
+  post-PDS count) and the attack rolls the survivors. Chat card reports the PDS kills.
+- pdsKillsVsMissiles stays unwired until the missile/salvo launch flow exists (#4/#15).
+- 767 tests passing.
 - Commit: this commit.

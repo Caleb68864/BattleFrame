@@ -88,7 +88,8 @@ describe("buildFighterReportHtml", () => {
     totalDamage: 4,
     destroyed: false,
     thresholdsCrossed: [],
-    systemsKnockedOut: 0
+    systemsKnockedOut: 0,
+    pdsKills: 0
   };
 
   it("summarises a fighter group's attack", () => {
