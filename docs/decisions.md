@@ -2129,4 +2129,16 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - SSD tracks (#10 partial): prepareDerivedData computes hull/thrust/fcs/screens/pds "remaining/
   design" strings, shown on the sheet (next to the design inputs) and the hover panel.
 - 800 tests passing.
+- Commit: cb55de5.
+
+## 2026-07-22 — Full Thrust: salvo missiles wired (roadmap P0 #4, completes all P0)
+- combat/salvo.ts `resolveSalvoAtTarget`: a "salvo" launcher mount rolls 1d6 missiles-on-target,
+  the target's remaining PDS intercepts (salvoIntercepted 4-5=1/6=2), survivors each roll a
+  damage die (salvoDamage) -- screens do NOT reduce, armour absorbs via the shared armour→hull
+  path; the launcher is marked spent. Added "salvo" to WEAPON_KINDS (fire.ts ignores it in the
+  pooled path; it fires via its own tool) + SALVO_RANGE_MU=24. A "Fire Salvo" scene tool + chat
+  report. SIMPLIFICATION: direct-target within range; the point-of-aim-counter + movement-
+  prediction step is deferred (combat resolution is faithful).
+- 806 tests passing. This completes roadmap P0 (#1 fire order, #2 PDS, #3 needle, #4 salvo,
+  #5 damage control, #6 points).
 - Commit: this commit.

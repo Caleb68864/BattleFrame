@@ -38,6 +38,7 @@ import { previewPointsPx } from "../movement/preview";
 import { drawMovementPreview, clearMovementPreview } from "./preview-overlay";
 import { parseFleet } from "../data/fleet-import";
 import { fireNeedleAtSystem, type NeedleReport } from "../combat/needle";
+import { resolveSalvoAtTarget, type SalvoReport } from "../combat/salvo";
 import { resolveDamageControl, damageControlRepairs } from "../combat/damage-control";
 import { syncShipStatuses } from "../status";
 import type { SystemRef } from "../ship/systems";
@@ -62,12 +63,11 @@ export interface FireReportNames {
 /** The shared middle+tail of a fire report: the damage line, threshold check, and
  * destruction notice. `target` is already HTML-escaped. */
 function reportBodyLines(
-  report: { distance: number; totalDamage: number; thresholdsCrossed: number[]; systemsKnockedOut: number; destroyed: boolean },
+  report: { distance?: number; totalDamage: number; thresholdsCrossed: number[]; systemsKnockedOut: number; destroyed: boolean },
   target: string
 ): string[] {
-  const lines = [
-    `<p>Range ${Math.round(report.distance)}mu &middot; <strong>${report.totalDamage}</strong> damage.</p>`
-  ];
+  const range = report.distance === undefined ? "" : `Range ${Math.round(report.distance)}mu &middot; `;
+  const lines = [`<p>${range}<strong>${report.totalDamage}</strong> damage.</p>`];
   if (report.thresholdsCrossed.length > 0) {
     lines.push(
       `<p>Threshold check (row ${report.thresholdsCrossed.join(", ")}): ` +
@@ -126,6 +126,20 @@ export function buildNeedleReportHtml(report: NeedleReport, names: FireReportNam
     ? `<p>Needle beam knocked out the target's <strong>${system}</strong>.</p>`
     : `<p>Needle beam missed the target's ${system}.</p>`;
   return wrapReport(`${attacker} needle &rarr; ${target}`, [body]);
+}
+
+/** Builds the chat-card HTML for a salvo missile attack. */
+export function buildSalvoReportHtml(report: SalvoReport, names: FireReportNames): string {
+  const attacker = escapeHtml(names.attacker);
+  const target = escapeHtml(names.target);
+  if (!report.fired) {
+    return wrapReport(`${attacker} salvo &rarr; ${target}`, [
+      `<p>No launch (${escapeHtml(report.reason ?? "unable")}).</p>`
+    ]);
+  }
+  const intro = `<p>${report.onTarget} on target, ${report.intercepted} intercepted, ` +
+    `<strong>${report.survivors}</strong> hit.</p>`;
+  return wrapReport(`${attacker} salvo &rarr; ${target}`, [intro, ...reportBodyLines(report, target)]);
 }
 
 // --- Injectable actions (testable core) -------------------------------------
@@ -365,6 +379,44 @@ export async function needleAction(): Promise<void> {
     context: { measure: services.measure, facing: services.facing, dice: services.dice }
   });
   const html = buildNeedleReportHtml(report, {
+    attacker: attackerToken?.name ?? "Attacker",
+    target: targetToken?.name ?? "Target"
+  });
+  await g().ChatMessage?.create({ content: html });
+}
+
+/** Salvo-tool action: launch a salvo at the targeted ship. */
+export async function salvoAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", `${MODULE_ID} | only the GM resolves fire`);
+    return;
+  }
+  const services = api();
+  if (!services) {
+    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+    return;
+  }
+  const attackerToken = controlledToken();
+  const targetToken = targetedToken();
+  if (!attackerToken || !targetToken) {
+    return;
+  }
+  const target = toFiringShip(targetToken);
+  if (!target || !attackerToken.actor) {
+    notify("warn", `${MODULE_ID} | both tokens need a ship actor`);
+    return;
+  }
+
+  const report = await resolveSalvoAtTarget({
+    attacker: {
+      token: attackerToken,
+      system: attackerToken.actor.system,
+      update: (data: Record<string, unknown>) => attackerToken.actor.update(data)
+    },
+    target,
+    context: { measure: services.measure, facing: services.facing, dice: services.dice }
+  });
+  const html = buildSalvoReportHtml(report, {
     attacker: attackerToken?.name ?? "Attacker",
     target: targetToken?.name ?? "Target"
   });
@@ -725,6 +777,16 @@ export function addSceneControl(controls: unknown): void {
     onClick: () => void needleAction(),
     onChange: () => void needleAction()
   };
+  const salvoTool = {
+    name: "full-thrust-salvo",
+    title: "battleframe-full-thrust.controls.salvo",
+    icon: "fas fa-meteor",
+    button: true,
+    visible: gm,
+    order: 3,
+    onClick: () => void salvoAction(),
+    onChange: () => void salvoAction()
+  };
   const plotTool = {
     name: "full-thrust-plot",
     title: "battleframe-full-thrust.controls.plot",
@@ -780,7 +842,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [initiativeTool, fireTool, needleTool, plotTool, executeTool, damageControlTool, importTool];
+  const tools = [initiativeTool, fireTool, needleTool, salvoTool, plotTool, executeTool, damageControlTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);

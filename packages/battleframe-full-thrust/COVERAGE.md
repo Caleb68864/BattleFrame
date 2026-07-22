@@ -52,7 +52,7 @@ deferred. Nothing is silently missing.
 | Pulse torpedoes: to-hit by band (2+…6), damage die, ignore screens | ✅ | `combat/weapons.ts`, `combat/fire.ts` |
 | Submunition packs: dice by band, ignore screens, one-shot | ✅ | `combat/weapons.ts`, `combat/fire.ts` |
 | Needle beams: 9mu, knock a nominated system on a 6, ignore screens/armour | ✅ | `combat/needle.ts` `fireNeedleAtSystem` + "Needle Beam" scene tool with a system-type picker |
-| Salvo missiles: salvo of 6, PDS interception, per-missile damage | 🟡 | `combat/ordnance.ts` (math); placed-counter launch UI deferred |
+| Salvo missiles: salvo of 6, PDS interception, per-missile damage | ✅ | `combat/salvo.ts` `resolveSalvoAtTarget` + "salvo" weapon kind + "Fire Salvo" tool (direct-target; point-of-aim counter deferred) |
 | Nova cannon / wave gun / K-guns | ⏳ | Not yet built |
 
 ## Defences

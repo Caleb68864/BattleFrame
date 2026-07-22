@@ -31,8 +31,11 @@ in a live Foundry.
    (9mu + arc, roll, knock out a nominated surviving system on a 6, ignores screens/armour) +
    a "Needle Beam" scene tool with a system-type picker. Core unit-tested; the picker dialog is
    live-unverified.
-4. **[wire] Salvo missiles.** `salvoIntercepted/salvoDamage/salvoSurvivors` done; no launch
-   flow (point-of-aim counter, move, resolve with PDS).
+4. ~~**[wire] Salvo missiles.**~~ ✅ **DONE 2026-07-22.** `combat/salvo.ts` `resolveSalvoAtTarget`
+   (roll on-target → target PDS intercepts → survivors each roll damage; screens don't reduce,
+   armour absorbs) + a "salvo" weapon kind + a "Fire Salvo" scene tool. SIMPLIFICATION: resolves
+   directly against a chosen target within 24mu; the point-of-aim-counter + movement-prediction
+   step is deferred (the combat resolution itself is faithful).
 5. ~~**[wire] Damage control.**~~ ✅ **DONE 2026-07-22.** Enabled by the design+damage-counter
    refactor (systems track a design count + a `…Lost`/`driveHits` damage counter, remaining =
    design − damage, mirroring hull). `resolveDamageControl` restores knocked-out systems in

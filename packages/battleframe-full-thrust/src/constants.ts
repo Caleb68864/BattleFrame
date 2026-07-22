@@ -71,9 +71,14 @@ export const WEAPON_KINDS = [
   "beam",
   "torpedo",
   "needle",
-  "submunition"
+  "submunition",
+  "salvo"
 ] as const;
 export type WeaponKind = (typeof WEAPON_KINDS)[number];
+
+/** Salvo missile launcher: fires a salvo of 6 one-turn missiles; standard range 24mu. */
+export const SALVO_SIZE = 6;
+export const SALVO_RANGE_MU = 24;
 
 // --- Pulse torpedoes --------------------------------------------------------
 

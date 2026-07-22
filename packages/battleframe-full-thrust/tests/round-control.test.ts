@@ -140,6 +140,7 @@ describe("addSceneControl", () => {
     expect(toolNames).toContain("full-thrust-initiative");
     expect(toolNames).toContain("full-thrust-fire");
     expect(toolNames).toContain("full-thrust-needle");
+    expect(toolNames).toContain("full-thrust-salvo");
     expect(toolNames).toContain("full-thrust-plot");
     expect(toolNames).toContain("full-thrust-execute");
     expect(toolNames).toContain("full-thrust-damage-control");
