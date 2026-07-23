@@ -3861,3 +3861,38 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 ## 2026-07-22 — Starfield scenes: PNG backgrounds + shipped thumbnails + canvasReady
 
 - Foundry drops SVG scene backgrounds (raster only) -> render PNGs. Scene.create auto-generates a thumbnail (needs the renderer), which threw on the early `ready` hook; ship a pre-made -thumb.png per scene (passed as `thumb`) and defer creation to `canvasReady`. Creation itself is only fully confirmable in a real browser (headless has no WebGL renderer/texture loader). Commit: this commit.
+
+## 2026-07-22 — Full Thrust: phase-aware GM-less advance + premature-ready guard
+
+- Problem: the GM-less advance ran FT's `advanceTurnCore` (end-of-turn cleanup
+  only). Movement Execute + Begin-fire-phase were separate manual GM buttons, and
+  Fire was FREE when no fire phase was running — a player could plot, click Fire,
+  and kill a ship with no turn order.
+- Fix: registered `advancePhaseCore` (was `advanceTurnCore`) as the advance
+  callback. It derives the phase from the fire-phase indicator (`FIRE_PHASE_FLAG`
+  absent = PLOT, present = FIRE) via the pure `nextPhaseAction`: PLOT → execute
+  maneuvers then open the fire phase (initiative); FIRE → end the turn. One Ready
+  now walks plot→move→fire-phase, the next ends the turn. The manual Execute /
+  Begin-fire / New-turn scene tools stay as GM overrides. The advance callback
+  runs on a GM host (directly or socketlib-delegated), so the GM-only steps' checks
+  pass.
+- Gated Fire (`fireAction` + `splitFireAction`) behind `ensureFirePhase()`: during
+  the PLOT phase they warn ("Fire happens in the fire phase — mark ready to
+  advance") and do nothing instead of free-firing. The existing
+  initiative/alternation enforcement (present once `FIRE_PHASE_FLAG` is set) is
+  unchanged.
+- Premature-ready guard: `readyAction` now, when BECOMING ready, computes the
+  user's pending ships (pure `pendingShips`: PLOT → owned + un-plotted + not held;
+  FIRE → owned + un-fired + not held) and shows a DialogV2 (Ready anyway / Cancel)
+  listing each ship + its `availableShipActions`. Un-readying never prompts; no
+  dialog available → don't block.
+- Per-ship Hold/Done: a `HELD_FLAG` toggled by a new token-HUD button
+  (`holdShipAction`) excludes a ship from `pendingShips`. `HudButtonModel` gained an
+  optional `availability` gate so Hold shows on every ship (no weapon gate). All
+  HELD flags clear on each phase transition (in `advancePhaseCore`).
+- Pure/TDD: `src/round/turn-phase.ts` (`nextPhaseAction`, `isShipPending`,
+  `pendingShips`, `pendingActionLabels`) unit-tested first. Glue (advancePhaseCore
+  branch, fire gate, hold toggle) has vitest coverage; the DialogV2 guard,
+  movement-on-ready, fire-phase auto-start, and the Hold button need live-verify.
+  `HELD_FLAG` is a per-ship per-turn INTENT (owner/GM-readable actor flag), not a
+  battlefield condition, so it is not a CONFIG.statusEffects entry. Commit: this commit.

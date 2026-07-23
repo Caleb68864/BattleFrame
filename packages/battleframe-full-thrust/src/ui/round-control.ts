@@ -16,6 +16,7 @@ import {
   SHIP_ACTOR_TYPE,
   PLOTTED_ORDER_FLAG,
   FIRE_PHASE_FLAG,
+  HELD_FLAG,
   ACTIVE_MISSILES_FLAG,
   WAVE_GUN_CHARGE_FLAG,
   WAVE_GUN_FULL_CHARGE,
@@ -61,6 +62,14 @@ import { previewTargeting, type TargetingRow } from "../combat/targeting";
 import { toggleArcPin, isArcPinned } from "./arc-overlay";
 import { resolveDamageControl, damageControlRepairs } from "../combat/damage-control";
 import { syncShipStatuses } from "../status";
+import {
+  nextPhaseAction,
+  pendingShips,
+  pendingActionLabels,
+  type TurnPhase,
+  type OwnedShipState,
+  type PendingShip
+} from "../round/turn-phase";
 import type { SystemRef } from "../ship/systems";
 
 // --- Pure report formatting (unit-tested) -----------------------------------
@@ -551,6 +560,12 @@ export async function fireAction(): Promise<void> {
   if (!attackerToken || !targetToken) {
     return;
   }
+  // Fire only happens in the fire phase: during plotting a ship must not free-fire
+  // (that skipped the whole turn order). The initiative/alternation gate below
+  // then sequences who fires once the phase is open.
+  if (!ensureFirePhase()) {
+    return;
+  }
   const context = { measure: services.measure, facing: services.facing, dice: services.dice };
   const attackerType = attackerToken?.actor?.type as string | undefined;
   const targetType = targetToken?.actor?.type as string | undefined;
@@ -633,6 +648,9 @@ export async function splitFireAction(): Promise<void> {
   }
   const attackerToken = controlledToken();
   if (!attackerToken) {
+    return;
+  }
+  if (!ensureFirePhase()) {
     return;
   }
   const targetTokens = targetedTokens();
@@ -1415,6 +1433,30 @@ function loadFireState(): FireSessionState | undefined {
   return state && typeof state === "object" ? (state as FireSessionState) : undefined;
 }
 
+/** True while a weapons-fire phase is running (the FIRE_PHASE_FLAG is present). */
+function firePhaseActive(): boolean {
+  return loadFireState() !== undefined;
+}
+
+/** The current mechanical phase, derived from the fire-phase indicator. */
+function currentPhase(): TurnPhase {
+  return firePhaseActive() ? "fire" : "plot";
+}
+
+/**
+ * Gate for the fire actions: true once the fire phase is open, else warns and
+ * returns false so a plotted-but-not-yet-fought ship cannot free-fire during the
+ * plot phase. (Once the phase is open the initiative/alternation check enforces
+ * whose ship fires next -- this only stops firing before the phase exists.)
+ */
+function ensureFirePhase(): boolean {
+  if (!firePhaseActive()) {
+    notify("warn", `${MODULE_ID} | Fire happens in the fire phase -- mark ready to advance`);
+    return false;
+  }
+  return true;
+}
+
 /** The engine's activation-order service, or undefined when absent. */
 function roundsApi(): RoundsApiLike | undefined {
   return api()?.rounds;
@@ -1583,12 +1625,98 @@ export async function readyAction(): Promise<void> {
     notify("warn", `${MODULE_ID} | the battleframe advance service was not found`);
     return;
   }
+
+  // Only prompt when BECOMING ready (un-readying never nags). If any of the
+  // player's ships still owe an action this phase, confirm before readying so a
+  // premature Ready doesn't advance the turn past an un-plotted / un-fired ship.
+  const becomingReady = !advance.isReady?.();
+  if (becomingReady) {
+    const pending = pendingShips(currentPhase(), ownedShipStates());
+    if (pending.length > 0 && !(await confirmReadyAnyway(pending))) {
+      return;
+    }
+  }
+
   await advance.toggleReady();
   const status = advance.status?.();
   notify(
     "info",
     `${MODULE_ID} | you are ${advance.isReady?.() ? "READY" : "not ready"} (${status?.ready?.length ?? 0}/${status?.participants?.length ?? 0} ready)`
   );
+}
+
+/**
+ * The current user's ships and their per-phase state (plotted / fired / held),
+ * read off the live documents. "Owned" is Foundry's own ownership -- only ships
+ * the acting user controls count toward their readiness. `fired` reads the active
+ * fire order's activated-token set; `held` reads the Hold/Done flag.
+ */
+function ownedShipStates(): OwnedShipState[] {
+  const firedIds = new Set(loadFireState()?.activatedIds ?? []);
+  const states: OwnedShipState[] = [];
+  for (const token of g().canvas?.tokens?.placeables ?? []) {
+    const actor = token?.actor;
+    if (typeof actor?.type !== "string" || !actor.type.endsWith(SHIP_ACTOR_TYPE)) {
+      continue;
+    }
+    if (actor.isOwner !== true) {
+      continue;
+    }
+    states.push({
+      name: token?.name ?? actor?.name ?? "Ship",
+      plotted: actor.getFlag?.(MODULE_ID, PLOTTED_ORDER_FLAG) !== undefined,
+      fired: !!token?.id && firedIds.has(token.id),
+      held: !!actor.getFlag?.(MODULE_ID, HELD_FLAG),
+      system: actor.system ?? {}
+    });
+  }
+  return states;
+}
+
+/**
+ * Confirms a premature Ready via a DialogV2, listing each still-pending ship with
+ * its available actions ("RNS Lion &mdash; not plotted &middot; Fire, Nova"). Returns
+ * true to proceed (Ready anyway / no dialog available), false to cancel.
+ */
+async function confirmReadyAnyway(pending: readonly PendingShip[]): Promise<boolean> {
+  const dialog = g().foundry?.applications?.api?.DialogV2 as any;
+  const reason = currentPhase() === "plot" ? "not plotted" : "not fired";
+  const items = pending
+    .map((p) => {
+      const labels = pendingActionLabels(p.actions);
+      const suffix = labels.length > 0 ? ` &middot; ${escapeHtml(labels.join(", "))}` : "";
+      return `<li><strong>${escapeHtml(p.name)}</strong> &mdash; ${reason}${suffix}</li>`;
+    })
+    .join("");
+  if (!dialog?.confirm) {
+    return true; // no dialog (tests / early boot): don't block the ready toggle
+  }
+  return !!(await dialog.confirm({
+    window: { title: "Full Thrust: Ready to advance?" },
+    content: `<p>These ships still have actions this phase:</p><ul class="ft-pending">${items}</ul>`,
+    yes: { label: "Ready anyway" },
+    no: { label: "Cancel", default: true }
+  }));
+}
+
+/**
+ * Hold/Done token-HUD action: toggle the controlled ship's HELD flag. A held ship
+ * is skipped by the premature-ready guard (the player has decided it acts no more
+ * this phase); the flag clears automatically on the next phase transition.
+ */
+export async function holdShipAction(): Promise<void> {
+  const token = controlledToken();
+  const actor = token?.actor;
+  if (!actor) {
+    return;
+  }
+  if (actor.getFlag?.(MODULE_ID, HELD_FLAG)) {
+    await actor.unsetFlag?.(MODULE_ID, HELD_FLAG);
+    notify("info", `${MODULE_ID} | ${token?.name ?? "ship"} no longer held`);
+  } else {
+    await actor.setFlag?.(MODULE_ID, HELD_FLAG, true);
+    notify("info", `${MODULE_ID} | ${token?.name ?? "ship"} held (done this phase)`);
+  }
 }
 
 /** Whether the current user is marked ready (for the toggle button's state). */
@@ -1623,6 +1751,47 @@ export async function advanceTurnCore(): Promise<{ cleared: number; missilesFlow
     await advanceMissilesCore();
   }
   return { cleared, missilesFlown };
+}
+
+/** Clears every ship's HELD ("done") flag -- run on each phase transition so each
+ * new phase starts with a clean slate for the premature-ready guard. */
+async function clearHeldFlags(): Promise<void> {
+  for (const token of g().canvas?.tokens?.placeables ?? []) {
+    const actor = token?.actor;
+    if (typeof actor?.type !== "string" || !actor.type.endsWith(SHIP_ACTOR_TYPE)) {
+      continue;
+    }
+    if (actor.getFlag?.(MODULE_ID, HELD_FLAG) !== undefined) {
+      await actor.unsetFlag?.(MODULE_ID, HELD_FLAG);
+    }
+  }
+}
+
+/**
+ * Phase-aware turn advance: the GM-less ready/advance callback that walks the turn
+ * one phase at a time instead of jumping straight to end-of-turn cleanup. Derives
+ * the phase from the fire-phase indicator:
+ *
+ * - PLOT phase (no fire phase running) -> reveal + move every plotted ship
+ *   (`executeManeuversAction`) then open the fire phase with initiative
+ *   (`beginFirePhaseAction`). Plots are NOT cleared here -- they were consumed by
+ *   the execute step.
+ * - FIRE phase (fire phase running) -> end the turn (`advanceTurnCore`: clear
+ *   plots, close the fire phase, fly missiles), returning to plotting.
+ *
+ * HELD flags clear on every transition. Runs on the advance HOST (a GM, directly
+ * or via socketlib delegation), so the GM-only steps' checks pass. The manual
+ * Execute / Begin-fire-phase / New-turn scene tools stay as overrides.
+ */
+export async function advancePhaseCore(): Promise<void> {
+  const action = nextPhaseAction(firePhaseActive());
+  if (action === "execute-then-fire") {
+    await executeManeuversAction();
+    await beginFirePhaseAction();
+  } else {
+    await advanceTurnCore();
+  }
+  await clearHeldFlags();
 }
 
 /**

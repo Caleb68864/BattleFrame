@@ -31,19 +31,24 @@ import {
   fireWaveGunAction,
   launchFightersAction,
   recoverFightersAction,
+  holdShipAction,
   runGuarded
 } from "./round-control";
 
 /** The Actor.type a Full Thrust ship carries (module-namespaced subtype). */
 const SHIP_TYPE = `${MODULE_ID}.${SHIP_ACTOR_TYPE}`;
 
-/** One HUD button: which availability flag gates it, its icon, tooltip + action. */
+/** One HUD button: its stable key, icon, tooltip, action, and the availability
+ * flag that gates it (omitted for buttons every ship always shows, like Hold). */
 export interface HudButtonModel {
-  key: keyof ShipActionAvailability;
+  key: string;
   icon: string;
   tooltipKey: string;
   tooltipFallback: string;
   action: () => unknown;
+  /** When set, the button shows only if this ShipActionAvailability flag is live;
+   * when omitted the button shows for every Full Thrust ship. */
+  availability?: keyof ShipActionAvailability;
 }
 
 /**
@@ -53,15 +58,18 @@ export interface HudButtonModel {
  * FontAwesome glyphs so the two entry points read as the same action.
  */
 const BUTTON_CATALOGUE: readonly HudButtonModel[] = [
-  { key: "plot", icon: "fa-route", tooltipKey: `${MODULE_ID}.controls.plot`, tooltipFallback: "Plot movement order", action: plotAction },
-  { key: "fire", icon: "fa-crosshairs", tooltipKey: `${MODULE_ID}.controls.fire`, tooltipFallback: "Fire at target", action: fireAction },
-  { key: "splitFire", icon: "fa-arrows-split-up-and-left", tooltipKey: `${MODULE_ID}.controls.splitFire`, tooltipFallback: "Split fire across targets", action: splitFireAction },
-  { key: "needle", icon: "fa-syringe", tooltipKey: `${MODULE_ID}.controls.needle`, tooltipFallback: "Needle beam", action: needleAction },
-  { key: "salvo", icon: "fa-meteor", tooltipKey: `${MODULE_ID}.controls.salvo`, tooltipFallback: "Fire salvo missiles", action: salvoAction },
-  { key: "nova", icon: "fa-sun", tooltipKey: `${MODULE_ID}.controls.novaCannon`, tooltipFallback: "Fire Nova Cannon", action: fireNovaCannonAction },
-  { key: "waveGun", icon: "fa-water", tooltipKey: `${MODULE_ID}.controls.waveGun`, tooltipFallback: "Fire Wave Gun", action: fireWaveGunAction },
-  { key: "launchFighters", icon: "fa-plane-departure", tooltipKey: `${MODULE_ID}.controls.launchFighters`, tooltipFallback: "Launch fighters", action: launchFightersAction },
-  { key: "recoverFighters", icon: "fa-plane-arrival", tooltipKey: `${MODULE_ID}.controls.recoverFighters`, tooltipFallback: "Recover fighters", action: recoverFightersAction }
+  { key: "plot", availability: "plot", icon: "fa-route", tooltipKey: `${MODULE_ID}.controls.plot`, tooltipFallback: "Plot movement order", action: plotAction },
+  { key: "fire", availability: "fire", icon: "fa-crosshairs", tooltipKey: `${MODULE_ID}.controls.fire`, tooltipFallback: "Fire at target", action: fireAction },
+  { key: "splitFire", availability: "splitFire", icon: "fa-arrows-split-up-and-left", tooltipKey: `${MODULE_ID}.controls.splitFire`, tooltipFallback: "Split fire across targets", action: splitFireAction },
+  { key: "needle", availability: "needle", icon: "fa-syringe", tooltipKey: `${MODULE_ID}.controls.needle`, tooltipFallback: "Needle beam", action: needleAction },
+  { key: "salvo", availability: "salvo", icon: "fa-meteor", tooltipKey: `${MODULE_ID}.controls.salvo`, tooltipFallback: "Fire salvo missiles", action: salvoAction },
+  { key: "nova", availability: "nova", icon: "fa-sun", tooltipKey: `${MODULE_ID}.controls.novaCannon`, tooltipFallback: "Fire Nova Cannon", action: fireNovaCannonAction },
+  { key: "waveGun", availability: "waveGun", icon: "fa-water", tooltipKey: `${MODULE_ID}.controls.waveGun`, tooltipFallback: "Fire Wave Gun", action: fireWaveGunAction },
+  { key: "launchFighters", availability: "launchFighters", icon: "fa-plane-departure", tooltipKey: `${MODULE_ID}.controls.launchFighters`, tooltipFallback: "Launch fighters", action: launchFightersAction },
+  { key: "recoverFighters", availability: "recoverFighters", icon: "fa-plane-arrival", tooltipKey: `${MODULE_ID}.controls.recoverFighters`, tooltipFallback: "Recover fighters", action: recoverFightersAction },
+  // Hold/Done: always available on a ship -- marks it finished for this phase so the
+  // premature-ready guard stops nagging about it. Not gated by any weapon/system.
+  { key: "hold", icon: "fa-circle-check", tooltipKey: `${MODULE_ID}.controls.hold`, tooltipFallback: "Hold / Done (skip this ship this phase)", action: holdShipAction }
 ];
 
 /**
@@ -74,7 +82,9 @@ export function hudButtonModels(actor: { type?: string; system?: unknown } | und
     return [];
   }
   const available = availableShipActions((actor.system ?? {}) as any);
-  return BUTTON_CATALOGUE.filter((model) => available[model.key]);
+  // A button with no `availability` gate always shows for a ship (e.g. Hold);
+  // otherwise it shows only when its availability flag is live.
+  return BUTTON_CATALOGUE.filter((model) => model.availability === undefined || available[model.availability]);
 }
 
 // --- DOM injection (DOM-tolerant so it tests with a fake element) ------------

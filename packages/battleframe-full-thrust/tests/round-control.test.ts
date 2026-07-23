@@ -9,6 +9,9 @@ import {
   executeManeuversAction,
   beginFirePhaseAction,
   newTurnAction,
+  advancePhaseCore,
+  fireAction,
+  holdShipAction,
   runGuarded
 } from "../src/ui/round-control";
 import type { TargetingRow } from "../src/combat/targeting";
@@ -546,6 +549,184 @@ describe("newTurnAction", () => {
 
     expect(shipFlags.plottedOrder).toBeUndefined();
     expect(sceneFlags.firePhase).toBeUndefined();
+  });
+});
+
+describe("advancePhaseCore (phase-aware GM-less advance)", () => {
+  /** A ship token that tracks its flags (plottedOrder/held), updates, and moves. */
+  function phaseShip(id: string, disposition: number, system: Record<string, any>, order: string | undefined) {
+    const flags: Record<string, any> = { held: true };
+    if (order !== undefined) {
+      flags.plottedOrder = order;
+    }
+    const updates: Record<string, unknown>[] = [];
+    const docUpdates: Record<string, unknown>[] = [];
+    return {
+      id,
+      updates,
+      docUpdates,
+      flags,
+      actor: {
+        type: "battleframe-full-thrust.ship",
+        system,
+        isOwner: true,
+        getFlag: (_m: string, k: string) => flags[k],
+        setFlag: (_m: string, k: string, v: unknown) => {
+          flags[k] = v;
+          return Promise.resolve();
+        },
+        unsetFlag: (_m: string, k: string) => {
+          delete flags[k];
+          return Promise.resolve();
+        },
+        update: (data: Record<string, unknown>) => {
+          updates.push(data);
+          return Promise.resolve();
+        }
+      },
+      document: {
+        x: 0,
+        y: 0,
+        disposition,
+        parent: { grid: { size: 50, distance: 1 } },
+        update: (data: Record<string, unknown>) => {
+          docUpdates.push(data);
+          return Promise.resolve();
+        }
+      }
+    };
+  }
+
+  function sceneWithFlags(flags: Record<string, any>) {
+    return {
+      grid: { size: 50, distance: 1 },
+      getFlag: (_m: string, k: string) => flags[k],
+      setFlag: (_m: string, k: string, v: unknown) => {
+        flags[k] = v;
+        return Promise.resolve();
+      },
+      unsetFlag: (_m: string, k: string) => {
+        delete flags[k];
+        return Promise.resolve();
+      }
+    };
+  }
+
+  const rounds = {
+    createActivationOrder: (p: any) => ({
+      serialize: () => ({ firstSideId: p.firstSideId, activatedIds: [], priorityPointer: 0, mainPointer: 0 }),
+      isComplete: () => false,
+      activeSideId: () => p.firstSideId,
+      eligible: () => p.units.map((u: any) => u.id)
+    }),
+    restoreActivationOrder: vi.fn()
+  };
+
+  it("PLOT phase: executes plotted maneuvers then opens the fire phase, clearing held flags", async () => {
+    const sceneFlags: Record<string, any> = {}; // no firePhase -> PLOT phase
+    const a = phaseShip("a1", 1, { velocity: 8, course: 3, thrust: 6 }, "+4,P2");
+    const b = phaseShip("b1", -1, { velocity: 0, course: 6, thrust: 4 }, undefined);
+    const pools = [[5], [3]]; // side 1 wins initiative
+    vi.stubGlobal("game", {
+      user: { isGM: true },
+      battleframe: { dice: { rollPool: vi.fn(async () => pools.shift() ?? []) }, rounds },
+      combats: { active: undefined }
+    });
+    vi.stubGlobal("canvas", { tokens: { placeables: [a, b] }, scene: sceneWithFlags(sceneFlags) });
+    vi.stubGlobal("ChatMessage", { create: vi.fn(async () => undefined) });
+    vi.stubGlobal("ui", { notifications: { info: vi.fn(), warn: vi.fn() } });
+
+    await advancePhaseCore();
+
+    // Plotted ship moved; fire phase opened; held flags cleared on every ship.
+    expect(a.updates).toContainEqual({ "system.velocity": 12, "system.course": 1 });
+    expect(a.docUpdates.length).toBeGreaterThan(0);
+    expect(sceneFlags.firePhase).toBeDefined();
+    expect(a.flags.held).toBeUndefined();
+    expect(b.flags.held).toBeUndefined();
+  });
+
+  it("FIRE phase: ends the turn (clears plots + closes the fire phase)", async () => {
+    const sceneFlags: Record<string, any> = { firePhase: { firstSideId: "1", activatedIds: [] } };
+    const a = phaseShip("a1", 1, { velocity: 8, course: 3, thrust: 6 }, "+4,P2");
+    vi.stubGlobal("game", { user: { isGM: true }, combats: { active: undefined } });
+    vi.stubGlobal("canvas", { tokens: { placeables: [a] }, scene: sceneWithFlags(sceneFlags) });
+    vi.stubGlobal("ui", { notifications: { info: vi.fn(), warn: vi.fn() } });
+
+    await advancePhaseCore();
+
+    expect(sceneFlags.firePhase).toBeUndefined();
+    expect(a.flags.plottedOrder).toBeUndefined();
+    expect(a.flags.held).toBeUndefined();
+  });
+});
+
+describe("fireAction fire-phase gate", () => {
+  function fireToken(id: string) {
+    return { id, name: id, actor: { type: "battleframe-full-thrust.ship", system: {} } };
+  }
+
+  it("warns and does not fire during the PLOT phase (no fire phase running)", async () => {
+    const warn = vi.fn();
+    const create = vi.fn(async () => undefined);
+    const attacker = fireToken("a1");
+    const target = fireToken("b1");
+    vi.stubGlobal("game", {
+      user: { isGM: true, targets: { first: () => target } },
+      battleframe: { measure: {}, facing: {}, dice: {} },
+      combats: { active: undefined }
+    });
+    vi.stubGlobal("canvas", {
+      tokens: { controlled: [attacker], placeables: [attacker, target] },
+      scene: { getFlag: () => undefined } // no firePhase flag -> plot phase
+    });
+    vi.stubGlobal("ChatMessage", { create });
+    vi.stubGlobal("ui", { notifications: { warn, error: vi.fn() } });
+
+    await fireAction();
+
+    expect(warn).toHaveBeenCalled();
+    expect(create).not.toHaveBeenCalled();
+  });
+});
+
+describe("holdShipAction (Hold / Done toggle)", () => {
+  function heldShip(initial: boolean) {
+    const flags: Record<string, any> = {};
+    if (initial) {
+      flags.held = true;
+    }
+    return {
+      name: "RNS Lion",
+      actor: {
+        getFlag: (_m: string, k: string) => flags[k],
+        setFlag: (_m: string, k: string, v: unknown) => {
+          flags[k] = v;
+          return Promise.resolve();
+        },
+        unsetFlag: (_m: string, k: string) => {
+          delete flags[k];
+          return Promise.resolve();
+        }
+      },
+      flags
+    };
+  }
+
+  it("sets the held flag when a ship is not yet held", async () => {
+    const ship = heldShip(false);
+    vi.stubGlobal("canvas", { tokens: { controlled: [ship] } });
+    vi.stubGlobal("ui", { notifications: { info: vi.fn(), warn: vi.fn() } });
+    await holdShipAction();
+    expect(ship.flags.held).toBe(true);
+  });
+
+  it("clears the held flag when a ship is already held", async () => {
+    const ship = heldShip(true);
+    vi.stubGlobal("canvas", { tokens: { controlled: [ship] } });
+    vi.stubGlobal("ui", { notifications: { info: vi.fn(), warn: vi.fn() } });
+    await holdShipAction();
+    expect(ship.flags.held).toBeUndefined();
   });
 });
 

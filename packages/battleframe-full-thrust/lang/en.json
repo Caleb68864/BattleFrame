@@ -46,6 +46,7 @@
   "battleframe-full-thrust.controls.newTurn": "New turn (clear plots, end fire phase)",
   "battleframe-full-thrust.controls.newBattle": "New battle (reset all ships + clear state)",
   "battleframe-full-thrust.controls.import": "Import fleet from JSON",
+  "battleframe-full-thrust.controls.hold": "Hold / Done (skip this ship this phase)",
   "battleframe-full-thrust.report.rangePrefix": "Range {n}mu &middot; ",
   "battleframe-full-thrust.report.damage": "<strong>{n}</strong> damage.",
   "battleframe-full-thrust.report.threshold": "Threshold check (row {rows}): <strong>{n}</strong> system(s) knocked out.",
