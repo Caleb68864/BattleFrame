@@ -3702,3 +3702,30 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   persisted firstPlayerId no longer matches a canvas unit; the unreachable degenerate-grid
   divide-by-zero in areas/area radiusPx (BaseScene constrains grid.distance > 0).
 - Commit: this commit.
+
+## 2026-07-22 — FT scene-control handlers leaked unhandled promise rejections
+- Symptom: every Full Thrust scene-control tool wired its action as
+  `onClick: () => void someAsyncAction()` (24 handlers: fire, split-fire, needle,
+  salvo, missiles, spinal weapons, fighter ops, movement, plot/execute, new-turn,
+  damage-control, fleet-import, ready, …). Foundry calls `onClick`/`onChange`
+  synchronously and discards the return value, so when the action's Foundry write
+  (`ChatMessage.create`, `actor.update`, token create/delete) REJECTED, the arrow
+  had already returned `void` — the rejection surfaced as an *unhandled promise
+  rejection* with no try/catch and no user feedback. Flagged twice in the
+  hardening pass. GREATHELM / Simple Skirmish / InCountry already contain their
+  action failures; FT did not.
+- Fix: added a local `runGuarded(fn)` wrapper in `ui/round-control.ts` —
+  `Promise.resolve().then(fn).catch(...)` logs `console.warn` and raises an error
+  toast via the existing `notify()` helper (also catches a synchronous throw from
+  the action). Rewired all 24 `onClick`/`onChange` handlers to
+  `() => runGuarded(xAction)`. A succeeding action still runs exactly as before;
+  only the failure path changed (silent leak → logged + surfaced).
+- Surfaces: `packages/battleframe-full-thrust/src/ui/round-control.ts`
+  (`runGuarded`, `addSceneControl`). Test coverage in
+  `tests/round-control.test.ts`: a rejected action and a synchronous throw each
+  assert `runGuarded` does not throw and that an error notification fires, plus a
+  success case asserting no error toast, plus an invariant that every wired tool
+  handler returns `undefined` (no raw Promise leak).
+- Watch: the same `() => void asyncAction()` idiom still lives in DS2/SG2 scene
+  controls (separate modules, out of this task's scope) — apply the same guard.
+- Commit: this commit.
