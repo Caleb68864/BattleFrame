@@ -34,16 +34,22 @@ const SCENE_HEIGHT = 3000;
  * pointing at the module's own asset.
  */
 export function starfieldSceneData(): Record<string, unknown>[] {
-  return STARFIELDS.map((s) => ({
-    name: s.name,
-    width: SCENE_WIDTH,
-    height: SCENE_HEIGHT,
-    padding: 0.05,
-    backgroundColor: "#03040c",
-    background: { src: `modules/${MODULE_ID}/assets/scenes/${s.background}` },
-    // Gridless space: type 0. 1 grid unit = 100px = 1 mu (matches the movement scale).
-    grid: { type: 0, size: 100, distance: 1, units: "mu" }
-  }));
+  return STARFIELDS.map((s) => {
+    const stem = s.background.replace(/\.png$/, "");
+    return {
+      name: s.name,
+      width: SCENE_WIDTH,
+      height: SCENE_HEIGHT,
+      padding: 0.05,
+      backgroundColor: "#03040c",
+      background: { src: `modules/${MODULE_ID}/assets/scenes/${s.background}` },
+      // A pre-made thumbnail so Scene.create doesn't auto-generate one (which needs
+      // the canvas renderer -- creation stays robust even before the canvas is up).
+      thumb: `modules/${MODULE_ID}/assets/scenes/${stem}-thumb.png`,
+      // Gridless space: type 0. 1 grid unit = 100px = 1 mu (matches the movement scale).
+      grid: { type: 0, size: 100, distance: 1, units: "mu" }
+    };
+  });
 }
 
 interface GlobalScope {
@@ -98,13 +104,18 @@ export async function createStarfieldScenesIfMissing(): Promise<void> {
   }
 }
 
-/** Registers the ready hook that creates the shipped starfield scenes once per world. */
+/**
+ * Registers the hook that creates the shipped starfield scenes once per world.
+ * Uses `canvasReady` (not the earlier `ready`): Scene creation auto-generates a
+ * thumbnail from the background, which needs the canvas renderer up -- doing it at
+ * `ready` raced the canvas draw and threw internally.
+ */
 export function registerStarfieldScenes(): void {
   const hooks = g().Hooks;
   if (!hooks?.once) {
     return;
   }
-  hooks.once("ready", () => {
+  hooks.once("canvasReady", () => {
     void createStarfieldScenesIfMissing().catch((error) => {
       console.warn(`${MODULE_ID} | could not create starfield scenes`, error);
     });

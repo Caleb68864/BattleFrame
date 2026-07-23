@@ -3857,3 +3857,7 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 
 ## 2026-07-22 — Ship starfield battle scenes with Full Thrust
 - Playtest ask: bundle basic star-field scenes. Generated 3 deterministic starfield SVG backgrounds (assets/scenes/{deep-space,nebula-field,sparse-void}.svg -- dark field + varied stars + faint nebula, self-contained). A ready hook (GM-only, idempotent by name, mirrors the how-to journal) creates 3 gridless 4000x3000 scenes using them. Pure starfieldSceneData() unit-tested (+3); Scene.create is glue -> live-verify. assets/ ships with the package (not vite-excluded, like icons/). Commit: this commit.
+
+## 2026-07-22 — Starfield scenes: PNG backgrounds + shipped thumbnails + canvasReady
+
+- Foundry drops SVG scene backgrounds (raster only) -> render PNGs. Scene.create auto-generates a thumbnail (needs the renderer), which threw on the early `ready` hook; ship a pre-made -thumb.png per scene (passed as `thumb`) and defer creation to `canvasReady`. Creation itself is only fully confirmable in a real browser (headless has no WebGL renderer/texture loader). Commit: this commit.
