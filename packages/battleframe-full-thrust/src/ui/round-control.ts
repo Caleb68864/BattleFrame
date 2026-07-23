@@ -1838,16 +1838,15 @@ async function executeMovementPath(token: any, path: MovementPath): Promise<void
 /** Adds the Full Thrust scene control, tolerating both payload shapes. */
 export function addSceneControl(controls: unknown): void {
   const gm = isGM();
-  // Begin the fire phase: roll initiative, then ships fire in strict alternation.
-  const initiativeTool = {
-    name: "full-thrust-initiative",
-    title: "battleframe-full-thrust.controls.initiative",
-    icon: "fas fa-dice",
-    button: true,
-    visible: gm,
-    order: 0,
-    onClick: () => runGuarded(beginFirePhaseAction),
-  };
+  // ---------------------------------------------------------------------------
+  // Ordering (discoverability): the everyday turn-loop tools take the low `order`
+  // band (0-8) so they sit at the TOP of the toolbar where a new player looks --
+  // Plot + Fire stay prominent here (they also live on the token HUD). The
+  // specialist per-weapon / per-mode tools take order 20+ so they recede below.
+  // The `scene-tool-order.test.ts` invariant enforces core-before-niche.
+  // ---------------------------------------------------------------------------
+
+  // --- Core turn-loop tools (top of the toolbar) ---
   // Ready-to-advance toggle: when all players are ready, the turn advances on a
   // countdown -- no GM needed. Every player.
   const readyTool = {
@@ -1860,6 +1859,16 @@ export function addSceneControl(controls: unknown): void {
     order: 0,
     onChange: () => runGuarded(readyAction),
   };
+  // Begin the fire phase: roll initiative, then ships fire in strict alternation.
+  const initiativeTool = {
+    name: "full-thrust-initiative",
+    title: "battleframe-full-thrust.controls.initiative",
+    icon: "fas fa-dice",
+    button: true,
+    visible: gm,
+    order: 1,
+    onClick: () => runGuarded(beginFirePhaseAction),
+  };
   // Re-post the current fire-phase tracker (whose side fires next) -- GM only.
   const phaseStatusTool = {
     name: "full-thrust-phase-status",
@@ -1867,153 +1876,8 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-list-ol",
     button: true,
     visible: gm,
-    order: 0,
+    order: 2,
     onClick: () => runGuarded(phaseStatusAction),
-  };
-  const fireTool = {
-    name: "full-thrust-fire",
-    title: "battleframe-full-thrust.controls.fire",
-    icon: "fas fa-crosshairs",
-    button: true,
-    visible: gm,
-    order: 1,
-    onClick: () => runGuarded(fireAction),
-  };
-  // Multi-FCS split fire: divide weapons across every targeted ship -- GM only.
-  const splitFireTool = {
-    name: "full-thrust-split-fire",
-    title: "battleframe-full-thrust.controls.splitFire",
-    icon: "fas fa-arrows-split-up-and-left",
-    button: true,
-    visible: gm,
-    order: 1,
-    onClick: () => runGuarded(splitFireAction),
-  };
-  // Toggle the fire-arc ring overlay on ship tokens -- any player.
-  const arcsTool = {
-    name: "full-thrust-arcs",
-    title: "battleframe-full-thrust.controls.arcs",
-    icon: "fas fa-compass-drafting",
-    button: true,
-    visible: true,
-    order: 2,
-    onClick: () => runGuarded(toggleArcsAction),
-  };
-  // Pre-fire targeting check: which weapons bear + their range band -- any player
-  // (it only reads their own ship's reach; the card is whispered to them).
-  const targetingTool = {
-    name: "full-thrust-targeting",
-    title: "battleframe-full-thrust.controls.targeting",
-    icon: "fas fa-bullseye",
-    button: true,
-    visible: true,
-    order: 2,
-    onClick: () => runGuarded(checkTargetingAction),
-  };
-  const needleTool = {
-    name: "full-thrust-needle",
-    title: "battleframe-full-thrust.controls.needle",
-    icon: "fas fa-syringe",
-    button: true,
-    visible: gm,
-    order: 2,
-    onClick: () => runGuarded(needleAction),
-  };
-  const salvoTool = {
-    name: "full-thrust-salvo",
-    title: "battleframe-full-thrust.controls.salvo",
-    icon: "fas fa-meteor",
-    button: true,
-    visible: gm,
-    order: 3,
-    onClick: () => runGuarded(salvoAction),
-  };
-  // Launch an independent missile forward from the controlled ship -- GM only.
-  const launchMissileTool = {
-    name: "full-thrust-launch-missile",
-    title: "battleframe-full-thrust.controls.launchMissile",
-    icon: "fas fa-rocket",
-    button: true,
-    visible: gm,
-    order: 3,
-    onClick: () => runGuarded(launchMissileAction),
-  };
-  // Run the missile phase: advance every missile, resolve strikes -- GM only.
-  const advanceMissilesTool = {
-    name: "full-thrust-advance-missiles",
-    title: "battleframe-full-thrust.controls.advanceMissiles",
-    icon: "fas fa-forward-fast",
-    button: true,
-    visible: gm,
-    order: 3,
-    onClick: () => runGuarded(advanceMissilesAction),
-  };
-  // Spinal-mount mega-weapons (direct-target) -- GM only.
-  const novaCannonTool = {
-    name: "full-thrust-nova-cannon",
-    title: "battleframe-full-thrust.controls.novaCannon",
-    icon: "fas fa-sun",
-    button: true,
-    visible: gm,
-    order: 3,
-    onClick: () => runGuarded(fireNovaCannonAction),
-  };
-  const chargeWaveGunTool = {
-    name: "full-thrust-charge-wave-gun",
-    title: "battleframe-full-thrust.controls.chargeWaveGun",
-    icon: "fas fa-bolt",
-    button: true,
-    visible: gm,
-    order: 3,
-    onClick: () => runGuarded(chargeWaveGunAction),
-  };
-  const waveGunTool = {
-    name: "full-thrust-wave-gun",
-    title: "battleframe-full-thrust.controls.waveGun",
-    icon: "fas fa-water",
-    button: true,
-    visible: gm,
-    order: 3,
-    onClick: () => runGuarded(fireWaveGunAction),
-  };
-  // Carrier ops: launch / recover fighter groups -- GM only.
-  const launchFightersTool = {
-    name: "full-thrust-launch-fighters",
-    title: "battleframe-full-thrust.controls.launchFighters",
-    icon: "fas fa-plane-departure",
-    button: true,
-    visible: gm,
-    order: 3,
-    onClick: () => runGuarded(launchFightersAction),
-  };
-  const recoverFightersTool = {
-    name: "full-thrust-recover-fighters",
-    title: "battleframe-full-thrust.controls.recoverFighters",
-    icon: "fas fa-plane-arrival",
-    button: true,
-    visible: gm,
-    order: 3,
-    onClick: () => runGuarded(recoverFightersAction),
-  };
-  // Move the controlled fighter group toward the targeted ship -- any player.
-  const fighterMoveTool = {
-    name: "full-thrust-fighter-move",
-    title: "battleframe-full-thrust.controls.fighterMove",
-    icon: "fas fa-jet-fighter",
-    button: true,
-    visible: true,
-    order: 3,
-    onClick: () => runGuarded(fighterMoveAction),
-  };
-  // Vector-mode movement (optional) -- the ship's owner.
-  const vectorMoveTool = {
-    name: "full-thrust-vector-move",
-    title: "battleframe-full-thrust.controls.vectorMove",
-    icon: "fas fa-arrows-up-down-left-right",
-    button: true,
-    visible: true,
-    order: 2,
-    onClick: () => runGuarded(vectorMoveAction),
   };
   const plotTool = {
     name: "full-thrust-plot",
@@ -2021,18 +1885,8 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-route",
     button: true,
     visible: true,
-    order: 2,
+    order: 3,
     onClick: () => runGuarded(plotAction),
-  };
-  // End-of-turn damage control repair -- GM only.
-  const damageControlTool = {
-    name: "full-thrust-damage-control",
-    title: "battleframe-full-thrust.controls.damageControl",
-    icon: "fas fa-wrench",
-    button: true,
-    visible: gm,
-    order: 5,
-    onClick: () => runGuarded(damageControlAction),
   };
   // Execute reveals every ship's secretly-plotted move at once -- GM only.
   const executeTool = {
@@ -2041,8 +1895,17 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-play",
     button: true,
     visible: gm,
-    order: 3,
+    order: 4,
     onClick: () => runGuarded(executeManeuversAction),
+  };
+  const fireTool = {
+    name: "full-thrust-fire",
+    title: "battleframe-full-thrust.controls.fire",
+    icon: "fas fa-crosshairs",
+    button: true,
+    visible: gm,
+    order: 5,
+    onClick: () => runGuarded(fireAction),
   };
   // Start a fresh turn: clear leftover plots + end the fire phase -- GM only.
   const newTurnTool = {
@@ -2051,7 +1914,7 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-forward",
     button: true,
     visible: gm,
-    order: 7,
+    order: 6,
     onClick: () => runGuarded(newTurnAction),
   };
   // Full reset: restore all ships + clear plots/fire phase/missiles -- GM only.
@@ -2061,7 +1924,7 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-arrows-rotate",
     button: true,
     visible: gm,
-    order: 8,
+    order: 7,
     onClick: () => runGuarded(newBattleAction),
   };
   // Import a fleet from JSON -- any player (subject to Foundry's create-actor perm).
@@ -2071,8 +1934,156 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-file-import",
     button: true,
     visible: true,
-    order: 4,
+    order: 8,
     onClick: () => runGuarded(importFleetAction),
+  };
+
+  // --- Niche per-weapon / per-mode tools (recede below the core, order 20+) ---
+  // Pre-fire targeting check: which weapons bear + their range band -- any player
+  // (it only reads their own ship's reach; the card is whispered to them).
+  const targetingTool = {
+    name: "full-thrust-targeting",
+    title: "battleframe-full-thrust.controls.targeting",
+    icon: "fas fa-bullseye",
+    button: true,
+    visible: true,
+    order: 20,
+    onClick: () => runGuarded(checkTargetingAction),
+  };
+  // Multi-FCS split fire: divide weapons across every targeted ship -- GM only.
+  const splitFireTool = {
+    name: "full-thrust-split-fire",
+    title: "battleframe-full-thrust.controls.splitFire",
+    icon: "fas fa-arrows-split-up-and-left",
+    button: true,
+    visible: gm,
+    order: 21,
+    onClick: () => runGuarded(splitFireAction),
+  };
+  // Toggle the fire-arc ring overlay on ship tokens -- any player.
+  const arcsTool = {
+    name: "full-thrust-arcs",
+    title: "battleframe-full-thrust.controls.arcs",
+    icon: "fas fa-compass-drafting",
+    button: true,
+    visible: true,
+    order: 22,
+    onClick: () => runGuarded(toggleArcsAction),
+  };
+  const needleTool = {
+    name: "full-thrust-needle",
+    title: "battleframe-full-thrust.controls.needle",
+    icon: "fas fa-syringe",
+    button: true,
+    visible: gm,
+    order: 23,
+    onClick: () => runGuarded(needleAction),
+  };
+  const salvoTool = {
+    name: "full-thrust-salvo",
+    title: "battleframe-full-thrust.controls.salvo",
+    icon: "fas fa-meteor",
+    button: true,
+    visible: gm,
+    order: 24,
+    onClick: () => runGuarded(salvoAction),
+  };
+  // Launch an independent missile forward from the controlled ship -- GM only.
+  const launchMissileTool = {
+    name: "full-thrust-launch-missile",
+    title: "battleframe-full-thrust.controls.launchMissile",
+    icon: "fas fa-rocket",
+    button: true,
+    visible: gm,
+    order: 25,
+    onClick: () => runGuarded(launchMissileAction),
+  };
+  // Run the missile phase: advance every missile, resolve strikes -- GM only.
+  const advanceMissilesTool = {
+    name: "full-thrust-advance-missiles",
+    title: "battleframe-full-thrust.controls.advanceMissiles",
+    icon: "fas fa-forward-fast",
+    button: true,
+    visible: gm,
+    order: 26,
+    onClick: () => runGuarded(advanceMissilesAction),
+  };
+  // Spinal-mount mega-weapons (direct-target) -- GM only.
+  const novaCannonTool = {
+    name: "full-thrust-nova-cannon",
+    title: "battleframe-full-thrust.controls.novaCannon",
+    icon: "fas fa-sun",
+    button: true,
+    visible: gm,
+    order: 27,
+    onClick: () => runGuarded(fireNovaCannonAction),
+  };
+  const chargeWaveGunTool = {
+    name: "full-thrust-charge-wave-gun",
+    title: "battleframe-full-thrust.controls.chargeWaveGun",
+    icon: "fas fa-bolt",
+    button: true,
+    visible: gm,
+    order: 28,
+    onClick: () => runGuarded(chargeWaveGunAction),
+  };
+  const waveGunTool = {
+    name: "full-thrust-wave-gun",
+    title: "battleframe-full-thrust.controls.waveGun",
+    icon: "fas fa-water",
+    button: true,
+    visible: gm,
+    order: 29,
+    onClick: () => runGuarded(fireWaveGunAction),
+  };
+  // Carrier ops: launch / recover fighter groups -- GM only.
+  const launchFightersTool = {
+    name: "full-thrust-launch-fighters",
+    title: "battleframe-full-thrust.controls.launchFighters",
+    icon: "fas fa-plane-departure",
+    button: true,
+    visible: gm,
+    order: 30,
+    onClick: () => runGuarded(launchFightersAction),
+  };
+  const recoverFightersTool = {
+    name: "full-thrust-recover-fighters",
+    title: "battleframe-full-thrust.controls.recoverFighters",
+    icon: "fas fa-plane-arrival",
+    button: true,
+    visible: gm,
+    order: 31,
+    onClick: () => runGuarded(recoverFightersAction),
+  };
+  // Move the controlled fighter group toward the targeted ship -- any player.
+  const fighterMoveTool = {
+    name: "full-thrust-fighter-move",
+    title: "battleframe-full-thrust.controls.fighterMove",
+    icon: "fas fa-jet-fighter",
+    button: true,
+    visible: true,
+    order: 32,
+    onClick: () => runGuarded(fighterMoveAction),
+  };
+  // Vector-mode movement (optional) -- the ship's owner.
+  const vectorMoveTool = {
+    name: "full-thrust-vector-move",
+    title: "battleframe-full-thrust.controls.vectorMove",
+    icon: "fas fa-arrows-up-down-left-right",
+    button: true,
+    visible: true,
+    order: 33,
+    onClick: () => runGuarded(vectorMoveAction),
+  };
+  // End-of-turn damage control repair -- GM only.
+  const damageControlTool = {
+    name: "full-thrust-damage-control",
+    title: "battleframe-full-thrust.controls.damageControl",
+    icon: "fas fa-wrench",
+    button: true,
+    visible: gm,
+    order: 34,
+    onClick: () => runGuarded(damageControlAction),
   };
 
   const control = {

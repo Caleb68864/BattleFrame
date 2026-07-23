@@ -3800,3 +3800,46 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   ids that no longer exist on the canvas; restore code must be able to reject a stale
   flag and start fresh, never assume the flag still matches the board.
 - Commit: this commit.
+
+## 2026-07-22 — Full Thrust discoverability: token-HUD actions, How-to-Play journal, decluttered toolbar
+- Symptom: a live playtester (the GM) could not find how to plot a ship's course.
+  Full Thrust registered ~24 scene-control tools in one dense top-left cluster, and
+  the player's instinct was to RIGHT-CLICK the ship token — which gave Foundry's
+  default token HUD, not the FT actions. The actions worked; the way in did not.
+- Fix, three ways, all inside `packages/battleframe-full-thrust` only:
+  1. **Token-HUD action buttons.** A new `ui/token-hud-actions.ts` hooks Foundry's
+     own `renderTokenHUD` and injects FT action buttons (native `.control-icon`) for
+     ship tokens only (`actor.type === "battleframe-full-thrust.ship"`). Each button
+     controls its token then runs the SAME `round-control.ts` action the scene tool
+     runs, through the same `runGuarded`. Behind a clean seam (`registerTokenHudActions`)
+     so it can later lift to the engine for other rulesets, but FT-local now.
+  2. **Per-ship action filtering (the real declutter).** New PURE
+     `ship/ship-actions.ts` `availableShipActions(system)` returns which actions are
+     live for a ship from its data + damage: `plot` (usableThrust > 0), `fire`
+     (a live beam/torpedo/submunition/kgun weapon AND remaining FCS ≥ 1, mirroring
+     `fireShipAtTarget`), `splitFire` (FCS ≥ 2), `needle`/`salvo` (that undamaged,
+     unspent mount fitted), `launch/recoverFighters` (has bays). The HUD renders only
+     the true ones — a plain beam frigate shows just Plot + Fire; a carrier/needle/
+     salvo ship surfaces its extras; a drive-dead or FCS-out hull loses them.
+  3. **Decluttered scene toolbar.** `addSceneControl` re-`order`ed: core turn-loop
+     tools (ready, begin-fire-phase, phase-status, plot, execute, fire, new-turn,
+     new-battle, import) take order 0–8 (top); the specialist per-weapon/per-mode
+     tools take order 20+ (recede). A `scene-tool-order.test.ts` invariant enforces
+     every core tool sorts before every niche tool, and Plot/Fire stay in the low band.
+  Plus `ui/how-to-play.ts`: a once-per-world "Full Thrust — How to Play" JournalEntry
+  created on `ready` (idempotent by name-lookup, GM-only). NEUTRAL usage guide (where
+  actions live, the turn loop, ownership, GM-less play → docs/gm-less-play.md, an icon
+  legend) — a content test guards against slipping in rulebook dice/numbers.
+- Notable gap: the ship data model has **no field** for spinal Nova Cannon / Wave Gun
+  mounts. `availableShipActions` reads optional `system.novaCannon`/`system.waveGun`
+  defensively (always false under the current schema), so those actions stay
+  toolbar-only until a field exists — no schema change made here (would touch
+  design/points/sheets and is out of scope for a discoverability pass).
+- Tests: `ship-actions` (15), `token-hud-actions` (11), `how-to-play` (11),
+  `scene-tool-order` (4). Full suite 1538 green; typecheck + build clean; engine
+  (`packages/battleframe/src`) untouched.
+- Live-verify needed (Foundry-facing, invisible to the unit suite): the
+  `renderTokenHUD` injection into the real HUD DOM (column selector `.col.right`/
+  `.col.left`, button look), a HUD button click actually controlling the token and
+  running its action, and the JournalEntry creation on `ready`.
+- Commit: this commit.
