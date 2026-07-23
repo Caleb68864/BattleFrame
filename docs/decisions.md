@@ -3851,3 +3851,6 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   whenever resolveMovementPath reports the order illegal (covers turning-costs-thrust and a
   hand-typed raw order too). Legality itself is the already-tested applyOrder/resolveMovementPath;
   this is dialog glue -> live-verified. Commit: this commit.
+
+## 2026-07-22 — FT plot preview scales to the scene grid (was fixed tiny px)
+- Playtest: the plot line/arrow/nodes were fixed 3/14/4 px, dwarfed by big ship tokens on a space scene. Now sized as a fraction of the scene grid (line 10%, arrow 45%, node 15% of grid.size, floored) so they match token weight. Glue -> live-verify. Commit: this commit.

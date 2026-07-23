@@ -15,9 +15,24 @@ import { arrowHeadPx } from "../movement/preview";
 
 const VALID_COLOR = 0x33aa55;
 const INVALID_COLOR = 0xcc3333;
-const LINE_WIDTH = 3;
-const ARROW_SIZE = 14;
-const NODE_RADIUS = 4;
+
+/**
+ * The plot line/arrow/nodes are sized as a FRACTION OF THE SCENE GRID so they
+ * read at the same visual weight as the ship tokens (which are sized in grid
+ * units) -- fixed pixel sizes looked tiny next to big ships on a space scene.
+ */
+function previewSizes(): { line: number; arrow: number; node: number } {
+  const canvas = (globalThis as unknown as {
+    canvas?: { grid?: { size?: number }; scene?: { grid?: { size?: number } } };
+  }).canvas;
+  const raw = canvas?.grid?.size ?? canvas?.scene?.grid?.size;
+  const unit = typeof raw === "number" && raw > 0 ? raw : 100;
+  return {
+    line: Math.max(4, unit * 0.1),
+    arrow: Math.max(16, unit * 0.45),
+    node: Math.max(5, unit * 0.15)
+  };
+}
 
 interface PixiGraphicsLike {
   clear: () => void;
@@ -79,9 +94,10 @@ export function drawMovementPreview(points: readonly Pt[], valid: boolean): void
     return;
   }
   const color = valid ? VALID_COLOR : INVALID_COLOR;
+  const size = previewSizes();
   try {
     g.clear();
-    g.lineStyle(LINE_WIDTH, color, 0.9);
+    g.lineStyle(size.line, color, 0.9);
     g.moveTo(points[0].x, points[0].y);
     for (let i = 1; i < points.length; i++) {
       g.lineTo(points[i].x, points[i].y);
@@ -89,7 +105,7 @@ export function drawMovementPreview(points: readonly Pt[], valid: boolean): void
 
     const tip = points[points.length - 1];
     const prev = points[points.length - 2];
-    const [b1, b2] = arrowHeadPx(prev, tip, ARROW_SIZE);
+    const [b1, b2] = arrowHeadPx(prev, tip, size.arrow);
     g.moveTo(b1.x, b1.y);
     g.lineTo(tip.x, tip.y);
     g.lineTo(b2.x, b2.y);
@@ -97,7 +113,7 @@ export function drawMovementPreview(points: readonly Pt[], valid: boolean): void
     // A node dot at each pivot point.
     g.beginFill(color, 0.9);
     for (const p of points) {
-      g.drawCircle(p.x, p.y, NODE_RADIUS);
+      g.drawCircle(p.x, p.y, size.node);
     }
     g.endFill();
   } catch {
