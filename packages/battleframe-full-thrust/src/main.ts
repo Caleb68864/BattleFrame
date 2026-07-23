@@ -3,7 +3,7 @@ import { registerShipDataModel } from "./data/ship";
 import { registerFighterGroupDataModel } from "./data/fighter-group";
 import { registerShipSheet } from "./sheets/ship-sheet";
 import { registerFighterSheet } from "./sheets/fighter-sheet";
-import { registerRoundControl, advanceTurnCore } from "./ui/round-control";
+import { registerRoundControl, advancePhaseCore } from "./ui/round-control";
 import { registerTokenHudActions } from "./ui/token-hud-actions";
 import { registerHowToPlayJournal } from "./ui/how-to-play";
 import { registerStarfieldScenes } from "./ui/starfield-scenes";
@@ -150,8 +150,11 @@ globalHooks?.once("init", () => {
   // Redraw in-flight independent missiles when a scene loads.
   registerMissileOverlay();
   // Player-driven, GM-less turn advance: register what "advance the turn" does.
+  // Phase-aware -- one Ready walks plot -> execute+fire-phase; the next ends the
+  // turn (see advancePhaseCore). The manual Execute / Begin-fire / New-turn tools
+  // remain as GM overrides.
   const advance = (globalThis as any).battleframe?.advance ?? (globalThis as any).game?.battleframe?.advance;
-  advance?.registerAdvance?.(() => advanceTurnCore());
+  advance?.registerAdvance?.(() => advancePhaseCore());
   // Fleet Book optional layer: penetrating (rerolling) beam damage, off by default.
   (globalThis as any).game?.settings?.register?.(MODULE_ID, "penetratingDamage", {
     name: "Fleet Book: penetrating damage",

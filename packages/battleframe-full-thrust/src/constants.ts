@@ -39,6 +39,16 @@ export const FIRE_PHASE_FLAG = "firePhase";
  */
 export const ACTIVE_MISSILES_FLAG = "activeMissiles";
 
+/**
+ * Actor flag marking a ship "done / held" for the current phase, set by the
+ * Hold/Done token-HUD button. A held ship is excluded from the premature-ready
+ * guard's pending list (the player has deliberately chosen to skip it), and the
+ * flag clears on every phase transition. This is a per-ship, per-turn INTENT
+ * (not a battlefield condition like defeated/suppressed), so it stays a plain
+ * owner/GM-readable actor flag rather than a CONFIG.statusEffects entry.
+ */
+export const HELD_FLAG = "held";
+
 /** Actor flag holding a ship's accumulated Wave Gun charge (fires at 6+). */
 export const WAVE_GUN_CHARGE_FLAG = "waveGunCharge";
 
