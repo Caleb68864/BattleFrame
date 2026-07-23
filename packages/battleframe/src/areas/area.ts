@@ -43,7 +43,15 @@ import type {
 
 /** Scene distance units -> pixels, exactly as `measure.between` derives it. */
 function pxPerUnit(scene: MeasurableToken["scene"]): number {
-  return scene.grid.size / scene.grid.distance;
+  const size = scene.grid.size;
+  const distance = scene.grid.distance;
+  // Guard a degenerate grid (would make the scale Infinity/NaN and 'contain'
+  // everything or nothing). Mirrors measurement/measure.ts pxPerUnit. Foundry's
+  // scene schema keeps these positive; defensive, not reachable from a real scene.
+  if (!(size > 0) || !(distance > 0)) {
+    return 1;
+  }
+  return size / distance;
 }
 
 /**

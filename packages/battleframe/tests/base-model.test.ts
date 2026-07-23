@@ -40,6 +40,21 @@ function circleToken(diameterMm: number): TokenLike {
 
 const scene: SceneLike = makeScene("in");
 
+describe("radiusPx — degenerate grid guard", () => {
+  it("returns 0 (not Infinity/NaN) when grid.distance is zero", () => {
+    // measure.between routes base-to-base through radiusPx; a scene whose
+    // grid.distance is 0 would make pxPerMm = size/(0*mm) = Infinity, so the base
+    // radius blows up and every base-to-base distance goes negative/NaN. Guard it:
+    // a degenerate grid has no measurable base extent -> radius 0 (base-to-base
+    // collapses to centre-to-centre). Foundry's scene schema keeps distance > 0,
+    // so this is defensive, not reachable from a persisted scene.
+    const degenerate: SceneLike = { grid: { size: 100, distance: 0, units: "in" } };
+    const r = radiusPx(circleToken(32), degenerate);
+    expect(Number.isFinite(r)).toBe(true);
+    expect(r).toBe(0);
+  });
+});
+
 describe("getBase", () => {
   it("reads a circle base from token flags", () => {
     const token = makeToken({

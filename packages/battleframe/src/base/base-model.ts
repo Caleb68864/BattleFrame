@@ -256,7 +256,17 @@ export function radiusPx(token: TokenLike, scene: SceneLike): number {
       : Math.max(base.widthMm, base.heightMm) / 2;
 
   const mmPerDistanceUnit = mmPerGridDistanceUnit(scene.grid.units);
-  const pxPerMm = scene.grid.size / (scene.grid.distance * mmPerDistanceUnit);
+  const size = scene.grid.size;
+  const distance = scene.grid.distance;
+  // A degenerate grid (zero/negative size or distance) would make pxPerMm
+  // Infinity, blowing up every base-to-base distance. No measurable base extent
+  // -> radius 0 (base-to-base collapses to centre-to-centre). Mirrors the guard in
+  // measurement/measure.ts pxPerUnit. Foundry's scene schema keeps these positive,
+  // so this is defensive, not reachable from a persisted scene.
+  if (!(size > 0) || !(distance > 0)) {
+    return 0;
+  }
+  const pxPerMm = size / (distance * mmPerDistanceUnit);
 
   return radiusMm * pxPerMm;
 }

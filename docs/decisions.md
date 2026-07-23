@@ -3702,3 +3702,11 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   persisted firstPlayerId no longer matches a canvas unit; the unreachable degenerate-grid
   divide-by-zero in areas/area radiusPx (BaseScene constrains grid.distance > 0).
 - Commit: this commit.
+
+## 2026-07-22 — Hardening follow-up D: degenerate-grid divide-by-zero guards
+- `areas/area.ts` pxPerUnit and `base/base-model.ts` radiusPx divided by grid.distance
+  unguarded, unlike measurement/measure.ts pxPerUnit. A zero distance -> Infinity/NaN scale
+  (containment catches everything; base-to-base distances blow up). measure.between routes
+  base-to-base through radiusPx, so its guard was incomplete. Added the same guard to both
+  (area pxPerUnit -> 1, radiusPx -> 0). Not reachable from a persisted scene (Foundry keeps
+  grid.distance > 0) -> defensive consistency. +2 TDD tests. Commit: this commit.

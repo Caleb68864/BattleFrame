@@ -37,6 +37,18 @@ function knightAt(x: number, y: number, widthMm = 32) {
 /** Base radius of a 32mm model, in distance units (inches). */
 const BASE_RADIUS_UNITS = 32 / 2 / MM_PER_UNIT; // 0.6299...
 
+describe("containment tolerates a degenerate grid (defensive; not reachable from a real scene)", () => {
+  it("does not treat every token as inside when grid.distance is zero", () => {
+    // area's pxPerUnit = size/distance would be Infinity at distance 0, so
+    // `radius * scale` = Infinity and a circle would 'contain' a token any
+    // distance away. Guard: a degenerate grid falls back to scale 1.
+    const token = knightAt(1000, 1000);
+    (token as { scene: unknown }).scene = { grid: { size: 100, distance: 0, units: "in" } };
+    const area = circle({ x: 0, y: 0 }, 1); // radius 1 unit, centred at origin
+    expect(contains(area, token, "base-overlap")).toBe(false);
+  });
+});
+
 describe("area construction refuses degenerate dimensions", () => {
   // The same contract base-model holds for a base (InvalidBaseSizeError): a
   // zero or negative extent is a caller bug, and a silently-wrong containment
