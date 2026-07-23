@@ -27,10 +27,14 @@ function previewSizes(): { line: number; arrow: number; node: number } {
   }).canvas;
   const raw = canvas?.grid?.size ?? canvas?.scene?.grid?.size;
   const unit = typeof raw === "number" && raw > 0 ? raw : 100;
+  // A clean LINE reads the path's length; big nodes just blob together on a short
+  // move. Keep the line visible + a modest arrowhead, and the pivot dots SMALL,
+  // all capped so they never dwarf the path on a large-grid scene.
+  const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
   return {
-    line: Math.max(4, unit * 0.1),
-    arrow: Math.max(16, unit * 0.45),
-    node: Math.max(5, unit * 0.15)
+    line: clamp(unit * 0.035, 3, 7),
+    arrow: clamp(unit * 0.14, 14, 30),
+    node: clamp(unit * 0.02, 2.5, 5)
   };
 }
 
