@@ -4,6 +4,8 @@ import { registerFighterGroupDataModel } from "./data/fighter-group";
 import { registerShipSheet } from "./sheets/ship-sheet";
 import { registerFighterSheet } from "./sheets/fighter-sheet";
 import { registerRoundControl, advanceTurnCore } from "./ui/round-control";
+import { registerTokenHudActions } from "./ui/token-hud-actions";
+import { registerHowToPlayJournal } from "./ui/how-to-play";
 import { registerOwnershipWarning } from "./ui/ownership-warning";
 import { registerArcOverlay } from "./ui/arc-overlay";
 import { registerMissileOverlay } from "./ui/missile-overlay";
@@ -132,6 +134,12 @@ globalHooks?.once("init", () => {
   // The reachable trigger: a scene control answering Foundry's own hook. Without
   // it the fire/movement code is tree-shaken out (see COVERAGE.md).
   registerRoundControl();
+  // Ship actions on the token right-click HUD (Plot/Fire + live weapon actions) --
+  // the discoverability fix so a right-click reaches the FT actions, not just the HUD.
+  registerTokenHudActions();
+  // Create the "How to Play" journal once per world (on ready) so a new table can
+  // learn to drive the module without a manual.
+  registerHowToPlayJournal();
   // Warn if a ship's ownership is changed so an opponent could read its plot.
   registerOwnershipWarning();
   // Fire-arc ring overlay on ship tokens (hover to show, "Fire Arcs" tool to pin).
