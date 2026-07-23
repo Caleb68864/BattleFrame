@@ -1311,12 +1311,17 @@ export async function plotAction(): Promise<void> {
     return;
   }
   const system = token.actor.system ?? {};
+  // The ship's thrust budget (post drive-damage). The spinner caps at this so an
+  // over-thrust order can't be entered; the Plot button also disables on any
+  // illegal order (turning spends thrust too, and the raw field can be typed).
+  const maxThrust = usableThrust(system);
   const scale = tokenScale(token);
   const startPx = tokenStartPx(token);
 
-  const redraw = (orderText: string): void => {
+  const redraw = (orderText: string): boolean => {
     const path = resolveMovementPath(system, orderText);
     drawMovementPreview(previewPointsPx(startPx, path, scale), path.legal);
+    return path.legal;
   };
 
   const dialog = g().foundry?.applications?.api?.DialogV2;
@@ -1327,7 +1332,7 @@ export async function plotAction(): Promise<void> {
       window: { title: "Full Thrust: Plot Movement (hidden until execute)" },
       content:
         `<div class="ft-plot-builder">` +
-        `<div class="ft-plot-row"><label>Thrust</label>` +
+        `<div class="ft-plot-row"><label>Thrust (max ${maxThrust})</label>` +
         `<button type="button" data-thrust="-1">&minus;</button>` +
         `<span class="ft-thrust-val">0</span>` +
         `<button type="button" data-thrust="1">+</button></div>` +
@@ -1343,6 +1348,13 @@ export async function plotAction(): Promise<void> {
         const root = dlg?.element;
         const input = root?.querySelector?.('input[name="order"]');
         const thrustVal = root?.querySelector?.(".ft-thrust-val");
+        const okButton = root?.querySelector?.('button[data-action="ok"]');
+        const setLegal = (legal: boolean): void => {
+          if (okButton) {
+            okButton.disabled = !legal;
+            okButton.title = legal ? "" : "Illegal order -- exceeds this ship's thrust budget or turn cap";
+          }
+        };
         let thrust = 0;
         let turn = "0";
         const rebuild = () => {
@@ -1350,11 +1362,12 @@ export async function plotAction(): Promise<void> {
           const order = turn && turn !== "0" ? `${t},${turn}` : t;
           if (input) input.value = order;
           if (thrustVal) thrustVal.textContent = String(thrust);
-          redraw(order);
+          setLegal(redraw(order));
         };
         root?.querySelectorAll?.("[data-thrust]").forEach((btn: any) => {
           btn.addEventListener?.("click", () => {
-            thrust = Math.max(-8, Math.min(8, thrust + Number(btn.dataset.thrust)));
+            // Cap the spinner at the ship's thrust budget -- can't spin into an over-thrust order.
+            thrust = Math.max(-maxThrust, Math.min(maxThrust, thrust + Number(btn.dataset.thrust)));
             rebuild();
           });
         });
@@ -1364,8 +1377,10 @@ export async function plotAction(): Promise<void> {
             rebuild();
           });
         });
-        // The raw input stays authoritative if the player types directly.
-        input?.addEventListener?.("input", (e: any) => redraw(e?.target?.value ?? ""));
+        // The raw input stays authoritative if the player types directly -- but an
+        // illegal typed order still disables Plot.
+        input?.addEventListener?.("input", (e: any) => setLegal(redraw(e?.target?.value ?? "")));
+        setLegal(redraw("")); // initial "+0" is legal; sync the button state
       },
       ok: {
         label: "Plot",

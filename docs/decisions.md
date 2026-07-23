@@ -3843,3 +3843,11 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   `.col.left`, button look), a HUD button click actually controlling the token and
   running its action, and the JournalEntry creation on `ready`.
 - Commit: this commit.
+
+## 2026-07-22 — FT plot dialog: cap thrust spinner + disable Plot on an illegal order
+- Playtest feedback: the thrust +/- spinner clamped to a hardcoded +/-8, ignoring the ship's
+  actual Thrust rating, so you could spin into an over-thrust (illegal) order. Now the spinner
+  caps at usableThrust(system) (shown as "Thrust (max N)"), AND the Plot button disables
+  whenever resolveMovementPath reports the order illegal (covers turning-costs-thrust and a
+  hand-typed raw order too). Legality itself is the already-tested applyOrder/resolveMovementPath;
+  this is dialog glue -> live-verified. Commit: this commit.
