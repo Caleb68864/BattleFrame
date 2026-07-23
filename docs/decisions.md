@@ -3702,3 +3702,39 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   persisted firstPlayerId no longer matches a canvas unit; the unreachable degenerate-grid
   divide-by-zero in areas/area radiusPx (BaseScene constrains grid.distance > 0).
 - Commit: this commit.
+
+## 2026-07-22 — A persisted round whose first player left the canvas bricked the round tool (GREATHELM + Simple Skirmish)
+- Symptom: the previous entry's noted follow-up, now fixed. Both rulesets resume an
+  in-progress round from a non-complete flag on the Combat document, and the round
+  tool ALWAYS takes the resume branch while that flag is non-complete. If a token
+  was deleted between sessions so the persisted `firstPlayerId` names a side that
+  no longer has any unit on the canvas, the resume path could not proceed — and,
+  re-entered on every "Run Round" click, a single such flag bricked the tool
+  permanently (it could never fall through to start a fresh round).
+  - Simple Skirmish: reachable **throw**. `restoreSkirmishRound` → `createSkirmishRound`
+    → `orderedPlayers` throws `IllegalActivationError` ("firstPlayerId controls none
+    of the units") when the id rotates to no side. The throw sat OUTSIDE the try/catch
+    in both `advanceRoundCore` (~line 609) and `activateSelectedControl` (~line 701).
+  - GREATHELM: the restore is already throw-safe (`rotateToFirst` tolerates a missing
+    id; a malformed `unspent` was coerced in a prior fix), but it resumes onto a round
+    whose acting side has no knights — an unplayable panel that never completes, so the
+    non-complete flag likewise re-routes to resume forever. Same brick, no throw.
+- Fix: a pure, unit-tested resumability predicate per ruleset, guarding the GLUE so an
+  unresumable flag is IGNORED and a fresh round starts (overwriting the stale flag)
+  rather than restored. `session.ts` stays strict — `createSkirmishRound` still throws
+  on a stale id passed to a *fresh* create (a caller bug, covered by an existing test);
+  only the restore glue degrades.
+  - SS: `isSkirmishRoundResumable(allUnits, state)` = the firstPlayerId still controls
+    a current unit. Guards `advanceRoundCore` and `activateSelectedControl`.
+  - GREATHELM: `isPersistedRoundResumable(state, knightPlayerIds)` = firstPlayerId is
+    among the sides on the canvas. Guards the resume branch of `advanceRoundCore`.
+- Behaviour is unchanged when the flag IS resumable (both predicates return true and the
+  existing resume/in-progress paths run exactly as before).
+- Not unit-covered: the two `advanceRoundCore`/`activateSelectedControl` glue bodies need
+  live canvas + `game.battleframe` globals, so the tests cover the pure predicates (and
+  document the SS hazard: restore itself throws on a stale id, the predicate returns
+  false first). The glue was guarded defensively regardless. +4 tests (SS +3, GREATHELM +1).
+- Watch: any always-taken resume-from-flag branch. A persisted document flag can name
+  ids that no longer exist on the canvas; restore code must be able to reject a stale
+  flag and start fresh, never assume the flag still matches the board.
+- Commit: this commit.
