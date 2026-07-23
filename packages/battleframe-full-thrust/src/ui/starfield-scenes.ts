@@ -106,18 +106,27 @@ export async function createStarfieldScenesIfMissing(): Promise<void> {
 
 /**
  * Registers the hook that creates the shipped starfield scenes once per world.
- * Uses `canvasReady` (not the earlier `ready`): Scene creation auto-generates a
- * thumbnail from the background, which needs the canvas renderer up -- doing it at
- * `ready` raced the canvas draw and threw internally.
+ * Runs on `ready` but DEFERRED onto a later macrotask (setTimeout): calling
+ * Scene.create synchronously inside the ready/canvasReady hook dispatch throws
+ * internally ("reading 'implementation'"), while the exact same call one tick
+ * later succeeds -- Foundry isn't fully settled during hook dispatch.
  */
 export function registerStarfieldScenes(): void {
+  const global = globalThis as unknown as { setTimeout?: (fn: () => void, ms: number) => unknown };
   const hooks = g().Hooks;
   if (!hooks?.once) {
     return;
   }
-  hooks.once("canvasReady", () => {
-    void createStarfieldScenesIfMissing().catch((error) => {
-      console.warn(`${MODULE_ID} | could not create starfield scenes`, error);
-    });
+  hooks.once("ready", () => {
+    const run = () =>
+      void createStarfieldScenesIfMissing().catch((error) => {
+        console.warn(`${MODULE_ID} | could not create starfield scenes`, error);
+      });
+    // Off the hook-dispatch context (see doc comment); fall back to immediate.
+    if (typeof global.setTimeout === "function") {
+      global.setTimeout(run, 1500);
+    } else {
+      run();
+    }
   });
 }
