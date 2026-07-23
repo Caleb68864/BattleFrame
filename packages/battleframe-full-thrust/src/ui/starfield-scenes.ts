@@ -88,8 +88,12 @@ export async function createStarfieldScenesIfMissing(): Promise<void> {
   if (g().game?.user?.isGM !== true) {
     return;
   }
-  const create = g().Scene?.create;
-  if (!create) {
+  // Call Scene.create AS A METHOD (Scene.create(...)) -- it is a static that reads
+  // `this` internally, so a detached `const create = Scene.create; create(...)`
+  // throws "cannot read 'implementation' of undefined". (Same this-binding lesson
+  // as the engine notify service.)
+  const scenes = g().Scene;
+  if (typeof scenes?.create !== "function") {
     return;
   }
   for (const data of starfieldSceneData()) {
@@ -97,36 +101,22 @@ export async function createStarfieldScenesIfMissing(): Promise<void> {
       continue;
     }
     try {
-      await create(data);
+      await scenes.create(data);
     } catch (error) {
       console.warn(`${MODULE_ID} | could not create starfield scene ${String(data.name)}`, error);
     }
   }
 }
 
-/**
- * Registers the hook that creates the shipped starfield scenes once per world.
- * Runs on `ready` but DEFERRED onto a later macrotask (setTimeout): calling
- * Scene.create synchronously inside the ready/canvasReady hook dispatch throws
- * internally ("reading 'implementation'"), while the exact same call one tick
- * later succeeds -- Foundry isn't fully settled during hook dispatch.
- */
+/** Registers the ready hook that creates the shipped starfield scenes once per world. */
 export function registerStarfieldScenes(): void {
-  const global = globalThis as unknown as { setTimeout?: (fn: () => void, ms: number) => unknown };
   const hooks = g().Hooks;
   if (!hooks?.once) {
     return;
   }
   hooks.once("ready", () => {
-    const run = () =>
-      void createStarfieldScenesIfMissing().catch((error) => {
-        console.warn(`${MODULE_ID} | could not create starfield scenes`, error);
-      });
-    // Off the hook-dispatch context (see doc comment); fall back to immediate.
-    if (typeof global.setTimeout === "function") {
-      global.setTimeout(run, 1500);
-    } else {
-      run();
-    }
+    void createStarfieldScenesIfMissing().catch((error) => {
+      console.warn(`${MODULE_ID} | could not create starfield scenes`, error);
+    });
   });
 }
