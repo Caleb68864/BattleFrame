@@ -256,6 +256,23 @@ function currentUserReady(): boolean {
   return advance?.isReady?.() === true;
 }
 
+/**
+ * Scene-control handlers fire async Foundry writes (setFlag / actor.update /
+ * dice). A `void handler()` would turn a rejecting write into an unhandled
+ * promise rejection with no user feedback. Every scene-tool `onClick`/`onChange`
+ * routes through this instead: a rejection is caught, logged, and surfaced via
+ * the module's notify path (mirrors the internal try/catch GREATHELM / Simple
+ * Skirmish already carry). Success is unchanged — the handler runs as before.
+ */
+function runGuarded(fn: () => unknown): void {
+  Promise.resolve()
+    .then(fn)
+    .catch((error) => {
+      console.warn(`${MODULE_ID} | action failed`, error);
+      notify(`${MODULE_ID} | action failed -- see console`, "error");
+    });
+}
+
 /** The scene-control entry (both known payload shapes). */
 export function addSceneControl(controls: unknown): void {
   const readyTool = {
@@ -266,7 +283,7 @@ export function addSceneControl(controls: unknown): void {
     active: currentUserReady(),
     visible: true,
     order: 0,
-    onChange: () => void readyAction(),
+    onChange: () => runGuarded(readyAction),
   };
   const activateTool = {
     name: "dirtside-ii-activate",
@@ -275,8 +292,8 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: true,
     order: 1,
-    onClick: () => void activateSelectedControl(),
-    onChange: () => void activateSelectedControl(),
+    onClick: () => runGuarded(activateSelectedControl),
+    onChange: () => runGuarded(activateSelectedControl),
   };
   const endTurnTool = {
     name: "dirtside-ii-end-turn",
@@ -285,8 +302,8 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: isGM(),
     order: 2,
-    onClick: () => void advanceTurnCore(),
-    onChange: () => void advanceTurnCore(),
+    onClick: () => runGuarded(advanceTurnCore),
+    onChange: () => runGuarded(advanceTurnCore),
   };
 
   const control = {
