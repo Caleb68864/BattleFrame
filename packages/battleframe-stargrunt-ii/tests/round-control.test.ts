@@ -277,6 +277,35 @@ describe("scene-control reachability — the control entry points reach the pure
     expect(["friendly", "hostile"]).toContain(state.firstSideId);
   });
 
+  it("a rejecting wrapped handler is caught and surfaced, never leaked as an unhandled rejection", async () => {
+    const error = vi.fn();
+    (globalThis as any).ui = { notifications: { info: vi.fn(), warn: vi.fn(), error } };
+    // The ready tool's onChange runs readyAction, whose only async action is
+    // advance.toggleReady(). Make that reject: the guard must catch it.
+    (globalThis as any).game = {
+      user: { isGM: true },
+      battleframe: {
+        advance: {
+          toggleReady: async () => {
+            throw new Error("boom");
+          }
+        }
+      }
+    };
+
+    const controls: any[] = [];
+    addSceneControl(controls);
+    const readyTool = controls[0].tools.find((t: any) => t.name === "stargrunt-ii-ready");
+
+    // Invoking the handler must NOT throw synchronously and must NOT reject.
+    expect(() => readyTool.onChange()).not.toThrow();
+    await new Promise((r) => setTimeout(r, 0));
+
+    // The rejection was routed through the module's notify path, not leaked.
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error.mock.calls[0][0]).toContain("battleframe-stargrunt-ii");
+  });
+
   it("fireSelectedControl (the fire tool's handler) reaches resolveDispersedFire and posts an outcome card", async () => {
     const postCard = vi.fn(async () => undefined);
     const attacker = unitToken("A", 1);

@@ -1,10 +1,15 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   beginRoundState,
   turnEndUpdate,
   addSceneControl,
   type RoundUnit,
 } from "../src/ui/round-control";
+
+afterEach(() => {
+  delete (globalThis as any).game;
+  delete (globalThis as any).ui;
+});
 
 const units = (...specs: Array<[string, string]>): RoundUnit[] =>
   specs.map(([id, playerId]) => ({ id, playerId }));
@@ -53,5 +58,34 @@ describe("addSceneControl — the DSII scene control", () => {
     addSceneControl(controls);
     expect(controls["battleframe-dirtside-ii"]).toBeDefined();
     expect(controls["battleframe-dirtside-ii"].tools["dirtside-ii-activate"]).toBeDefined();
+  });
+
+  it("catches a rejecting wrapped handler and surfaces it, never leaking an unhandled rejection", async () => {
+    const error = vi.fn();
+    (globalThis as any).ui = { notifications: { info: vi.fn(), warn: vi.fn(), error } };
+    // The ready tool's onChange runs readyAction, whose only async action is
+    // advance.toggleReady(). Make that reject: the guard must catch it.
+    (globalThis as any).game = {
+      user: { isGM: true },
+      battleframe: {
+        advance: {
+          toggleReady: async () => {
+            throw new Error("boom");
+          },
+        },
+      },
+    };
+
+    const controls: any[] = [];
+    addSceneControl(controls);
+    const readyTool = controls[0].tools.find((t: any) => t.name === "dirtside-ii-ready");
+
+    // Invoking the handler must NOT throw synchronously and must NOT reject.
+    expect(() => readyTool.onChange()).not.toThrow();
+    await new Promise((r) => setTimeout(r, 0));
+
+    // The rejection was routed through the module's notify path, not leaked.
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error.mock.calls[0][0]).toContain("battleframe-dirtside-ii");
   });
 });

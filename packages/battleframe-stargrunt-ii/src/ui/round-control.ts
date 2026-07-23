@@ -701,6 +701,24 @@ function currentUserReady(): boolean {
   return globalScope().game?.battleframe?.advance?.isReady?.() === true;
 }
 
+/**
+ * Scene-control handlers fire async Foundry writes (setFlag / actor.update /
+ * ChatMessage / dice). A `void handler()` would turn a rejecting write into an
+ * unhandled promise rejection with no user feedback. Every scene-tool
+ * `onClick`/`onChange` routes through this instead: a rejection is caught,
+ * logged, and surfaced via the module's notify path (mirrors the internal
+ * try/catch that GREATHELM / Simple Skirmish already carry). Success is
+ * unchanged — the handler runs exactly as before.
+ */
+function runGuarded(fn: () => unknown): void {
+  Promise.resolve()
+    .then(fn)
+    .catch((error) => {
+      console.warn(`${MODULE_ID} | action failed`, error);
+      notifyUser(`${MODULE_ID} | action failed -- see console`, "error");
+    });
+}
+
 /** The scene-control entry, accommodating both known payload shapes. */
 export function addSceneControl(controls: unknown): void {
   const gm = isGM();
@@ -712,7 +730,7 @@ export function addSceneControl(controls: unknown): void {
     active: currentUserReady(),
     visible: true,
     order: 0,
-    onChange: () => void readyAction()
+    onChange: () => runGuarded(readyAction)
   };
   const runTool = {
     name: "stargrunt-ii-run-turn",
@@ -721,8 +739,8 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 1,
-    onClick: () => void runRoundControl(),
-    onChange: () => void runRoundControl()
+    onClick: () => runGuarded(runRoundControl),
+    onChange: () => runGuarded(runRoundControl)
   };
   const activateTool = {
     name: "stargrunt-ii-activate",
@@ -731,8 +749,8 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 2,
-    onClick: () => void activateSelectedControl(),
-    onChange: () => void activateSelectedControl()
+    onClick: () => runGuarded(activateSelectedControl),
+    onChange: () => runGuarded(activateSelectedControl)
   };
   const fireTool = {
     name: "stargrunt-ii-fire",
@@ -741,8 +759,8 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 3,
-    onClick: () => void fireSelectedControl(),
-    onChange: () => void fireSelectedControl()
+    onClick: () => runGuarded(fireSelectedControl),
+    onChange: () => runGuarded(fireSelectedControl)
   };
 
   const control = {

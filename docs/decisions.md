@@ -3702,3 +3702,30 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   persisted firstPlayerId no longer matches a canvas unit; the unreachable degenerate-grid
   divide-by-zero in areas/area radiusPx (BaseScene constrains grid.distance > 0).
 - Commit: this commit.
+
+## 2026-07-22 — SG2/DS2 scene-control handlers leaked rejections; guarded at the boundary
+- Symptom: In `battleframe-stargrunt-ii` and `battleframe-dirtside-ii`
+  `ui/round-control.ts`, every scene-tool wired its handler as
+  `onClick/onChange: () => void handler()`. The handlers fire async Foundry
+  writes (`setFlag`, `actor.update`, `ChatMessage`, dice). Several paths sit
+  outside any try/catch — notably `readyAction` (`advance.toggleReady()`) and
+  the tail of `activateSelectedControl` (`update`/`setFlag`) — so a rejecting
+  write became an **unhandled promise rejection** with no user feedback. This is
+  the FT/DS2/SG2 follow-up flagged in the 2026-07-21 hardening note above.
+- Fix: added a module-local `runGuarded(fn)` to each of the two round-control
+  files — `Promise.resolve().then(fn).catch(...)` that logs via `console.warn`
+  and surfaces through the module's existing notify path (`notifyUser` in SG2,
+  `notify` in DS2). Routed every scene-tool `onClick`/`onChange` (ready /
+  run-turn / activate / fire in SG2; ready / activate / end-turn in DS2) through
+  it. Succeeding actions run byte-for-byte as before — the guard only adds a
+  catch. Mirrors the internal try/catch GREATHELM / Simple Skirmish carry, but
+  applied at the scene-control boundary so it covers every handler uniformly.
+- Surfaces: `packages/battleframe-stargrunt-ii/src/ui/round-control.ts`,
+  `packages/battleframe-dirtside-ii/src/ui/round-control.ts`. Covered by a new
+  round-control test in each module: a rejecting `advance.toggleReady` routed
+  through the ready tool's `onChange` — asserts the call does not throw/reject and
+  the rejection reaches `ui.notifications.error`. The pre-fix test reproduced the
+  leak as a vitest Unhandled Rejection; post-fix it is caught.
+- Watch: any NEW scene tool must route through `runGuarded`, not `void`. The two
+  files are engine-neutral module code; `packages/battleframe/src` untouched.
+- Commit: this commit.
