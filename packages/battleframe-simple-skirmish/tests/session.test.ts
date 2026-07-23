@@ -3,6 +3,7 @@ import {
   createSkirmishRound,
   determineFirstPlayer,
   IllegalActivationError,
+  isSkirmishRoundResumable,
   restoreSkirmishRound,
   type SkirmishUnit
 } from "../src/round/session";
@@ -52,6 +53,41 @@ describe("serialize / restoreSkirmishRound -- round state on a document", () => 
     expect(restored.activePlayerId()).toBe("B");
     restored.activate("b1");
     expect(restored.activePlayerId()).toBe("B"); // A has nothing left, stays B
+  });
+});
+
+describe("isSkirmishRoundResumable -- a stale flag must not brick the round tool", () => {
+  // The round tool always takes the resume branch while a flag is non-complete,
+  // rebuilding the persisted round with restoreSkirmishRound on every "Run Round"
+  // click. If the persisted firstPlayerId names a side whose every token was
+  // deleted between sessions, that restore throws (orderedPlayers has no side to
+  // rotate to) -- and because the throw is on the always-taken resume path, a
+  // single unresumable flag permanently bricks the tool. The glue guards with
+  // this predicate and starts a FRESH round when it returns false.
+
+  it("is true when the persisted first player still controls a unit on the canvas", () => {
+    const roster = units(["a1", "A"], ["b1", "B"]);
+    const state = createSkirmishRound(roster, "A").serialize();
+
+    expect(isSkirmishRoundResumable(roster, state)).toBe(true);
+  });
+
+  it("is false when the persisted first player controls none of the current units", () => {
+    const roster = units(["a1", "A"], ["b1", "B"]);
+    // A's tokens were deleted between sessions -- only B remains on the canvas.
+    const survivors = units(["b1", "B"]);
+    const state = createSkirmishRound(roster, "A").serialize();
+
+    expect(isSkirmishRoundResumable(survivors, state)).toBe(false);
+  });
+
+  it("documents the hazard the predicate exists to avoid: restore itself throws on a stale id", () => {
+    const state = createSkirmishRound(units(["a1", "A"], ["b1", "B"]), "A").serialize();
+
+    // The unguarded restore is the exact throw the resume branch would hit.
+    expect(() => restoreSkirmishRound(units(["b1", "B"]), state)).toThrow(IllegalActivationError);
+    // Guarding first means the caller never reaches that throw: it starts fresh.
+    expect(isSkirmishRoundResumable(units(["b1", "B"]), state)).toBe(false);
   });
 });
 

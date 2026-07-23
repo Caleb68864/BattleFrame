@@ -663,3 +663,25 @@ export function restoreRoundSession(
     state
   );
 }
+
+/**
+ * True when a persisted round can still be played against the sides currently on
+ * the canvas -- i.e. the side whose round this is (`firstPlayerId`) still has at
+ * least one knight present.
+ *
+ * When it is false the flag is stale: that side's every token was deleted between
+ * sessions, so reopening the pool panel on the restored round yields a round that
+ * can never be played to completion (the round never leaves the resume branch --
+ * the flag stays non-complete, so every "Run Round" click re-enters resume and
+ * the tool is bricked). The glue calls this first and starts a FRESH round when
+ * it returns false. Note the restore itself is already throw-safe (`rotateToFirst`
+ * tolerates a missing id and a malformed `unspent` is coerced); this guard is the
+ * glue-level belt that stops a live-but-unplayable round from bricking the tool.
+ * Behaviour is unchanged when the flag is resumable (this returns true).
+ */
+export function isPersistedRoundResumable(
+  state: SerializedRoundSession,
+  knightPlayerIds: readonly string[]
+): boolean {
+  return knightPlayerIds.includes(state.firstPlayerId);
+}

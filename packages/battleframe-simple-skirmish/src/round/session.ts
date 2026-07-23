@@ -167,6 +167,26 @@ export function restoreSkirmishRound(
   });
 }
 
+/**
+ * True when a persisted round can still be rebuilt against the units currently
+ * on the canvas -- i.e. its `firstPlayerId` still controls at least one of them.
+ *
+ * When it is false the flag is stale: the first player's every token was deleted
+ * between sessions, so `restoreSkirmishRound` -> `orderedPlayers` would throw
+ * (there is no side to rotate the turn order to). The round tool always takes
+ * the resume branch while a flag is non-complete, so an unguarded restore there
+ * re-throws on every "Run Round" click and permanently bricks the tool. The glue
+ * calls this first and starts a FRESH round when it returns false, rather than
+ * restore a round that can never be played. `restoreSkirmishRound` itself stays
+ * strict -- a stale id passed to a *fresh* create is a caller bug, not recovery.
+ */
+export function isSkirmishRoundResumable(
+  allUnits: readonly SkirmishUnit[],
+  state: SkirmishRoundState
+): boolean {
+  return allUnits.some((unit) => unit.playerId === state.firstPlayerId);
+}
+
 function orderedPlayers(units: readonly SkirmishUnit[], firstPlayerId: string): string[] {
   const seen = new Set<string>();
   const order: string[] = [];

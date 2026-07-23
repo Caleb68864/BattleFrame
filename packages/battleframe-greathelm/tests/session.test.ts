@@ -2,10 +2,12 @@ import { describe, expect, it } from "vitest";
 import {
   createRoundSession,
   IllegalDieSpendError,
+  isPersistedRoundResumable,
   restoreRoundSession,
   type CreateRoundSessionOptions,
   type PoolDie,
   type RoundSessionKnight,
+  type SerializedRoundSession,
 } from "../src/round/session";
 import type { ActorLike } from "../src/round/loop";
 import type { DiceApiLike, MeasureApiLike } from "../src/combat/clash";
@@ -150,6 +152,32 @@ describe("createRoundSession", () => {
     expect(() => restoreRoundSession({ knights, dice, measure }, malformedPool)).not.toThrow();
     const restoredPool = restoreRoundSession({ knights, dice, measure }, malformedPool);
     expect(restoredPool.remainingDice().map((die) => die.id)).toEqual(["b-d1"]);
+  });
+
+  it("reports whether a persisted round can still be played against the current knights", () => {
+    // The resume branch of advanceRoundCore reopens the pool panel on the
+    // persisted round whenever the flag is non-complete. If the side whose round
+    // this is (firstPlayerId) had its every token deleted between sessions, the
+    // panel reopens on a round that can never be played to completion -- and,
+    // because the glue re-enters resume on every "Run Round" click, that stale
+    // flag permanently bricks the round tool. The glue guards with this predicate
+    // and starts a FRESH round when it returns false, rather than resume forever.
+    const state: SerializedRoundSession = {
+      firstPlayerId: "a",
+      turnPointer: 0,
+      complete: false,
+      unspent: {
+        a: [{ id: "a-d1", playerId: "a", face: 6 }],
+        b: [{ id: "b-d1", playerId: "b", face: 5 }],
+      },
+    };
+
+    // Both sides still on the canvas -> resumable, and behaviour is unchanged.
+    expect(isPersistedRoundResumable(state, ["a", "b"])).toBe(true);
+    // Side "a" (the round's first player) was wiped from the canvas -> stale.
+    expect(isPersistedRoundResumable(state, ["b"])).toBe(false);
+    // No knights at all (empty canvas) -> stale.
+    expect(isPersistedRoundResumable(state, [])).toBe(false);
   });
 
   it("alternates sides, and lets one side continue after the other runs out", async () => {

@@ -15,6 +15,7 @@ import {
 import { type ActorLike, type CombatLike, type ResolvedDie } from "../round/loop";
 import {
   createRoundSession,
+  isPersistedRoundResumable,
   restoreRoundSession,
   type ClashResolvedOutcome,
   type PoolDie,
@@ -1157,7 +1158,14 @@ export async function advanceRoundCore(
     const roundState = combat.getFlag?.("battleframe", ROUND_FLAG) as
       | SerializedRoundSession
       | undefined;
-    if (roundState && !roundState.complete) {
+    // Only resume a flag that can still be played: if the side whose round this
+    // is (firstPlayerId) had its every token deleted between sessions, resuming
+    // reopens the panel on a round that can never complete -- and, since this
+    // resume branch runs on every "Run Round" click while the flag stays
+    // non-complete, that would brick the tool. An unresumable flag is ignored
+    // here and falls through to a fresh round (beginRoundFromControl overwrites
+    // it). Behaviour is unchanged when the flag IS resumable.
+    if (roundState && !roundState.complete && isPersistedRoundResumable(roundState, sideIds(knights))) {
       const session = resumeRoundFromControl(
         {
           knights,

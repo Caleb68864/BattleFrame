@@ -18,6 +18,7 @@ import type { DiceApiLike } from "../combat/resolve";
 import {
   createSkirmishRound,
   determineFirstPlayer,
+  isSkirmishRoundResumable,
   restoreSkirmishRound,
   type SkirmishRound,
   type SkirmishRoundState,
@@ -605,7 +606,14 @@ export async function advanceRoundCore(): Promise<void> {
   // it survives a reload -- a round is "in progress" until its last unit acts.
   const existing = activeRoundCombat();
   const existingState = readRoundState(existing);
-  if (existingState) {
+  // A stale flag whose first player controls no current unit (its tokens were
+  // deleted between sessions) cannot be restored -- restoreSkirmishRound would
+  // throw, and since this resume branch runs on every "Run Round" click that
+  // throw would permanently brick the tool. So only restore a RESUMABLE flag;
+  // an unresumable one is ignored here and falls through to a fresh round below
+  // (which overwrites the stale flag). Behaviour is unchanged when it IS
+  // resumable -- the in-progress guard still fires.
+  if (existingState && isSkirmishRoundResumable(toSkirmishUnits(gatherUnitsFromCanvas()), existingState)) {
     const round = restoreSkirmishRound(toSkirmishUnits(gatherUnitsFromCanvas()), existingState);
     if (!round.isComplete()) {
       notifyUser(localize("controls.round.inProgress"), "warn");
@@ -696,6 +704,14 @@ export async function activateSelectedControl(): Promise<void> {
 
   if (target && type === null) {
     notifyUser(localize("controls.activate.noLegalAttack"), "warn");
+  }
+
+  // Same stale-flag guard as advanceRoundCore: if the persisted first player
+  // controls none of the current units, restoreSkirmishRound would throw
+  // (outside the try below). Treat it as no restorable round rather than crash.
+  if (!isSkirmishRoundResumable(toSkirmishUnits(units), state)) {
+    notifyUser(localize("controls.activate.noRound"), "warn");
+    return;
   }
 
   const round = restoreSkirmishRound(toSkirmishUnits(units), state);
