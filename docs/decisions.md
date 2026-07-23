@@ -3854,3 +3854,6 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 
 ## 2026-07-22 — FT plot preview scales to the scene grid (was fixed tiny px)
 - Playtest: the plot line/arrow/nodes were fixed 3/14/4 px, dwarfed by big ship tokens on a space scene. Now sized as a fraction of the scene grid (line 10%, arrow 45%, node 15% of grid.size, floored) so they match token weight. Glue -> live-verify. Commit: this commit.
+
+## 2026-07-22 — Ship starfield battle scenes with Full Thrust
+- Playtest ask: bundle basic star-field scenes. Generated 3 deterministic starfield SVG backgrounds (assets/scenes/{deep-space,nebula-field,sparse-void}.svg -- dark field + varied stars + faint nebula, self-contained). A ready hook (GM-only, idempotent by name, mirrors the how-to journal) creates 3 gridless 4000x3000 scenes using them. Pure starfieldSceneData() unit-tested (+3); Scene.create is glue -> live-verify. assets/ ships with the package (not vite-excluded, like icons/). Commit: this commit.

@@ -6,6 +6,7 @@ import { registerFighterSheet } from "./sheets/fighter-sheet";
 import { registerRoundControl, advanceTurnCore } from "./ui/round-control";
 import { registerTokenHudActions } from "./ui/token-hud-actions";
 import { registerHowToPlayJournal } from "./ui/how-to-play";
+import { registerStarfieldScenes } from "./ui/starfield-scenes";
 import { registerOwnershipWarning } from "./ui/ownership-warning";
 import { registerArcOverlay } from "./ui/arc-overlay";
 import { registerMissileOverlay } from "./ui/missile-overlay";
@@ -140,6 +141,8 @@ globalHooks?.once("init", () => {
   // Create the "How to Play" journal once per world (on ready) so a new table can
   // learn to drive the module without a manual.
   registerHowToPlayJournal();
+  // Ship a few ready-to-play starfield battle scenes (created once per world).
+  registerStarfieldScenes();
   // Warn if a ship's ownership is changed so an opponent could read its plot.
   registerOwnershipWarning();
   // Fire-arc ring overlay on ship tokens (hover to show, "Fire Arcs" tool to pin).
