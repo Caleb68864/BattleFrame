@@ -17,7 +17,7 @@ describe("starfieldSceneData", () => {
   it("points each background at the module's shipped SVG asset", () => {
     for (const s of scenes) {
       const bg = s.background as { src: string };
-      expect(bg.src).toMatch(new RegExp(`^modules/${MODULE_ID}/assets/scenes/[a-z-]+\\.svg$`));
+      expect(bg.src).toMatch(new RegExp(`^modules/${MODULE_ID}/assets/scenes/[a-z-]+\\.png$`));
     }
   });
 

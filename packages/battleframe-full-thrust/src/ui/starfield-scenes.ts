@@ -16,10 +16,12 @@ interface StarfieldScene {
   background: string;
 }
 
+// PNG, not SVG: Foundry silently drops an SVG scene background (backgrounds must
+// be raster). The PNGs are rendered from the SVG sources in assets/scenes/.
 const STARFIELDS: readonly StarfieldScene[] = [
-  { name: "Full Thrust — Deep Space", background: "deep-space.svg" },
-  { name: "Full Thrust — Nebula Field", background: "nebula-field.svg" },
-  { name: "Full Thrust — Sparse Void", background: "sparse-void.svg" }
+  { name: "Full Thrust — Deep Space", background: "deep-space.png" },
+  { name: "Full Thrust — Nebula Field", background: "nebula-field.png" },
+  { name: "Full Thrust — Sparse Void", background: "sparse-void.png" }
 ];
 
 /** Scene dimensions, matched to the generated artwork (assets/scenes/*.svg). */
