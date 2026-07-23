@@ -21,6 +21,7 @@
 
 import { MODULE_ID, SHIP_ACTOR_TYPE } from "../constants";
 import { availableShipActions, type ShipActionAvailability } from "../ship/ship-actions";
+import type { TurnPhase } from "../round/turn-phase";
 import {
   plotAction,
   fireAction,
@@ -32,6 +33,7 @@ import {
   launchFightersAction,
   recoverFightersAction,
   holdShipAction,
+  currentPhase,
   runGuarded
 } from "./round-control";
 
@@ -49,6 +51,10 @@ export interface HudButtonModel {
   /** When set, the button shows only if this ShipActionAvailability flag is live;
    * when omitted the button shows for every Full Thrust ship. */
   availability?: keyof ShipActionAvailability;
+  /** The turn phase this action belongs to; the HUD shows only the current phase's
+   * actions (so you can't confuse a fire action for a move action). Omitted =
+   * shown in every phase (e.g. Hold/Done). */
+  phase?: TurnPhase;
 }
 
 /**
@@ -58,33 +64,43 @@ export interface HudButtonModel {
  * FontAwesome glyphs so the two entry points read as the same action.
  */
 const BUTTON_CATALOGUE: readonly HudButtonModel[] = [
-  { key: "plot", availability: "plot", icon: "fa-route", tooltipKey: `${MODULE_ID}.controls.plot`, tooltipFallback: "Plot movement order", action: plotAction },
-  { key: "fire", availability: "fire", icon: "fa-crosshairs", tooltipKey: `${MODULE_ID}.controls.fire`, tooltipFallback: "Fire at target", action: fireAction },
-  { key: "splitFire", availability: "splitFire", icon: "fa-arrows-split-up-and-left", tooltipKey: `${MODULE_ID}.controls.splitFire`, tooltipFallback: "Split fire across targets", action: splitFireAction },
-  { key: "needle", availability: "needle", icon: "fa-syringe", tooltipKey: `${MODULE_ID}.controls.needle`, tooltipFallback: "Needle beam", action: needleAction },
-  { key: "salvo", availability: "salvo", icon: "fa-meteor", tooltipKey: `${MODULE_ID}.controls.salvo`, tooltipFallback: "Fire salvo missiles", action: salvoAction },
-  { key: "nova", availability: "nova", icon: "fa-sun", tooltipKey: `${MODULE_ID}.controls.novaCannon`, tooltipFallback: "Fire Nova Cannon", action: fireNovaCannonAction },
-  { key: "waveGun", availability: "waveGun", icon: "fa-water", tooltipKey: `${MODULE_ID}.controls.waveGun`, tooltipFallback: "Fire Wave Gun", action: fireWaveGunAction },
-  { key: "launchFighters", availability: "launchFighters", icon: "fa-plane-departure", tooltipKey: `${MODULE_ID}.controls.launchFighters`, tooltipFallback: "Launch fighters", action: launchFightersAction },
-  { key: "recoverFighters", availability: "recoverFighters", icon: "fa-plane-arrival", tooltipKey: `${MODULE_ID}.controls.recoverFighters`, tooltipFallback: "Recover fighters", action: recoverFightersAction },
-  // Hold/Done: always available on a ship -- marks it finished for this phase so the
+  // Plot phase: movement + carrier ordnance (launch/recover happen with the move).
+  { key: "plot", phase: "plot", availability: "plot", icon: "fa-route", tooltipKey: `${MODULE_ID}.controls.plot`, tooltipFallback: "Plot movement order", action: plotAction },
+  { key: "launchFighters", phase: "plot", availability: "launchFighters", icon: "fa-plane-departure", tooltipKey: `${MODULE_ID}.controls.launchFighters`, tooltipFallback: "Launch fighters", action: launchFightersAction },
+  { key: "recoverFighters", phase: "plot", availability: "recoverFighters", icon: "fa-plane-arrival", tooltipKey: `${MODULE_ID}.controls.recoverFighters`, tooltipFallback: "Recover fighters", action: recoverFightersAction },
+  // Fire phase: every weapon action.
+  { key: "fire", phase: "fire", availability: "fire", icon: "fa-crosshairs", tooltipKey: `${MODULE_ID}.controls.fire`, tooltipFallback: "Fire at target", action: fireAction },
+  { key: "splitFire", phase: "fire", availability: "splitFire", icon: "fa-arrows-split-up-and-left", tooltipKey: `${MODULE_ID}.controls.splitFire`, tooltipFallback: "Split fire across targets", action: splitFireAction },
+  { key: "needle", phase: "fire", availability: "needle", icon: "fa-syringe", tooltipKey: `${MODULE_ID}.controls.needle`, tooltipFallback: "Needle beam", action: needleAction },
+  { key: "salvo", phase: "fire", availability: "salvo", icon: "fa-meteor", tooltipKey: `${MODULE_ID}.controls.salvo`, tooltipFallback: "Fire salvo missiles", action: salvoAction },
+  { key: "nova", phase: "fire", availability: "nova", icon: "fa-sun", tooltipKey: `${MODULE_ID}.controls.novaCannon`, tooltipFallback: "Fire Nova Cannon", action: fireNovaCannonAction },
+  { key: "waveGun", phase: "fire", availability: "waveGun", icon: "fa-water", tooltipKey: `${MODULE_ID}.controls.waveGun`, tooltipFallback: "Fire Wave Gun", action: fireWaveGunAction },
+  // Hold/Done: shown in EVERY phase -- marks the ship finished for this phase so the
   // premature-ready guard stops nagging about it. Not gated by any weapon/system.
   { key: "hold", icon: "fa-circle-check", tooltipKey: `${MODULE_ID}.controls.hold`, tooltipFallback: "Hold / Done (skip this ship this phase)", action: holdShipAction }
 ];
 
 /**
  * The HUD buttons a token should show: none unless it is a Full Thrust ship, then
- * only those whose availability flag is live for its current system + damage state.
- * Pure -- no DOM, no Foundry -- so it is unit-tested directly.
+ * only those (a) whose availability flag is live for its current system + damage
+ * state AND (b) that belong to the current turn `phase` (so plot-phase HUDs show
+ * only movement actions, fire-phase HUDs only weapon actions -- no confusion). A
+ * button with no `phase` shows in every phase (Hold). When `phase` is omitted, the
+ * phase gate is not applied (all phases' actions show). Pure -- unit-tested.
  */
-export function hudButtonModels(actor: { type?: string; system?: unknown } | undefined): HudButtonModel[] {
+export function hudButtonModels(
+  actor: { type?: string; system?: unknown } | undefined,
+  phase?: TurnPhase
+): HudButtonModel[] {
   if (actor?.type !== SHIP_TYPE) {
     return [];
   }
   const available = availableShipActions((actor.system ?? {}) as any);
-  // A button with no `availability` gate always shows for a ship (e.g. Hold);
-  // otherwise it shows only when its availability flag is live.
-  return BUTTON_CATALOGUE.filter((model) => model.availability === undefined || available[model.availability]);
+  return BUTTON_CATALOGUE.filter((model) => {
+    const availableNow = model.availability === undefined || available[model.availability];
+    const inPhase = phase === undefined || model.phase === undefined || model.phase === phase;
+    return availableNow && inPhase;
+  });
 }
 
 // --- DOM injection (DOM-tolerant so it tests with a fake element) ------------
@@ -185,7 +201,8 @@ export function registerTokenHudActions(): void {
   }
   hooks.on("renderTokenHUD", (hud: any, html: unknown) => {
     const token = hud?.object;
-    const models = hudButtonModels(token?.actor);
+    // Show only the CURRENT phase's actions (plot-phase -> Plot; fire-phase -> weapons).
+    const models = hudButtonModels(token?.actor, currentPhase());
     if (models.length === 0) {
       return;
     }

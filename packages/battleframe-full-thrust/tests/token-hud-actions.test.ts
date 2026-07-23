@@ -94,6 +94,24 @@ describe("hudButtonModels", () => {
       expect(m.tooltipKey).toContain("battleframe-full-thrust");
     }
   });
+
+  it("shows only PLOT-phase actions in the plot phase (no weapon actions)", () => {
+    const keys = hudButtonModels(shipActor({ bays: 1, weapons: [{ kind: "salvo" }, { kind: "beam" }] }), "plot").map((m) => m.key);
+    expect(keys).toContain("plot");
+    expect(keys).toContain("launchFighters"); // carrier ops are plot/movement phase
+    expect(keys).toContain("hold"); // Hold shows in every phase
+    expect(keys).not.toContain("fire");
+    expect(keys).not.toContain("salvo");
+  });
+
+  it("shows only FIRE-phase actions in the fire phase (no Plot)", () => {
+    const keys = hudButtonModels(shipActor({ bays: 1, weapons: [{ kind: "salvo" }, { kind: "beam" }] }), "fire").map((m) => m.key);
+    expect(keys).toContain("fire");
+    expect(keys).toContain("salvo");
+    expect(keys).toContain("hold");
+    expect(keys).not.toContain("plot");
+    expect(keys).not.toContain("launchFighters");
+  });
 });
 
 describe("injectShipHudButtons", () => {

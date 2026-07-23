@@ -1439,7 +1439,7 @@ function firePhaseActive(): boolean {
 }
 
 /** The current mechanical phase, derived from the fire-phase indicator. */
-function currentPhase(): TurnPhase {
+export function currentPhase(): TurnPhase {
   return firePhaseActive() ? "fire" : "plot";
 }
 

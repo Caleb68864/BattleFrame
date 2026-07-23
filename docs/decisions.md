@@ -3896,3 +3896,6 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   movement-on-ready, fire-phase auto-start, and the Hold button need live-verify.
   `HELD_FLAG` is a per-ship per-turn INTENT (owner/GM-readable actor flag), not a
   battlefield condition, so it is not a CONFIG.statusEffects entry. Commit: this commit.
+
+## 2026-07-22 — Token HUD shows only the CURRENT phase actions
+- Playtest: showing all actions on the token HUD invited confusion. Each HUD button now carries a `phase` (plot | fire); the renderTokenHUD hook passes `currentPhase()` so a plot-phase HUD shows only Plot/carrier-ops, a fire-phase HUD only weapon actions. Hold/Done shows in every phase. `currentPhase` exported; `hudButtonModels(actor, phase?)` gains the gate (+2 tests). Commit: this commit.
