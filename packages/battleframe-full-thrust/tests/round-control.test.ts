@@ -8,7 +8,8 @@ import {
   registerRoundControl,
   executeManeuversAction,
   beginFirePhaseAction,
-  newTurnAction
+  newTurnAction,
+  runGuarded
 } from "../src/ui/round-control";
 import type { TargetingRow } from "../src/combat/targeting";
 import { buildSplitFireReportHtml, buildMissileReportHtml, buildSpinalReportHtml, movementWaypoints } from "../src/ui/round-control";
@@ -327,6 +328,67 @@ describe("addSceneControl", () => {
     expect(controls["battleframe-full-thrust"]).toBeDefined();
     expect(controls["battleframe-full-thrust"].tools["full-thrust-fire"]).toBeDefined();
     expect(controls["battleframe-full-thrust"].tools["full-thrust-execute"]).toBeDefined();
+  });
+
+  it("wires every tool handler through the guard (no raw async call leaks)", () => {
+    vi.stubGlobal("game", { user: { isGM: true } });
+    const controls: any[] = [];
+    addSceneControl(controls);
+    // Each tool must expose a synchronous onClick/onChange -- the guard wrapper
+    // returns void, so a handler that returned a Promise would be a raw leak.
+    for (const tool of controls[0].tools) {
+      const handler = tool.onClick ?? tool.onChange;
+      expect(typeof handler).toBe("function");
+      expect(handler()).toBeUndefined();
+    }
+  });
+});
+
+describe("runGuarded (scene-control handler guard)", () => {
+  // Lets the microtask chain (.then -> .catch) settle before assertions.
+  const flush = () => new Promise((resolve) => setTimeout(resolve, 0));
+
+  it("swallows a rejected async action and surfaces an error notification", async () => {
+    const error = vi.fn();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("ui", { notifications: { error } });
+
+    // The wrapped call must not throw or return a rejecting promise.
+    expect(() => runGuarded(() => Promise.reject(new Error("write rejected")))).not.toThrow();
+    await flush();
+
+    expect(error).toHaveBeenCalledTimes(1);
+    expect(error.mock.calls[0][0]).toContain("battleframe-full-thrust");
+    expect(warn).toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("catches a synchronous throw from the action too", async () => {
+    const error = vi.fn();
+    const warn = vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.stubGlobal("ui", { notifications: { error } });
+
+    expect(() =>
+      runGuarded(() => {
+        throw new Error("sync boom");
+      })
+    ).not.toThrow();
+    await flush();
+
+    expect(error).toHaveBeenCalledTimes(1);
+    warn.mockRestore();
+  });
+
+  it("runs a succeeding action without notifying an error", async () => {
+    const error = vi.fn();
+    const ran = vi.fn(async () => undefined);
+    vi.stubGlobal("ui", { notifications: { error } });
+
+    runGuarded(ran);
+    await flush();
+
+    expect(ran).toHaveBeenCalledTimes(1);
+    expect(error).not.toHaveBeenCalled();
   });
 });
 

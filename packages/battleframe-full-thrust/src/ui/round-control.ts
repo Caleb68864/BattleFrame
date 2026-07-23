@@ -464,6 +464,25 @@ function notify(kind: "warn" | "error" | "info", text: string): void {
   g().ui?.notifications?.[kind]?.(text);
 }
 
+/**
+ * Runs a scene-control tool action, containing any failure. Foundry invokes a
+ * tool's `onClick`/`onChange` synchronously and ignores its return value, so the
+ * bare `() => void someAsyncAction()` idiom lets a rejected Foundry write
+ * (`ChatMessage.create`, `actor.update`, token ops) escape as an *unhandled
+ * promise rejection* -- no try/catch, no feedback. Routing every handler through
+ * this wrapper turns that into a logged warning + an error toast the user sees,
+ * matching how GREATHELM / Simple Skirmish / InCountry already guard theirs.
+ * `Promise.resolve().then(fn)` also captures a synchronous throw from the action.
+ */
+export function runGuarded(fn: () => unknown): void {
+  void Promise.resolve()
+    .then(fn)
+    .catch((error) => {
+      console.warn(`${MODULE_ID} | action failed`, error);
+      notify("error", `${MODULE_ID} | action failed -- see console`);
+    });
+}
+
 function isGM(): boolean {
   return g().game?.user?.isGM === true;
 }
@@ -1827,7 +1846,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 0,
-    onClick: () => void beginFirePhaseAction(),
+    onClick: () => runGuarded(beginFirePhaseAction),
   };
   // Ready-to-advance toggle: when all players are ready, the turn advances on a
   // countdown -- no GM needed. Every player.
@@ -1839,7 +1858,7 @@ export function addSceneControl(controls: unknown): void {
     active: currentUserReady(),
     visible: true,
     order: 0,
-    onChange: () => void readyAction(),
+    onChange: () => runGuarded(readyAction),
   };
   // Re-post the current fire-phase tracker (whose side fires next) -- GM only.
   const phaseStatusTool = {
@@ -1849,7 +1868,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 0,
-    onClick: () => void phaseStatusAction(),
+    onClick: () => runGuarded(phaseStatusAction),
   };
   const fireTool = {
     name: "full-thrust-fire",
@@ -1858,7 +1877,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 1,
-    onClick: () => void fireAction(),
+    onClick: () => runGuarded(fireAction),
   };
   // Multi-FCS split fire: divide weapons across every targeted ship -- GM only.
   const splitFireTool = {
@@ -1868,7 +1887,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 1,
-    onClick: () => void splitFireAction(),
+    onClick: () => runGuarded(splitFireAction),
   };
   // Toggle the fire-arc ring overlay on ship tokens -- any player.
   const arcsTool = {
@@ -1878,7 +1897,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: true,
     order: 2,
-    onClick: () => void toggleArcsAction(),
+    onClick: () => runGuarded(toggleArcsAction),
   };
   // Pre-fire targeting check: which weapons bear + their range band -- any player
   // (it only reads their own ship's reach; the card is whispered to them).
@@ -1889,7 +1908,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: true,
     order: 2,
-    onClick: () => void checkTargetingAction(),
+    onClick: () => runGuarded(checkTargetingAction),
   };
   const needleTool = {
     name: "full-thrust-needle",
@@ -1898,7 +1917,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 2,
-    onClick: () => void needleAction(),
+    onClick: () => runGuarded(needleAction),
   };
   const salvoTool = {
     name: "full-thrust-salvo",
@@ -1907,7 +1926,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 3,
-    onClick: () => void salvoAction(),
+    onClick: () => runGuarded(salvoAction),
   };
   // Launch an independent missile forward from the controlled ship -- GM only.
   const launchMissileTool = {
@@ -1917,7 +1936,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 3,
-    onClick: () => void launchMissileAction(),
+    onClick: () => runGuarded(launchMissileAction),
   };
   // Run the missile phase: advance every missile, resolve strikes -- GM only.
   const advanceMissilesTool = {
@@ -1927,7 +1946,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 3,
-    onClick: () => void advanceMissilesAction(),
+    onClick: () => runGuarded(advanceMissilesAction),
   };
   // Spinal-mount mega-weapons (direct-target) -- GM only.
   const novaCannonTool = {
@@ -1937,7 +1956,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 3,
-    onClick: () => void fireNovaCannonAction(),
+    onClick: () => runGuarded(fireNovaCannonAction),
   };
   const chargeWaveGunTool = {
     name: "full-thrust-charge-wave-gun",
@@ -1946,7 +1965,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 3,
-    onClick: () => void chargeWaveGunAction(),
+    onClick: () => runGuarded(chargeWaveGunAction),
   };
   const waveGunTool = {
     name: "full-thrust-wave-gun",
@@ -1955,7 +1974,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 3,
-    onClick: () => void fireWaveGunAction(),
+    onClick: () => runGuarded(fireWaveGunAction),
   };
   // Carrier ops: launch / recover fighter groups -- GM only.
   const launchFightersTool = {
@@ -1965,7 +1984,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 3,
-    onClick: () => void launchFightersAction(),
+    onClick: () => runGuarded(launchFightersAction),
   };
   const recoverFightersTool = {
     name: "full-thrust-recover-fighters",
@@ -1974,7 +1993,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 3,
-    onClick: () => void recoverFightersAction(),
+    onClick: () => runGuarded(recoverFightersAction),
   };
   // Move the controlled fighter group toward the targeted ship -- any player.
   const fighterMoveTool = {
@@ -1984,7 +2003,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: true,
     order: 3,
-    onClick: () => void fighterMoveAction(),
+    onClick: () => runGuarded(fighterMoveAction),
   };
   // Vector-mode movement (optional) -- the ship's owner.
   const vectorMoveTool = {
@@ -1994,7 +2013,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: true,
     order: 2,
-    onClick: () => void vectorMoveAction(),
+    onClick: () => runGuarded(vectorMoveAction),
   };
   const plotTool = {
     name: "full-thrust-plot",
@@ -2003,7 +2022,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: true,
     order: 2,
-    onClick: () => void plotAction(),
+    onClick: () => runGuarded(plotAction),
   };
   // End-of-turn damage control repair -- GM only.
   const damageControlTool = {
@@ -2013,7 +2032,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 5,
-    onClick: () => void damageControlAction(),
+    onClick: () => runGuarded(damageControlAction),
   };
   // Execute reveals every ship's secretly-plotted move at once -- GM only.
   const executeTool = {
@@ -2023,7 +2042,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 3,
-    onClick: () => void executeManeuversAction(),
+    onClick: () => runGuarded(executeManeuversAction),
   };
   // Start a fresh turn: clear leftover plots + end the fire phase -- GM only.
   const newTurnTool = {
@@ -2033,7 +2052,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 7,
-    onClick: () => void newTurnAction(),
+    onClick: () => runGuarded(newTurnAction),
   };
   // Full reset: restore all ships + clear plots/fire phase/missiles -- GM only.
   const newBattleTool = {
@@ -2043,7 +2062,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: gm,
     order: 8,
-    onClick: () => void newBattleAction(),
+    onClick: () => runGuarded(newBattleAction),
   };
   // Import a fleet from JSON -- any player (subject to Foundry's create-actor perm).
   const importTool = {
@@ -2053,7 +2072,7 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: true,
     order: 4,
-    onClick: () => void importFleetAction(),
+    onClick: () => runGuarded(importFleetAction),
   };
 
   const control = {
