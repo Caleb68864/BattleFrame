@@ -97,12 +97,14 @@ Fixed 2026-09-21: `LICENSE` opens with a scope note excluding the package and
 pointing at its `NOTICE.md`; the README's licence section states the carve-out
 and why MIT cannot cover it.
 
-**Left for the owner, deliberately not changed:** the module's `NOTICE.md` ends
-with a "Buy Me a Coffee" solicitation, immediately below the line saying the
-module "must never be sold or used commercially". Donations toward an
-implementation are generally treated as distinct from selling the licensed work,
-but placing the ask inside the non-commercial notice itself is the kind of thing
-worth a second look by someone who wants to be sure.
+**Also fixed, on the owner's call:** the module's `NOTICE.md` ended with a "Buy
+Me a Coffee" solicitation immediately below the line saying the module "must
+never be sold or used commercially". Donations toward an implementation are
+generally treated as distinct from selling the licensed work, so this was not
+a violation — but a funding ask inside a non-commercial notice invites exactly
+the argument the notice exists to prevent. The notice is now attribution and
+licence terms only. The repository README still carries the link, which is the
+right place for it: that covers the project, not the licensed work.
 
 ## What the first migration taught
 

@@ -4045,9 +4045,12 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Watch: the same question applies to any future module built on licensed
   content. Check the repository-level licence before adding one, not after — a
   per-package `NOTICE.md` does not override the `LICENSE` that covers it.
-- Left alone on purpose: the module's `NOTICE.md` carries a "Buy Me a Coffee"
-  link directly under its non-commercial clause. Donations for an implementation
-  are usually treated as distinct from selling the licensed work, but the
-  placement is the owner's call, not one to make silently.
+- Second fix, made after raising it: the module's `NOTICE.md` carried a "Buy Me
+  a Coffee" link directly under its non-commercial clause. Donations for an
+  implementation are usually treated as distinct from selling the licensed work,
+  so this was not a violation — but a funding ask inside a non-commercial notice
+  invites exactly the argument the notice exists to prevent. Removed; the notice
+  is attribution and licence terms only. The repository README keeps the link,
+  which is the right home for it: it covers the project, not the licensed work.
 - Commit: this commit.
 
