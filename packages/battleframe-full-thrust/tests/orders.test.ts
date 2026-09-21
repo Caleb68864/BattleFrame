@@ -1,5 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parseOrder, applyOrder, turningCap } from "../src/movement/orders";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("parseOrder", () => {
   it("parses a combined accel + port turn order", () => {

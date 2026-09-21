@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   HULL_GRADES,
   hullBoxesForGrade,
@@ -7,6 +7,17 @@ import {
   hullPointsForGrade,
   variableHullLayout
 } from "../src/ship/variable-hull";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 // Worked example from the user's "Variable Hull Strength" note, a MASS 60 ship:
 //   Fragile 10% -> 6 MASS, 6 boxes (2/2/1/1)

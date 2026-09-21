@@ -1,5 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { thresholdKillOn, knockedOutIndices } from "../src/ship/threshold";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("thresholdKillOn (FT2 rolls high: 6 / 5-6 / 4-6)", () => {
   it("kills on 6 at the 1st threshold", () => {

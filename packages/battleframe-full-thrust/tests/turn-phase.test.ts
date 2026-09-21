@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   nextPhaseAction,
   isShipPending,
@@ -6,6 +6,17 @@ import {
   pendingActionLabels,
   type OwnedShipState
 } from "../src/round/turn-phase";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 /** A beam ship system with full thrust + fire control (overridable). */
 function shipSystem(over: Record<string, any> = {}): Record<string, any> {

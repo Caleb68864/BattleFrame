@@ -5,8 +5,19 @@
  * disposition number.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { sideLabel, firePhaseStatusLine } from "../src/round/fire-session";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 function fakeOrder(active: string | undefined, eligible: string[], complete = false) {
   return {

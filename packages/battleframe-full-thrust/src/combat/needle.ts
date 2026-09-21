@@ -7,13 +7,13 @@
  * Sources: FT2 "Needle Beams".
  */
 
-import { DIE_SIZE } from "../constants";
 import { needleInRange, needleHit } from "./ordnance";
 import { weaponBearsOn } from "./arcs";
 import { enumerateSurvivingSystems, applySystemKnockouts, type SystemRef } from "../ship/systems";
 import { syncShipStatuses } from "../status";
 import type { ShipActorLike } from "../data/ship-state";
 import type { FireArc } from "../constants";
+import { requireRules } from "../rules-profile";
 
 export interface NeedleContext {
   measure: { between: (a: unknown, b: unknown, mode?: string) => { distance: number } };
@@ -62,7 +62,7 @@ export async function fireNeedleAtSystem(params: NeedleParams): Promise<NeedleRe
     return { ...idle, reason: "no-such-system" };
   }
 
-  const [face] = await context.dice.rollPool(1, DIE_SIZE, {
+  const [face] = await context.dice.rollPool(1, requireRules().dieSize, {
     flavor: `needle beam vs ${systemType}`
   });
   const hit = face !== undefined && needleHit(face);

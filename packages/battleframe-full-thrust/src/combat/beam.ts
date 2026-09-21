@@ -11,13 +11,8 @@
  * Sources: FT2 "Beam Weapons", "Weapon Ranges & Damage Rolls", "Screens".
  */
 
-import {
-  BEAM_RANGE_BAND_MU,
-  DIE_ONE_DAMAGE_MIN,
-  DIE_ONE_DAMAGE_MAX,
-  DIE_TWO_DAMAGE
-} from "../constants";
 import { bandIndex } from "./bands";
+import { requireRules } from "../rules-profile";
 
 /**
  * Dice a Class-`cls` beam rolls at `distanceMu`: full class dice in the first
@@ -34,7 +29,7 @@ export function beamDiceAtRange(cls: number, distanceMu: number): number {
   if (distanceMu <= 0) {
     return cls;
   }
-  return Math.max(0, cls - bandIndex(distanceMu, BEAM_RANGE_BAND_MU));
+  return Math.max(0, cls - bandIndex(distanceMu, requireRules().beamRangeBandMu));
 }
 
 /**
@@ -47,18 +42,18 @@ export function beamDamageForFace(face: number, screenLevel: number): number {
   // strongest (level-3) table, which would over-protect the target.
   switch (screenLevel <= 0 ? 0 : screenLevel) {
     case 0:
-      if (face >= DIE_TWO_DAMAGE) return 2;
-      if (face >= DIE_ONE_DAMAGE_MIN) return 1;
+      if (face >= requireRules().dieTwoDamage) return 2;
+      if (face >= requireRules().dieOneDamageMin) return 1;
       return 0;
     case 1:
-      if (face >= DIE_TWO_DAMAGE) return 2;
-      if (face >= DIE_ONE_DAMAGE_MAX) return 1;
+      if (face >= requireRules().dieTwoDamage) return 2;
+      if (face >= requireRules().dieOneDamageMax) return 1;
       return 0;
     case 2:
-      if (face >= DIE_ONE_DAMAGE_MAX) return 1;
+      if (face >= requireRules().dieOneDamageMax) return 1;
       return 0;
     default: // 3 or higher (max)
-      if (face >= DIE_TWO_DAMAGE) return 1;
+      if (face >= requireRules().dieTwoDamage) return 1;
       return 0;
   }
 }

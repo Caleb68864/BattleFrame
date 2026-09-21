@@ -1,5 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { availableShipActions } from "../src/ship/ship-actions";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 /** A minimal ship system with a beam and full fire control, overridable. */
 function shipSystem(over: Record<string, any> = {}): Record<string, any> {

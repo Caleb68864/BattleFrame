@@ -1,10 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   fighterMoveForType,
   torpedoHitCount,
   torpedoRunDamage,
   attackFighterDogfightKills
 } from "../src/combat/fighter-types";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("fighterMoveForType (Fast moves 18mu, all others 12mu)", () => {
   it("gives a Fast group 18mu", () => {

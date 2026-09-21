@@ -1,6 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { previewPointsPx, arrowHeadPx } from "../src/movement/preview";
 import { plotMovementPath } from "../src/movement/path";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("previewPointsPx", () => {
   it("maps the mu path to absolute pixel points [start, waypoint, end]", () => {

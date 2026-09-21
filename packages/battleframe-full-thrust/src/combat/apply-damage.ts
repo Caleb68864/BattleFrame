@@ -7,11 +7,11 @@
  * Source: FT2 "Threshold Check".
  */
 
-import { DIE_SIZE } from "../constants";
 import { applyDamageToShip, type ShipActorLike } from "../data/ship-state";
 import { thresholdKillOn, knockedOutIndices } from "../ship/threshold";
 import { enumerateSurvivingSystems, applySystemKnockouts } from "../ship/systems";
 import { syncShipStatuses } from "../status";
+import { requireRules } from "../rules-profile";
 
 export interface ThresholdDiceLike {
   rollPool: (count: number, dieSize: number, options?: unknown) => Promise<number[]>;
@@ -40,7 +40,7 @@ export async function applyDamageAndThreshold(
 
     const refs = enumerateSurvivingSystems(target.system ?? {});
     if (refs.length > 0) {
-      const faces = await dice.rollPool(refs.length, DIE_SIZE);
+      const faces = await dice.rollPool(refs.length, requireRules().dieSize);
       const lostRefs = knockedOutIndices(faces, killOn).map((i) => refs[i]);
       systemsKnockedOut = lostRefs.length;
       if (lostRefs.length > 0) {

@@ -3986,3 +3986,43 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   layer exists.
 - Commit: this commit.
 
+## 2026-09-21 — Full Thrust: 26 of 147 rules constants were dead, including every points value
+- Found while scoping the largest module of the rules-content strip. A reference
+  count across `packages/battleframe-full-thrust` showed 26 constants with no
+  caller anywhere in src or tests: `NOVA_CANNON_MASS`, `NOVA_CANNON_POINTS`,
+  `WAVE_GUN_MASS`, `WAVE_GUN_POINTS`, every Savasku pod cost, `PDS_RANGE_MU`,
+  `DIE_MISS_MAX`, `SCATTERGUN_RANGE_MU` and the rest.
+- The pattern worth keeping: **every points and MASS value in the module was
+  dead.** The most legally-loaded content in the file was also the most
+  obviously removable, and nothing had noticed because nothing used it.
+- Fix: deleted outright with their doc comments, ahead of any profile work.
+  696 → 573 lines, `tsc` clean, 644 tests unchanged. Zero behaviour risk.
+- Watch: **count references before designing a migration.** This cut the real
+  work by a fifth and is the cheapest step in the whole effort. InCountry and
+  GREATHELM each had one dead rules constant too (`INJURY_DAMAGE_THRESHOLD`,
+  `OPENING_DICE_POOL_SIZE`), so the shape recurs.
+- Commit: this commit.
+
+## 2026-09-21 — A flat profile keyed by the old constant names kept a 350-site migration mechanical
+- Problem: moving 110 Full Thrust constants into a user-supplied profile meant
+  rewriting 350 references across 36 source files. A grouped/nested profile
+  (`profile.beam.rangeBandMu`) would have made every one of those a judgement
+  call about taxonomy.
+- Fix: one flat `RulesProfile` whose field names are the old constant names in
+  camelCase, generated from the constants file rather than hand-written, so
+  `BEAM_RANGE_BAND_MU` → `requireRules().beamRangeBandMu` was a regex. The whole
+  rewrite typechecked with **two** errors, both the same cause.
+- Those two errors were valuable: `HullGrade` was `keyof typeof
+  VARIABLE_HULL_GRADE_PERCENT`, so stripping the table deleted the type. That is
+  how the grade *names* were identified as vocabulary (they stay in
+  `constants.ts`) rather than data (the percentages went to the profile). The
+  type system finds the vocabulary you missed.
+- `requireRules()` memoizes on the identity of the stored setting value, because
+  it is called inside per-die loops and Foundry keeps that object stable until a
+  write.
+- Watch: tests that replace `game` wholesale drop the settings stub carrying the
+  profile. Four call sites did `vi.stubGlobal("game", { user: { isGM: true } })`
+  and had to spread the installed world instead — the same class of silent gap
+  as a suite that restates the table it is meant to be proving absent.
+- Commit: this commit.
+

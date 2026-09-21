@@ -1,5 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { defaultWeapon, addWeaponTo, removeWeaponAt } from "../src/sheets/weapon-edit";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("defaultWeapon", () => {
   it("is a fresh beam mount with no arcs, not destroyed/spent", () => {

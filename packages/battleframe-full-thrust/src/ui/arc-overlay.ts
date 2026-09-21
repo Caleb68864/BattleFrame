@@ -15,7 +15,8 @@
  * FS/AS/A/AP/FP clockwise, so the boundaries fall at 30/90/150/210/270/330.
  */
 
-import { FIRE_ARCS, ARC_DEGREES, BEAM_RANGE_BAND_MU, SHIP_ACTOR_TYPE, type FireArc } from "../constants";
+import { FIRE_ARCS, SHIP_ACTOR_TYPE, type FireArc } from "../constants";
+import { requireRules } from "../rules-profile";
 
 // --- Pure geometry (unit-tested) --------------------------------------------
 
@@ -34,8 +35,8 @@ function normalise(angle: number): number {
  * that divide the ring into the six 60° arcs.
  */
 export function arcRayAngles(facingDeg: number): number[] {
-  const half = ARC_DEGREES / 2; // 30
-  return [0, 1, 2, 3, 4, 5].map((i) => normalise(facingDeg + half + i * ARC_DEGREES));
+  const half = requireRules().arcDegrees / 2; // 30
+  return [0, 1, 2, 3, 4, 5].map((i) => normalise(facingDeg + half + i * requireRules().arcDegrees));
 }
 
 /**
@@ -43,7 +44,7 @@ export function arcRayAngles(facingDeg: number): number[] {
  * then FS/AS/A/AP/FP every 60° clockwise.
  */
 export function arcLabelAngles(facingDeg: number): Array<{ arc: FireArc; angle: number }> {
-  return FIRE_ARCS.map((arc, i) => ({ arc, angle: normalise(facingDeg + i * ARC_DEGREES) }));
+  return FIRE_ARCS.map((arc, i) => ({ arc, angle: normalise(facingDeg + i * requireRules().arcDegrees) }));
 }
 
 /**
@@ -159,11 +160,11 @@ export function drawArcOverlay(token: any): void {
     const facing = facingOf(token);
     const ppm = pixelsPerMu();
     const hull = tokenRadiusPx(token);
-    const outer = hull + BAND_COUNT * BEAM_RANGE_BAND_MU * ppm;
+    const outer = hull + BAND_COUNT * requireRules().beamRangeBandMu * ppm;
 
     // Concentric beam range rings (12 / 24 / 36 mu).
     for (let band = 1; band <= BAND_COUNT; band++) {
-      const r = hull + band * BEAM_RANGE_BAND_MU * ppm;
+      const r = hull + band * requireRules().beamRangeBandMu * ppm;
       g.lineStyle(1, RING_COLOR, 0.35);
       g.drawCircle(center.x, center.y, r);
     }
@@ -180,7 +181,7 @@ export function drawArcOverlay(token: any): void {
     // Arc labels (F / FS / …) at each sector midpoint, just inside the first ring.
     const Text = glob().PIXI?.Text;
     if (Text) {
-      const labelR = hull + BEAM_RANGE_BAND_MU * ppm * 0.55;
+      const labelR = hull + requireRules().beamRangeBandMu * ppm * 0.55;
       for (const { arc, angle } of arcLabelAngles(facing)) {
         const p = polarToScreen(center, angle, labelR);
         const t = new Text(arc, { fontFamily: "Signika, sans-serif", fontSize: 14, fill: LABEL_COLOR, stroke: 0x000000, strokeThickness: 3 });

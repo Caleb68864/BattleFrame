@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildFireReportHtml,
   buildFighterReportHtml,
@@ -92,6 +92,17 @@ describe("buildFireReportHtml", () => {
 });
 
 import { resolveMovementPath, pixelsPerMu } from "../src/ui/round-control";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("pixelsPerMu", () => {
   it("converts scene grid units to pixels per mu", () => {
@@ -291,7 +302,9 @@ describe("buildSpinalReportHtml", () => {
 
 describe("addSceneControl", () => {
   it("adds a Full Thrust control with fire and plot tools (array payload)", () => {
-    vi.stubGlobal("game", { user: { isGM: true } });
+    // Spread the installed world: replacing `game` outright would drop the
+    // settings stub that carries this world's rules profile.
+    vi.stubGlobal("game", { ...(globalThis as any).game, ...(globalThis as any).game, user: { isGM: true } });
     const controls: any[] = [];
     addSceneControl(controls);
 
@@ -325,7 +338,9 @@ describe("addSceneControl", () => {
   });
 
   it("adds the control under the keyed-record payload shape too", () => {
-    vi.stubGlobal("game", { user: { isGM: true } });
+    // Spread the installed world: replacing `game` outright would drop the
+    // settings stub that carries this world's rules profile.
+    vi.stubGlobal("game", { ...(globalThis as any).game, ...(globalThis as any).game, user: { isGM: true } });
     const controls: Record<string, any> = {};
     addSceneControl(controls);
     expect(controls["battleframe-full-thrust"]).toBeDefined();
@@ -334,7 +349,9 @@ describe("addSceneControl", () => {
   });
 
   it("wires every tool handler through the guard (no raw async call leaks)", () => {
-    vi.stubGlobal("game", { user: { isGM: true } });
+    // Spread the installed world: replacing `game` outright would drop the
+    // settings stub that carries this world's rules profile.
+    vi.stubGlobal("game", { ...(globalThis as any).game, ...(globalThis as any).game, user: { isGM: true } });
     const controls: any[] = [];
     addSceneControl(controls);
     // Each tool must expose a synchronous onClick/onChange -- the guard wrapper
@@ -434,7 +451,9 @@ describe("executeManeuversAction (simultaneous reveal of plotted orders)", () =>
   it("applies each ship's plotted order and clears the flag", async () => {
     const ship = fakeShipToken({ velocity: 8, course: 3, thrust: 6 }, "+4,P2");
     const idle = fakeShipToken({ velocity: 0, course: 6, thrust: 4 }, undefined);
-    vi.stubGlobal("game", { user: { isGM: true } });
+    // Spread the installed world: replacing `game` outright would drop the
+    // settings stub that carries this world's rules profile.
+    vi.stubGlobal("game", { ...(globalThis as any).game, ...(globalThis as any).game, user: { isGM: true } });
     vi.stubGlobal("canvas", { tokens: { placeables: [ship, idle] } });
 
     await executeManeuversAction();
@@ -449,7 +468,7 @@ describe("executeManeuversAction (simultaneous reveal of plotted orders)", () =>
 
   it("refuses when the caller is not the GM", async () => {
     const warn = vi.fn();
-    vi.stubGlobal("game", { user: { isGM: false } });
+    vi.stubGlobal("game", { ...(globalThis as any).game, user: { isGM: false } });
     vi.stubGlobal("ui", { notifications: { warn } });
     await executeManeuversAction();
     expect(warn).toHaveBeenCalled();
@@ -488,7 +507,7 @@ describe("beginFirePhaseAction (roll initiative, persist the fire phase)", () =>
       }),
       restoreActivationOrder: vi.fn()
     };
-    vi.stubGlobal("game", {
+    vi.stubGlobal("game", { ...(globalThis as any).game,
       user: { isGM: true },
       battleframe: { dice: { rollPool }, rounds },
       combats: { active: undefined }
@@ -508,7 +527,7 @@ describe("beginFirePhaseAction (roll initiative, persist the fire phase)", () =>
 
   it("warns and does nothing when ships are not on two sides", async () => {
     const warn = vi.fn();
-    vi.stubGlobal("game", {
+    vi.stubGlobal("game", { ...(globalThis as any).game,
       user: { isGM: true },
       battleframe: { dice: { rollPool: vi.fn() }, rounds: { createActivationOrder: vi.fn(), restoreActivationOrder: vi.fn() } },
       combats: {}
@@ -541,7 +560,7 @@ describe("newTurnAction", () => {
         return Promise.resolve();
       }
     };
-    vi.stubGlobal("game", { user: { isGM: true }, combats: { active: undefined } });
+    vi.stubGlobal("game", { ...(globalThis as any).game, user: { isGM: true }, combats: { active: undefined } });
     vi.stubGlobal("canvas", { tokens: { placeables: [ship] }, scene });
     vi.stubGlobal("ui", { notifications: { info: vi.fn(), warn: vi.fn() } });
 
@@ -627,7 +646,7 @@ describe("advancePhaseCore (phase-aware GM-less advance)", () => {
     const a = phaseShip("a1", 1, { velocity: 8, course: 3, thrust: 6 }, "+4,P2");
     const b = phaseShip("b1", -1, { velocity: 0, course: 6, thrust: 4 }, undefined);
     const pools = [[5], [3]]; // side 1 wins initiative
-    vi.stubGlobal("game", {
+    vi.stubGlobal("game", { ...(globalThis as any).game,
       user: { isGM: true },
       battleframe: { dice: { rollPool: vi.fn(async () => pools.shift() ?? []) }, rounds },
       combats: { active: undefined }
@@ -649,7 +668,7 @@ describe("advancePhaseCore (phase-aware GM-less advance)", () => {
   it("FIRE phase: ends the turn (clears plots + closes the fire phase)", async () => {
     const sceneFlags: Record<string, any> = { firePhase: { firstSideId: "1", activatedIds: [] } };
     const a = phaseShip("a1", 1, { velocity: 8, course: 3, thrust: 6 }, "+4,P2");
-    vi.stubGlobal("game", { user: { isGM: true }, combats: { active: undefined } });
+    vi.stubGlobal("game", { ...(globalThis as any).game, user: { isGM: true }, combats: { active: undefined } });
     vi.stubGlobal("canvas", { tokens: { placeables: [a] }, scene: sceneWithFlags(sceneFlags) });
     vi.stubGlobal("ui", { notifications: { info: vi.fn(), warn: vi.fn() } });
 
@@ -671,7 +690,7 @@ describe("fireAction fire-phase gate", () => {
     const create = vi.fn(async () => undefined);
     const attacker = fireToken("a1");
     const target = fireToken("b1");
-    vi.stubGlobal("game", {
+    vi.stubGlobal("game", { ...(globalThis as any).game,
       user: { isGM: true, targets: { first: () => target } },
       battleframe: { measure: {}, facing: {}, dice: {} },
       combats: { active: undefined }

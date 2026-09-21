@@ -1,5 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parseFleet } from "../src/data/fleet-import";
+import { requireRules } from "../src/rules-profile";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("parseFleet", () => {
   it("parses a fleet of ships into Actor create-data", () => {
@@ -46,7 +58,7 @@ describe("parseFleet", () => {
   it("defaults missing fields and clamps out-of-range ones", () => {
     const result = parseFleet({ ships: [{ name: "Y", thrust: 99, screens: 9, course: 20 }] });
     const s = result.ships[0].system;
-    expect(s.thrust).toBe(8); // clamped to MAX_THRUST
+    expect(s.thrust).toBe(8); // clamped to requireRules().maxThrust
     expect(s.screens).toBe(3); // clamped to max screen level
     expect(s.course).toBe(12); // out of 1-12 -> default
     expect(s.mass).toBe(30); // default

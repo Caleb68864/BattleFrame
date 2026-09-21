@@ -19,13 +19,7 @@ import {
   HELD_FLAG,
   ACTIVE_MISSILES_FLAG,
   WAVE_GUN_CHARGE_FLAG,
-  WAVE_GUN_FULL_CHARGE,
-  LAUNCHED_GROUPS_FLAG,
-  FIGHTER_GROUP_MAX,
-  FIGHTER_ATTACK_RANGE_MU,
-  DIE_SIZE,
-  COURSE_POINT_DEGREES,
-  COURSES
+  LAUNCHED_GROUPS_FLAG
 } from "../constants";
 import {
   collectFireShips,
@@ -71,6 +65,7 @@ import {
   type PendingShip
 } from "../round/turn-phase";
 import type { SystemRef } from "../ship/systems";
+import { requireRules } from "../rules-profile";
 
 // --- Pure report formatting (unit-tested) -----------------------------------
 
@@ -414,7 +409,7 @@ export function resolveMovementPath(
   orderText: string
 ): MovementPath {
   return plotMovementPath(
-    { velocity: system.velocity ?? 0, course: system.course ?? COURSES },
+    { velocity: system.velocity ?? 0, course: system.course ?? requireRules().courses },
     orderText,
     usableThrust(system)
   );
@@ -1026,7 +1021,7 @@ async function resolveSpinalWeapon(
     });
     return;
   }
-  const faces = await services.dice.rollPool(diceCount, DIE_SIZE, { rulesetId: MODULE_ID, flavor: weapon });
+  const faces = await services.dice.rollPool(diceCount, requireRules().dieSize, { rulesetId: MODULE_ID, flavor: weapon });
   const damage = damageOf(faces);
   const outcome = await applyDamageAndThreshold(target, damage, services.dice);
   await g().ChatMessage?.create({
@@ -1083,10 +1078,10 @@ export async function chargeWaveGunAction(): Promise<void> {
     return;
   }
   const current = Number(ship.actor.getFlag?.(MODULE_ID, WAVE_GUN_CHARGE_FLAG) ?? 0);
-  const [face] = await services.dice.rollPool(1, DIE_SIZE, { rulesetId: MODULE_ID, flavor: "Wave Gun charge" });
+  const [face] = await services.dice.rollPool(1, requireRules().dieSize, { rulesetId: MODULE_ID, flavor: "Wave Gun charge" });
   const next = waveGunChargeAfterTurn(current, face ?? 0);
   await ship.actor.setFlag?.(MODULE_ID, WAVE_GUN_CHARGE_FLAG, next);
-  notify("info", `${MODULE_ID} | Wave Gun charge ${next}/${WAVE_GUN_FULL_CHARGE}${waveGunIsCharged(next) ? " -- ready to fire" : ""}`);
+  notify("info", `${MODULE_ID} | Wave Gun charge ${next}/${requireRules().waveGunFullCharge}${waveGunIsCharged(next) ? " -- ready to fire" : ""}`);
 }
 
 /** Wave-Gun tool: fire at the target if charged (6+); firing discharges it. */
@@ -1098,7 +1093,7 @@ export async function fireWaveGunAction(): Promise<void> {
   const ship = controlledToken();
   const charge = Number(ship?.actor?.getFlag?.(MODULE_ID, WAVE_GUN_CHARGE_FLAG) ?? 0);
   if (!waveGunIsCharged(charge)) {
-    notify("warn", `${MODULE_ID} | Wave Gun not charged (${charge}/${WAVE_GUN_FULL_CHARGE}) -- use Charge Wave Gun first`);
+    notify("warn", `${MODULE_ID} | Wave Gun not charged (${charge}/${requireRules().waveGunFullCharge}) -- use Charge Wave Gun first`);
     return;
   }
   await resolveSpinalWeapon("Wave Gun", waveGunDiceAtRange(ctx.distance), ctx.distance, ctx.target, ctx.targetName, waveGunDamage, ctx.services);
@@ -1175,7 +1170,7 @@ export async function launchFightersAction(): Promise<void> {
   const group = await g().Actor?.create?.({
     name: `${carrier.name ?? "Carrier"} Wing ${deployed + 1}`,
     type: `${MODULE_ID}.${FIGHTER_GROUP_ACTOR_TYPE}`,
-    system: { size: FIGHTER_GROUP_MAX }
+    system: { size: requireRules().fighterGroupMax }
   });
   if (!group?.getTokenDocument) {
     notify("error", `${MODULE_ID} | could not create the fighter group`);
@@ -1212,12 +1207,12 @@ export async function recoverFightersAction(): Promise<void> {
   let best: { token: any; distance: number } | undefined;
   for (const gp of groups) {
     const distance = services.measure.between(gp, carrier, "centre-to-centre").distance;
-    if (distance <= FIGHTER_ATTACK_RANGE_MU && (!best || distance < best.distance)) {
+    if (distance <= requireRules().fighterAttackRangeMu && (!best || distance < best.distance)) {
       best = { token: gp, distance };
     }
   }
   if (!best) {
-    notify("warn", `${MODULE_ID} | no friendly fighter group within ${FIGHTER_ATTACK_RANGE_MU}mu to recover`);
+    notify("warn", `${MODULE_ID} | no friendly fighter group within ${requireRules().fighterAttackRangeMu}mu to recover`);
     return;
   }
   const groupActor = best.token.actor;
@@ -1546,7 +1541,7 @@ export async function beginFirePhaseAction(): Promise<void> {
   for (let attempt = 0; attempt <= MAX_INITIATIVE_REROLLS && firstSideId === null; attempt += 1) {
     const rolls = [];
     for (const sideId of sides) {
-      const roll = await services?.dice?.rollPool?.(1, DIE_SIZE, {
+      const roll = await services?.dice?.rollPool?.(1, requireRules().dieSize, {
         rulesetId: MODULE_ID,
         flavor: `initiative (side ${sideId})`
       });
@@ -1872,7 +1867,7 @@ export async function damageControlAction(): Promise<void> {
     if (parties < 1) {
       continue;
     }
-    const faces = (await services?.dice?.rollPool?.(parties, DIE_SIZE, {
+    const faces = (await services?.dice?.rollPool?.(parties, requireRules().dieSize, {
       rulesetId: MODULE_ID,
       flavor: `damage control (${token?.name ?? "ship"})`
     })) ?? [];
@@ -1947,7 +1942,7 @@ export async function importFleetAction(): Promise<void> {
 
 /** Course heading as a token rotation angle (degrees, clockwise from up). */
 function courseRotation(course: number): number {
-  return (course % COURSES) * COURSE_POINT_DEGREES;
+  return (course % requireRules().courses) * requireRules().coursePointDegrees;
 }
 
 /** A canvas waypoint: pixel position + the token rotation (heading) at that point. */

@@ -13,17 +13,11 @@
  *
  * Source: More Thrust "Specialised Fighter Types"; "Fighter-to-Fighter Combat".
  */
-
-import {
-  FIGHTER_MOVE_MU,
-  FIGHTER_MOVE_FAST_MU,
-  TORPEDO_HIT_MIN,
-  ATTACK_FIGHTER_DOGFIGHT_KILL_ON
-} from "../constants";
+import { requireRules } from "../rules-profile";
 
 /** A group's movement allowance (mu): Fast moves 18, every other type the standard 12. */
 export function fighterMoveForType(fighterType?: string): number {
-  return fighterType === "fast" ? FIGHTER_MOVE_FAST_MU : FIGHTER_MOVE_MU;
+  return fighterType === "fast" ? requireRules().fighterMoveFastMu : requireRules().fighterMoveMu;
 }
 
 /**
@@ -31,7 +25,7 @@ export function fighterMoveForType(fighterType?: string): number {
  * Returns the number of hits (each of which is then re-rolled for damage).
  */
 export function torpedoHitCount(faces: readonly number[]): number {
-  return faces.reduce((hits, face) => hits + (face >= TORPEDO_HIT_MIN ? 1 : 0), 0);
+  return faces.reduce((hits, face) => hits + (face >= requireRules().torpedoHitMin ? 1 : 0), 0);
 }
 
 /**
@@ -50,7 +44,7 @@ export function torpedoRunDamage(rerollFaces: readonly number[]): number {
  */
 export function attackFighterDogfightKills(faces: readonly number[]): number {
   return faces.reduce(
-    (kills, face) => kills + (face >= ATTACK_FIGHTER_DOGFIGHT_KILL_ON ? 1 : 0),
+    (kills, face) => kills + (face >= requireRules().attackFighterDogfightKillOn ? 1 : 0),
     0
   );
 }

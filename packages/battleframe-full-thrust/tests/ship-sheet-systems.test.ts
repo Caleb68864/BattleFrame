@@ -7,8 +7,19 @@
  * matching `…Lost` counter, mirroring the hull-box fill/unfill exactly.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareSystemPips, onToggleSystemPip } from "../src/sheets/ship-sheet";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("prepareSystemPips", () => {
   it("marks the first `lost` pips lost and the rest intact", () => {

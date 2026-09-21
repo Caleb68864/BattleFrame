@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   determineInitiative,
   shipSideOf,
@@ -9,6 +9,17 @@ import {
   type ActivationOrderLike,
   type RoundsApiLike
 } from "../src/round/fire-session";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 function shipToken(id: string, disposition: number) {
   return { id, actor: { type: "battleframe-full-thrust.ship" }, document: { disposition } };

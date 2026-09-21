@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   needleInRange,
   needleHit,
@@ -6,6 +6,17 @@ import {
   salvoSurvivors,
   salvoDamage
 } from "../src/combat/ordnance";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("needle beam", () => {
   it("reaches 9mu (FT2)", () => {

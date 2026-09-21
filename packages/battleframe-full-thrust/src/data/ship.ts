@@ -9,7 +9,7 @@
  * Sources: FT2 "Ship Record Sheet (SSD)", "Hull Boxes & Damage", "Fire Arcs".
  */
 
-import { SHIP_ACTOR_TYPE, FIRE_ARCS, WEAPON_KINDS, MAX_SCREEN_LEVEL, MAX_THRUST, COURSES } from "../constants";
+import { SHIP_ACTOR_TYPE, FIRE_ARCS, WEAPON_KINDS } from "../constants";
 import { shipPointsFromSystem } from "../ship/design";
 import {
   type TypeDataModelBaseConstructor,
@@ -17,6 +17,7 @@ import {
   resolveFieldsNamespace,
   registerActorDataModel
 } from "./foundry-data-model";
+import { requireRules } from "../rules-profile";
 
 function nonNegativeInt(initial: number): Record<string, unknown> {
   return { required: true, nullable: false, integer: true, min: 0, initial };
@@ -37,7 +38,7 @@ export function createShipDataClass(
 
       schema.mass = new NumberField({ required: true, nullable: false, integer: true, min: 1, initial: 30 });
       schema.thrust = new NumberField({
-        required: true, nullable: false, integer: true, min: 0, max: MAX_THRUST, initial: 4
+        required: true, nullable: false, integer: true, min: 0, max: requireRules().maxThrust, initial: 4
       });
       // Whether the ship carries an FTL drive (affects its Points value).
       schema.ftl = new BooleanField({ required: true, initial: true });
@@ -63,7 +64,7 @@ export function createShipDataClass(
       schema.fcs = new NumberField(nonNegativeInt(1));
       schema.fcsLost = new NumberField(nonNegativeInt(0));
       schema.screens = new NumberField({
-        required: true, nullable: false, integer: true, min: 0, max: MAX_SCREEN_LEVEL, initial: 0
+        required: true, nullable: false, integer: true, min: 0, max: requireRules().maxScreenLevel, initial: 0
       });
       schema.screensLost = new NumberField(nonNegativeInt(0));
       schema.pds = new NumberField(nonNegativeInt(0));
@@ -77,7 +78,7 @@ export function createShipDataClass(
       // Cinematic movement state: current velocity (mu) and heading (course 1-12).
       schema.velocity = new NumberField(nonNegativeInt(0));
       schema.course = new NumberField({
-        required: true, nullable: false, integer: true, min: 1, max: COURSES, initial: 12
+        required: true, nullable: false, integer: true, min: 1, max: requireRules().courses, initial: 12
       });
       // Vector movement (optional mode): the persistent velocity vector (mu/turn,
       // screen space; may be negative). Distinct from the cinematic scalar velocity.

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   hullCost,
   systemsMassBudget,
@@ -10,6 +10,17 @@ import {
   designPoints,
   shipPointsFromSystem
 } from "../src/ship/design";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("FT2 hull / drive costs", () => {
   it("hull cost is 2 x mass (warship)", () => {

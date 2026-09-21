@@ -12,27 +12,14 @@
  * Source: More Thrust "Fighter Pilot Quality"; "Fighter Group Morale"; the Fleet
  * Book 1 initiative note.
  */
-
-import {
-  PILOT_QUALITY_ACE_ROLL,
-  PILOT_QUALITY_TURKEY_ROLL,
-  PILOT_ACE_EXTRA_ATTACK_DICE,
-  PILOT_ACE_MORALE_MODIFIER,
-  PILOT_TURKEY_MORALE_MODIFIER,
-  PILOT_TURKEY_MORALE_BREAK_FAILS,
-  PILOT_STANDARD_MORALE_BREAK_FAILS,
-  PILOT_TURKEY_DOGFIGHT_DIE_MODIFIER,
-  PILOT_ACE_INITIATIVE_MODIFIER,
-  PILOT_TURKEY_INITIATIVE_MODIFIER,
-  FIGHTER_GROUP_MAX
-} from "../constants";
+import { requireRules } from "../rules-profile";
 
 export type PilotQuality = "standard" | "ace" | "turkey";
 
 /** The start-of-game 1D6: 6 = an Ace in the group, 1 = a Turkey group, 2-5 = average. */
 export function pilotQualityForRoll(roll: number): PilotQuality {
-  if (roll >= PILOT_QUALITY_ACE_ROLL) return "ace";
-  if (roll <= PILOT_QUALITY_TURKEY_ROLL) return "turkey";
+  if (roll >= requireRules().pilotQualityAceRoll) return "ace";
+  if (roll <= requireRules().pilotQualityTurkeyRoll) return "turkey";
   return "standard";
 }
 
@@ -47,7 +34,7 @@ export function pilotAttackDice(
   options: { aceSnipesSystem?: boolean } = {}
 ): number {
   if (quality === "ace" && !options.aceSnipesSystem) {
-    return size + PILOT_ACE_EXTRA_ATTACK_DICE;
+    return size + requireRules().pilotAceExtraAttackDice;
   }
   return size;
 }
@@ -62,8 +49,8 @@ export function aceSystemSnipeDice(quality: PilotQuality): number {
 
 /** Modifier added to a morale roll: Ace -1, Turkey +1, standard 0. */
 export function pilotMoraleModifier(quality: PilotQuality): number {
-  if (quality === "ace") return PILOT_ACE_MORALE_MODIFIER;
-  if (quality === "turkey") return PILOT_TURKEY_MORALE_MODIFIER;
+  if (quality === "ace") return requireRules().pilotAceMoraleModifier;
+  if (quality === "turkey") return requireRules().pilotTurkeyMoraleModifier;
   return 0;
 }
 
@@ -83,7 +70,7 @@ export function pilotMoralePasses(roll: number, size: number, quality: PilotQual
 export function pilotRequiresMoraleCheck(
   size: number,
   quality: PilotQuality,
-  max: number = FIGHTER_GROUP_MAX
+  max: number = requireRules().fighterGroupMax
 ): boolean {
   return quality === "turkey" || size < max;
 }
@@ -91,8 +78,8 @@ export function pilotRequiresMoraleCheck(
 /** Consecutive failed attack rolls that break the group: Turkey 2, others 3. */
 export function pilotMoraleBreakThreshold(quality: PilotQuality): number {
   return quality === "turkey"
-    ? PILOT_TURKEY_MORALE_BREAK_FAILS
-    : PILOT_STANDARD_MORALE_BREAK_FAILS;
+    ? requireRules().pilotTurkeyMoraleBreakFails
+    : requireRules().pilotStandardMoraleBreakFails;
 }
 
 /** Whether that many consecutive fails breaks the group's morale. */
@@ -106,7 +93,7 @@ export function pilotMoraleBreaks(consecutiveFails: number, quality: PilotQualit
  * extra die (see `pilotAttackDice`) rather than a per-die bonus, so 0 here.
  */
 export function pilotDogfightDieModifier(quality: PilotQuality): number {
-  return quality === "turkey" ? PILOT_TURKEY_DOGFIGHT_DIE_MODIFIER : 0;
+  return quality === "turkey" ? requireRules().pilotTurkeyDogfightDieModifier : 0;
 }
 
 /** Applies the dogfight die modifier to each rolled face (no clamping, as with fighter-type mods). */
@@ -117,7 +104,7 @@ export function pilotDogfightFaces(faces: readonly number[], quality: PilotQuali
 
 /** Fleet Book 1 initiative modifier: +1 per Ace in action, -1 per Turkey group, 0 standard. */
 export function pilotInitiativeModifier(quality: PilotQuality): number {
-  if (quality === "ace") return PILOT_ACE_INITIATIVE_MODIFIER;
-  if (quality === "turkey") return PILOT_TURKEY_INITIATIVE_MODIFIER;
+  if (quality === "ace") return requireRules().pilotAceInitiativeModifier;
+  if (quality === "turkey") return requireRules().pilotTurkeyInitiativeModifier;
   return 0;
 }

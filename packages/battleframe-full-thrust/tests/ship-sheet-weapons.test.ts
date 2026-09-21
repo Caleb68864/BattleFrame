@@ -1,5 +1,16 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prepareWeaponRows, onAddWeapon, onRemoveWeapon } from "../src/sheets/ship-sheet";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("prepareWeaponRows", () => {
   it("marks the selected kind and arcs for each weapon", () => {

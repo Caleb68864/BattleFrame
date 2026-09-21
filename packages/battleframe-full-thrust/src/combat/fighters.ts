@@ -8,17 +8,13 @@
  * defence.
  */
 
-import {
-  PDS_MISSILE_KILL_ON,
-  PDS_FIGHTER_ONE_KILL_MIN,
-  PDS_FIGHTER_TWO_KILL
-} from "../constants";
 import { poolBeamDamage } from "./beam";
+import { requireRules } from "../rules-profile";
 
 /** The universal fighter kill die: 4-5 = 1 kill, 6 = 2 kills. */
 function killsForFace(face: number): number {
-  if (face >= PDS_FIGHTER_TWO_KILL) return 2;
-  if (face >= PDS_FIGHTER_ONE_KILL_MIN) return 1;
+  if (face >= requireRules().pdsFighterTwoKill) return 2;
+  if (face >= requireRules().pdsFighterOneKillMin) return 1;
   return 0;
 }
 
@@ -44,7 +40,7 @@ export function pdsKillsVsFighters(faces: readonly number[]): number {
  * is the caller's to enforce by how many dice it rolls.
  */
 export function pdsKillsVsMissiles(faces: readonly number[]): number {
-  return faces.reduce((kills, face) => kills + (face >= PDS_MISSILE_KILL_ON ? 1 : 0), 0);
+  return faces.reduce((kills, face) => kills + (face >= requireRules().pdsMissileKillOn ? 1 : 0), 0);
 }
 
 /** Fighter kills in a dogfight: the same universal kill die as anti-fighter fire. */

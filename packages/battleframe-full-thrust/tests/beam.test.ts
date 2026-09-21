@@ -1,5 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { beamDiceAtRange, beamDamageForFace, poolBeamDamage } from "../src/combat/beam";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("beamDiceAtRange (Class N: N dice 0-12, -1 die per further 12mu band)", () => {
   it("rolls full class dice within the first 12mu band, boundary inclusive", () => {

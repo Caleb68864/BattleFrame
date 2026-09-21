@@ -22,13 +22,11 @@
  *    total MASS only bounds which grades/box counts are legal (10-50 percent).
  */
 
-import { VARIABLE_HULL_GRADE_PERCENT, VARIABLE_HULL_POINTS_PER_MASS, VARIABLE_HULL_ROWS } from "../constants";
 import { rowBoundaries } from "./hull";
+import { requireRules } from "../rules-profile";
+import { HULL_GRADES, type HullGrade } from "../constants";
 
-export type HullGrade = keyof typeof VARIABLE_HULL_GRADE_PERCENT;
-
-/** The five hull-integrity grades, weakest to toughest. */
-export const HULL_GRADES: readonly HullGrade[] = ["fragile", "weak", "average", "strong", "super"];
+export { HULL_GRADES, type HullGrade };
 
 /**
  * Hull (damage) box count for a chosen grade on a ship of `totalMass`: the grade's
@@ -36,7 +34,7 @@ export const HULL_GRADES: readonly HullGrade[] = ["fragile", "weak", "average", 
  * assumption). Under this system that box count is also the MASS spent on the hull.
  */
 export function hullBoxesForGrade(totalMass: number, grade: HullGrade): number {
-  return Math.round((totalMass * VARIABLE_HULL_GRADE_PERCENT[grade]) / 100);
+  return Math.round((totalMass * requireRules().variableHullGradePercent[grade]) / 100);
 }
 
 /**
@@ -54,7 +52,7 @@ export function variableHullMassUsed(boxes: number): number {
  * for in MASS, not in a higher points multiplier.)
  */
 export function variableHullPointsCost(boxes: number): number {
-  return VARIABLE_HULL_POINTS_PER_MASS * boxes;
+  return requireRules().variableHullPointsPerMass * boxes;
 }
 
 /**
@@ -71,6 +69,6 @@ export function hullPointsForGrade(totalMass: number, grade: HullGrade): number 
  * uneven boxes go into the upper rows (Fleet Book) exactly as the fixed FT2 track
  * does. The last entry equals `boxes` (destruction).
  */
-export function variableHullLayout(boxes: number, rows: number = VARIABLE_HULL_ROWS): number[] {
+export function variableHullLayout(boxes: number, rows: number = requireRules().variableHullRows): number[] {
   return rowBoundaries(boxes, rows);
 }

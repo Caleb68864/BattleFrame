@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   fighterAttackDamage,
   pdsKillsVsFighters,
@@ -10,6 +10,17 @@ import {
   enduranceAfterActiveTurn,
   enduranceExhausted
 } from "../src/combat/fighters";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("fighterAttackDamage (vs ships: beam table, screens apply)", () => {
   it("scores 1 per fighter die on 4-5 and 2 on a 6, unscreened", () => {

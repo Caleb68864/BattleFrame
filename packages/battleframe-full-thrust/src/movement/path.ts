@@ -16,8 +16,8 @@
  * Clockface".
  */
 
-import { COURSE_POINT_DEGREES, COURSES } from "../constants";
 import { parseOrder, applyOrder, type MovementState, type ApplyOrderResult } from "./orders";
+import { requireRules } from "../rules-profile";
 
 export interface Displacement {
   dx: number;
@@ -41,7 +41,7 @@ export interface MovementPath {
 
 /** The heading of a course as an angle in degrees, clockwise from up. */
 function courseHeadingDegrees(course: number): number {
-  return (course % COURSES) * COURSE_POINT_DEGREES;
+  return (course % requireRules().courses) * requireRules().coursePointDegrees;
 }
 
 /** Displacement of moving `distance` mu along `headingDeg` (screen space, y-down). */
@@ -52,7 +52,7 @@ function move(distance: number, headingDeg: number): Displacement {
 
 /** Wraps a course number into the 1..12 clockface range. */
 function wrapCourse(course: number): number {
-  return ((course - 1) % COURSES + COURSES) % COURSES + 1;
+  return ((course - 1) % requireRules().courses + requireRules().courses) % requireRules().courses + 1;
 }
 
 /**

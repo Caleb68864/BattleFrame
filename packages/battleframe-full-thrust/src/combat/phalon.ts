@@ -31,19 +31,12 @@
  */
 
 import {
-  PLASMA_BOLT_PDS_REDUCE_ON,
-  PLASMA_BOLT_INTERCEPT_ONE_REDUCE_MIN,
-  PLASMA_BOLT_INTERCEPT_TWO_REDUCE,
-  PLASMA_BOLT_SCREEN_MAX_LEVEL,
-  DIE_ONE_DAMAGE_MAX,
-  DIE_TWO_DAMAGE
-} from "../constants";
-import {
   applyDamageWithArmour,
   type HullState,
   type ApplyDamageWithArmourResult
 } from "../ship/damage";
 import { type HullDamageResult } from "../ship/hull";
+import { requireRules } from "../rules-profile";
 
 // --- Plasma Bolt Launchers: interception ------------------------------------
 
@@ -52,7 +45,7 @@ import { type HullDamageResult } from "../ship/hull";
  * bolt by 1, anything less does nothing (ordinary PDS only bites a bolt on a 6).
  */
 export function plasmaBoltPdsReduction(face: number): number {
-  return face >= PLASMA_BOLT_PDS_REDUCE_ON ? 1 : 0;
+  return face >= requireRules().plasmaBoltPdsReduceOn ? 1 : 0;
 }
 
 /**
@@ -61,10 +54,10 @@ export function plasmaBoltPdsReduction(face: number): number {
  * rerolls).
  */
 export function plasmaBoltInterceptReduction(face: number): number {
-  if (face >= PLASMA_BOLT_INTERCEPT_TWO_REDUCE) {
+  if (face >= requireRules().plasmaBoltInterceptTwoReduce) {
     return 2;
   }
-  if (face >= PLASMA_BOLT_INTERCEPT_ONE_REDUCE_MIN) {
+  if (face >= requireRules().plasmaBoltInterceptOneReduceMin) {
     return 1;
   }
   return 0;
@@ -101,15 +94,15 @@ export function plasmaBoltStrength(
 export function plasmaBoltDamageForFace(face: number, screenLevel: number): number {
   // A negative/absent screen level means unscreened; anything above 2 protects
   // no more than a shroud (the strongest entry in the plasma table).
-  const level = screenLevel <= 0 ? 0 : Math.min(screenLevel, PLASMA_BOLT_SCREEN_MAX_LEVEL);
+  const level = screenLevel <= 0 ? 0 : Math.min(screenLevel, requireRules().plasmaBoltScreenMaxLevel);
   switch (level) {
     case 0:
       return face;
     case 1:
       // Negate 6s only.
-      return face >= DIE_TWO_DAMAGE ? 0 : face;
+      return face >= requireRules().dieTwoDamage ? 0 : face;
     default: // 2 (or a vapour shroud): negate 5s and 6s.
-      return face >= DIE_ONE_DAMAGE_MAX ? 0 : face;
+      return face >= requireRules().dieOneDamageMax ? 0 : face;
   }
 }
 

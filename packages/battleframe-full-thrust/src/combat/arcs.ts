@@ -17,7 +17,8 @@
  * -- weaponBearsOn has no access to whether the firer thrusted this turn.
  */
 
-import { ARC_DEGREES, FIRE_ARCS, type FireArc } from "../constants";
+import { FIRE_ARCS, type FireArc } from "../constants";
+import { requireRules } from "../rules-profile";
 
 // A local copy of the engine's normaliseDegrees: ruleset code does not import
 // engine internals (only the runtime game.battleframe surface), and this is a
@@ -37,7 +38,7 @@ export function arcForBearing(bearing: number): FireArc {
   // `undefined` -- default to dead ahead. The firing orchestrators separately
   // reject a non-finite range, so this never produces a spurious in-arc hit.
   const safe = Number.isFinite(bearing) ? bearing : 0;
-  const index = Math.floor(normalise(safe + ARC_DEGREES / 2) / ARC_DEGREES);
+  const index = Math.floor(normalise(safe + requireRules().arcDegrees / 2) / requireRules().arcDegrees);
   return FIRE_ARCS[index];
 }
 

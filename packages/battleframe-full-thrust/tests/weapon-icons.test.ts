@@ -1,6 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { weaponTypeIcon } from "../src/ship/weapon-icons";
 import { WEAPON_KINDS, MODULE_ID } from "../src/constants";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("weaponTypeIcon", () => {
   it("maps each weapon kind that has a good fit to a shipped icon path", () => {

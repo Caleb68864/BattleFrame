@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   shipClass,
   warshipDamagePoints,
@@ -6,6 +6,17 @@ import {
   rowBoundaries,
   applyHullDamage
 } from "../src/ship/hull";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("shipClass (FT2 class by MASS)", () => {
   it("classes MASS <= 18 as an escort", () => {

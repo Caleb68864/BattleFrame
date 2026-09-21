@@ -17,7 +17,6 @@
  * Morale", "Fighter Endurance"; "Specialised Fighter Types".
  */
 
-import { DIE_SIZE, FIGHTER_ATTACK_RANGE_MU } from "../constants";
 import {
   fighterAttackDamage,
   enduranceAfterActiveTurn,
@@ -34,6 +33,7 @@ import { arcForBearing } from "./arcs";
 import { remainingScreens } from "../ship/systems";
 import { applyDamageAndThreshold } from "./apply-damage";
 import type { ShipActorLike } from "../data/ship-state";
+import { requireRules } from "../rules-profile";
 
 export interface FighterFireContext {
   measure: { between: (a: unknown, b: unknown, mode?: string) => { distance: number } };
@@ -102,7 +102,7 @@ export async function fireFighterGroupAtTarget(
   if (typeof group.system?.endurance === "number" && group.system.endurance <= 0) {
     return { ...idle, reason: "exhausted" };
   }
-  if (!Number.isFinite(distance) || distance > FIGHTER_ATTACK_RANGE_MU) {
+  if (!Number.isFinite(distance) || distance > requireRules().fighterAttackRangeMu) {
     return { ...idle, reason: "out-of-range" };
   }
   // Fighters attack only through their own fore arc.
@@ -115,7 +115,7 @@ export async function fireFighterGroupAtTarget(
   const pds = (target.system?.pds as number | undefined) ?? 0;
   let pdsKills = 0;
   if (pds > 0) {
-    const pdsFaces = await context.dice.rollPool(pds, DIE_SIZE);
+    const pdsFaces = await context.dice.rollPool(pds, requireRules().dieSize);
     pdsKills = Math.min(size, pdsKillsVsFighters(pdsFaces));
   }
   const remaining = size - pdsKills;
@@ -132,7 +132,7 @@ export async function fireFighterGroupAtTarget(
   // break the group (Turkey after 2, others after 3); a passed check resets the
   // streak (More Thrust "Fighter Group Morale", "Fighter Pilot Quality").
   if (pilotRequiresMoraleCheck(remaining, quality)) {
-    const [moraleDie] = await context.dice.rollPool(1, DIE_SIZE);
+    const [moraleDie] = await context.dice.rollPool(1, requireRules().dieSize);
     if (moraleDie !== undefined && !pilotMoralePasses(moraleDie, remaining, quality)) {
       const fails = (group.system?.moraleFails ?? 0) + 1;
       if (typeof group.update === "function") {
@@ -146,7 +146,7 @@ export async function fireFighterGroupAtTarget(
   }
 
   // An Ace adds one extra attack die to the group's normal ship attack.
-  const rolled = await context.dice.rollPool(pilotAttackDice(remaining, quality), DIE_SIZE);
+  const rolled = await context.dice.rollPool(pilotAttackDice(remaining, quality), requireRules().dieSize);
   // An Attack-type group adds +1 to each attack die versus ships.
   const faces = group.system?.fighterType === "attack" ? rolled.map((f) => f + 1) : rolled;
   // REMAINING screen level (design − knocked-out generators), as beams score.

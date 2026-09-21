@@ -1,10 +1,21 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildHowToPlayHtml,
   HOW_TO_PLAY_TITLE,
   registerHowToPlayJournal,
   createHowToPlayJournalIfMissing
 } from "../src/ui/how-to-play";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 afterEach(() => vi.unstubAllGlobals());
 

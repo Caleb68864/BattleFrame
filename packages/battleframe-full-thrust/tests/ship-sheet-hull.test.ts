@@ -5,8 +5,19 @@
  * the click handler that sets `system.hull.damage` from the clicked box.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { prepareHullBoxes, onToggleHullBox } from "../src/sheets/ship-sheet";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("prepareHullBoxes", () => {
   it("marks the first `damage` boxes damaged and the rest intact", () => {

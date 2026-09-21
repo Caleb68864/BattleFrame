@@ -1,5 +1,16 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { registerShipStatusEffects, syncShipStatuses, CRIPPLED_STATUS, WEAPONS_OFFLINE_STATUS } from "../src/status";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 afterEach(() => vi.unstubAllGlobals());
 

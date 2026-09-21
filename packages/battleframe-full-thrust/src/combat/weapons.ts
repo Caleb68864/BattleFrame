@@ -6,27 +6,20 @@
  * Sources: FT2 "Pulse Torpedoes", "Submunition Packs".
  */
 
-import {
-  TORPEDO_BAND_MU,
-  TORPEDO_MAX_RANGE_MU,
-  TORPEDO_TO_HIT_BY_BAND,
-  SUBMUNITION_BAND_MU,
-  SUBMUNITION_DICE_BY_BAND,
-  SUBMUNITION_MAX_RANGE_MU
-} from "../constants";
 import { bandIndex } from "./bands";
+import { requireRules } from "../rules-profile";
 
 /**
  * Pulse-torpedo to-hit target number at `distanceMu` (2+/3+/4+/5+/6 by 6mu
  * band), or null beyond the 30mu maximum range.
  */
 export function torpedoToHit(distanceMu: number): number | null {
-  if (!Number.isFinite(distanceMu) || distanceMu > TORPEDO_MAX_RANGE_MU) {
+  if (!Number.isFinite(distanceMu) || distanceMu > requireRules().torpedoMaxRangeMu) {
     return null;
   }
   // `?? null` guards a band index that falls off the table -- never return
   // `undefined`, which a `=== null` caller would read as "in range" (auto-hit).
-  return TORPEDO_TO_HIT_BY_BAND[bandIndex(distanceMu, TORPEDO_BAND_MU)] ?? null;
+  return requireRules().torpedoToHitByBand[bandIndex(distanceMu, requireRules().torpedoBandMu)] ?? null;
 }
 
 /** Count of dice at or above a to-hit / kill number. */
@@ -40,8 +33,8 @@ export function countHits(faces: readonly number[], target: number): number {
  * uses the unscreened beam table.
  */
 export function submunitionDiceAtRange(distanceMu: number): number {
-  if (!Number.isFinite(distanceMu) || distanceMu > SUBMUNITION_MAX_RANGE_MU) {
+  if (!Number.isFinite(distanceMu) || distanceMu > requireRules().submunitionMaxRangeMu) {
     return 0;
   }
-  return SUBMUNITION_DICE_BY_BAND[bandIndex(distanceMu, SUBMUNITION_BAND_MU)] ?? 0;
+  return requireRules().submunitionDiceByBand[bandIndex(distanceMu, requireRules().submunitionBandMu)] ?? 0;
 }

@@ -35,26 +35,10 @@
  * Sa'Vasku Power Points.md, Sa'Vasku Systems.md.
  */
 
-import {
-  SAVASKU_THRUST_COST_PERCENT,
-  SAVASKU_DAMAGED_DRIVE_MULTIPLIER,
-  SAVASKU_SCREEN_NODE_MASS_PERCENT,
-  SAVASKU_SCREEN_NODE_MIN_MASS,
-  SAVASKU_STINGER_BAND_MU,
-  SAVASKU_STINGER_MAX_RANGE_MU,
-  SAVASKU_STINGER_POWER_PER_DIE_BY_BAND,
-  SAVASKU_LANCE_POD_BAND_MU,
-  SAVASKU_LANCE_POD_MAX_RANGE_MU,
-  SAVASKU_LANCE_POD_TO_HIT_BY_BAND,
-  SAVASKU_REPAIR_SUCCESS_MIN,
-  SAVASKU_DRONE_POWER_PER,
-  SAVASKU_DRONE_BIOMASS_PER,
-  SAVASKU_LEECH_CLEAR_MIN,
-  SAVASKU_LEECH_CLEAR_MAX
-} from "../constants";
 import { bandIndex } from "./bands";
 import { applyKgunHit } from "./kravak";
 import type { ArmourState, HullState, ApplyDamageWithArmourResult } from "../ship/damage";
+import { requireRules } from "../rules-profile";
 
 // --- Power pool -------------------------------------------------------------
 
@@ -76,8 +60,8 @@ export function powerPoolTotal(functioningGeneratorMasses: readonly number[]): n
  * `shipMass`: 2% x thrust x MASS, rounded UP; a `damaged` drive costs double.
  */
 export function driveThrustCost(thrust: number, shipMass: number, damaged = false): number {
-  const multiplier = damaged ? SAVASKU_DAMAGED_DRIVE_MULTIPLIER : 1;
-  return Math.ceil((SAVASKU_THRUST_COST_PERCENT / 100) * thrust * shipMass * multiplier);
+  const multiplier = damaged ? requireRules().savaskuDamagedDriveMultiplier : 1;
+  return Math.ceil((requireRules().savaskuThrustCostPercent / 100) * thrust * shipMass * multiplier);
 }
 
 /** Movement-pool cost of an FTL jump: points equal to the FTL node's MASS. */
@@ -94,8 +78,8 @@ export function ftlJumpCost(ftlNodeMass: number): number {
  * wasted (a caller concern).
  */
 export function screenNodeMass(shipMass: number): number {
-  const pct = Math.ceil((SAVASKU_SCREEN_NODE_MASS_PERCENT / 100) * shipMass);
-  return Math.max(SAVASKU_SCREEN_NODE_MIN_MASS, pct);
+  const pct = Math.ceil((requireRules().savaskuScreenNodeMassPercent / 100) * shipMass);
+  return Math.max(requireRules().savaskuScreenNodeMinMass, pct);
 }
 
 // --- Stinger nodes (beams) --------------------------------------------------
@@ -108,12 +92,12 @@ export function screenNodeMass(shipMass: number): number {
  * faces to beam.ts `poolBeamDamage` (screens apply normally).
  */
 export function stingerPowerPerDie(distanceMu: number): number | null {
-  if (!Number.isFinite(distanceMu) || distanceMu > SAVASKU_STINGER_MAX_RANGE_MU) {
+  if (!Number.isFinite(distanceMu) || distanceMu > requireRules().savaskuStingerMaxRangeMu) {
     return null;
   }
   // `?? null` guards a band index off the end of the table -- never return
   // `undefined`, which a `=== null` caller would misread as "in range".
-  return SAVASKU_STINGER_POWER_PER_DIE_BY_BAND[bandIndex(distanceMu, SAVASKU_STINGER_BAND_MU)] ?? null;
+  return requireRules().savaskuStingerPowerPerDieByBand[bandIndex(distanceMu, requireRules().savaskuStingerBandMu)] ?? null;
 }
 
 /**
@@ -137,10 +121,10 @@ export function stingerDiceForPower(powerSpent: number, distanceMu: number): num
  * null beyond the 24mu maximum range.
  */
 export function lancePodToHit(distanceMu: number): number | null {
-  if (!Number.isFinite(distanceMu) || distanceMu > SAVASKU_LANCE_POD_MAX_RANGE_MU) {
+  if (!Number.isFinite(distanceMu) || distanceMu > requireRules().savaskuLancePodMaxRangeMu) {
     return null;
   }
-  return SAVASKU_LANCE_POD_TO_HIT_BY_BAND[bandIndex(distanceMu, SAVASKU_LANCE_POD_BAND_MU)] ?? null;
+  return requireRules().savaskuLancePodToHitByBand[bandIndex(distanceMu, requireRules().savaskuLancePodBandMu)] ?? null;
 }
 
 export interface ApplyLancePodHitParams {
@@ -165,10 +149,10 @@ export function applyLancePodHit(params: ApplyLancePodHitParams): ApplyDamageWit
  * Leech Pod: the Sa'Vasku clear it for 1-3 R-pool points. The impact (2 DP) and
  * per-turn ongoing (2 DP) damage are non-penetrating -- apply them via the
  * ordinary armour-first applier (applyDamageWithArmour), using the
- * SAVASKU_LEECH_POD_IMPACT_DP / _ONGOING_DP constants.
+ * requireRules().savaskuLeechPodImpactDp / _ONGOING_DP constants.
  */
 export function leechPodClears(rPoolPoints: number): boolean {
-  return rPoolPoints >= SAVASKU_LEECH_CLEAR_MIN && rPoolPoints <= SAVASKU_LEECH_CLEAR_MAX;
+  return rPoolPoints >= requireRules().savaskuLeechClearMin && rPoolPoints <= requireRules().savaskuLeechClearMax;
 }
 
 // --- Repair pool ------------------------------------------------------------
@@ -180,7 +164,7 @@ export function systemRepairCost(systemMass: number): number {
 
 /** Whether a system-repair attempt succeeds: a die roll of 4 or higher. */
 export function systemRepairSucceeds(roll: number): boolean {
-  return roll >= SAVASKU_REPAIR_SUCCESS_MIN;
+  return roll >= requireRules().savaskuRepairSuccessMin;
 }
 
 export interface DroneGrowthCost {
@@ -194,7 +178,7 @@ export interface DroneGrowthCost {
  */
 export function droneGrowthCost(droneCount: number): DroneGrowthCost {
   const n = Math.max(0, Math.floor(droneCount));
-  return { power: n * SAVASKU_DRONE_POWER_PER, biomass: n * SAVASKU_DRONE_BIOMASS_PER };
+  return { power: n * requireRules().savaskuDronePowerPer, biomass: n * requireRules().savaskuDroneBiomassPer };
 }
 
 // --- Biomass (living hull) --------------------------------------------------

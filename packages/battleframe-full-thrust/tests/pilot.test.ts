@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   pilotQualityForRoll,
   pilotAttackDice,
@@ -12,6 +12,17 @@ import {
   pilotDogfightFaces,
   pilotInitiativeModifier
 } from "../src/combat/pilot";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("pilotQualityForRoll (1D6 per group: 6 = Ace, 1 = Turkey, 2-5 = average)", () => {
   it("makes a 6 an Ace and a 1 a Turkey", () => {

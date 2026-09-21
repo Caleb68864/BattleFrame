@@ -8,8 +8,9 @@
  * orchestrator drives it. Live-verified.
  */
 
-import { COURSES, COURSE_POINT_DEGREES, MODULE_ID, ACTIVE_MISSILES_FLAG } from "../constants";
+import { MODULE_ID, ACTIVE_MISSILES_FLAG } from "../constants";
 import type { ActiveMissile } from "../combat/missile-phase";
+import { requireRules } from "../rules-profile";
 
 const HOSTILE_COLOR = 0xff5555;
 const FRIENDLY_COLOR = 0x55aaff;
@@ -62,7 +63,7 @@ function ensure(): GraphicsLike | undefined {
 
 /** Course (1-12) → heading degrees, clockwise from up — matches the missile path. */
 function headingDeg(course: number): number {
-  return (course % COURSES) * COURSE_POINT_DEGREES;
+  return (course % requireRules().courses) * requireRules().coursePointDegrees;
 }
 
 /** Redraws all missile markers. Silent no-op off-canvas; never throws. */

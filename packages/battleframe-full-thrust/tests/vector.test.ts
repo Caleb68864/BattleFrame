@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   headingVector,
   advance,
@@ -12,6 +12,17 @@ import {
   velocityMagnitude,
   nearestCourse
 } from "../src/movement/vector";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 /**
  * Verifies the optional FT2 / Fleet Book "Vector Movement" system: velocity is a

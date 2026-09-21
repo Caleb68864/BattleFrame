@@ -15,8 +15,7 @@
  * Sources: More Thrust "Missiles (Basic)" (18mu, one mid-point 2-point turn);
  * FT2 "Course & the Clockface".
  */
-
-import { COURSE_POINT_DEGREES, COURSES, MISSILE_MOVE_MU, MISSILE_TURN_POINTS } from "../constants";
+import { requireRules } from "../rules-profile";
 
 export interface Displacement {
   dx: number;
@@ -45,7 +44,7 @@ export interface MissilePath {
 
 /** The heading of a course as an angle in degrees, clockwise from up. */
 function courseHeadingDegrees(course: number): number {
-  return (course % COURSES) * COURSE_POINT_DEGREES;
+  return (course % requireRules().courses) * requireRules().coursePointDegrees;
 }
 
 /** Displacement of moving `distance` mu along `headingDeg` (screen space, y-down). */
@@ -56,7 +55,7 @@ function move(distance: number, headingDeg: number): Displacement {
 
 /** Wraps a course number into the 1..12 clockface range. */
 function wrapCourse(course: number): number {
-  return ((course - 1) % COURSES + COURSES) % COURSES + 1;
+  return ((course - 1) % requireRules().courses + requireRules().courses) % requireRules().courses + 1;
 }
 
 /**
@@ -79,10 +78,10 @@ export function plotMissilePath(
     end: { dx: 0, dy: 0 }
   };
 
-  if (Math.abs(turn) > MISSILE_TURN_POINTS) {
+  if (Math.abs(turn) > requireRules().missileTurnPoints) {
     return { ...idle, legal: false, reason: "turn-cap" };
   }
-  if (!Number.isFinite(distance) || distance < 0 || distance > MISSILE_MOVE_MU) {
+  if (!Number.isFinite(distance) || distance < 0 || distance > requireRules().missileMoveMu) {
     return { ...idle, legal: false, reason: "over-range" };
   }
 

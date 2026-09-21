@@ -1,4 +1,4 @@
-import { MODULE_ID, SHIP_ACTOR_TYPE, FIGHTER_GROUP_ACTOR_TYPE, FIGHTER_GROUP_MAX } from "./constants";
+import { MODULE_ID, SHIP_ACTOR_TYPE, FIGHTER_GROUP_ACTOR_TYPE } from "./constants";
 import { registerShipDataModel } from "./data/ship";
 import { registerFighterGroupDataModel } from "./data/fighter-group";
 import { registerShipSheet } from "./sheets/ship-sheet";
@@ -12,6 +12,8 @@ import { registerArcOverlay } from "./ui/arc-overlay";
 import { registerMissileOverlay } from "./ui/missile-overlay";
 import { registerShipStatusEffects } from "./status";
 import { registerShipTokenDefaults } from "./tokens";
+import { requireRules } from "./rules-profile";
+import { registerRulesProfileSetting } from "./rules-profile";
 
 interface BattleframeRegisterResult {
   ok: boolean;
@@ -90,7 +92,7 @@ export function registerFullThrustHoverFields(): void {
   });
 
   registry.register(`${MODULE_ID}.${FIGHTER_GROUP_ACTOR_TYPE}`, {
-    fields: [{ key: "size", label: `${MODULE_ID}.fields.size`, max: FIGHTER_GROUP_MAX }],
+    fields: [{ key: "size", label: `${MODULE_ID}.fields.size`, max: requireRules().fighterGroupMax }],
     defaultVisibility: "everyone"
   });
 }
@@ -124,6 +126,9 @@ const globalHooks = (globalThis as unknown as {
 }).Hooks;
 
 globalHooks?.once("init", () => {
+  // First: the world's own rules numbers. This module ships none, so nothing
+  // downstream can resolve a shot until a world has answered for them.
+  registerRulesProfileSetting();
   registerShipDataModel();
   registerFighterGroupDataModel();
   registerShipSheet();

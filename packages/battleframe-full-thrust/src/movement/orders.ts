@@ -18,8 +18,7 @@
  * Sources: FT2 "Movement Orders", "Thrust Points", "Making Course Changes",
  * "Course & the Clockface".
  */
-
-import { COURSES } from "../constants";
+import { requireRules } from "../rules-profile";
 
 export interface MovementOrder {
   /** Velocity change in mu: positive accelerates, negative decelerates. */
@@ -77,7 +76,7 @@ export function parseOrder(text: string): MovementOrder {
 
 /** Wraps a course number into the 1..12 clockface range. */
 function wrapCourse(course: number): number {
-  return ((course - 1) % COURSES + COURSES) % COURSES + 1;
+  return ((course - 1) % requireRules().courses + requireRules().courses) % requireRules().courses + 1;
 }
 
 /**

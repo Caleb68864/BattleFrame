@@ -1,9 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   damageControlRepairs,
   standardDamageControlParties,
   resolveDamageControl
 } from "../src/combat/damage-control";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("damageControlRepairs (More Thrust: each DCP rolls 1D6, a 6 repairs one system)", () => {
   it("counts one repair per 6 rolled", () => {

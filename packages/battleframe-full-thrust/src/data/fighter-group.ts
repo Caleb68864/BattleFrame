@@ -1,10 +1,11 @@
-import { FIGHTER_GROUP_ACTOR_TYPE, FIGHTER_GROUP_MAX } from "../constants";
+import { FIGHTER_GROUP_ACTOR_TYPE } from "../constants";
 import {
   type TypeDataModelBaseConstructor,
   resolveTypeDataModelBase,
   resolveFieldsNamespace,
   registerActorDataModel
 } from "./foundry-data-model";
+import { requireRules } from "../rules-profile";
 
 /**
  * The Full Thrust fighter-group Actor data model. A group is 1-6 fighters that
@@ -43,7 +44,7 @@ export function createFighterGroupDataClass(
       }
 
       schema.size = new NumberField({
-        required: true, nullable: false, integer: true, min: 0, max: FIGHTER_GROUP_MAX, initial: FIGHTER_GROUP_MAX
+        required: true, nullable: false, integer: true, min: 0, max: requireRules().fighterGroupMax, initial: requireRules().fighterGroupMax
       });
       schema.fighterType = new StringField({
         required: true, blank: false, choices: [...FIGHTER_TYPES], initial: "standard"

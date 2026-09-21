@@ -20,19 +20,6 @@
  * Sources: More Thrust "Missiles (Basic)" + "Missile Warheads" (Normal/EMP/Needle).
  */
 
-import {
-  DIE_SIZE,
-  MISSILE_ATTACK_RANGE_MU,
-  MISSILE_NORMAL_WARHEAD_DICE,
-  MISSILE_EMP_WARHEAD_DICE,
-  MISSILE_EMP_NO_EFFECT_MAX,
-  MISSILE_EMP_WEAK_MAX,
-  MISSILE_EMP_WEAK_KILL_ON,
-  MISSILE_EMP_STRONG_KILL_ON,
-  MISSILE_NEEDLE_WARHEAD_DICE,
-  MISSILE_NEEDLE_KNOCKOUT_MIN,
-  MISSILE_REAR_ARC
-} from "../constants";
 import { arcForBearing } from "./arcs";
 import { pdsKillsVsMissiles } from "./fighters";
 import {
@@ -46,6 +33,7 @@ import { knockedOutIndices } from "../ship/threshold";
 import { applyDamageAndThreshold } from "./apply-damage";
 import { syncShipStatuses } from "../status";
 import type { ShipActorLike } from "../data/ship-state";
+import { requireRules } from "../rules-profile";
 
 export interface MissileContext {
   measure: { between: (a: unknown, b: unknown, mode?: string) => { distance: number } };
@@ -89,10 +77,10 @@ export interface MissileAttackReport {
  * from the engine's measure/facing services.
  */
 export function missileCanAttack(distanceMu: number, bearingFromMissile: number): boolean {
-  if (!Number.isFinite(distanceMu) || distanceMu > MISSILE_ATTACK_RANGE_MU) {
+  if (!Number.isFinite(distanceMu) || distanceMu > requireRules().missileAttackRangeMu) {
     return false;
   }
-  return arcForBearing(bearingFromMissile) !== MISSILE_REAR_ARC;
+  return arcForBearing(bearingFromMissile) !== requireRules().missileRearArc;
 }
 
 export async function resolveMissileAttack(params: MissileParams): Promise<MissileAttackReport> {
@@ -104,7 +92,7 @@ export async function resolveMissileAttack(params: MissileParams): Promise<Missi
   };
 
   const distance = context.measure.between(missile.token, target.token, "centre-to-centre").distance;
-  if (!Number.isFinite(distance) || distance > MISSILE_ATTACK_RANGE_MU) {
+  if (!Number.isFinite(distance) || distance > requireRules().missileAttackRangeMu) {
     return { ...idle, reason: "out-of-range" };
   }
   const bearing = context.facing.bearingOf(missile.token, target.token);
@@ -115,7 +103,7 @@ export async function resolveMissileAttack(params: MissileParams): Promise<Missi
   // Point defence fires first: each PDS rolls one die and a 6 kills the missile.
   // Shared by every warhead type -- the interception step is warhead-agnostic.
   const pds = remainingPds(target.system ?? {});
-  const pdsFaces = pds > 0 ? await context.dice.rollPool(pds, DIE_SIZE) : [];
+  const pdsFaces = pds > 0 ? await context.dice.rollPool(pds, requireRules().dieSize) : [];
   if (pdsKillsVsMissiles(pdsFaces) > 0) {
     return { ...idle, intercepted: true };
   }
@@ -141,7 +129,7 @@ async function resolveNormalWarhead(
   context: MissileContext,
   idle: Omit<MissileAttackReport, "reason">
 ): Promise<MissileAttackReport> {
-  const warheadFaces = await context.dice.rollPool(MISSILE_NORMAL_WARHEAD_DICE, DIE_SIZE);
+  const warheadFaces = await context.dice.rollPool(requireRules().missileNormalWarheadDice, requireRules().dieSize);
   const damage = warheadFaces.reduce((sum, face) => sum + face, 0);
 
   const outcome = await applyDamageAndThreshold(target, damage, context.dice);
@@ -168,19 +156,19 @@ async function resolveEmpWarhead(
   context: MissileContext,
   idle: Omit<MissileAttackReport, "reason">
 ): Promise<MissileAttackReport> {
-  const [effectFace = 0] = await context.dice.rollPool(MISSILE_EMP_WARHEAD_DICE, DIE_SIZE);
+  const [effectFace = 0] = await context.dice.rollPool(requireRules().missileEmpWarheadDice, requireRules().dieSize);
   const effect = effectFace - remainingScreens(target.system ?? {});
 
   let killOn: number | null;
-  if (effect <= MISSILE_EMP_NO_EFFECT_MAX) killOn = null;
-  else if (effect <= MISSILE_EMP_WEAK_MAX) killOn = MISSILE_EMP_WEAK_KILL_ON;
-  else killOn = MISSILE_EMP_STRONG_KILL_ON;
+  if (effect <= requireRules().missileEmpNoEffectMax) killOn = null;
+  else if (effect <= requireRules().missileEmpWeakMax) killOn = requireRules().missileEmpWeakKillOn;
+  else killOn = requireRules().missileEmpStrongKillOn;
 
   let systemsKnockedOut = 0;
   if (killOn !== null) {
     const refs = enumerateSurvivingSystems(target.system ?? {});
     if (refs.length > 0) {
-      const faces = await context.dice.rollPool(refs.length, DIE_SIZE);
+      const faces = await context.dice.rollPool(refs.length, requireRules().dieSize);
       const lostRefs = knockedOutIndices(faces, killOn).map((i) => refs[i]);
       systemsKnockedOut = lostRefs.length;
       if (lostRefs.length > 0) {
@@ -210,7 +198,7 @@ async function resolveNeedleWarhead(
   context: MissileContext,
   idle: Omit<MissileAttackReport, "reason">
 ): Promise<MissileAttackReport> {
-  const [face = 0] = await context.dice.rollPool(MISSILE_NEEDLE_WARHEAD_DICE, DIE_SIZE);
+  const [face = 0] = await context.dice.rollPool(requireRules().missileNeedleWarheadDice, requireRules().dieSize);
 
   // The die is always dealt as normal damage (1-6), whether or not it hits.
   const outcome = await applyDamageAndThreshold(target, face, context.dice);
@@ -218,7 +206,7 @@ async function resolveNeedleWarhead(
   let systemsKnockedOut = outcome.systemsKnockedOut;
   let nominatedSystemKnockedOut = false;
 
-  if (!outcome.destroyed && face >= MISSILE_NEEDLE_KNOCKOUT_MIN && systemType) {
+  if (!outcome.destroyed && face >= requireRules().missileNeedleKnockoutMin && systemType) {
     const ref = enumerateSurvivingSystems(target.system ?? {}).find((r) => r.type === systemType);
     if (ref) {
       await target.update(applySystemKnockouts(target.system ?? {}, [ref]));

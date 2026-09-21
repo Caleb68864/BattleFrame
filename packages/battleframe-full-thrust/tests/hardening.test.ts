@@ -1,10 +1,21 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { beamDiceAtRange, beamDamageForFace } from "../src/combat/beam";
 import { torpedoToHit, submunitionDiceAtRange } from "../src/combat/weapons";
 import { arcForBearing } from "../src/combat/arcs";
 import { thresholdKillOn } from "../src/ship/threshold";
 import { rowBoundaries } from "../src/ship/hull";
 import { parseOrder } from "../src/movement/orders";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 /**
  * Hardening: the pure rule functions are exported and may receive degenerate

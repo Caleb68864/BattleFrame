@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   isAllRoundTurret,
   aftFirePermitted,
@@ -6,6 +6,17 @@ import {
 } from "../src/combat/aft-fire";
 import { weaponBearsOn } from "../src/combat/arcs";
 import type { FireArc } from "../src/constants";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 // An all-round turret is a mount that covers every arc EXCEPT the aft blind spot
 // (the 5 forward/side arcs). The Fleet Book conditional rule may then grant it

@@ -17,17 +17,13 @@
  * constants.ts alongside the resolution code that shares them.
  */
 
-import {
-  NEEDLE_MAX_RANGE_MU,
-  SALVO_RANGE_MU,
-  SALVO_SIZE,
-  type WeaponKind
-} from "../constants";
+import { type WeaponKind } from "../constants";
 import type { WeaponMount } from "./fire";
 import { weaponBearsOn } from "./arcs";
 import { beamDiceAtRange } from "./beam";
 import { torpedoToHit, submunitionDiceAtRange } from "./weapons";
 import { kgunToHit } from "./kravak";
+import { requireRules } from "../rules-profile";
 
 /** Why a weapon would or would not fire at this target, no dice rolled. */
 export type TargetingStatus =
@@ -108,13 +104,13 @@ function inArcRow(index: number, weapon: WeaponMount, distanceMu: number): Targe
       return { ...base, status: "will-fire", dice, effect: `${dice}D6` };
     }
     case "salvo": {
-      if (!Number.isFinite(distanceMu) || distanceMu > SALVO_RANGE_MU) {
+      if (!Number.isFinite(distanceMu) || distanceMu > requireRules().salvoRangeMu) {
         return { ...base, status: "out-of-range", effect: statusLabel("out-of-range") };
       }
-      return { ...base, status: "will-fire", effect: `salvo of ${SALVO_SIZE}` };
+      return { ...base, status: "will-fire", effect: `salvo of ${requireRules().salvoSize}` };
     }
     case "needle": {
-      if (!Number.isFinite(distanceMu) || distanceMu > NEEDLE_MAX_RANGE_MU) {
+      if (!Number.isFinite(distanceMu) || distanceMu > requireRules().needleMaxRangeMu) {
         return { ...base, status: "out-of-range", effect: statusLabel("out-of-range") };
       }
       return { ...base, status: "will-fire", effect: "knocks a system on 6" };

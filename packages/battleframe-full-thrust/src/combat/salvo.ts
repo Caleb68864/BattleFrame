@@ -13,12 +13,13 @@
  * Sources: Fleet Book 1 "Salvo Missile Systems".
  */
 
-import { DIE_SIZE, SALVO_RANGE_MU, type FireArc } from "../constants";
+import { type FireArc } from "../constants";
 import { salvoIntercepted, salvoSurvivors, salvoDamage } from "./ordnance";
 import { weaponBearsOn } from "./arcs";
 import { remainingPds } from "../ship/systems";
 import { applyDamageAndThreshold } from "./apply-damage";
 import type { ShipActorLike } from "../data/ship-state";
+import { requireRules } from "../rules-profile";
 
 export interface SalvoContext {
   measure: { between: (a: unknown, b: unknown, mode?: string) => { distance: number } };
@@ -64,7 +65,7 @@ export async function resolveSalvoAtTarget(params: SalvoParams): Promise<SalvoRe
   }
 
   const distance = context.measure.between(attacker.token, target.token, "centre-to-centre").distance;
-  if (!Number.isFinite(distance) || distance > SALVO_RANGE_MU) {
+  if (!Number.isFinite(distance) || distance > requireRules().salvoRangeMu) {
     return { ...idle, reason: "out-of-range" };
   }
   const bearing = context.facing.bearingOf(attacker.token, target.token);
@@ -73,17 +74,17 @@ export async function resolveSalvoAtTarget(params: SalvoParams): Promise<SalvoRe
   }
 
   // Missiles that reach the target (1d6 of the salvo of 6).
-  const [onTargetDie] = await context.dice.rollPool(1, DIE_SIZE);
+  const [onTargetDie] = await context.dice.rollPool(1, requireRules().dieSize);
   const onTarget = onTargetDie ?? 0;
 
   // Point defence intercepts.
   const pds = remainingPds(target.system ?? {});
-  const pdsFaces = pds > 0 ? await context.dice.rollPool(pds, DIE_SIZE) : [];
+  const pdsFaces = pds > 0 ? await context.dice.rollPool(pds, requireRules().dieSize) : [];
   const intercepted = salvoIntercepted(pdsFaces);
   const survivors = salvoSurvivors(onTarget, intercepted);
 
   // Each surviving missile rolls a damage die; screens do not reduce; armour does.
-  const damageFaces = survivors > 0 ? await context.dice.rollPool(survivors, DIE_SIZE) : [];
+  const damageFaces = survivors > 0 ? await context.dice.rollPool(survivors, requireRules().dieSize) : [];
   const damage = salvoDamage(damageFaces);
 
   const outcome = await applyDamageAndThreshold(target, damage, context.dice);

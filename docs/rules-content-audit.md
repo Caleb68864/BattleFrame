@@ -1,8 +1,8 @@
 # Rules-content audit
 
 What each package ships against the repository's stated policy — *the code
-implements mechanics; the data is yours to bring* — and the plan for the four
-packages that do not meet it.
+implements mechanics; the data is yours to bring* — and the plan for the one
+package that does not yet meet it.
 
 Audited 2026-09-21 against `a004c94`.
 
@@ -53,7 +53,7 @@ is not, because it is the set of dice Foundry can roll.
 | `battleframe-incountry` | 4 | **0** | INX 2.0, Echo Dark Studios | ✅ stripped 2026-09-21 |
 | `battleframe-simple-skirmish` | 9 | **7** | *Simple Fantasy Skirmish*, Peter Vodden (CC BY-NC 4.0) | ⬜ to strip — see note |
 | `battleframe-greathelm` | 10 | **0** | `GREATHELM-QSR.pdf` v0.4, Malev | ✅ stripped 2026-09-21 |
-| `battleframe-full-thrust` | 147 | **~140** | Full Thrust 2e + More Thrust, Jon Tuffley / Ground Zero Games | ⬜ to strip — the large one |
+| `battleframe-full-thrust` | 13 | **0** | Full Thrust 2e + More Thrust, Jon Tuffley / Ground Zero Games | ✅ stripped 2026-09-21 |
 
 ### `battleframe-full-thrust` — the real exposure
 
@@ -164,15 +164,57 @@ rather than one large module sitting half-migrated.
    had no caller. The six action ids and six die faces stayed, per the owner's
    ruling that the strip is numbers only — those are the shape of the game the
    module implements, not values it asserts.
-4. **`battleframe-full-thrust`** — ~140 values across 48 importing files. Needs a
-   user-populated rules profile rather than 140 separate data-model fields,
-   mirroring ForceSignal's `RulesProfile.Empty` and Dirtside's
-   "all values USER-entered" data models. Ship it **blank**.
+4. ~~**`battleframe-full-thrust`**~~ — done 2026-09-21. 26 constants were dead
+   and deleted outright (every points and MASS value among them); the remaining
+   110 moved to a flat world rules profile with a JSON importer and a blank
+   template. `constants.ts` went 696 → 109 lines and now holds only the module
+   id, the Actor subtypes, six document flag keys and the three vocabularies the
+   types are built from (fire arcs, weapon kinds, hull grades).
 
 Each step: move the values to user-supplied data, leave the mechanism behind,
 keep a test proving an unpopulated profile does not silently fall back to the
 stripped numbers. That last part is the one that matters — a default that
 restores the published value puts the number back in the repository.
+
+## What the largest migration added
+
+`battleframe-full-thrust` was the big one — 147 constants, 64 source files,
+10,632 lines — and it went more cleanly than the two small ones, for reasons
+worth recording.
+
+**6. Count the dead ones first.** 26 of the 147 constants had no caller
+anywhere: `NOVA_CANNON_POINTS`, `WAVE_GUN_MASS`, every Savasku pod cost,
+`PDS_RANGE_MU`, `DIE_MISS_MAX` and more. **Every points and MASS value in the
+module was among them** — the most legally-loaded content in the file was also
+the most obviously removable. Deleting them was a 20-minute change with zero
+behaviour risk and it cut the real work by a fifth. Do this before designing
+anything.
+
+**7. A flat profile keyed by the old constant names makes the migration
+mechanical.** 350 references were rewritten by script from `CONST_NAME` to
+`requireRules().constName`, and the whole thing typechecked with **two** errors —
+both the same cause, a `keyof typeof` over a table that had become a runtime
+value. Resisting the urge to reorganise 110 values into a tidy taxonomy is what
+made it a script rather than a fortnight.
+
+**8. The type system finds the vocabulary you missed.** Those two errors were
+how `HULL_GRADES` was identified as vocabulary rather than data: the grade
+*names* had only ever existed as keys of the percentage table, so stripping the
+table deleted the type. Names belong in `constants.ts`; the percentages went to
+the profile.
+
+**9. Memoize the profile read.** `requireRules()` sits inside per-die loops.
+It caches on the identity of the stored setting value, which Foundry keeps
+stable until a write, so the 110-field normalise runs once rather than per die.
+
+**10. Tests that stub `game` wholesale will drop the world.** Four call sites did
+`vi.stubGlobal("game", { user: { isGM: true } })`, silently discarding the
+settings stub carrying the profile. They now spread the installed world. This is
+the same class of problem as lesson 1 — the suite quietly not testing what it
+appears to.
+
+Result: `constants.ts` 696 → 109 lines, 644 module tests unchanged plus 18 new
+guard tests, 1,602 across the monorepo, `tsc --noEmit` clean.
 
 ## Open question for the owner
 

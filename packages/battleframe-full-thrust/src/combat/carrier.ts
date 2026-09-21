@@ -18,18 +18,12 @@
  */
 
 import {
-  FIGHTERS_PER_BAY,
-  CARRIER_LAUNCH_PER_TURN,
-  SHIP_LAUNCH_PER_TURN,
-  FIGHTER_RECOVER_PER_TURN,
-  FIGHTER_RETURN_GRACE_TURNS
-} from "../constants";
-import {
   enduranceAfterActiveTurn,
   enduranceExhausted,
   enduranceForType
 } from "./fighters";
 import { canReachToAttack, type Point } from "../movement/fighter-move";
+import { requireRules } from "../rules-profile";
 
 /** A carrier's fighter-handling state for a turn (the counters an orchestrator keeps). */
 export interface CarrierState {
@@ -58,12 +52,12 @@ export interface EnduranceGroup {
  * simply lowers the count, matching "each lost bay reduces capacity by six".
  */
 export function bayCapacity(bays: number): { groups: number; fighters: number } {
-  return { groups: bays, fighters: bays * FIGHTERS_PER_BAY };
+  return { groups: bays, fighters: bays * requireRules().fightersPerBay };
 }
 
 /** Groups a ship may launch per turn: 2 for an actual carrier, 1 for anything else. */
 export function launchLimit(isTrueCarrier: boolean): number {
-  return isTrueCarrier ? CARRIER_LAUNCH_PER_TURN : SHIP_LAUNCH_PER_TURN;
+  return isTrueCarrier ? requireRules().carrierLaunchPerTurn : requireRules().shipLaunchPerTurn;
 }
 
 /**
@@ -84,7 +78,7 @@ export function canLaunch(carrier: CarrierState): boolean {
  * below is the geometric side (can the group physically reach the carrier).
  */
 export function carrierCanRecover(carrier: CarrierState): boolean {
-  return carrier.recoveredThisTurn < FIGHTER_RECOVER_PER_TURN && carrier.aboard < carrier.bays;
+  return carrier.recoveredThisTurn < requireRules().fighterRecoverPerTurn && carrier.aboard < carrier.bays;
 }
 
 /**
@@ -131,13 +125,13 @@ export function mustReturn(group: EnduranceGroup): boolean {
 
 /**
  * Whether an exhausted group that still has not rendezvoused is lost. More Thrust
- * gives it a grace of `FIGHTER_RETURN_GRACE_TURNS` turns after running dry; once
+ * gives it a grace of `requireRules().fighterReturnGraceTurns` turns after running dry; once
  * that many turns have elapsed without reaching a carrier the group is lost.
  * (Fleet Book 1 imposes no such limit -- see the constant's note -- so this
  * predicate is for the More Thrust endurance variant only.)
  */
 export function isLost(turnsSinceExhausted: number): boolean {
-  return turnsSinceExhausted >= FIGHTER_RETURN_GRACE_TURNS;
+  return turnsSinceExhausted >= requireRules().fighterReturnGraceTurns;
 }
 
 /**

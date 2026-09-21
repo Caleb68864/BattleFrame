@@ -5,8 +5,19 @@
  * is live-verified; this covers the angles + point projection.
  */
 
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { arcRayAngles, arcLabelAngles, polarToScreen } from "../src/ui/arc-overlay";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("arcRayAngles", () => {
   it("places the 6 arc boundaries at facing + 30/90/150/210/270/330", () => {

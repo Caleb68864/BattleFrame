@@ -9,12 +9,13 @@
  * "Screens", "Fire Arcs".
  */
 
-import { DIE_SIZE, DIE_TWO_DAMAGE, type FireArc, type WeaponKind } from "../constants";
+import { type FireArc, type WeaponKind } from "../constants";
 import { beamDiceAtRange, poolBeamDamage } from "./beam";
 import { poolPenetratingDamage } from "../ship/fleet-book";
 import { torpedoToHit, submunitionDiceAtRange } from "./weapons";
 import { kgunToHit, kgunDamageForFace } from "./kravak";
 import { weaponBearsOn } from "./arcs";
+import { requireRules } from "../rules-profile";
 
 export interface WeaponMount {
   kind: WeaponKind;
@@ -82,7 +83,7 @@ async function resolveBeam(
   if (diceCount <= 0) {
     return { damage: 0, faces: [], reason: "out-of-range" };
   }
-  const faces = await dice.rollPool(diceCount, DIE_SIZE);
+  const faces = await dice.rollPool(diceCount, requireRules().dieSize);
   if (!penetrating) {
     return { damage: poolBeamDamage(faces, screenLevel), faces };
   }
@@ -90,11 +91,11 @@ async function resolveBeam(
   // whole reroll chain (each 6 spawns one more) so `poolPenetratingDamage` can
   // score it; screens reduce only the initial dice.
   const rerollFaces: number[] = [];
-  let pending = faces.filter((f) => f === DIE_TWO_DAMAGE).length;
+  let pending = faces.filter((f) => f === requireRules().dieTwoDamage).length;
   while (pending > 0) {
-    const batch = await dice.rollPool(pending, DIE_SIZE);
+    const batch = await dice.rollPool(pending, requireRules().dieSize);
     rerollFaces.push(...batch);
-    pending = batch.filter((f) => f === DIE_TWO_DAMAGE).length;
+    pending = batch.filter((f) => f === requireRules().dieTwoDamage).length;
   }
   return { damage: poolPenetratingDamage(faces, rerollFaces, screenLevel), faces: [...faces, ...rerollFaces] };
 }
@@ -108,11 +109,11 @@ async function resolveTorpedo(
     return { damage: 0, faces: [], reason: "out-of-range" };
   }
   // One launcher = one to-hit die; screens do not reduce torpedoes.
-  const [hitFace] = await dice.rollPool(1, DIE_SIZE);
+  const [hitFace] = await dice.rollPool(1, requireRules().dieSize);
   if (hitFace === undefined || hitFace < toHit) {
     return { damage: 0, faces: hitFace === undefined ? [] : [hitFace] };
   }
-  const [damageFace] = await dice.rollPool(1, DIE_SIZE);
+  const [damageFace] = await dice.rollPool(1, requireRules().dieSize);
   return { damage: damageFace ?? 0, faces: [hitFace, damageFace ?? 0] };
 }
 
@@ -124,7 +125,7 @@ async function resolveSubmunition(
   if (diceCount <= 0) {
     return { damage: 0, faces: [], reason: "out-of-range" };
   }
-  const faces = await dice.rollPool(diceCount, DIE_SIZE);
+  const faces = await dice.rollPool(diceCount, requireRules().dieSize);
   // Submunitions ignore screens: score them on the unscreened table.
   return { damage: poolBeamDamage(faces, 0), faces };
 }
@@ -151,11 +152,11 @@ async function resolveKgun(
   if (toHit === null) {
     return { damage: 0, faces: [], reason: "out-of-range" };
   }
-  const [hitFace] = await dice.rollPool(1, DIE_SIZE);
+  const [hitFace] = await dice.rollPool(1, requireRules().dieSize);
   if (hitFace === undefined || hitFace < toHit) {
     return { damage: 0, faces: hitFace === undefined ? [] : [hitFace] };
   }
-  const [penFace] = await dice.rollPool(1, DIE_SIZE);
+  const [penFace] = await dice.rollPool(1, requireRules().dieSize);
   const damage = kgunDamageForFace(cls, penFace ?? 0);
   return { damage, faces: [hitFace, penFace ?? 0], piercingHit: damage };
 }

@@ -12,10 +12,10 @@
  * Sources: FT2/More Thrust "Fighter-to-Fighter Combat".
  */
 
-import { DIE_SIZE, FIGHTER_ATTACK_RANGE_MU } from "../constants";
 import { dogfightKillsAgainst } from "./fighters";
 import { type PilotQuality, pilotAttackDice, pilotDogfightFaces } from "./pilot";
 import { arcForBearing } from "./arcs";
+import { requireRules } from "../rules-profile";
 
 export interface DogfightContext {
   measure: { between: (a: unknown, b: unknown, mode?: string) => { distance: number } };
@@ -65,7 +65,7 @@ export async function resolveDogfight(params: DogfightParams): Promise<DogfightR
   }
 
   const distance = context.measure.between(attacker.token, defender.token, "centre-to-centre").distance;
-  if (!Number.isFinite(distance) || distance > FIGHTER_ATTACK_RANGE_MU) {
+  if (!Number.isFinite(distance) || distance > requireRules().fighterAttackRangeMu) {
     return { ...idle, reason: "out-of-range" };
   }
   if (arcForBearing(context.facing.bearingOf(attacker.token, defender.token)) !== "F") {
@@ -80,14 +80,14 @@ export async function resolveDogfight(params: DogfightParams): Promise<DogfightR
   // Attacker fires; the defender returns fire only if IT bears on the attacker.
   // Interceptors roll +1/die and Aces throw an extra die; a Turkey rolls -1/die;
   // a Heavy target is screened (dogfightKillsAgainst).
-  const attackerRolled = await context.dice.rollPool(pilotAttackDice(attackerSize, attackerQuality), DIE_SIZE);
+  const attackerRolled = await context.dice.rollPool(pilotAttackDice(attackerSize, attackerQuality), requireRules().dieSize);
   const attackerFaces = dogfightFaces(attackerRolled, attackerType, attackerQuality);
   const attackerKills = Math.min(defenderSize, dogfightKillsAgainst(attackerFaces, defenderType));
 
   const defenderReturned = arcForBearing(context.facing.bearingOf(defender.token, attacker.token)) === "F";
   let defenderKills = 0;
   if (defenderReturned) {
-    const defenderRolled = await context.dice.rollPool(pilotAttackDice(defenderSize, defenderQuality), DIE_SIZE);
+    const defenderRolled = await context.dice.rollPool(pilotAttackDice(defenderSize, defenderQuality), requireRules().dieSize);
     const defenderFaces = dogfightFaces(defenderRolled, defenderType, defenderQuality);
     defenderKills = Math.min(attackerSize, dogfightKillsAgainst(defenderFaces, attackerType));
   }

@@ -14,13 +14,11 @@ import {
   SHIP_ACTOR_TYPE,
   FIRE_ARCS,
   WEAPON_KINDS,
-  MAX_SCREEN_LEVEL,
-  MAX_THRUST,
-  COURSES,
   type FireArc,
   type WeaponKind
 } from "../constants";
 import { shipClass, warshipDamagePoints, thresholdRows } from "../ship/hull";
+import { requireRules } from "../rules-profile";
 
 export interface ShipCreateData {
   name: string;
@@ -97,17 +95,17 @@ function parseShip(raw: any, errors: string[]): ShipCreateData | null {
     type: `${MODULE_ID}.${SHIP_ACTOR_TYPE}`,
     system: {
       mass,
-      thrust: clampInt(raw.thrust, 0, MAX_THRUST, 4),
+      thrust: clampInt(raw.thrust, 0, requireRules().maxThrust, 4),
       ftl: raw.ftl === undefined ? true : raw.ftl !== false,
       driveHits: 0,
       hull,
       armour,
       fcs: nonNegInt(raw.fcs, 1),
-      screens: clampInt(raw.screens, 0, MAX_SCREEN_LEVEL, 0),
+      screens: clampInt(raw.screens, 0, requireRules().maxScreenLevel, 0),
       pds: nonNegInt(raw.pds, 0),
       damageControl: nonNegInt(raw.damageControl, 0),
       velocity: nonNegInt(raw.velocity, 0),
-      course: clampInt(raw.course, 1, COURSES, 12),
+      course: clampInt(raw.course, 1, requireRules().courses, 12),
       pointsValue: nonNegInt(raw.pointsValue, 0),
       weapons
     }

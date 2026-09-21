@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   enumerateSurvivingSystems,
   applySystemKnockouts,
@@ -9,6 +9,17 @@ import {
   remainingScreens,
   type SystemRef
 } from "../src/ship/systems";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("remaining-system helpers (design minus damage)", () => {
   it("computes usable thrust from driveHits (0 = full, 1 = half, 2 = dead)", () => {

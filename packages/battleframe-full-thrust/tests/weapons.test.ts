@@ -1,5 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { torpedoToHit, countHits, submunitionDiceAtRange } from "../src/combat/weapons";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 describe("torpedoToHit (2+/3+/4+/5+/6 by 6mu band, max 30mu)", () => {
   it("needs 2+ within 6mu, boundary inclusive", () => {

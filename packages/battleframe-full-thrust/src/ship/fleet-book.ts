@@ -25,7 +25,6 @@
  * Sources: Fleet Book 1 "Reroll Damage Rules", "Armour", "Core Systems".
  */
 
-import { DIE_TWO_DAMAGE, CORE_SYSTEM_THRESHOLD_BONUS } from "../constants";
 import { beamDamageForFace } from "../combat/beam";
 import { applyHullDamage, type HullDamageResult } from "./hull";
 import { thresholdKillOn } from "./threshold";
@@ -35,6 +34,7 @@ import type {
   ApplyDamageWithArmourParams,
   ApplyDamageWithArmourResult
 } from "./damage";
+import { requireRules } from "../rules-profile";
 
 // --- 1. Reroll / penetrating damage -----------------------------------------
 
@@ -56,7 +56,7 @@ export function penetratingDamageForFace(face: number): number {
  * its (downgraded) initial damage but the 6 face still triggers the reroll.
  */
 export function triggersReroll(face: number): boolean {
-  return face === DIE_TWO_DAMAGE;
+  return face === requireRules().dieTwoDamage;
 }
 
 /**
@@ -171,7 +171,7 @@ export function applyPenetratingDamageWithArmour(
  * thresholdKillOn so the base threshold table is never duplicated.
  */
 export function coreThresholdKillOn(worst: number, extra: number): number {
-  return thresholdKillOn(worst, extra) + CORE_SYSTEM_THRESHOLD_BONUS;
+  return thresholdKillOn(worst, extra) + requireRules().coreSystemThresholdBonus;
 }
 
 /**

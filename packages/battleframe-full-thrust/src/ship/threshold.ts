@@ -12,8 +12,7 @@
  *
  * Source: FT2 "Threshold Check".
  */
-
-import { THRESHOLD_KILL_ON } from "../constants";
+import { requireRules } from "../rules-profile";
 
 /**
  * The die value that knocks a system out at the given threshold. `worst` is the
@@ -24,8 +23,8 @@ import { THRESHOLD_KILL_ON } from "../constants";
 export function thresholdKillOn(worst: number, extra: number): number {
   // Clamp `worst` into [1, table length] so a degenerate call cannot index off
   // the table and return NaN (which would silently disable every knockout).
-  const clamped = Math.min(Math.max(1, Math.floor(worst)), THRESHOLD_KILL_ON.length);
-  const base = THRESHOLD_KILL_ON[clamped - 1];
+  const clamped = Math.min(Math.max(1, Math.floor(worst)), requireRules().thresholdKillOn.length);
+  const base = requireRules().thresholdKillOn[clamped - 1];
   return Math.max(2, base - extra);
 }
 

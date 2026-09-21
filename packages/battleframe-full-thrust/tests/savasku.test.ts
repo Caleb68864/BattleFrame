@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   powerPoolTotal,
   driveThrustCost,
@@ -15,6 +15,17 @@ import {
   consumeBiomass,
   leechPodClears
 } from "../src/combat/savasku";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 // All numbers hand-computed from the user's notes:
 //   Factions & Ships/Xeno/Sa'Vasku.md,

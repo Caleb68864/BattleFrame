@@ -15,8 +15,9 @@
  */
 
 import { plotMissilePath } from "../movement/missile-path";
-import { MISSILE_MOVE_MU, MISSILE_LIFE_TURNS } from "../constants";
+
 import type { MissileWarhead } from "./missile";
+import { requireRules } from "../rules-profile";
 
 /** One live missile on the board (position in canvas pixels). */
 export interface ActiveMissile {
@@ -26,7 +27,7 @@ export interface ActiveMissile {
   y: number;
   /** Current heading as a clockface course (1-12). */
   course: number;
-  /** How many missile phases it has flown (removed at MISSILE_LIFE_TURNS). */
+  /** How many missile phases it has flown (removed at requireRules().missileLifeTurns). */
   turnsLived: number;
   warhead: MissileWarhead;
   /** Needle warhead only: the system type the owner nominated to snipe. */
@@ -42,10 +43,10 @@ export interface ActiveMissile {
  * using the scene's `pixelsPerMu`. Pure — returns a new missile, never mutates.
  */
 export function advanceMissile(missile: ActiveMissile, turn: number, pixelsPerMu: number): ActiveMissile {
-  let path = plotMissilePath({ course: missile.course }, MISSILE_MOVE_MU, turn);
+  let path = plotMissilePath({ course: missile.course }, requireRules().missileMoveMu, turn);
   if (!path.legal) {
     // A turn sharper than the missile can make: fly straight this phase.
-    path = plotMissilePath({ course: missile.course }, MISSILE_MOVE_MU, 0);
+    path = plotMissilePath({ course: missile.course }, requireRules().missileMoveMu, 0);
   }
   return {
     ...missile,
@@ -58,5 +59,5 @@ export function advanceMissile(missile: ActiveMissile, turn: number, pixelsPerMu
 
 /** Whether a missile has flown its full life span and must be removed. */
 export function missileExpired(missile: ActiveMissile): boolean {
-  return missile.turnsLived >= MISSILE_LIFE_TURNS;
+  return missile.turnsLived >= requireRules().missileLifeTurns;
 }

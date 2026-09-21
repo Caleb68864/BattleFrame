@@ -10,7 +10,7 @@
  * Groups" note): "in the fighter movement portion of the turn you simply move any
  * or all operational groups up to 12 mu in any direction ... Groups need no
  * written movement orders and you do not track their course or velocity." The Fast
- * type's 18 mu is FIGHTER_MOVE_FAST_MU ("Specialised Fighter Types").
+ * type's 18 mu is requireRules().fighterMoveFastMu ("Specialised Fighter Types").
  *
  * Positions are {x, y} in mu, screen space: x right, y DOWN (so "up" is -y) -- the
  * SAME convention as vector.ts and path.ts, just named x/y for a plain point.
@@ -30,9 +30,9 @@
  * defences are separate concerns handled elsewhere.
  */
 
-import { FIGHTER_ATTACK_RANGE_MU } from "../constants";
 import { fighterMoveForType } from "../combat/fighter-types";
 import { velocityMagnitude } from "./vector";
+import { requireRules } from "../rules-profile";
 
 /** A position in mu, screen space (x right, y DOWN). */
 export interface Point {
@@ -98,7 +98,7 @@ export function canReachToAttack(
   from: Point,
   target: Point,
   fighterType?: string,
-  attackRangeMu: number = FIGHTER_ATTACK_RANGE_MU
+  attackRangeMu: number = requireRules().fighterAttackRangeMu
 ): AttackReach {
   const maxMove = fighterMaxMove(fighterType);
   const gap = distance(from, target);

@@ -30,14 +30,7 @@
  * Sources: FT2 "Vector Movement" (optional); Fleet Book 1 "Vector Movement System"
  * + "Manoeuvring Thrusters"; "Thrust Points"; "Course & the Clockface".
  */
-
-import {
-  COURSE_POINT_DEGREES,
-  COURSES,
-  MANOEUVRING_THRUSTER_DIVISOR,
-  PUSH_MU_PER_POINT,
-  ROTATION_THRUSTER_COST
-} from "../constants";
+import { requireRules } from "../rules-profile";
 
 /** A 2D vector in mu, screen space (x right, y DOWN). Used for position and velocity. */
 export interface Vector {
@@ -88,13 +81,13 @@ const PUSH_OFFSET: Record<PushDirection, number> = { P: -3, S: 3, R: 6 };
  * integer course works without wrapping (course 0 == 12, 15 == 3).
  */
 export function headingVector(course: number, magnitude = 1): Vector {
-  const radians = ((course % COURSES) * COURSE_POINT_DEGREES * Math.PI) / 180;
+  const radians = ((course % requireRules().courses) * requireRules().coursePointDegrees * Math.PI) / 180;
   return { vx: magnitude * Math.sin(radians), vy: -magnitude * Math.cos(radians) };
 }
 
 /** Wraps a course number into the 1..12 clockface range. */
 function wrapCourse(course: number): number {
-  return ((course - 1) % COURSES + COURSES) % COURSES + 1;
+  return ((course - 1) % requireRules().courses + requireRules().courses) % requireRules().courses + 1;
 }
 
 /**
@@ -149,7 +142,7 @@ export function rotateFacing(facing: number, points: number): number {
 
 /** Manoeuvring-thruster rating: half the main-drive thrust, rounded DOWN. */
 export function manoeuvringThrusters(thrust: number): number {
-  return Math.floor(thrust / MANOEUVRING_THRUSTER_DIVISOR);
+  return Math.floor(thrust / requireRules().manoeuvringThrusterDivisor);
 }
 
 /**
@@ -198,11 +191,11 @@ export function checkManoeuvres(manoeuvres: Manoeuvre[], thrust: number): Manoeu
         break;
       case "rotate":
         rotations += 1;
-        thrusterSpend += ROTATION_THRUSTER_COST; // 1 point for any heading change
+        thrusterSpend += requireRules().rotationThrusterCost; // 1 point for any heading change
         break;
       case "push":
         pushes += 1;
-        thrusterSpend += Math.abs(m.points) * PUSH_MU_PER_POINT;
+        thrusterSpend += Math.abs(m.points) * requireRules().pushMuPerPoint;
         break;
     }
   }
@@ -259,6 +252,6 @@ export function nearestCourse(velocity: Vector): number {
   if (velocity.vx === 0 && velocity.vy === 0) return 12;
   // Angle clockwise from up: heading vector is {sin, -cos}, so angle = atan2(vx, -vy).
   const degrees = (Math.atan2(velocity.vx, -velocity.vy) * 180) / Math.PI;
-  const point = Math.round(degrees / COURSE_POINT_DEGREES);
-  return wrapCourse(point === 0 ? COURSES : point);
+  const point = Math.round(degrees / requireRules().coursePointDegrees);
+  return wrapCourse(point === 0 ? requireRules().courses : point);
 }

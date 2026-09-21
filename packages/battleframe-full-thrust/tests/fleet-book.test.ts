@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   penetratingDamageForFace,
   triggersReroll,
@@ -9,6 +9,17 @@ import {
   knockedOutIndicesWithCore
 } from "../src/ship/fleet-book";
 import { applyDamageWithArmour } from "../src/ship/damage";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 // -----------------------------------------------------------------------------
 // Reroll / penetrating damage (Fleet Book 1, optional)

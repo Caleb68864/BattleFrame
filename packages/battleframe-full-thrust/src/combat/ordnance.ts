@@ -7,17 +7,17 @@
  * Sources: FT2 "Needle Beams"; Fleet Book 1 "Salvo Missile Systems".
  */
 
-import { NEEDLE_MAX_RANGE_MU, NEEDLE_KILL_ON } from "../constants";
 import { poolBeamDamage } from "./beam";
+import { requireRules } from "../rules-profile";
 
 /** Whether a target is within needle-beam range (9mu, FT2). */
 export function needleInRange(distanceMu: number): boolean {
-  return distanceMu <= NEEDLE_MAX_RANGE_MU;
+  return distanceMu <= requireRules().needleMaxRangeMu;
 }
 
 /** A needle beam knocks out the nominated system only on a 6. */
 export function needleHit(face: number): boolean {
-  return face >= NEEDLE_KILL_ON;
+  return face >= requireRules().needleKillOn;
 }
 
 /**

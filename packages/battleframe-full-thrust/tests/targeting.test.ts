@@ -6,9 +6,20 @@
  * what actually happens when you commit.
  */
 
-import { describe, it, expect } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { previewTargeting } from "../src/combat/targeting";
 import type { WeaponMount } from "../src/combat/fire";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 // Bearing 0 = dead ahead, which falls in the fore ("F") arc.
 const FORE = 0;

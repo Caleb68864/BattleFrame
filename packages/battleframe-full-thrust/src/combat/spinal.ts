@@ -18,19 +18,8 @@
  * live in constants.ts (NOVA_CANNON_*, WAVE_GUN_*).
  */
 
-import {
-  NOVA_CANNON_LIFE_TURNS,
-  NOVA_CANNON_ARMING_OFFSET_MU,
-  NOVA_CANNON_DICE_BY_TURN,
-  NOVA_CANNON_TEMPLATE_INCHES_BY_TURN,
-  NOVA_CANNON_TRAVEL_MU_BY_TURN,
-  WAVE_GUN_MAX_RANGE_MU,
-  WAVE_GUN_BAND_MU,
-  WAVE_GUN_DICE_BY_BAND,
-  WAVE_GUN_TEMPLATE_INCHES_BY_BAND,
-  WAVE_GUN_FULL_CHARGE
-} from "../constants";
 import { bandIndex } from "./bands";
+import { requireRules } from "../rules-profile";
 
 /**
  * Both weapons deal damage = the sum of the actual die faces (a 6 is 6 points, no
@@ -48,7 +37,7 @@ function sumFaces(faces: readonly number[]): number {
  * 3-turn life, else null (not yet armed, or burnt out).
  */
 function novaTurnIndex(turn: number): number | null {
-  if (!Number.isInteger(turn) || turn < 1 || turn > NOVA_CANNON_LIFE_TURNS) {
+  if (!Number.isInteger(turn) || turn < 1 || turn > requireRules().novaCannonLifeTurns) {
     return null;
   }
   return turn - 1;
@@ -62,13 +51,13 @@ export function novaCannonDamage(faces: readonly number[]): number {
 /** Damage dice the Nova Cannon rolls on `turn` of its life (6/4/2), else 0. */
 export function novaCannonDiceForTurn(turn: number): number {
   const i = novaTurnIndex(turn);
-  return i === null ? 0 : NOVA_CANNON_DICE_BY_TURN[i];
+  return i === null ? 0 : requireRules().novaCannonDiceByTurn[i];
 }
 
 /** Template diameter (inches) on `turn` of the Nova Cannon's life (2/4/6), else 0. */
 export function novaCannonTemplateInches(turn: number): number {
   const i = novaTurnIndex(turn);
-  return i === null ? 0 : NOVA_CANNON_TEMPLATE_INCHES_BY_TURN[i];
+  return i === null ? 0 : requireRules().novaCannonTemplateInchesByTurn[i];
 }
 
 /** The full sweep for one turn of the Nova Cannon's life (see interface), null outside its life. */
@@ -89,7 +78,7 @@ export interface NovaCannonSweep {
  * The Nova Cannon's contiguous forward sweep on `turn` of its life, or null if it
  * is not yet armed or has burnt out. The sweep starts at the 6mu arming point on
  * turn 1 and continues from the previous turn's end point thereafter (see the
- * NOVA_CANNON_TRAVEL_MU_BY_TURN note for that assumption).
+ * requireRules().novaCannonTravelMuByTurn note for that assumption).
  */
 export function novaCannonSweep(turn: number): NovaCannonSweep | null {
   const i = novaTurnIndex(turn);
@@ -98,14 +87,14 @@ export function novaCannonSweep(turn: number): NovaCannonSweep | null {
   }
   // Leading edge starts at the arming point plus every prior turn's travel, so
   // the plasma keeps moving forward rather than restarting at the bow.
-  let startOffsetMu = NOVA_CANNON_ARMING_OFFSET_MU;
+  let startOffsetMu = requireRules().novaCannonArmingOffsetMu;
   for (let prior = 0; prior < i; prior++) {
-    startOffsetMu += NOVA_CANNON_TRAVEL_MU_BY_TURN[prior];
+    startOffsetMu += requireRules().novaCannonTravelMuByTurn[prior];
   }
-  const travelMu = NOVA_CANNON_TRAVEL_MU_BY_TURN[i];
+  const travelMu = requireRules().novaCannonTravelMuByTurn[i];
   return {
-    diameterInches: NOVA_CANNON_TEMPLATE_INCHES_BY_TURN[i],
-    diceCount: NOVA_CANNON_DICE_BY_TURN[i],
+    diameterInches: requireRules().novaCannonTemplateInchesByTurn[i],
+    diceCount: requireRules().novaCannonDiceByTurn[i],
     travelMu,
     startOffsetMu,
     endOffsetMu: startOffsetMu + travelMu
@@ -124,10 +113,10 @@ export function waveGunDamage(faces: readonly number[]): number {
  * 24-36), zero beyond its 36mu reach. Boundaries belong to the nearer band.
  */
 export function waveGunDiceAtRange(distanceMu: number): number {
-  if (!Number.isFinite(distanceMu) || distanceMu > WAVE_GUN_MAX_RANGE_MU) {
+  if (!Number.isFinite(distanceMu) || distanceMu > requireRules().waveGunMaxRangeMu) {
     return 0;
   }
-  return WAVE_GUN_DICE_BY_BAND[bandIndex(distanceMu, WAVE_GUN_BAND_MU)] ?? 0;
+  return requireRules().waveGunDiceByBand[bandIndex(distanceMu, requireRules().waveGunBandMu)] ?? 0;
 }
 
 /**
@@ -135,10 +124,10 @@ export function waveGunDiceAtRange(distanceMu: number): number {
  * band), zero beyond reach.
  */
 export function waveGunTemplateInches(distanceMu: number): number {
-  if (!Number.isFinite(distanceMu) || distanceMu > WAVE_GUN_MAX_RANGE_MU) {
+  if (!Number.isFinite(distanceMu) || distanceMu > requireRules().waveGunMaxRangeMu) {
     return 0;
   }
-  return WAVE_GUN_TEMPLATE_INCHES_BY_BAND[bandIndex(distanceMu, WAVE_GUN_BAND_MU)] ?? 0;
+  return requireRules().waveGunTemplateInchesByBand[bandIndex(distanceMu, requireRules().waveGunBandMu)] ?? 0;
 }
 
 /** Stored charge after another charging turn: accumulate the rolled die face. */
@@ -148,7 +137,7 @@ export function waveGunChargeAfterTurn(currentCharge: number, dieFace: number): 
 
 /** Whether the Wave Gun is fully charged (stored total 6+) and may fire. */
 export function waveGunIsCharged(charge: number): boolean {
-  return charge >= WAVE_GUN_FULL_CHARGE;
+  return charge >= requireRules().waveGunFullCharge;
 }
 
 /** Firing fully discharges the Wave Gun: it recharges from zero. */

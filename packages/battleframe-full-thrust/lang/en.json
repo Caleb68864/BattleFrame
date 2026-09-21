@@ -79,5 +79,7 @@
   "battleframe-full-thrust.report.missileWarhead": "{warhead} warhead: <strong>{n}</strong> damage.",
   "battleframe-full-thrust.report.nominatedKnockedOut": "The nominated system was knocked out.",
   "battleframe-full-thrust.report.outOfRange": "Out of range.",
-  "battleframe-full-thrust.report.firePhaseLabel": "Fire phase:"
+  "battleframe-full-thrust.report.firePhaseLabel": "Fire phase:",
+  "battleframe-full-thrust.settings.rulesProfile.name": "Rules profile",
+  "battleframe-full-thrust.settings.rulesProfile.hint": "The numbers this module does not ship: the per-die damage table, the threshold ladder, weapon ranges and to-hit tables, ship-design caps. Enter them from the rulebook you own, or import a profile file."
 }

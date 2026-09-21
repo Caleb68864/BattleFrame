@@ -1,11 +1,22 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   fighterMaxMove,
   distance,
   moveToward,
   canReachToAttack
 } from "../src/movement/fighter-move";
-import { FIGHTER_ATTACK_RANGE_MU } from "../src/constants";
+import { requireRules } from "../src/rules-profile";
+import { withRules } from "./helpers/world";
+
+// This module ships no rules numbers; a world supplies them. See helpers/world.ts.
+let restoreFtWorld: () => void;
+beforeEach(() => {
+  restoreFtWorld = withRules();
+});
+afterEach(() => {
+  restoreFtWorld();
+});
+
 
 /**
  * Verifies the pure fighter-movement core. Unlike ships (cinematic pivot-move in
@@ -62,7 +73,7 @@ describe("moveToward", () => {
 
 describe("canReachToAttack", () => {
   it("uses the default 6 mu attack range constant", () => {
-    expect(FIGHTER_ATTACK_RANGE_MU).toBe(6);
+    expect(requireRules().fighterAttackRangeMu).toBe(6);
   });
 
   it("reports the target already in range without moving", () => {

@@ -21,23 +21,6 @@
  * Kra'Vak.md, Kra'Vak Armour.md.
  */
 
-import {
-  KGUN_MAX_RANGE_MU,
-  KGUN_BAND_MU,
-  KGUN_TO_HIT_BY_BAND,
-  KGUN_DAMAGE_MULTIPLIER,
-  KGUN_ARMOUR_PIERCE_DP,
-  KGUN_K1_POINT_DEFENCE_KILL_ON,
-  MKP_ONE_HIT_MIN,
-  MKP_TWO_HIT,
-  SCATTERGUN_HEAVY_FIGHTER_DIVISOR,
-  SCATTERGUN_PLASMA_ONE_REDUCE_MIN,
-  SCATTERGUN_PLASMA_TWO_REDUCE,
-  SCATTERGUN_SHIP_ONE_DP_MIN,
-  SCATTERGUN_SHIP_TWO_DP,
-  SCATTERGUN_FRIENDLY_FIRE_ON,
-  DIE_SIZE
-} from "../constants";
 import { bandIndex } from "./bands";
 import { countHits } from "./weapons";
 import {
@@ -46,6 +29,7 @@ import {
   type HullState,
   type ApplyDamageWithArmourResult
 } from "../ship/damage";
+import { requireRules } from "../rules-profile";
 
 // --- K-gun (railgun) --------------------------------------------------------
 
@@ -54,12 +38,12 @@ import {
  * by every K-gun class), or null beyond the 30mu maximum range.
  */
 export function kgunToHit(distanceMu: number): number | null {
-  if (!Number.isFinite(distanceMu) || distanceMu > KGUN_MAX_RANGE_MU) {
+  if (!Number.isFinite(distanceMu) || distanceMu > requireRules().kgunMaxRangeMu) {
     return null;
   }
   // `?? null` guards a band index off the end of the table -- never return
   // `undefined`, which a `=== null` caller would misread as "in range".
-  return KGUN_TO_HIT_BY_BAND[bandIndex(distanceMu, KGUN_BAND_MU)] ?? null;
+  return requireRules().kgunToHitByBand[bandIndex(distanceMu, requireRules().kgunBandMu)] ?? null;
 }
 
 /**
@@ -71,10 +55,10 @@ export function kgunToHit(distanceMu: number): number | null {
 export function kgunDamageForFace(cls: number, face: number): number {
   // "A natural 6 always = class (even for K-6+)" -- overrides the doubling that
   // face <= cls would otherwise give a high-class gun.
-  if (face === DIE_SIZE) {
+  if (face === requireRules().dieSize) {
     return cls;
   }
-  return face <= cls ? cls * KGUN_DAMAGE_MULTIPLIER : cls;
+  return face <= cls ? cls * requireRules().kgunDamageMultiplier : cls;
 }
 
 export interface ApplyKgunHitParams {
@@ -95,7 +79,7 @@ export function applyKgunHit(params: ApplyKgunHitParams): ApplyDamageWithArmourR
   const { armour, hull, damage } = params;
 
   const armourRemaining = Math.max(0, armour.boxes - armour.damage);
-  const toArmour = Math.min(KGUN_ARMOUR_PIERCE_DP, Math.max(0, damage), armourRemaining);
+  const toArmour = Math.min(requireRules().kgunArmourPierceDp, Math.max(0, damage), armourRemaining);
 
   const pierced = applyDamageWithArmour({
     armour: { boxes: 0, damage: 0 },
@@ -115,21 +99,21 @@ export function applyKgunHit(params: ApplyKgunHitParams): ApplyDamageWithArmourR
  * kill per hit, so the kill count is simply the number of qualifying dice.
  */
 export function kgunK1PointDefenceKills(faces: readonly number[]): number {
-  return countHits(faces, KGUN_K1_POINT_DEFENCE_KILL_ON);
+  return countHits(faces, requireRules().kgunK1PointDefenceKillOn);
 }
 
 // --- MKP (Multiple Kinetic Penetrator) pack ---------------------------------
 
 /**
  * Hits from the MKP pack's single effect die: 4-5 = 1 hit, 6 = 2 hits, else 0.
- * Each resulting hit is a flat MKP_HIT_DP (4) resolved via applyKgunHit (it
+ * Each resulting hit is a flat requireRules().mkpHitDp (4) resolved via applyKgunHit (it
  * pierces armour like a class-4 K-gun).
  */
 export function mkpHits(face: number): number {
-  if (face >= MKP_TWO_HIT) {
+  if (face >= requireRules().mkpTwoHit) {
     return 2;
   }
-  if (face >= MKP_ONE_HIT_MIN) {
+  if (face >= requireRules().mkpOneHitMin) {
     return 1;
   }
   return 0;
@@ -142,8 +126,8 @@ export function mkpHits(face: number): number {
  * the kill count (1D6), halved and rounded UP against heavy fighters.
  */
 export function scattergunFighterKills(face: number, heavy = false): number {
-  const kills = Math.max(0, Math.min(face, DIE_SIZE));
-  return heavy ? Math.ceil(kills / SCATTERGUN_HEAVY_FIGHTER_DIVISOR) : kills;
+  const kills = Math.max(0, Math.min(face, requireRules().dieSize));
+  return heavy ? Math.ceil(kills / requireRules().scattergunHeavyFighterDivisor) : kills;
 }
 
 /**
@@ -151,10 +135,10 @@ export function scattergunFighterKills(face: number, heavy = false): number {
  * reduces by 2, else 0 (no rerolls).
  */
 export function scattergunPlasmaReduction(face: number): number {
-  if (face >= SCATTERGUN_PLASMA_TWO_REDUCE) {
+  if (face >= requireRules().scattergunPlasmaTwoReduce) {
     return 2;
   }
-  if (face >= SCATTERGUN_PLASMA_ONE_REDUCE_MIN) {
+  if (face >= requireRules().scattergunPlasmaOneReduceMin) {
     return 1;
   }
   return 0;
@@ -167,10 +151,10 @@ export function scattergunPlasmaReduction(face: number): number {
  * applyDamageWithArmour (normal absorption), NOT applyKgunHit.
  */
 export function scattergunShipDamageForFace(face: number): number {
-  if (face >= SCATTERGUN_SHIP_TWO_DP) {
+  if (face >= requireRules().scattergunShipTwoDp) {
     return 2;
   }
-  if (face >= SCATTERGUN_SHIP_ONE_DP_MIN) {
+  if (face >= requireRules().scattergunShipOneDpMin) {
     return 1;
   }
   return 0;
@@ -181,5 +165,5 @@ export function scattergunShipDamageForFace(face: number): number {
  * hit the DEFENDED ship for 1 DP. True only on a 1.
  */
 export function scattergunFriendlyFireHit(face: number): boolean {
-  return face === SCATTERGUN_FRIENDLY_FIRE_ON;
+  return face === requireRules().scattergunFriendlyFireOn;
 }
