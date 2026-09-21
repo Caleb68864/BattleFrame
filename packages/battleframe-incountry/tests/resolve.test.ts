@@ -1,4 +1,5 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { TEST_DIE_SIZE, withDieSize } from "./helpers/world";
 import {
   attackTotal,
   countHits,
@@ -8,6 +9,15 @@ import {
   type DiceApiLike
 } from "../src/combat/resolve";
 
+// The module ships no die size; a test that rolls supplies one, like a user.
+let restoreWorld: () => void;
+beforeEach(() => {
+  restoreWorld = withDieSize();
+});
+afterEach(() => {
+  restoreWorld();
+});
+
 /**
  * INX to-hit is ROLL-UNDER on a d10: each die face <= the Attack Value is a
  * hit, and the damage total is the SUM of the hitting faces (not the count),
@@ -15,7 +25,7 @@ import {
  * greater than damage. (Rulebook D.1, H.1-H.3.)
  */
 
-describe("countHits — roll-under d10", () => {
+describe("countHits — roll-under on the world's die", () => {
   it("counts faces at or below the attack value", () => {
     // faces 1,4,10 vs attack value 7 -> 1 and 4 hit, 10 misses.
     expect(countHits([1, 4, 10], 7)).toBe(2);
@@ -138,7 +148,7 @@ describe("resolveAttack — full attack against one target model", () => {
     expect(result.armorFaces).toEqual([]);
     expect(result.destroyed).toBe(false);
     // One pool roll for the two attack dice; no armor pool (nothing hit).
-    expect(dice.rolled).toEqual(["2d10"]);
+    expect(dice.rolled).toEqual([`2d${TEST_DIE_SIZE}`]);
   });
 
   it("rolls zero attack dice as an automatic miss (0D10 weapons)", async () => {

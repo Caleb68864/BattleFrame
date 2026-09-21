@@ -21,7 +21,7 @@
       </label>
       <label class="inx-stat">
         <span class="inx-stat__label">Morale</span>
-        <input type="number" name="system.morale" value="{{system.morale}}" min="1" max="10" step="1" />
+        <input type="number" name="system.morale" value="{{system.morale}}" min="0" step="1" />
       </label>
     </div>
   </section>
@@ -31,20 +31,20 @@
     <div class="inx-stats">
       <label class="inx-stat inx-stat--attack">
         <span class="inx-stat__label">Clear</span>
-        <input type="number" name="system.attackClear" value="{{system.attackClear}}" min="1" max="10" step="1" />
+        <input type="number" name="system.attackClear" value="{{system.attackClear}}" min="0" step="1" />
       </label>
       <label class="inx-stat inx-stat--attack">
         <span class="inx-stat__label">In Cover</span>
-        <input type="number" name="system.attackCover" value="{{system.attackCover}}" min="1" max="10" step="1" />
+        <input type="number" name="system.attackCover" value="{{system.attackCover}}" min="0" step="1" />
       </label>
       <label class="inx-stat inx-stat--armor">
-        <span class="inx-stat__label">Armor</span>
-        <select name="system.armorType">
-          {{#each armorOptions}}
-          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{this.label}}</option>
-          {{/each}}
-        </select>
+        <span class="inx-stat__label">Armor +</span>
+        <input type="number" name="system.armorModifier" value="{{system.armorModifier}}" min="0" step="1" />
         <span class="inx-stat__rating" title="Destroyed by damage">{{armorRating}}</span>
+      </label>
+      <label class="inx-stat inx-stat--armor">
+        <span class="inx-stat__label">Armor dice</span>
+        <input type="number" name="system.armorDice" value="{{system.armorDice}}" min="0" step="1" />
       </label>
     </div>
     <label class="inx-toggle">

@@ -1,13 +1,31 @@
 /**
- * INCOUNTRY (INX) 2.0 rules numbers. Sourced from the INX 2.0 rulebook by Echo
- * Dark Studios. Every rules value the module uses lives here so a correction is
- * a one-line edit. VTT artefacts (measurement tolerances, etc.) do NOT belong
- * here -- this file's contract is "INX numbers only".
+ * INCOUNTRY (INX) module identity and setting keys.
  *
  * This module ships NO ruleset content: no rulebook prose, no proprietary unit
- * stat blocks, no weapon tables. It implements the mechanics; the user supplies
- * their own unit data. (Same clean-room stance as Simple Skirmish shipping "no
- * artwork".)
+ * stat blocks, no weapon tables, and -- since the rules-content audit -- no
+ * rules numbers either. It implements the MECHANISMS; the user supplies every
+ * number from the INX rulebook they own, as a data-model field on the unit or
+ * as a module setting.
+ *
+ * What was here and where it went:
+ *
+ * - `INX_DIE_SIZE` (10) -- now {@link SETTING_DIE_SIZE}, which ships UNSET. The
+ *   die a game resolves on is that game's design, not a VTT artefact; the
+ *   ladder of dice Foundry can roll is the artefact, and this module never
+ *   needed the ladder.
+ * - `ARMOR_MODIFIER` (a tier -> modifier table) and `ARMOR_DICE_DEFAULT` (1) --
+ *   now the `armorModifier` and `armorDice` fields on the unit data model. The
+ *   card was always the source of these; the tier names were a lookup this
+ *   module performed on the user's behalf, using numbers it had no business
+ *   shipping. Every other value on that schema -- move, morale, both Attack
+ *   values, every weapon profile -- was already user-entered. `armorType` was
+ *   the one field whose value came from the repository rather than the card.
+ * - `INJURY_DAMAGE_THRESHOLD` (5) -- deleted outright. Nothing imported it.
+ *
+ * See `docs/rules-content-audit.md`. The rule this file now follows: keep a
+ * constant only if it is an engine or VTT artefact -- the same number whatever
+ * game were loaded. A module id and an Actor subtype name qualify. A die size,
+ * a range, a to-hit number and a damage result do not.
  */
 
 export const MODULE_ID = "battleframe-incountry";
@@ -15,32 +33,16 @@ export const MODULE_ID = "battleframe-incountry";
 /** This ruleset's Actor subtype, namespaced by module id as Foundry requires. */
 export const UNIT_ACTOR_TYPE = "unit";
 
-/** INX resolves everything on the ten-sided die. */
-export const INX_DIE_SIZE = 10;
-
 /**
- * Armor tiers. An armor check rolls `dice` d10, adds `modifier`, and the model
- * SURVIVES iff the total is strictly greater than the incoming damage (a tie
- * destroys -- rulebook H.3).
+ * World setting: the die every INX roll uses, as entered by the user.
  *
- * The card prints "Destroyed by damage X+", which is shorthand for
- * `modifier = X - 1` on a single die: Unarmored 5+ -> +4, Body Armor 6+ -> +5,
- * Advanced Armor 7+ -> +6. Shields are a trait, not a tier.
+ * Ships as {@link DIE_SIZE_UNSET} rather than a working default on purpose. A
+ * default that happened to be the published value would put the number straight
+ * back into the repository -- the migration would read as done while changing
+ * nothing -- so the module refuses to roll until a world sets it. See
+ * `requireDieSize` in `settings.ts`.
  */
-export type ArmorType = "unarmored" | "body" | "advanced";
+export const SETTING_DIE_SIZE = "dieSize";
 
-export const ARMOR_MODIFIER: Readonly<Record<ArmorType, number>> = {
-  unarmored: 4,
-  body: 5,
-  advanced: 6
-};
-
-/** Infantry armor rolls one d10 unless a trait says otherwise. */
-export const ARMOR_DICE_DEFAULT = 1;
-
-/**
- * The "Injury"/optional-lethality threshold: passing an armor check against
- * damage >= this value still leaves the model injured (rulebook H.5). Carried
- * for the advanced toggle; the core game does not apply it.
- */
-export const INJURY_DAMAGE_THRESHOLD = 5;
+/** The die-size setting's shipped value: no die chosen yet. */
+export const DIE_SIZE_UNSET = 0;

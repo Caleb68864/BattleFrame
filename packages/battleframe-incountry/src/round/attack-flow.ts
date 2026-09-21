@@ -1,6 +1,7 @@
-import { ARMOR_DICE_DEFAULT, INX_DIE_SIZE, MODULE_ID } from "../constants";
+import { MODULE_ID } from "../constants";
+import { requireDieSize } from "../settings";
 import { resolveAttack, type AttackResult, type DiceApiLike } from "../combat/resolve";
-import { armorModifier, attackValue, type UnitSystemData, type WeaponProfile } from "../data/unit-state";
+import { armorDice, armorModifier, attackValue, type UnitSystemData, type WeaponProfile } from "../data/unit-state";
 import { rollSuppresses } from "./suppression";
 
 /**
@@ -18,7 +19,7 @@ export interface AttackFlowParams {
   dice: DiceApiLike;
   attacker: Pick<UnitSystemData, "attackClear" | "attackCover">;
   weapon: Pick<WeaponProfile, "attackDice" | "dmg">;
-  target: Pick<UnitSystemData, "modelsRemaining" | "armorType" | "morale">;
+  target: Pick<UnitSystemData, "modelsRemaining" | "armorModifier" | "armorDice" | "morale">;
   inCover: boolean;
   flavorPrefix?: string;
 }
@@ -40,7 +41,7 @@ export async function resolveUnitAttack(params: AttackFlowParams): Promise<Attac
     attackDice: weapon.attackDice,
     attackValue: attackValue(attacker, inCover),
     weaponDmg: weapon.dmg,
-    armorDice: ARMOR_DICE_DEFAULT,
+    armorDice: armorDice(target),
     armorModifier: armorModifier(target),
     flavorPrefix: params.flavorPrefix
   });
@@ -56,7 +57,7 @@ export async function resolveUnitAttack(params: AttackFlowParams): Promise<Attac
   }
 
   const suppressionRoll = (
-    await dice.roll(`1d${INX_DIE_SIZE}`, {}, { rulesetId: MODULE_ID, flavor: "suppression" })
+    await dice.roll(`1d${requireDieSize()}`, {}, { rulesetId: MODULE_ID, flavor: "suppression" })
   ).total;
   const suppressed = rollSuppresses(suppressionRoll, target.morale);
 

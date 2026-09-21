@@ -2,10 +2,13 @@ import { describe, expect, it } from "vitest";
 import { armorRating, createUnitSheetClass } from "../src/sheets/unit-sheet";
 
 describe("armorRating — the card's 'destroyed by X+' string", () => {
-  it("renders modifier+1 for each tier", () => {
-    expect(armorRating("unarmored")).toBe("5+");
-    expect(armorRating("body")).toBe("6+");
-    expect(armorRating("advanced")).toBe("7+");
+  it("renders modifier+1, from whatever the user entered", () => {
+    expect(armorRating(3)).toBe("4+");
+    expect(armorRating(7)).toBe("8+");
+  });
+
+  it("renders a dash rather than a number for an unentered card", () => {
+    expect(armorRating(0)).toBe("\u2014");
   });
 });
 

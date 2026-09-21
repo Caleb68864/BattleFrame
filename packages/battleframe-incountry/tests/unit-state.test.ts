@@ -45,11 +45,20 @@ describe("attackValue — cover swaps to the lower number", () => {
   });
 });
 
-describe("armorModifier — from the armor tier", () => {
-  it("maps unarmored/body/advanced to +4/+5/+6", () => {
-    expect(armorModifier(unit({ armorType: "unarmored" }))).toBe(4);
-    expect(armorModifier(unit({ armorType: "body" }))).toBe(5);
-    expect(armorModifier(unit({ armorType: "advanced" }))).toBe(6);
+describe("armorModifier — read off the card", () => {
+  it("hands back the modifier the user entered", () => {
+    expect(armorModifier(unit({ armorModifier: 3 }))).toBe(3);
+    expect(armorModifier(unit({ armorModifier: 7 }))).toBe(7);
+  });
+
+  /**
+   * This replaced a test asserting a published tier table -- +4/+5/+6 by tier
+   * name. Stripping the constant is not enough on its own: a suite that
+   * re-states the table keeps it in the repository, and this is where it would
+   * have survived.
+   */
+  it("hands back nothing for a card nobody has filled in", () => {
+    expect(armorModifier(unit({ armorModifier: 0 }))).toBe(0);
   });
 });
 

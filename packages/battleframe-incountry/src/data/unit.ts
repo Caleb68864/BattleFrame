@@ -1,4 +1,4 @@
-import { ARMOR_MODIFIER, MODULE_ID, UNIT_ACTOR_TYPE } from "../constants";
+import { MODULE_ID, UNIT_ACTOR_TYPE } from "../constants";
 
 export class MissingTypeDataModelBaseError extends Error {
   constructor() {
@@ -34,9 +34,6 @@ function resolveFieldsNamespace(): Record<string, any> {
   return globalScope.foundry?.data?.fields ?? {};
 }
 
-/** The armor tiers the card offers, as the StringField's choices. */
-const ARMOR_TYPES = Object.keys(ARMOR_MODIFIER);
-
 /**
  * The INX unit stat line (rulebook A). Split across two levels exactly as the
  * unit card is: unit-wide stats (move, morale, the two Attack values, armor
@@ -49,7 +46,9 @@ const ARMOR_TYPES = Object.keys(ARMOR_MODIFIER);
  *                         surviving morale).
  *  - `attackClear` / `attackCover` -- roll <= this on a d10 to hit; the lower
  *                         cover value applies when the target is in cover.
- *  - `armorType`       -- unarmored / body / advanced; sets the armor modifier.
+ *  - `armorModifier`   -- added to the armor roll; the card prints it as
+ *                         "Destroyed by damage X+", which is `X - 1` here.
+ *  - `armorDice`       -- dice thrown on an armor check.
  *  - `suppressed`      -- the one suppression marker.
  *  - `weapons[]`       -- { name, count, dmg, attackDice, owDice }; owDice 0 =
  *                         the weapon cannot react.
@@ -70,28 +69,42 @@ export function createUnitDataClass(
       const intField = (min: number, initial: number, max?: number): unknown =>
         new NumberField({ required: true, nullable: false, integer: true, min, max, initial });
 
-      schema.modelCount = intField(1, 1);
-      schema.modelsRemaining = intField(0, 1);
-      schema.move = intField(0, 6);
-      schema.morale = intField(1, 6, 10);
-      schema.attackClear = intField(1, 6, 10);
-      schema.attackCover = intField(1, 4, 10);
-      schema.armorType = new StringField({
-        required: true,
-        blank: false,
-        choices: ARMOR_TYPES,
-        initial: "unarmored"
-      });
+      // Every rating ships at zero -- an empty card, waiting for the user's.
+      //
+      // `move`, `morale` and the two Attack values used to seed 6, 6, 6 and 4,
+      // and the upper bounds of 10 were the published die. A seeded rating is
+      // the same defect as a shipped table, only quieter: it is this module
+      // writing a number onto the player's card and then never being asked
+      // about it again. The sister project was fixed for exactly this -- an
+      // import that answered a missing die with 8 and an empty roster with "a
+      // weapon called Rifles" -- and the reasoning carries here unchanged.
+      //
+      // Zero is not a playable rating, which is the point: it is visibly
+      // unentered rather than plausibly wrong.
+      schema.modelCount = intField(0, 0);
+      schema.modelsRemaining = intField(0, 0);
+      schema.move = intField(0, 0);
+      schema.morale = intField(0, 0);
+      schema.attackClear = intField(0, 0);
+      schema.attackCover = intField(0, 0);
+      // These two replaced an `armorType` StringField whose three tier names
+      // each mapped to a published modifier -- the one field on this schema
+      // whose value came from the repository rather than the user's card.
+      schema.armorModifier = intField(0, 0);
+      schema.armorDice = intField(0, 0);
       schema.suppressed = new BooleanField({ initial: false });
 
       if (ArrayField && SchemaField) {
         schema.weapons = new ArrayField(
           new SchemaField({
-            name: new StringField({ required: true, blank: true, initial: "Rifle" }),
-            count: new NumberField({ integer: true, min: 0, initial: 1 }),
-            dmg: new NumberField({ integer: true, min: 0, initial: 1 }),
-            attackDice: new NumberField({ integer: true, min: 0, initial: 2 }),
-            owDice: new NumberField({ integer: true, min: 0, initial: 1 })
+            // Blank and zero for the same reason as the ratings above: a
+            // weapon profile seeded with a name and a dice count is a stat
+            // block this module wrote, sitting in the player's roster.
+            name: new StringField({ required: true, blank: true, initial: "" }),
+            count: new NumberField({ integer: true, min: 0, initial: 0 }),
+            dmg: new NumberField({ integer: true, min: 0, initial: 0 }),
+            attackDice: new NumberField({ integer: true, min: 0, initial: 0 }),
+            owDice: new NumberField({ integer: true, min: 0, initial: 0 })
           }),
           { initial: [] }
         );

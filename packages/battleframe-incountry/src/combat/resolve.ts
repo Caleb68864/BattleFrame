@@ -1,4 +1,5 @@
-import { INX_DIE_SIZE, MODULE_ID } from "../constants";
+import { MODULE_ID } from "../constants";
+import { requireDieSize } from "../settings";
 
 export interface DiceRollResult {
   total: number;
@@ -126,5 +127,5 @@ async function rollPool(
 ): Promise<number[]> {
   // One Roll for the whole pool -- one chat card, one Dice So Nice animation --
   // instead of N separate 1d10 rolls. The engine dice service reads the faces.
-  return dice.rollPool(Math.max(0, count), INX_DIE_SIZE, { rulesetId: MODULE_ID, flavor });
+  return dice.rollPool(Math.max(0, count), requireDieSize(), { rulesetId: MODULE_ID, flavor });
 }

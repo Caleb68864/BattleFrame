@@ -1,7 +1,17 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { withDieSize } from "./helpers/world";
 import { resolveUnitAttack } from "../src/round/attack-flow";
 import type { DiceApiLike } from "../src/combat/resolve";
 import type { UnitSystemData, WeaponProfile } from "../src/data/unit-state";
+
+// The module ships no die size; a test that rolls supplies one, like a user.
+let restoreWorld: () => void;
+beforeEach(() => {
+  restoreWorld = withDieSize();
+});
+afterEach(() => {
+  restoreWorld();
+});
 
 function fakeDice(faces: number[]): DiceApiLike {
   const queue = [...faces];
@@ -26,8 +36,13 @@ function fakeDice(faces: number[]): DiceApiLike {
   };
 }
 
+/**
+ * A card the user typed. Every number here is arbitrary -- these tests assert
+ * mechanics, and using the rulebook's own values would put them back in the
+ * repository through the test suite.
+ */
 function weapon(extra: Partial<WeaponProfile> = {}): WeaponProfile {
-  return { name: "Rifle", count: 1, dmg: 2, attackDice: 2, owDice: 1, ...extra };
+  return { name: "Carbine", count: 1, dmg: 2, attackDice: 2, owDice: 1, ...extra };
 }
 
 function unit(extra: Partial<UnitSystemData> = {}): UnitSystemData {
@@ -38,7 +53,8 @@ function unit(extra: Partial<UnitSystemData> = {}): UnitSystemData {
     morale: 6,
     attackClear: 7,
     attackCover: 5,
-    armorType: "unarmored",
+    armorModifier: 3,
+    armorDice: 1,
     suppressed: false,
     weapons: [weapon()],
     ...extra
@@ -48,7 +64,7 @@ function unit(extra: Partial<UnitSystemData> = {}): UnitSystemData {
 describe("resolveUnitAttack — attack, casualty, suppression", () => {
   it("kills a model and rolls suppression against surviving morale", async () => {
     // Attack 2d10 vs clear 7: faces 4,6 hit -> total 10; +DMG 2 -> 12.
-    // Armor unarmored +4: roll 5 -> 9 <= 12 -> a model dies.
+    // Armor +3 on one die: roll 5 -> 8 <= 12 -> a model dies.
     // Suppression d10: roll 8 > morale 6 -> suppressed.
     const dice = fakeDice([4, 6, 5, 8]);
     const result = await resolveUnitAttack({

@@ -50,7 +50,8 @@ describe("createUnitDataClass — the INX unit schema", () => {
       "morale",
       "attackClear",
       "attackCover",
-      "armorType",
+      "armorModifier",
+      "armorDice",
       "suppressed",
       "weapons"
     ]) {
@@ -58,23 +59,36 @@ describe("createUnitDataClass — the INX unit schema", () => {
     }
   });
 
-  it("constrains the two Attack values and morale to the d10 range", () => {
+  /**
+   * The guard on the strip. Every rating ships unentered, so a module that
+   * quietly reintroduced a published default -- the easiest way for this work
+   * to come undone -- fails here rather than shipping.
+   */
+  it("ships every rating unentered rather than seeding a playable card", () => {
+    const UnitData = createUnitDataClass(FakeTypeDataModel as any) as any;
+    const schema = UnitData.defineSchema();
+
+    for (const key of [
+      "modelCount",
+      "modelsRemaining",
+      "move",
+      "morale",
+      "attackClear",
+      "attackCover",
+      "armorModifier",
+      "armorDice"
+    ]) {
+      expect((schema[key] as FakeField).config.initial).toBe(0);
+    }
+  });
+
+  it("puts no upper bound on a rating, because the bound was the published die", () => {
     const UnitData = createUnitDataClass(FakeTypeDataModel as any) as any;
     const schema = UnitData.defineSchema();
 
     for (const key of ["attackClear", "attackCover", "morale"]) {
-      expect((schema[key] as FakeField).config).toMatchObject({ min: 1, max: 10 });
+      expect((schema[key] as FakeField).config.max).toBeUndefined();
     }
-  });
-
-  it("offers the three armor tiers as the armorType choices", () => {
-    const UnitData = createUnitDataClass(FakeTypeDataModel as any) as any;
-    const schema = UnitData.defineSchema();
-    expect((schema.armorType as FakeField).config.choices).toEqual([
-      "unarmored",
-      "body",
-      "advanced"
-    ]);
   });
 });
 

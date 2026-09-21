@@ -1,5 +1,3 @@
-import { ARMOR_MODIFIER, type ArmorType } from "../constants";
-
 /**
  * Pure reads over a unit's system data. The Foundry data model
  * (`data/unit.ts`) defines the schema; these helpers interpret it and are
@@ -31,7 +29,10 @@ export interface UnitSystemData {
   attackClear: number;
   /** Roll <= this to hit a target in cover (always <= clear). */
   attackCover: number;
-  armorType: ArmorType;
+  /** Added to the armor roll. The card prints "Destroyed by damage X+" = this + 1. */
+  armorModifier: number;
+  /** Dice thrown on an armor check. */
+  armorDice: number;
   suppressed: boolean;
   weapons: WeaponProfile[];
 }
@@ -49,9 +50,20 @@ export function attackValue(
   return inCover ? data.attackCover : data.attackClear;
 }
 
-/** The armor roll modifier for this unit's tier. */
-export function armorModifier(data: Pick<UnitSystemData, "armorType">): number {
-  return ARMOR_MODIFIER[data.armorType];
+/**
+ * The armor roll modifier this unit's card gives.
+ *
+ * A read rather than a lookup now. This used to index a shipped tier table by
+ * `armorType`, which made the module the source of a published number; the
+ * value comes off the user's card like every other rating.
+ */
+export function armorModifier(data: Pick<UnitSystemData, "armorModifier">): number {
+  return data.armorModifier;
+}
+
+/** The dice this unit's card throws on an armor check. */
+export function armorDice(data: Pick<UnitSystemData, "armorDice">): number {
+  return data.armorDice;
 }
 
 /** A weapon can react only if it has an overwatch profile (owDice > 0). */

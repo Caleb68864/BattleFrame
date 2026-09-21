@@ -1,5 +1,6 @@
 import { MODULE_ID, UNIT_ACTOR_TYPE } from "./constants";
 import { registerUnitDataModel } from "./data/unit";
+import { registerSettings } from "./settings";
 import { registerUnitSheet } from "./sheets/unit-sheet";
 import { registerStatusEffects } from "./status";
 import { registerInCountryTokenDefaults } from "./token-defaults";
@@ -100,6 +101,9 @@ const globalHooks = (globalThis as unknown as {
 }).Hooks;
 
 globalHooks?.once("init", () => {
+  // First: the world's own rules numbers. This module ships none, so nothing
+  // downstream can roll until a world has answered for them.
+  registerSettings();
   registerUnitDataModel();
   registerUnitSheet();
   registerStatusEffects();

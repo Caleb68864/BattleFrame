@@ -11,11 +11,6 @@
     "fields": {
       "modelsRemaining": "Models"
     },
-    "armor": {
-      "unarmored": "Unarmored",
-      "body": "Body Armor",
-      "advanced": "Advanced Armor"
-    },
     "status": {
       "suppressed": "Suppressed"
     },
@@ -43,6 +38,12 @@
         "notYourTurn": "It is not this side's activation.",
         "noTarget": "Target an enemy unit for this attack.",
         "suppressedNoOrder": "A suppressed unit cannot receive a priority order."
+      }
+    },
+    "settings": {
+      "dieSize": {
+        "name": "Die size",
+        "hint": "The die your rulebook resolves on. This module ships no rules numbers, so nothing can be rolled until you set this."
       }
     }
   }

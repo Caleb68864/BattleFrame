@@ -13,12 +13,33 @@ The guiding invariant is simple: **core knows nothing about your ruleset.**
 
 ## What ships in this repo — and what does not
 
-This project ships **zero copyrighted rules content**. No rules text, no stat
-blocks, no army lists, no points values, no artwork. The code implements
-*mechanics*; the *data* is yours to bring. Playing a given game means owning its
-rulebook and entering the numbers yourself. Reference rulebooks used during
-development are kept strictly local and are never committed, released, or
-redistributed (they are kept local and git-ignored).
+**The policy.** The code implements *mechanics*; the *data* is yours to bring.
+Playing a given game means owning its rulebook and entering the numbers
+yourself. Reference rulebooks used during development are kept strictly local
+and are never committed, released, or redistributed (they are kept local and
+git-ignored).
+
+**Where the code stands against that policy, stated honestly.** The core system
+and two of the six ruleset modules meet it today. Four do not, and are being
+migrated — see [`docs/rules-content-audit.md`](docs/rules-content-audit.md) for
+the per-module detail and the plan.
+
+| Package | Ships rules numbers? | Source |
+| --- | --- | --- |
+| `battleframe` (core) | No | — |
+| `battleframe-stargrunt-ii` | No — user supplies every value | — |
+| `battleframe-dirtside-ii` | No — user supplies every value | — |
+| `battleframe-full-thrust` | **Yes — 147 constants** | Full Thrust 2e / More Thrust, Jon Tuffley / Ground Zero Games |
+| `battleframe-greathelm` | **Yes** | `GREATHELM-QSR.pdf` v0.4, Malev |
+| `battleframe-incountry` | **Yes** | INX 2.0 rulebook, Echo Dark Studios |
+| `battleframe-simple-skirmish` | **Yes** | *Simple Fantasy Skirmish*, Peter Vodden — CC BY-NC 4.0, attributed |
+
+This section used to say the project ships "zero copyrighted rules content… no
+points values". That was false for the four modules above, one of which carries
+a to-hit table, a damage table, a threshold table and a quoted points value. It
+is recorded here rather than quietly corrected because the claim was published,
+and because `stargrunt-ii` and `dirtside-ii` — the same publisher as
+`full-thrust` — show the repository already knew the right shape.
 
 ## Layout
 
@@ -28,9 +49,11 @@ An [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) monorepo:
   offers a module lives under `game.battleframe`; see
   [Engine capabilities](#engine-capabilities) below.
 - The **ruleset modules** — each a separate Foundry module that registers
-  itself with the core and drives its own game. All are mechanics only: they
-  ship no rules text, stat blocks, army lists, points values, or artwork, and
-  require the official rulebook (obtained separately by the user).
+  itself with the core and drives its own game. Every one of them requires the
+  official rulebook, obtained separately by the user. None ships rules *prose*,
+  stat blocks, army lists or artwork; four of them currently ship rules
+  *numbers*, which the table above names and
+  [`docs/rules-content-audit.md`](docs/rules-content-audit.md) tracks.
   - `packages/battleframe-greathelm/` — **GREATHELM**, the reference ruleset
     module and the smallest complete example: actor data model, sheets,
     settings, UI, dice-pool round loop, and victory check.

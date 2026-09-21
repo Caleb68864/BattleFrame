@@ -1,4 +1,5 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { withDieSize } from "./helpers/world";
 import {
   createRoundsApi,
   type RoundsApi
@@ -55,9 +56,10 @@ function system(extra: Partial<UnitSystemData> = {}): UnitSystemData {
     morale: 6,
     attackClear: 7,
     attackCover: 5,
-    armorType: "unarmored",
+    armorModifier: 3,
+    armorDice: 1,
     suppressed: false,
-    weapons: [{ name: "Rifle", count: 1, dmg: 2, attackDice: 2, owDice: 1 }],
+    weapons: [{ name: "Carbine", count: 1, dmg: 2, attackDice: 2, owDice: 1 }],
     ...extra
   };
 }
@@ -67,6 +69,15 @@ function unit(id: string, sideId: string, sys: UnitSystemData): RoundControlUnit
 }
 
 describe("rollInitiativeInx — low wins, reroll ties", () => {
+  // No die ships with the module; a rolling test supplies one, like a user.
+  let restoreWorld: () => void;
+  beforeEach(() => {
+    restoreWorld = withDieSize();
+  });
+  afterEach(() => {
+    restoreWorld();
+  });
+
   it("the lower d10 takes initiative", async () => {
     const dice = fakeDice([2, 8]); // A rolls 2, B rolls 8 -> A first
     const { firstSideId } = await rollInitiativeInx(["A", "B"], dice);
@@ -96,6 +107,15 @@ describe("checkVictoryInx", () => {
 });
 
 describe("beginRound + resolveActivation — a played round to victory", () => {
+  // No die ships with the module; a rolling test supplies one, like a user.
+  let restoreWorld: () => void;
+  beforeEach(() => {
+    restoreWorld = withDieSize();
+  });
+  afterEach(() => {
+    restoreWorld();
+  });
+
   it("A activates, wipes B's last model, and the round reads A as winner", async () => {
     const a1 = unit("a1", "A", system({ modelsRemaining: 2 }));
     const b1 = unit("b1", "B", system({ modelsRemaining: 1 }));

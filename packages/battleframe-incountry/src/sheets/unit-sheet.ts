@@ -1,4 +1,4 @@
-import { ARMOR_MODIFIER, MODULE_ID, UNIT_ACTOR_TYPE, type ArmorType } from "../constants";
+import { MODULE_ID, UNIT_ACTOR_TYPE } from "../constants";
 
 export class MissingActorSheetV2BaseError extends Error {
   constructor() {
@@ -95,9 +95,13 @@ function resolveFoundryApplications(): {
   };
 }
 
-/** The "Destroyed by damage X+" rating a tier prints on the card (modifier + 1). */
-export function armorRating(armorType: ArmorType): string {
-  return `${ARMOR_MODIFIER[armorType] + 1}+`;
+/**
+ * The "Destroyed by damage X+" rating the card prints, from the modifier the
+ * user entered. An unentered modifier has no rating to print, so it shows as a
+ * dash rather than resolving to a number nobody typed.
+ */
+export function armorRating(armorModifier: number): string {
+  return armorModifier > 0 ? `${armorModifier + 1}+` : "\u2014";
 }
 
 /**
@@ -144,16 +148,9 @@ export function createUnitSheetClass(
       const system = (actor?.system ?? {}) as Record<string, unknown>;
       context.system = system;
 
-      const armorType = (system.armorType as ArmorType) ?? "unarmored";
-      context.armorRating = armorRating(armorType);
-      const i18n = (globalThis as unknown as {
-        game?: { i18n?: { localize?: (key: string) => string } };
-      }).game?.i18n;
-      context.armorOptions = Object.keys(ARMOR_MODIFIER).map((value) => ({
-        value,
-        label: i18n?.localize?.(`${MODULE_ID}.armor.${value}`) ?? value,
-        selected: value === armorType
-      }));
+      // The tier picker is gone with the tier table: armour is two numbers off
+      // the card now, edited like every other rating on this sheet.
+      context.armorRating = armorRating(Number(system.armorModifier) || 0);
 
       return context;
     }

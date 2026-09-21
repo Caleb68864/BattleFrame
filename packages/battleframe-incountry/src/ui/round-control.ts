@@ -1,4 +1,5 @@
-import { INX_DIE_SIZE, MODULE_ID, UNIT_ACTOR_TYPE } from "../constants";
+import { MODULE_ID, UNIT_ACTOR_TYPE } from "../constants";
+import { requireDieSize } from "../settings";
 import type { DiceApiLike } from "../combat/resolve";
 import { isDestroyed, type UnitSystemData } from "../data/unit-state";
 import { resolveUnitAttack, type AttackFlowResult } from "../round/attack-flow";
@@ -216,7 +217,7 @@ export async function rollInitiativeInx(
     const rolls: Array<{ sideId: string; roll: number }> = [];
     for (const sideId of sideIds) {
       const result = await dice.roll(
-        `1d${INX_DIE_SIZE}`,
+        `1d${requireDieSize()}`,
         {},
         { rulesetId: MODULE_ID, flavor: `initiative (${sideId})` }
       );
