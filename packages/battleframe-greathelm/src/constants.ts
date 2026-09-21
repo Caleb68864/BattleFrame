@@ -42,6 +42,30 @@ export type DieFace = 1 | 2 | 3 | 4 | 5 | 6;
 export type ActionId = "sprint" | "encircle" | "bash" | "shift" | "light" | "heavy";
 
 /**
+ * The module's own vocabulary, kept when the rules numbers were stripped.
+ *
+ * These are the shape of the game this module implements rather than values it
+ * asserts: a profile that could rename them would be a different module, not a
+ * configured one. The numbers that used to sit beside them -- which face buys
+ * which action, how far each moves, what each deals -- are the user's, and live
+ * in `rules-profile.ts`.
+ */
+export const ACTION_IDS: readonly ActionId[] = [
+  "sprint",
+  "encircle",
+  "bash",
+  "shift",
+  "light",
+  "heavy"
+];
+
+/** The faces a die offers, as keys for the user's face-to-action mapping. */
+export const DIE_FACES: readonly DieFace[] = [1, 2, 3, 4, 5, 6];
+
+/** World setting holding the user's rules profile. See `rules-profile.ts`. */
+export const SETTING_RULES_PROFILE = "rulesProfile";
+
+/**
  * The central table: a die's face value hard-selects which action it may
  * buy. Source: vault/greathelm/dice-face-to-action-mapping.md, QSR p1
  * verbatim (p1 names used; p5 reference-card aliases are Run/Walk/Step for
