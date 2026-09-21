@@ -19,10 +19,11 @@ yourself. Reference rulebooks used during development are kept strictly local
 and are never committed, released, or redistributed (they are kept local and
 git-ignored).
 
-**Where the code stands against that policy, stated honestly.** The core system
-and five of the six ruleset modules meet it today. One remains — see
-[`docs/rules-content-audit.md`](docs/rules-content-audit.md) for the per-module
-detail and the plan.
+**Where the code stands against that policy, stated honestly.** Every package
+meets it today. Five ruleset modules ship no rules numbers at all; the sixth,
+`simple-skirmish`, ships numbers it is **licensed** to ship, with attribution.
+See [`docs/rules-content-audit.md`](docs/rules-content-audit.md) for the
+per-module detail.
 
 | Package | Ships rules numbers? | Source |
 | --- | --- | --- |
@@ -32,7 +33,7 @@ detail and the plan.
 | `battleframe-full-thrust` | No — user supplies every value | — |
 | `battleframe-greathelm` | No — user supplies every value | — |
 | `battleframe-incountry` | No — user supplies every value | — |
-| `battleframe-simple-skirmish` | **Yes** | *Simple Fantasy Skirmish*, Peter Vodden — CC BY-NC 4.0, attributed |
+| `battleframe-simple-skirmish` | Yes — **licensed** CC BY-NC 4.0, attributed | *Simple Fantasy Skirmish*, Peter Vodden |
 
 This section used to say the project ships "zero copyrighted rules content… no
 points values". That was false for four of these modules; `full-thrust` alone
@@ -42,10 +43,10 @@ quietly corrected because the claim was published, and because `stargrunt-ii`
 and `dirtside-ii` — the same publisher as `full-thrust` — show the repository
 already knew the right shape.
 
-Three of the four were migrated on 2026-09-21. The remaining one,
-`simple-skirmish`, is a different case: its source is CC BY-NC 4.0 and
-attributed, so it is a licensing-paperwork question rather than a strip. The
-audit explains why.
+All four were resolved on 2026-09-21. Three were stripped. The fourth,
+`simple-skirmish`, was never a strip — its source is CC BY-NC 4.0 and already
+properly attributed; what was wrong there was the repository licence, see
+[License](#license) below.
 
 ## Layout
 
@@ -57,9 +58,9 @@ An [npm workspaces](https://docs.npmjs.com/cli/using-npm/workspaces) monorepo:
 - The **ruleset modules** — each a separate Foundry module that registers
   itself with the core and drives its own game. Every one of them requires the
   official rulebook, obtained separately by the user. None ships rules *prose*,
-  stat blocks, army lists or artwork; one still ships rules *numbers*, which the
-  table above names and
-  [`docs/rules-content-audit.md`](docs/rules-content-audit.md) tracks.
+  stat blocks, army lists or artwork, and only `simple-skirmish` ships rules
+  *numbers* — under the licence that permits it. See the table above and
+  [`docs/rules-content-audit.md`](docs/rules-content-audit.md).
   - `packages/battleframe-greathelm/` — **GREATHELM**, the reference ruleset
     module and the smallest complete example: actor data model, sheets,
     settings, UI, dice-pool round loop, and victory check.
@@ -132,7 +133,18 @@ neutrality contract every ruleset must honor.
 
 ## License
 
-[MIT](LICENSE).
+[MIT](LICENSE) — **except** `packages/battleframe-simple-skirmish/`.
+
+That package implements *Simple Fantasy Skirmish* by Peter Vodden, published
+under [CC BY-NC 4.0](https://creativecommons.org/licenses/by-nc/4.0). It may not
+be sold, and attribution must travel with it; MIT grants the right to sell, so
+MIT cannot cover it. Its terms are in
+[`NOTICE.md`](packages/battleframe-simple-skirmish/NOTICE.md), and the `LICENSE`
+file carries the same carve-out.
+
+This was a real contradiction, not a formality: the repository offered every
+package under a licence permitting sale while that module's own notice said it
+must never be sold.
 
 ## Support
 

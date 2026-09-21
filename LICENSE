@@ -1,3 +1,19 @@
+SCOPE NOTE — read before redistributing
+=======================================
+
+The MIT licence below covers this repository EXCEPT the package
+`packages/battleframe-simple-skirmish/`.
+
+That package implements *Simple Fantasy Skirmish* by Peter Vodden, which is
+published under Creative Commons Attribution-NonCommercial 4.0 (CC BY-NC 4.0).
+Non-Commercial means it **may not be sold**, and the MIT grant below explicitly
+includes the right to "sell". The two cannot both apply to that package, so MIT
+does not: see `packages/battleframe-simple-skirmish/NOTICE.md` for its terms and
+the attribution that must travel with it.
+
+No other package carries third-party licensed content. See
+`docs/rules-content-audit.md` for what each package ships.
+
 MIT License
 
 Copyright (c) 2026 BattleFrame Team

@@ -4026,3 +4026,28 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   as a suite that restates the table it is meant to be proving absent.
 - Commit: this commit.
 
+## 2026-09-21 — The repo licensed a non-commercial module under MIT, which permits selling
+- Symptom: `LICENSE` is MIT and `README.md` said "License: MIT" with no
+  carve-out, covering every package. MIT grants the right to "use, copy, modify,
+  merge, publish, distribute, sublicense, and/or **sell**".
+  `packages/battleframe-simple-skirmish/` implements *Simple Fantasy Skirmish*
+  by Peter Vodden under **CC BY-NC 4.0**, which forbids commercial use — and
+  that module's own `NOTICE.md` says it "must never be sold".
+- So two files in this repository contradicted each other about the same
+  package, and the repository was offering a right it does not hold.
+- Fix: `LICENSE` now opens with a scope note excluding that package and pointing
+  at its `NOTICE.md`; the README's licence section states the carve-out and the
+  reason. No code changed — this was never a strip.
+- What did NOT need fixing, contrary to the audit's initial guess: the
+  attribution. `NOTICE.md`, `module.json` (which Foundry surfaces in Module
+  Management) and `package.json` all already named the work, the author, the
+  licence and the non-commercial restriction.
+- Watch: the same question applies to any future module built on licensed
+  content. Check the repository-level licence before adding one, not after — a
+  per-package `NOTICE.md` does not override the `LICENSE` that covers it.
+- Left alone on purpose: the module's `NOTICE.md` carries a "Buy Me a Coffee"
+  link directly under its non-commercial clause. Donations for an implementation
+  are usually treated as distinct from selling the licensed work, but the
+  placement is the owner's call, not one to make silently.
+- Commit: this commit.
+

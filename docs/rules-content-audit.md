@@ -1,8 +1,8 @@
 # Rules-content audit
 
 What each package ships against the repository's stated policy — *the code
-implements mechanics; the data is yours to bring* — and the plan for the one
-package that does not yet meet it.
+implements mechanics; the data is yours to bring* — and what was done about the
+packages that did not meet it.
 
 Audited 2026-09-21 against `a004c94`.
 
@@ -51,7 +51,7 @@ is not, because it is the set of dice Foundry can roll.
 | `battleframe-stargrunt-ii` | 4 | 0 | — | ✅ compliant, and the reference shape |
 | `battleframe-dirtside-ii` | 6 | 0 | — | ✅ compliant, and the reference shape |
 | `battleframe-incountry` | 4 | **0** | INX 2.0, Echo Dark Studios | ✅ stripped 2026-09-21 |
-| `battleframe-simple-skirmish` | 9 | **7** | *Simple Fantasy Skirmish*, Peter Vodden (CC BY-NC 4.0) | ⬜ to strip — see note |
+| `battleframe-simple-skirmish` | 9 | 7 | *Simple Fantasy Skirmish*, Peter Vodden (CC BY-NC 4.0) | ✅ licensed — paperwork fixed 2026-09-21 |
 | `battleframe-greathelm` | 10 | **0** | `GREATHELM-QSR.pdf` v0.4, Malev | ✅ stripped 2026-09-21 |
 | `battleframe-full-thrust` | 13 | **0** | Full Thrust 2e + More Thrust, Jon Tuffley / Ground Zero Games | ✅ stripped 2026-09-21 |
 
@@ -73,21 +73,36 @@ The file header attributes it to "the user's distilled Full Thrust rules notes
 not make the tables yours — and the selection and arrangement of them is the
 part that carries the most risk, which is exactly what a constants file is.
 
-### `battleframe-simple-skirmish` — the one that may not need stripping
+### `battleframe-simple-skirmish` — not a strip; a licence contradiction
 
-*Simple Fantasy Skirmish* is **CC BY-NC 4.0**, and the file attributes it. That
-is a licence to reuse, so this module is not in the same position as the other
-three. Two things still need deciding, and neither is mine to decide:
+*Simple Fantasy Skirmish* is **CC BY-NC 4.0** and the module attributes it, so
+this was never the same problem as the other three: it is licensed content used
+with permission, and stripping it would buy nothing.
 
-1. **NC.** The licence forbids commercial use. That binds anyone who ships this
-   module, and it should be stated in the module's own README, not only in a
-   source comment.
-2. **Attribution placement.** BY requires attribution visible to users, not a
-   code comment they never open.
+**The attribution was already in good order** — better than the audit assumed.
+`NOTICE.md` names the work, the author, the licence and the URL, and states the
+non-commercial restriction; `module.json` carries the same in its description
+and lists Peter Vodden as an author with a link, which Foundry shows in Module
+Management; `package.json` repeats it. Nothing needed adding there.
 
-Recommended: **keep the numbers, fix the paperwork.** Stripping licensed,
-attributed content buys nothing. Listed as "to strip" above only so it is not
-mistaken for compliant without a decision.
+**What was actually wrong was one level up.** The repository's `LICENSE` is
+**MIT**, and `README.md` said "License: MIT" with no carve-out. MIT explicitly
+grants the right "to use, copy, modify, merge, publish, distribute, sublicense,
+and/or **sell**". CC BY-NC forbids selling. So the repository was offering, under
+MIT, a right it does not hold for that package — while that package's own
+`NOTICE.md` said it "must never be sold". Two files in the same repository,
+flatly contradicting each other about the same module.
+
+Fixed 2026-09-21: `LICENSE` opens with a scope note excluding the package and
+pointing at its `NOTICE.md`; the README's licence section states the carve-out
+and why MIT cannot cover it.
+
+**Left for the owner, deliberately not changed:** the module's `NOTICE.md` ends
+with a "Buy Me a Coffee" solicitation, immediately below the line saying the
+module "must never be sold or used commercially". Donations toward an
+implementation are generally treated as distinct from selling the licensed work,
+but placing the ask inside the non-commercial notice itself is the kind of thing
+worth a second look by someone who wants to be sure.
 
 ## What the first migration taught
 
@@ -155,8 +170,10 @@ rather than one large module sitting half-migrated.
    setting shipped unset; `ARMOR_MODIFIER` and `ARMOR_DICE_DEFAULT` → the
    `armorModifier` and `armorDice` fields the user fills in;
    `INJURY_DAMAGE_THRESHOLD` → deleted, nothing imported it.
-2. **`battleframe-simple-skirmish`** — decide the licence question first; if it
-   stands, this becomes a README and attribution change only.
+2. ~~**`battleframe-simple-skirmish`**~~ — done 2026-09-21, and it was neither a
+   strip nor an attribution gap: the attribution was already correct, and the
+   defect was that the repository's MIT `LICENSE` covered a CC BY-NC package
+   while granting the right to sell it. Carve-out added to `LICENSE` and README.
 3. ~~**`battleframe-greathelm`**~~ — done 2026-09-21. All twelve numbers plus
    the face-to-action table and the clash-action list moved to a world rules
    profile (`rules-profile.ts`) with a JSON importer and a blank template.
