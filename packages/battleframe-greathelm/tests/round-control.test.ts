@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   MAX_INITIATIVE_TIE_REROLLS,
   InitiativeTieUnresolvedError,
@@ -19,10 +19,22 @@ import {
   type RoundKnight,
 } from "../src/ui/round-control";
 import type { ClashResolvedOutcome } from "../src/round/session";
-import { SPRINT_MOVE_INCHES } from "../src/constants";
 import type { ResolvedDie } from "../src/round/loop";
 import type { RoundSession } from "../src/round/session";
 import type { DiceApiLike, MeasureApiLike } from "../src/combat/clash";
+import { TEST_PROFILE, withProfile } from "./helpers/world";
+import type { RulesProfile } from "../src/rules-profile";
+
+// This module ships no rules numbers. Tests install a world carrying an
+// invented profile, the way a user fills one in -- see helpers/world.ts.
+let restoreGreathelmWorld: () => void;
+beforeEach(() => {
+  restoreGreathelmWorld = withProfile();
+});
+afterEach(() => {
+  restoreGreathelmWorld();
+});
+
 
 /**
  * Drives a session to completion by spending every offerable die on the
@@ -232,9 +244,9 @@ describe("formatInches -- presentation only", () => {
     expect(formatInches(0.0001574803149606563)).toBe("0");
   });
 
-  it("leaves whole GREATHELM distances alone", () => {
+  it("leaves whole distances alone", () => {
     expect(formatInches(5)).toBe("5");
-    expect(formatInches(SPRINT_MOVE_INCHES)).toBe("5");
+    expect(formatInches(5)).toBe("5");
     expect(formatInches(2.5)).toBe("2.5");
   });
 
@@ -263,7 +275,15 @@ describe("formatInches -- presentation only", () => {
   });
 });
 
-describe("planMovement -- Sprint is measured and capped at 5\"", () => {
+/**
+ * These used to be named for the rulebook's distances ("capped at 5\"",
+ * "Encircle 3\", Shift 1\"") and assert them as literals, which meant the suite
+ * published the movement table whatever `constants.ts` held. They assert
+ * against the world's profile now, and the profile under test is an invented
+ * one -- so what is proved is that the allowance *comes from the profile*,
+ * which is the actual behaviour.
+ */
+describe("planMovement -- a move is measured and capped at the profile's allowance", () => {
   const sprintDie: ResolvedDie = {
     id: "d1",
     playerId: "a",
@@ -272,17 +292,18 @@ describe("planMovement -- Sprint is measured and capped at 5\"", () => {
     action: "sprint",
   };
 
-  it("caps a Sprint at SPRINT_MOVE_INCHES when the enemy is further away", () => {
+  it("caps a move at the profile's allowance when the enemy is further away", () => {
+    const sprintAllowance = TEST_PROFILE.actions.sprint?.moveInches ?? 0;
+    const beyond = sprintAllowance + 4;
     const measure = lineMeasure();
     const mover = knight("kA", "a", 0);
-    const knights = [mover, knight("kB", "b", 9)];
+    const knights = [mover, knight("kB", "b", beyond)];
 
     const plan = planMovement(sprintDie, mover, knights, measure);
 
-    expect(plan?.allowanceInches).toBe(SPRINT_MOVE_INCHES);
-    expect(plan?.allowanceInches).toBe(5);
-    expect(plan?.distanceToNearestEnemyInches).toBe(9);
-    expect(plan?.moveInches).toBe(5);
+    expect(plan?.allowanceInches).toBe(sprintAllowance);
+    expect(plan?.distanceToNearestEnemyInches).toBe(beyond);
+    expect(plan?.moveInches).toBe(sprintAllowance);
     // The cap came from a real base-to-base measurement, not from arithmetic
     // on a hard-coded position.
     expect(measure.calls).toBeGreaterThan(0);
@@ -296,21 +317,25 @@ describe("planMovement -- Sprint is measured and capped at 5\"", () => {
     expect(planMovement(sprintDie, mover, knights, measure)?.moveInches).toBe(2);
   });
 
-  it("uses each face's own allowance -- Encircle 3\", Shift 1\"", () => {
+  it("uses each action's own allowance, as the profile gives it", () => {
     const measure = lineMeasure();
     const mover = knight("kA", "a", 0);
-    const knights = [mover, knight("kB", "b", 9)];
+    const far = 99;
+    const knights = [mover, knight("kB", "b", far)];
 
     const encircle = planMovement(
-      { ...sprintDie, face: 5, action: "encircle" },
+      { ...sprintDie, action: "encircle" },
       mover,
       knights,
       measure
     );
-    const shift = planMovement({ ...sprintDie, face: 3, action: "shift" }, mover, knights, measure);
+    const shift = planMovement({ ...sprintDie, action: "shift" }, mover, knights, measure);
 
-    expect(encircle?.moveInches).toBe(3);
-    expect(shift?.moveInches).toBe(1);
+    expect(encircle?.moveInches).toBe(TEST_PROFILE.actions.encircle?.moveInches);
+    expect(shift?.moveInches).toBe(TEST_PROFILE.actions.shift?.moveInches);
+    // And they are genuinely different allowances, so this is not passing by
+    // both being some shared default.
+    expect(encircle?.moveInches).not.toBe(shift?.moveInches);
   });
 
   it("returns no movement plan for a clash face", () => {
@@ -318,7 +343,7 @@ describe("planMovement -- Sprint is measured and capped at 5\"", () => {
     const mover = knight("kA", "a", 0);
 
     expect(
-      planMovement({ ...sprintDie, face: 1, action: "heavy" }, mover, [mover], measure)
+      planMovement({ ...sprintDie, action: "heavy" }, mover, [mover], measure)
     ).toBeNull();
   });
 });
@@ -347,7 +372,51 @@ describe("findDefenderInBaseContact", () => {
 });
 
 describe("beginRoundFromControl -- initiative and a session the panel drives, not an auto-battler", () => {
-  it("gathers, rolls pools of knights+1, takes initiative, and hands back a session that resolves 6->1, runs courage, and persists order once played out", async () => {
+  /**
+   * These scenarios script exact dice and then assert the wounds that fall out,
+   * so they need a profile whose pool size and clash faces the script was
+   * written against. They declare their own rather than using the shared
+   * `TEST_PROFILE`, because what they are testing is the round loop, not where
+   * the numbers came from -- and a scenario that silently re-tuned every time
+   * the shared profile changed would be testing nothing in particular.
+   *
+   * It is an invented ruleset like any other here. Some of its values coincide
+   * with the published ones; that is not an assertion about the rulebook, and
+   * the test that actually pins the face-to-action mapping (`dice-pool.test.ts`)
+   * deliberately uses a mapping that is not GREATHELM's.
+   */
+  const SCENARIO_PROFILE = {
+    dicePoolPerKnightBonus: 1,
+    openingDicePoolSize: 0,
+    minDicePoolFloor: 3,
+    faceToAction: {
+      6: "sprint",
+      5: "encircle",
+      4: "bash",
+      3: "shift",
+      2: "light",
+      1: "heavy"
+    },
+    clashTestActions: ["bash", "light", "heavy"],
+    actions: {
+      sprint: { moveInches: 5, momentumGain: 2 },
+      encircle: { moveInches: 3, momentumGain: 1 },
+      shift: { moveInches: 1 },
+      bash: { moveInches: 3, stripsDefenderMomentum: true },
+      light: { damage: 1 },
+      heavy: { damage: 2 }
+    }
+  } as const;
+
+  let restoreScenario: () => void;
+  beforeEach(() => {
+    restoreScenario = withProfile(SCENARIO_PROFILE as unknown as RulesProfile);
+  });
+  afterEach(() => {
+    restoreScenario();
+  });
+
+  it("gathers, rolls pools of knights plus the profile's bonus, takes initiative, and hands back a session that resolves high-to-low, runs courage, and persists order once played out", async () => {
     const measure = lineMeasure();
     const actorA = fakeActor();
     const actorB = fakeActor();
@@ -369,7 +438,8 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
     });
 
     // Pool = knights in play + 1 (QSR p1), one knight a side.
-    expect([...poolSizes.values()]).toEqual([2, 2]);
+    const bonus = SCENARIO_PROFILE.dicePoolPerKnightBonus;
+    expect([...poolSizes.values()]).toEqual([1 + bonus, 1 + bonus]);
     expect(firstPlayerId).toBe("a");
     expect(tieRerolls).toBe(0);
 
@@ -425,8 +495,9 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
     });
 
     // a has one knight in play -> pool 2, not 3.
-    expect(poolSizes.get("a")).toBe(2);
-    expect(poolSizes.get("b")).toBe(2);
+    const inPlayBonus = SCENARIO_PROFILE.dicePoolPerKnightBonus;
+    expect(poolSizes.get("a")).toBe(1 + inPlayBonus);
+    expect(poolSizes.get("b")).toBe(1 + inPlayBonus);
   });
 
   it("persists the in-progress round, then the order flag once complete (round flag cleared)", async () => {
@@ -495,7 +566,7 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
     expect(session.isComplete()).toBe(true);
   });
 
-  it("applies the Kickstarter dice-pool floor only when the setting is on", async () => {
+  it("applies the profile's dice-pool floor only when the setting is on", async () => {
     const base = {
       knights: [knight("kA", "a", 0), knight("kB", "b", 9)],
       dice: scriptedDice([6, 6, 6, 5, 5, 5, 6]),
@@ -508,7 +579,10 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
       minDicePoolFloorEnabled: true,
     });
 
-    expect([...flooredSizes.values()]).toEqual([3, 3]);
+    expect([...flooredSizes.values()]).toEqual([
+      SCENARIO_PROFILE.minDicePoolFloor,
+      SCENARIO_PROFILE.minDicePoolFloor
+    ]);
 
     const { poolSizes: unflooredSizes } = await beginRoundFromControl({
       knights: base.knights,
@@ -517,7 +591,11 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
       measure: lineMeasure(),
     });
 
-    expect([...unflooredSizes.values()]).toEqual([2, 2]);
+    // One knight a side, so the natural pool is that knight plus the bonus --
+    // and it sits below the floor above, which is what makes the pair a test.
+    const natural = 1 + SCENARIO_PROFILE.dicePoolPerKnightBonus;
+    expect([...unflooredSizes.values()]).toEqual([natural, natural]);
+    expect(natural).toBeLessThan(SCENARIO_PROFILE.minDicePoolFloor);
   });
 
   it("refuses to run without exactly two sides", async () => {

@@ -30,14 +30,20 @@ export interface DieViewModel {
   id: string;
   playerId: string;
   face: DieFace;
-  /** Literal i18n key, resolved by ACTION_NAME_KEYS below -- never assembled at render time. */
-  actionKey: string;
+  /**
+   * Literal i18n key, resolved by ACTION_NAME_KEYS below -- never assembled at
+   * render time. `undefined` where the world's rules profile maps this face to
+   * no action, which is an unfinished profile rather than a bug.
+   */
+  actionKey?: string;
   /**
    * One line saying what this die actually does, with its rules numbers filled
-   * in from constants.ts. This is the difference between a panel a rules-naive
-   * player can use and one that shows them "3 Shift" and nothing else.
+   * in from the world's rules profile. This is the difference between a panel a
+   * rules-naive player can use and one that shows them a face and a word.
+   *
+   * `undefined` where the profile maps this face to no action.
    */
-  hint: string;
+  hint?: string;
   /** Whether this specific die may legally be played right now, per the session's turn/order state. */
   offerable: boolean;
   selected: boolean;
@@ -75,6 +81,7 @@ const ACTION_NAME_KEYS: Readonly<Record<ActionId, string>> = {
 const ILLEGAL_REASON_KEYS: Readonly<Record<IllegalTargetReason, string>> = {
   "knight-removed": "battleframe-greathelm.poolPanel.reasons.knightRemoved",
   "no-enemy-in-base-contact": "battleframe-greathelm.poolPanel.reasons.noEnemyInContact",
+  "face-unmapped": "battleframe-greathelm.poolPanel.reasons.faceUnmapped",
 };
 
 /**
@@ -89,15 +96,22 @@ export function buildDieViewModels(
   session: RoundSession,
   selectedDieId: string | undefined
 ): DieViewModel[] {
-  return session.remainingDice().map((die) => ({
-    id: die.id,
-    playerId: die.playerId,
-    face: die.face,
-    actionKey: ACTION_NAME_KEYS[actionForFace(die.face)],
-    hint: actionHint(actionForFace(die.face)),
-    offerable: session.isOfferable(die.id),
-    selected: die.id === selectedDieId,
-  }));
+  return session.remainingDice().map((die) => {
+    // A face the world's rules profile maps to nothing has no name and no hint
+    // to show. It renders un-offerable rather than blank-with-a-key, so the gap
+    // reads as "this world has not finished its profile" rather than as a bug.
+    const action = actionForFace(die.face);
+
+    return {
+      id: die.id,
+      playerId: die.playerId,
+      face: die.face,
+      actionKey: action ? ACTION_NAME_KEYS[action] : undefined,
+      hint: action ? actionHint(action) : undefined,
+      offerable: action !== undefined && session.isOfferable(die.id),
+      selected: die.id === selectedDieId,
+    };
+  });
 }
 
 /**

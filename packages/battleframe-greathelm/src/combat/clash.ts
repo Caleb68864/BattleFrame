@@ -1,4 +1,5 @@
-import { ActionId, HEAVY_ATTACK_DAMAGE, LIGHT_ATTACK_DAMAGE, MODULE_ID } from "../constants";
+import { ActionId, MODULE_ID } from "../constants";
+import { damageForAction } from "../round/actions";
 
 export interface DiceRollResult {
   total: number;
@@ -197,18 +198,10 @@ export function isInBaseContact(
   return isBaseContactDistance(measure.between(tokenA, tokenB).distance, tokenA);
 }
 
-function damageForAction(action: ActionId): number {
-  switch (action) {
-    case "light":
-      return LIGHT_ATTACK_DAMAGE;
-    case "heavy":
-      return HEAVY_ATTACK_DAMAGE;
-    default:
-      // Bash deals no damage per QSR p2 -- it only strips momentum and
-      // repositions the defender (see round/actions.ts describeAction).
-      return 0;
-  }
-}
+// Damage per action is the world's, not this module's: `round/actions.ts`
+// reads it off the rules profile. An action the profile gives no damage deals
+// none, which is how a momentum-only action stays damage-free without this
+// file naming which actions those are.
 
 /**
  * Resolves a clash test: both sides roll 1d6 through the shared

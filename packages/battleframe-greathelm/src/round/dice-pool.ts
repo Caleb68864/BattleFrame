@@ -1,21 +1,26 @@
-import {
-  DICE_POOL_PER_KNIGHT_BONUS,
-  MIN_DICE_POOL_FLOOR,
-} from "../constants";
+import { requireProfile } from "../rules-profile";
 
 /**
- * Pool size = knights currently in play + 1, optionally floored at
- * `MIN_DICE_POOL_FLOOR` when the (off-by-default) Kickstarter-only
- * setting is enabled. See constants.ts for provenance of both numbers.
+ * Pool size = knights currently in play + the profile's per-knight bonus,
+ * optionally floored at the profile's minimum when the (off-by-default)
+ * minimum-pool setting is enabled.
+ *
+ * Both numbers used to be constants read out of the rulebook. They are the
+ * world's now -- see `rules-profile.ts` and `docs/rules-content-audit.md`.
+ * The floor stays behind its setting: whether to apply it is still the
+ * owner's call, and the profile only says what it would be.
+ *
+ * @throws {RulesProfileNotSetError} When the world has entered no profile.
  */
 export function computeDicePoolSize(
   knightsInPlay: number,
   minFloorEnabled: boolean
 ): number {
-  const base = Math.max(0, knightsInPlay) + DICE_POOL_PER_KNIGHT_BONUS;
+  const profile = requireProfile();
+  const base = Math.max(0, knightsInPlay) + profile.dicePoolPerKnightBonus;
 
   if (minFloorEnabled) {
-    return Math.max(base, MIN_DICE_POOL_FLOOR);
+    return Math.max(base, profile.minDicePoolFloor);
   }
 
   return base;

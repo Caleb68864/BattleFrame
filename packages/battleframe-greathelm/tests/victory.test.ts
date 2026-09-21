@@ -1,8 +1,20 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { actionHint } from "../src/round/action-hints";
 import { checkVictory } from "../src/round/victory";
 import type { CheckVictoryKnight } from "../src/round/victory";
+import { SCENARIO_PROFILE, withScenarioProfile } from "./helpers/world";
+
+// This module ships no rules numbers. Tests install a world carrying an
+// invented profile, the way a user fills one in -- see helpers/world.ts.
+let restoreGreathelmWorld: () => void;
+beforeEach(() => {
+  restoreGreathelmWorld = withScenarioProfile();
+});
+afterEach(() => {
+  restoreGreathelmWorld();
+});
+
 
 function knight(playerId: string, removed = false): CheckVictoryKnight {
   return { playerId, isRemoved: () => removed };

@@ -52,7 +52,7 @@ is not, because it is the set of dice Foundry can roll.
 | `battleframe-dirtside-ii` | 6 | 0 | — | ✅ compliant, and the reference shape |
 | `battleframe-incountry` | 4 | **0** | INX 2.0, Echo Dark Studios | ✅ stripped 2026-09-21 |
 | `battleframe-simple-skirmish` | 9 | **7** | *Simple Fantasy Skirmish*, Peter Vodden (CC BY-NC 4.0) | ⬜ to strip — see note |
-| `battleframe-greathelm` | 20 | **~17** | `GREATHELM-QSR.pdf` v0.4, Malev | ⬜ to strip |
+| `battleframe-greathelm` | 10 | **0** | `GREATHELM-QSR.pdf` v0.4, Malev | ✅ stripped 2026-09-21 |
 | `battleframe-full-thrust` | 147 | **~140** | Full Thrust 2e + More Thrust, Jon Tuffley / Ground Zero Games | ⬜ to strip — the large one |
 
 ### `battleframe-full-thrust` — the real exposure
@@ -124,6 +124,28 @@ got there the first time.
 Result: 89 tests passing in the module (was 77), 1,570 across the monorepo,
 `tsc --noEmit` clean.
 
+## What the second migration added
+
+`battleframe-greathelm` confirmed all three lessons above and added two.
+
+**4. A shared test profile has to be deliberately wrong.** The helper installs
+an invented ruleset whose face-to-action mapping is the *inverse* of the
+published one. That immediately failed 28 tests which had quietly depended on
+"face 6 is the big move" — none of which were about the mapping. Behavioural
+tests that script exact dice now run against a second, conventional invented
+profile declared as their own scenario; the one test that actually pins where
+the mapping comes from runs against the inverted one. Keeping both apart is what
+stops a scenario profile drifting back into being the rulebook.
+
+**5. Exhaustiveness guards are allies here.** `pool-panel.ts` keys its
+translation lookups by a `Record<IllegalTargetReason, string>`, so adding a new
+reason broke the build until a string existed for it. That is the shape worth
+copying into full-thrust: make the type system demand a decision wherever a
+stripped value used to be assumed.
+
+Result: 193 tests passing in the module, 1,584 across the monorepo,
+`tsc --noEmit` clean.
+
 ## Plan
 
 Work from the small end, so each module lands complete and the build stays green
@@ -135,8 +157,13 @@ rather than one large module sitting half-migrated.
    `INJURY_DAMAGE_THRESHOLD` → deleted, nothing imported it.
 2. **`battleframe-simple-skirmish`** — decide the licence question first; if it
    stands, this becomes a README and attribution change only.
-3. **`battleframe-greathelm`** — ~17 values. Note the file already flags them as
-   provisional against a pre-1.0 quickstart.
+3. ~~**`battleframe-greathelm`**~~ — done 2026-09-21. All twelve numbers plus
+   the face-to-action table and the clash-action list moved to a world rules
+   profile (`rules-profile.ts`) with a JSON importer and a blank template.
+   `OPENING_DICE_POOL_SIZE` was deleted: like InCountry's injury threshold, it
+   had no caller. The six action ids and six die faces stayed, per the owner's
+   ruling that the strip is numbers only — those are the shape of the game the
+   module implements, not values it asserts.
 4. **`battleframe-full-thrust`** — ~140 values across 48 importing files. Needs a
    user-populated rules profile rather than 140 separate data-model fields,
    mirroring ForceSignal's `RulesProfile.Empty` and Dirtside's

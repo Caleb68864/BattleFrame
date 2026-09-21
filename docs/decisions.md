@@ -3899,3 +3899,90 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 
 ## 2026-07-22 — Token HUD shows only the CURRENT phase actions
 - Playtest: showing all actions on the token HUD invited confusion. Each HUD button now carries a `phase` (plot | fire); the renderTokenHUD hook passes `currentPhase()` so a plot-phase HUD shows only Plot/carrier-ops, a fire-phase HUD only weapon actions. Hold/Done shows in every phase. `currentPhase` exported; `hudButtonModels(actor, phase?)` gains the gate (+2 tests). Commit: this commit.
+
+## 2026-09-21 — README claimed zero rules content; four modules shipped it
+- Symptom: `README.md` stated the project ships "zero copyrighted rules content…
+  no points values". Four of the six ruleset modules contradicted it:
+  `full-thrust` (147 constants including a to-hit table, the FT2 threshold table,
+  the per-die damage table and a quoted `"MASS 16, 50 Points."`), `greathelm`,
+  `incountry`, and `simple-skirmish`. `stargrunt-ii` and `dirtside-ii` — the same
+  publisher as `full-thrust` — already shipped none, so the repository knew the
+  right shape and four modules had departed from it.
+- The sharpest supporting fact: `.gitignore` already scrubs `vault/` from
+  tracking **and history**, its own comment saying the source rulebooks were
+  "never redistributable anyway — copyrighted". The PDFs were handled; the
+  numbers extracted from them stayed in `src/`.
+- Fix: README corrected in place with a per-module table rather than quietly
+  reworded, because the claim was published. `docs/rules-content-audit.md` records
+  what each package holds, the test a constant has to pass (engine/VTT artefact
+  stays, design data goes), and the migration order.
+- Decision: the owner's ruling is **numbers only, names stay**. Action ids,
+  weapon kinds and Actor subtypes are the shape of the game a module implements,
+  not values it asserts; a profile that could rename them would be a different
+  module rather than a configured one.
+- Watch: **the tests ship the table too.** `incountry`'s `unit-state.test.ts`
+  asserted the published armour tiers in full, and fixtures seeded a weapon named
+  "Rifle". Deleting a constant while the suite restates it changes nothing and
+  stays green. Grep the tests before calling a module done.
+- Commits: `9bc6140` (audit + README + InCountry), `e5f62a2` (GREATHELM profile
+  scaffolding), this commit (GREATHELM migration). The first two predate this
+  entry — the pre-commit hook that enforces a decision entry is not installed in
+  this clone, so they passed without one.
+
+## 2026-09-21 — Seeded schema defaults are shipped rules numbers
+- Symptom: InCountry's unit schema initialised `move: 6`, `morale: 6`,
+  `attackClear: 6`, `attackCover: 4`, weapons at
+  `{ name: "Rifle", attackDice: 2, dmg: 1 }`, and bounded three ratings at
+  `max: 10` — the published die. None of that reads as "rules content" while
+  reviewing a data model.
+- Fix: every rating ships at zero, and the bounds are gone. Zero is not a
+  playable rating, which is the point — visibly unentered rather than plausibly
+  wrong.
+- Why it matters: a default is quieter than a table and does the same thing —
+  the module writes a number onto the player's card and is never asked about it
+  again. The sister project ForceSignal was fixed for exactly this shape, where
+  an import answered a missing die with 8 and an empty roster with "a weapon
+  called Rifles".
+- Watch: any `initial:` or `default:` on a ruleset data model or world setting.
+  If the value would be right for one published game, it does not belong in the
+  repository.
+- Commit: this commit.
+
+## 2026-09-21 — A stripped rules number must have no fallback, and a test must prove it
+- Problem: moving numbers out of `constants.ts` achieves nothing if any read
+  path answers for them. A plausible default one indirection away is the same
+  content in a quieter place, and it is invisible precisely because a module
+  that works out of the box is what nobody investigates.
+- Fix: `requireDieSize()` (InCountry) and `requireProfile()` (GREATHELM) throw
+  rather than returning anything. `BLANK_PROFILE` ships every number at zero and
+  every table empty. Both modules carry a test asserting the registered default
+  is blank, that the require path throws for unset and nonsense values, and —
+  bluntly — that `constants.ts` exports no bare number at all.
+- That last test is the load-bearing one: the whole strip is undone by a single
+  `export const SOMETHING = 5` landing back in the file, which is how the
+  numbers got there originally.
+- Watch: when full-thrust is migrated, the same guard has to come with it. A
+  module whose profile is empty should refuse to play, not play quietly wrong.
+- Commit: this commit.
+
+## 2026-09-21 — Full Thrust's rulebook is a scan, so PDF import cannot be authoritative
+- Question raised: Ground Zero Games publishes Full Thrust free, so could the
+  module import the numbers straight from the PDF instead of asking the user?
+- Measured rather than assumed:
+  `FullThrust.pdf` (FT2, the module's source) is 50 pages, Creator
+  "Acrobat 5.0 Image Conversion Plug-in", **50 characters of extractable text in
+  the whole document**, zero embedded fonts, every page one 150 DPI JPEG2000
+  image. `FTLrules.pdf` does have a text layer, but is an Illustrator drawing
+  whose table cells are independently positioned text objects, so `pdftotext
+  -layout` recovers the numbers scattered rather than in rows.
+- Decision: the import format is a **user-written file**. Any future PDF assist
+  pre-fills that file for human confirmation and is never authoritative.
+- Why: OCR of 150 DPI grayscale numeric tables fails silently and in the worst
+  way available — a 6 read as an 8 is not a crash, it is a wrong rule that plays
+  correctly forever. That trades "the repo ships someone's numbers" for "the app
+  invents numbers", which is the defect this whole effort is removing.
+- Watch: the same question will be asked for the Fleet Books and for any other
+  publisher. Check the PDF's Creator and `pdffonts` output before assuming a text
+  layer exists.
+- Commit: this commit.
+

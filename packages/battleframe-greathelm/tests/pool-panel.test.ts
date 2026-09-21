@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   buildDieViewModels,
   buildKnightViewModels,
@@ -7,6 +7,18 @@ import {
 } from "../src/ui/pool-panel";
 import type { LegalTarget, RoundSession, RoundSessionDie } from "../src/round/session";
 import langEn from "../lang/en.json";
+import { SCENARIO_PROFILE, withScenarioProfile } from "./helpers/world";
+
+// This module ships no rules numbers. Tests install a world carrying an
+// invented profile, the way a user fills one in -- see helpers/world.ts.
+let restoreGreathelmWorld: () => void;
+beforeEach(() => {
+  restoreGreathelmWorld = withScenarioProfile();
+});
+afterEach(() => {
+  restoreGreathelmWorld();
+});
+
 
 function flattenKeys(obj: Record<string, unknown>, prefix = ""): string[] {
   return Object.entries(obj).flatMap(([key, value]) => {

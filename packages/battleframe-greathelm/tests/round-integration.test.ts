@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createRoundSession, type RoundSessionKnight } from "../src/round/session";
 import { toVictoryKnights } from "../src/ui/round-control";
 import { checkVictory } from "../src/round/victory";
@@ -6,6 +6,18 @@ import { isKnightRemoved } from "../src/round/removal";
 import type { ActorLike } from "../src/round/loop";
 import type { DiceApiLike, MeasureApiLike } from "../src/combat/clash";
 import type { DieFace } from "../src/constants";
+import { SCENARIO_PROFILE, withScenarioProfile } from "./helpers/world";
+
+// This module ships no rules numbers. Tests install a world carrying an
+// invented profile, the way a user fills one in -- see helpers/world.ts.
+let restoreGreathelmWorld: () => void;
+beforeEach(() => {
+  restoreGreathelmWorld = withScenarioProfile();
+});
+afterEach(() => {
+  restoreGreathelmWorld();
+});
+
 
 /**
  * The pieces of a GREATHELM round are unit-tested one at a time -- dice pool,

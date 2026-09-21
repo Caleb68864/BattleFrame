@@ -80,7 +80,17 @@ export interface SerializedRoundSession {
   unspent: Record<string, RoundSessionDie[]>;
 }
 
-export type IllegalTargetReason = "knight-removed" | "no-enemy-in-base-contact";
+/**
+ * Why a target cannot be chosen for a die.
+ *
+ * `face-unmapped` is not about the board at all: the world's rules profile
+ * maps that die face to no action, so there is nothing to do with it anywhere.
+ * It is reported per target like the others so the UI has one shape to render.
+ */
+export type IllegalTargetReason =
+  | "knight-removed"
+  | "no-enemy-in-base-contact"
+  | "face-unmapped";
 
 export interface LegalTarget {
   knightId: string;
@@ -405,6 +415,13 @@ export function createRoundSession(
         return { knightId: knight.id, legal: false, reason: "knight-removed" };
       }
 
+      // An unmapped face is an incomplete profile, not a broken one: every
+      // target reads illegal so the UI greys the die out rather than throwing
+      // while merely listing what could be clicked.
+      if (action === undefined) {
+        return { knightId: knight.id, legal: false, reason: "face-unmapped" };
+      }
+
       if (requiresClashTest(action) && !findDefenderInContact(knight, knights, measure)) {
         return { knightId: knight.id, legal: false, reason: "no-enemy-in-base-contact" };
       }
@@ -562,6 +579,15 @@ export function createRoundSession(
     }
 
     const action = actionForFace(die.face);
+
+    // A face the world's rules profile maps to nothing buys nothing, so there is
+    // no action to spend it on. Refused here rather than further down, where it
+    // would surface as an undefined action on a resolved die.
+    if (action === undefined) {
+      throw new IllegalDieSpendError(
+        `die ${dieId} shows a face this world's rules profile maps to no action`
+      );
+    }
 
     if (requiresClashTest(action)) {
       const declaredDefender = choices?.defenderKnightId

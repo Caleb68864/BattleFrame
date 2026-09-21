@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-import { DIE_FACE_TO_ACTION } from "../src/constants";
+import { ACTION_IDS } from "../src/constants";
 
 /**
  * Missing i18n keys have shipped in this project more than once -- three keys
@@ -67,8 +67,15 @@ describe("i18n completeness", () => {
     expect(missing).toEqual([]);
   });
 
-  it("every action's name and hint key exists for all six die faces", () => {
-    const actions = Object.values(DIE_FACE_TO_ACTION);
+  /**
+   * Keyed off the module's own vocabulary rather than off a face-to-action
+   * table. The table used to live in `constants.ts`; it is the world's now, so
+   * a world could map only three faces and this test would have silently
+   * stopped checking the other three actions' strings. `ACTION_IDS` is what the
+   * module ships, and every one of them needs a name and a hint.
+   */
+  it("every action this module knows has a name and a hint key", () => {
+    const actions = ACTION_IDS;
     const missing: string[] = [];
 
     for (const action of actions) {

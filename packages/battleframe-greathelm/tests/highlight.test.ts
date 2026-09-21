@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   applyHighlights,
   clearHighlights,
@@ -10,6 +10,18 @@ import {
   type TintApiLike,
 } from "../src/ui/highlight";
 import type { LegalTarget, RoundSession, RoundSessionDie } from "../src/round/session";
+import { SCENARIO_PROFILE, withScenarioProfile } from "./helpers/world";
+
+// This module ships no rules numbers. Tests install a world carrying an
+// invented profile, the way a user fills one in -- see helpers/world.ts.
+let restoreGreathelmWorld: () => void;
+beforeEach(() => {
+  restoreGreathelmWorld = withScenarioProfile();
+});
+afterEach(() => {
+  restoreGreathelmWorld();
+});
+
 
 function fakeSession(overrides: Partial<RoundSession> = {}): RoundSession {
   return {

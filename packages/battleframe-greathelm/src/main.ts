@@ -1,3 +1,4 @@
+import { registerRulesProfileSetting } from "./rules-profile";
 import {
   KNIGHT_ACTOR_TYPE,
   MODULE_ID,
@@ -137,11 +138,16 @@ function failRegistration(reason: string): never {
 }
 
 /**
- * The min-dice-pool-floor setting is Kickstarter-only, not QSR v0.4 -- see
- * constants.ts MIN_DICE_POOL_FLOOR. Defaults off so no house rule is
- * silently applied.
+ * The min-dice-pool-floor toggle is an optional rule rather than a core one, so
+ * it defaults off and no table has it applied without asking. Its *number* is
+ * the world's, in the rules profile; this setting only says whether to use it.
+ *
+ * The rules profile itself registers first: it is the module's numbers, and
+ * nothing that rolls or moves works until a world has filled it in.
  */
 function registerGreathelmSettings(): void {
+  registerRulesProfileSetting();
+
   const settings = resolveGame()?.settings;
   if (!settings) {
     return;

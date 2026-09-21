@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
   createRoundSession,
   IllegalDieSpendError,
@@ -12,6 +12,18 @@ import {
 import type { ActorLike } from "../src/round/loop";
 import type { DiceApiLike, MeasureApiLike } from "../src/combat/clash";
 import type { DieFace } from "../src/constants";
+import { SCENARIO_PROFILE, withScenarioProfile } from "./helpers/world";
+
+// This module ships no rules numbers. Tests install a world carrying an
+// invented profile, the way a user fills one in -- see helpers/world.ts.
+let restoreGreathelmWorld: () => void;
+beforeEach(() => {
+  restoreGreathelmWorld = withScenarioProfile();
+});
+afterEach(() => {
+  restoreGreathelmWorld();
+});
+
 
 function fixedDice(total = 6): DiceApiLike {
   return {
