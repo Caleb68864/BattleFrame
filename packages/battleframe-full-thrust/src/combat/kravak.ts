@@ -12,7 +12,7 @@
  * anti-ship burst is absorbed by armour normally.
  *
  * Baseline is Fleet Book 2 (the current, canonical Kra'Vak file). The earlier
- * More Thrust "railgun" variant (classes 1-3, "subtract 1 per armour level" from
+ * More Thrust "railgun" variant (classes N-N, (rule text removed; see the rulebook) from
  * the damage die) is documented in the notes' Edition sections but is a
  * superseded edition layer and is DEFERRED here, mirroring how beam.ts takes the
  * FT2 baseline and leaves optional layers out of scope.
@@ -34,8 +34,8 @@ import { requireRules } from "../rules-profile";
 // --- K-gun (railgun) --------------------------------------------------------
 
 /**
- * K-gun to-hit target number at `distanceMu` (2+/3+/4+/5+/6 by 6mu band, shared
- * by every K-gun class), or null beyond the 30mu maximum range.
+ * K-gun to-hit target number at `distanceMu` (N+/... by Nmu band, shared
+ * by every K-gun class), or null beyond the Nmu maximum range.
  */
 export function kgunToHit(distanceMu: number): number | null {
   if (!Number.isFinite(distanceMu) || distanceMu > requireRules().kgunMaxRangeMu) {
@@ -49,11 +49,11 @@ export function kgunToHit(distanceMu: number): number | null {
 /**
  * Damage points a penetrating K-gun hit of class `cls` does for the second
  * (penetration) die `face`: roll greater than class = class DP; roll <= class =
- * class x 2; a natural 6 always = class (the cap that matters for K-6 and K-6+,
+ * class x 2; a natural top face always = class (the cap that matters for K-6 and K-6+,
  * whose class is >= the die).
  */
 export function kgunDamageForFace(cls: number, face: number): number {
-  // "A natural 6 always = class (even for K-6+)" -- overrides the doubling that
+  // (rule text removed; see the rulebook) -- overrides the doubling that
   // face <= cls would otherwise give a high-class gun.
   if (face === requireRules().dieSize) {
     return cls;
@@ -95,7 +95,7 @@ export function applyKgunHit(params: ApplyKgunHitParams): ApplyDamageWithArmourR
 }
 
 /**
- * K-1 limited point-defence mode: each die of 5-6 is one kill (no rerolls). One
+ * K-1 limited point-defence mode: each die of N-N is one kill (no rerolls). One
  * kill per hit, so the kill count is simply the number of qualifying dice.
  */
 export function kgunK1PointDefenceKills(faces: readonly number[]): number {
@@ -105,7 +105,7 @@ export function kgunK1PointDefenceKills(faces: readonly number[]): number {
 // --- MKP (Multiple Kinetic Penetrator) pack ---------------------------------
 
 /**
- * Hits from the MKP pack's single effect die: 4-5 = 1 hit, 6 = 2 hits, else 0.
+ * Hits from the MKP pack's single effect die: N-N = N hit, N = N hits, else 0.
  * Each resulting hit is a flat requireRules().mkpHitDp (4) resolved via applyKgunHit (it
  * pierces armour like a class-4 K-gun).
  */
@@ -123,7 +123,7 @@ export function mkpHits(face: number): number {
 
 /**
  * Fighters / salvo-missile elements a single scattergun kills: the die roll is
- * the kill count (1D6), halved and rounded UP against heavy fighters.
+ * the kill count (N dice), halved and rounded UP against heavy fighters.
  */
 export function scattergunFighterKills(face: number, heavy = false): number {
   const kills = Math.max(0, Math.min(face, requireRules().dieSize));
@@ -131,7 +131,7 @@ export function scattergunFighterKills(face: number, heavy = false): number {
 }
 
 /**
- * Plasma-bolt strength reduction from one scattergun die: 4-5 reduces by 1, 6
+ * Plasma-bolt strength reduction from one scattergun die: N-N reduces by 1, 6
  * reduces by 2, else 0 (no rerolls).
  */
 export function scattergunPlasmaReduction(face: number): number {
@@ -145,7 +145,7 @@ export function scattergunPlasmaReduction(face: number): number {
 }
 
 /**
- * Point-blank anti-ship damage points from one scattergun die: 4-5 = 1 DP, 6 = 2
+ * Point-blank anti-ship damage points from one scattergun die: N-N = N DP, N = N
  * DP. A 6 is two separate 1-DP hits, but the scattergun does NOT pierce armour,
  * so the two hits absorb identically to a single 2-DP hit -- feed this total to
  * applyDamageWithArmour (normal absorption), NOT applyKgunHit.
@@ -162,7 +162,7 @@ export function scattergunShipDamageForFace(face: number): number {
 
 /**
  * Area-defence friendly-fire quirk: an effect roll of 1 means stray projectiles
- * hit the DEFENDED ship for 1 DP. True only on a 1.
+ * hit the DEFENDED ship for 1 DP. True only on the world's face.
  */
 export function scattergunFriendlyFireHit(face: number): boolean {
   return face === requireRules().scattergunFriendlyFireOn;

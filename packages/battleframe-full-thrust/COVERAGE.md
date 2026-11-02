@@ -37,7 +37,7 @@ deferred. Nothing is silently missing.
 | Order notation `+N/-N/PN/SN`; no reverse | ✅ | `movement/orders.ts` `parseOrder` |
 | Thrust budget: total ≤ thrust, turning ≤ half (rounded up) | ✅ | `movement/orders.ts` `applyOrder`, `turningCap` |
 | Pivot-move-pivot-move curved path executed on canvas | ✅ | `movement/path.ts` `plotMovementPath` (verified vs both worked examples) + `ui/round-control.ts` `executeMovementPath` traces the two half-moves + pivots |
-| Vector movement (optional FT2 system) | 🟡 | `movement/vector.ts` pure library: persistent `{vx,vy}` velocity, `advance` (move by vector), `applyMainDrive` (burn along facing), `applyPush`/`rotateFacing` (manoeuvring thrusters = ½ rating rounded DOWN), `resolveTurn` (advance-then-fold, written order matters), `parseVectorOrder`/`checkManoeuvres` budgets, `nearestCourse`/`velocityMagnitude` for marker realignment. Hand-verified in `tests/vector.test.ts`. The Vector-mode scene tool / token advance is DEFERRED to an orchestrator (as with cinematic `path.ts`) |
+| Vector movement (optional FT2 system) | ✅ | `movement/vector.ts` + `vectorMoveAction`, which enforces `checkManoeuvres` (2026-11-02). Tool unverified live. |
 | Measurement to/from stand centre | ✅ | core `measure.between(..., "centre-to-centre")` |
 
 ## Fire Arcs
@@ -46,20 +46,20 @@ deferred. Nothing is silently missing.
 | 6 × 60° arcs (F, FS, AS, A, AP, FP), weapon must bear | ✅ | `combat/arcs.ts` over the engine bearing |
 | Fire-arc ring overlay on the token (the GZG "FTring" diagram) | ✅ | `ui/arc-overlay.ts` draws the 6 labelled arcs + beam range rings oriented to a ship's facing (pure geometry unit-tested, matches `arcForBearing`); shown on hover + pinnable via the "Fire Arcs" tool. Live-verified |
 | Pre-fire targeting preview (which weapons bear + range band, no roll) | ✅ | `combat/targeting.ts` `previewTargeting` (mirrors `resolveWeaponFire` precedence) + a player-visible "Check Targeting" tool whispering `buildTargetingReportHtml` |
-| Fleet Book conditional aft fire (all-round turrets fire aft on a no-thrust turn) | 🟡 | `combat/aft-fire.ts` `aftFirePermitted`/`weaponBearsOnWithAftFire` (pure + tested; opt-in, default `weaponBearsOn` unchanged); the "did the ship thrust this turn" fact is caller-supplied — live wiring deferred |
+| Fleet Book conditional aft fire (all-round turrets fire aft on a no-thrust turn) | ✅ | `combat/aft-fire.ts` `weaponBears`, on the shot, preview and split-fire paths, behind the "conditionalAftFire" world setting. Plot and vector tools record thrust on `THRUSTED_THIS_TURN_FLAG`. Unverified live. |
 
 ## Weapons
 | Rule | Status | Where |
 |---|---|---|
-| Beam batteries: class dice by 12mu band, pool damage | ✅ | `combat/beam.ts`, `combat/fire.ts` |
-| Pulse torpedoes: to-hit by band (2+…6), damage die, ignore screens | ✅ | `combat/weapons.ts`, `combat/fire.ts` |
+| Beam batteries: class dice by range band, pool damage | ✅ | `combat/beam.ts`, `combat/fire.ts` |
+| Pulse torpedoes: to-hit by band, damage die, ignore screens | ✅ | `combat/weapons.ts`, `combat/fire.ts` |
 | Submunition packs: dice by band, ignore screens, one-shot | ✅ | `combat/weapons.ts`, `combat/fire.ts` |
-| Needle beams: 9mu, knock a nominated system on a 6, ignore screens/armour | ✅ | `combat/needle.ts` `fireNeedleAtSystem` + "Needle Beam" scene tool with a system-type picker |
+| Needle beams: nominate a system, knock it out on the world's face, ignore screens/armour | ✅ | `combat/needle.ts` `fireNeedleAtSystem` + "Needle Beam" scene tool with a system-type picker |
 | Salvo missiles: salvo of 6, PDS interception, per-missile damage | ✅ | `combat/salvo.ts` `resolveSalvoAtTarget` + "salvo" weapon kind + "Fire Salvo" tool (direct-target; point-of-aim counter deferred) |
-| Independent (More Thrust) missiles: one-shot craft, own phase, 18mu + mid-point 2-pt turn, 3-turn life, strike ≤6mu & not in rear arc, PDS kills on a 6; Normal / EMP / Needle warheads | ✅ | `combat/missile.ts` (`warhead` param: Normal 2d6; EMP scrambles systems; Needle snipes) + `movement/missile-path.ts` + `combat/missile-phase.ts` (`advanceMissile`/`missileExpired`) + `ui/missile-overlay.ts` markers + "Launch Missile" / "Missile Phase" tools (scene-flag state, synthetic-token strike). Live-verified: launch → 18mu advance → strike + destroy → removed. EMP/Needle picker deferred |
+| Independent (More Thrust) missiles: one-shot craft, own phase, mid-point turn, limited life, strike in range & not in rear arc, PDS interception; Normal / EMP / Needle warheads | ✅ | `combat/missile.ts`, `combat/missile-phase.ts`, `pickWarhead` |
 | Kra'Vak kinetic weapons: K-gun railgun, MKP packs, scatterguns, K-1 PD (armour-piercing, screens ignored) | 🟡 | `combat/kravak.ts` `kgunToHit`/`kgunDamageForFace`/`applyKgunHit`/`mkpHits`/`scattergun*`/`kgunK1PointDefenceKills` (Fleet Book 2, pure + tested); a Kra'Vak weapon kind + scene wiring deferred; Sa'Vasku / Phalon not built |
-| Spinal-mount Nova Cannon: 3-turn forward sweep (6/4/2 D6, 2"/4"/6" template), damage = die score, screens ignored | 🟡 | `combat/spinal.ts` `novaCannonDamage`/`novaCannonDiceForTurn`/`novaCannonTemplateInches`/`novaCannonSweep` (pure math + tests); template geometry, arming bookkeeping, and a scene tool deferred |
-| Wave Gun: 36mu expanding template (4/3/2 D6, 2"/3"/4"), charge-then-fire, knock-out feedback, damage = die score, screens/armour ignored | 🟡 | `combat/spinal.ts` `waveGunDamage`/`waveGunDiceAtRange`/`waveGunTemplateInches`/`waveGunIsCharged`/`waveGunChargeAfterTurn`/`waveGunChargeAfterFiring`/`waveGunFeedbackDamage` (pure math + tests); template geometry, charge state on a Document, and a scene tool deferred |
+| Spinal-mount Nova Cannon: multi-turn forward sweep with a widening template, damage = die score, screens ignored | 🟡 | `combat/spinal.ts`; first turn fireable, sweep and template deferred |
+| Wave Gun: expanding template, charge-then-fire, knock-out feedback, damage = die score, screens/armour ignored | 🟡 | `combat/spinal.ts`; fireable with its charge cycle, template deferred |
 | Spinal Nova Cannon / Wave Gun — fireable | ✅ | "Nova Cannon" / "Wave Gun" GM tools (`resolveSpinalWeapon`, direct-target). Live-verified: dice by turn/range, damage + threshold + destruction. Wave Gun charge-then-fire cycle wired ("Charge Wave Gun" tool + 6+ gate). MeasuredTemplate + Nova 3-turn sweep deferred |
 | Kra'Vak K-guns / MKP / scatterguns / K-1 PD | ✅ | `combat/kravak.ts` math + the K-gun WIRED as a fireable weapon kind (`resolveWeaponFire` `kgun` case → per-hit `applyKgunHit` armour-pierce stream; selectable on the sheet; in `previewTargeting` + split-fire). MKP/scattergun scene wiring still deferred |
 | Sa'Vasku bio-ships (power points, stinger/lance/leech pods, biomass, regen) | 🟡 | `combat/savasku.ts` (pure + tested); design/combat wiring deferred |
@@ -78,29 +78,29 @@ deferred. Nothing is silently missing.
 | Rule | Status | Where |
 |---|---|---|
 | Hull boxes in rows; fill order; destroyed when all gone | ✅ | `ship/hull.ts` |
-| Threshold check on row completion (FT2 rolls high 6/5-6/4-6) | ✅ | `ship/threshold.ts`, `ship/systems.ts` |
+| Threshold check on row completion (FT2 rolls high) | ✅ | `ship/threshold.ts`, `ship/systems.ts` |
 | Multi-threshold in one attack: worst reached, worsened per extra | ✅ | `ship/threshold.ts` `thresholdKillOn` |
 | Drives special (half then dead) | ✅ | `ship/systems.ts` + `driveCrippled` field: first hit halves thrust, second kills |
 | Damage control (More Thrust end-of-turn repair) | ✅ | `combat/damage-control.ts` `resolveDamageControl` (priority repair) + a "Damage Control" GM tool. Enabled by the design+damage model (systems keep their design count + a lost/driveHits counter) |
-| Fleet Book 1 — reroll / penetrating damage (a 6 scores + rerolls, chaining) | 🟡 | `ship/fleet-book.ts` `poolPenetratingDamage` (opt-in; reroll die scores on the unscreened table, no cap; screens hit only the initial dice) — pure + tested, not on the default combat path |
-| Fleet Book 1 — armour bypass (penetrating hits go direct to hull) | 🟡 | `ship/fleet-book.ts` `applyDamageBypassingArmour` / `applyPenetratingDamageWithArmour` (normal spends armour then overflows, penetrating goes direct) — pure + tested |
-| Fleet Book 1 — Core Systems +1 (buried systems one step tougher at threshold) | 🟡 | `ship/fleet-book.ts` `coreThresholdKillOn` / `knockedOutIndicesWithCore` (1st threshold → core immune on a d6); `CORE_SYSTEM_THRESHOLD_BONUS` — pure + tested |
+| Fleet Book 1 — reroll / penetrating damage (a top face scores + rerolls, chaining) | ✅ | `ship/fleet-book.ts` `poolPenetratingDamage`, behind the "penetratingDamage" world setting. |
+| Fleet Book 1 — armour bypass (penetrating hits go direct to hull) | ✅ | `applyPenetratingDamageWithArmour`, via `applyDamageToShip`, on the penetrating path (2026-11-02). Unverified live. |
+| Fleet Book 1 — Core Systems threshold bonus | ⏸ | `ship/fleet-book.ts` math only. The repo does not say which systems are core; see the roadmap. |
 
 ## Fighters
 | Rule | Status | Where |
 |---|---|---|
 | Fighter group (1–6), type, endurance, morale | ✅ | `data/fighter-group.ts` + sheet |
-| Attack a ship in fore arc within 6mu; die per fighter; screens apply | ✅ | `combat/fire-fighters.ts` |
+| Attack a ship in fore arc within attack range; die per fighter; screens apply | ✅ | `combat/fire-fighters.ts` |
 | Morale roll (depleted group), endurance spend, Attack-type +1/die | ✅ | wired into `combat/fire-fighters.ts` (aborts on failed morale, spends endurance on a fired attack) |
 | Morale broken (3 consecutive fails → disengage) + out-of-fuel exhaustion | ✅ | `combat/fire-fighters.ts` tracks `moraleFails`; a broken or endurance-0 group refuses to attack |
 | PDS thins the group before it strikes | ✅ | `combat/fire-fighters.ts` rolls the target's PDS first (`pdsKillsVsFighters`); casualties persist; a fully-killed group makes no attack |
-| Dogfights (fighter vs fighter) | ✅ | `combat/dogfight.ts` `resolveDogfight` (6mu fore arc, simultaneous, defender returns fire if it bears); the Fire tool dispatches it when both are fighter groups |
+| Dogfights (fighter vs fighter) | ✅ | `combat/dogfight.ts` `resolveDogfight` (fore arc, simultaneous, defender returns fire if it bears); the Fire tool dispatches it when both are fighter groups |
 | PDS vs missiles | ✅ | `combat/fighters.ts` `pdsKillsVsMissiles` (a 6 kills), consumed by `combat/salvo.ts` (salvo) and `combat/missile.ts` (independent missiles) |
 | Specialised types: Heavy (screen), Interceptor (+1/die dogfight), Long-range (endurance 5) | ✅ | `combat/fighters.ts` `dogfightKillsAgainst`/`enduranceForType`, applied in `combat/dogfight.ts` |
-| Specialised types: Fast (18mu) / Torpedo (one-shot run, spent-mode dogfight) | 🟡 | `combat/fighter-types.ts` `fighterMoveForType`/`torpedoHitCount`/`torpedoRunDamage`/`attackFighterDogfightKills` (pure + tested); the token movement + spent-marking orchestrator is deferred |
-| Pilot quality: Ace / Turkey / average (attack, morale, dogfight, initiative) | ✅ | `combat/pilot.ts` (1D6/group: 6=Ace, 1=Turkey) WIRED into `fire-fighters.ts` (Ace +1 attack die, Ace/Turkey morale mod, Turkey 2-fail break) + `dogfight.ts` (Turkey −1/die, Ace extra die); optional `pilotQuality` field on the group model + sheet. Fighter-fire UI live-unverified |
-| Fighter movement (flat move any direction, 12mu / 18mu Fast, close to strike) | 🟡 | `movement/fighter-move.ts` `fighterMaxMove`/`moveToward`/`canReachToAttack` (pure + tested); the token-mover orchestrator is deferred (as ship `path.ts` defers its token move) |
-| Carrier launch/recover + endurance return-to-carrier | 🟡 | `combat/carrier.ts` `bayCapacity`/`launchLimit`/`canLaunch`/`canRecover`/`enduranceAfterTurn`/`mustReturn`/`isLost`/`recover` (pure + tested); the launch/recover token orchestrator is deferred |
+| Specialised types: Fast / Torpedo (one-shot run, spent-mode dogfight) | 🟡 | `combat/fighter-types.ts` (pure + tested) |
+| Pilot quality: Ace / Turkey / average (attack, morale, dogfight, initiative) | ✅ | `combat/pilot.ts`, wired into `fire-fighters.ts` and `dogfight.ts`; named on the fighter card (2026-11-02) |
+| Fighter movement (flat move any direction, close to strike) | ✅ | `movement/fighter-move.ts` + "Move Fighters" tool |
+| Carrier launch/recover + endurance return-to-carrier | 🟡 | Launch/Recover tools; `combat/fighter-endurance.ts` end-of-turn sweep (2026-11-02, unverified live). The tools do not enforce per-turn limits. |
 
 ## Ship Design
 | Rule | Status | Where |

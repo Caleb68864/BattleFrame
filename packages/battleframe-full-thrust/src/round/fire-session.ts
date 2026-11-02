@@ -12,6 +12,7 @@
  * Source: FT2 "Initiative", "Sequence of Play".
  */
 
+import { tr } from "../localize";
 import { SHIP_ACTOR_TYPE } from "../constants";
 import { isShipDestroyed } from "../data/ship-state";
 
@@ -40,7 +41,7 @@ export function determineInitiative(rolls: readonly InitiativeRoll[]): string | 
   return best && !tied ? best.sideId : null;
 }
 
-/** The side id of a ship token: its disposition as a string (default "0"). */
+/** The side id of a ship token: its disposition as a string (default "N"). */
 export function shipSideOf(token: any): string {
   const disposition = token?.document?.disposition ?? token?.disposition ?? 0;
   return String(disposition);
@@ -136,15 +137,15 @@ export function canShipFire(order: ActivationOrderLike, sideId: string, shipId: 
 export function sideLabel(sideId: string): string {
   switch (sideId) {
     case "1":
-      return "Friendly";
+      return tr("battleframe-full-thrust.side.friendly", "Friendly");
     case "-1":
-      return "Hostile";
+      return tr("battleframe-full-thrust.side.hostile", "Hostile");
     case "0":
-      return "Neutral";
+      return tr("battleframe-full-thrust.side.neutral", "Neutral");
     case "-2":
-      return "Secret";
+      return tr("battleframe-full-thrust.side.secret", "Secret");
     default:
-      return `Side ${sideId}`;
+      return tr("battleframe-full-thrust.side.other", `Side ${sideId}`, { id: sideId });
   }
 }
 
@@ -156,8 +157,12 @@ export function sideLabel(sideId: string): string {
 export function firePhaseStatusLine(order: ActivationOrderLike): string {
   const active = order.isComplete() ? undefined : order.activeSideId();
   if (!active) {
-    return "Fire phase complete.";
+    return tr("battleframe-full-thrust.firePhase.complete", "Fire phase complete.");
   }
   const remaining = order.eligible(active).length;
-  return `${sideLabel(active)} to fire — ${remaining} ship(s) still to activate.`;
+  const side = sideLabel(active);
+  return tr("battleframe-full-thrust.firePhase.active", `${side} to fire — ${remaining} ship(s) still to activate.`, {
+    side,
+    n: remaining
+  });
 }

@@ -14,13 +14,16 @@
  * round began. See `RoundSessionKnight.isRemoved`.
  */
 import { MODULE_ID } from "../constants";
+import { getProfile } from "../rules-profile";
 import type { ActorLike } from "./loop";
 
 /**
- * Damage markers at which a knight is removed immediately (QSR p2, see
- * vault/greathelm/damage-and-removal.md and data/knight.ts's schema cap).
+ * Damage markers at which a knight is removed immediately (QSR p2), from the
+ * world's profile. Zero means the world has not entered one.
  */
-export const DAMAGE_LIMIT = 3;
+export function damageLimit(): number {
+  return getProfile().damageLimit;
+}
 
 /** Flag key under this module's namespace. Flags are per-document, so a fled knight stays fled across a reload. */
 export const FLED_FLAG = "fled";
@@ -39,7 +42,9 @@ export function hasFled(actor: ActorLike): boolean {
 
 /** Whether this knight is out of the play area, by either QSR route. */
 export function isKnightRemoved(actor: ActorLike): boolean {
-  return hasFled(actor) || (actor.system?.damage ?? 0) >= DAMAGE_LIMIT;
+  // An unentered limit must remove nobody: `damage >= 0` would remove every knight.
+  const limit = damageLimit();
+  return hasFled(actor) || (limit > 0 && (actor.system?.damage ?? 0) >= limit);
 }
 
 /** Foundry's core "defeated" status id (the skull overlay), or its documented `"dead"` fallback. */
@@ -52,7 +57,7 @@ function defeatedStatusId(): string {
 
 /**
  * Surfaces removal on the token via Foundry's native "defeated" status,
- * matching `isKnightRemoved`: a knight downed (3 damage) or fled shows a skull
+ * matching `isKnightRemoved`: a knight downed or fled shows a skull
  * that syncs to every client and persists on the document, instead of only an
  * invisible marker count (roadmap P1). Damage/momentum stay `NumberField`s;
  * only the threshold/flag condition goes native. Idempotent, and a no-op on an

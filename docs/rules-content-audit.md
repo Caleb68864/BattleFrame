@@ -235,11 +235,62 @@ appears to.
 Result: `constants.ts` 696 → 109 lines, 644 module tests unchanged plus 18 new
 guard tests, 1,602 across the monorepo, `tsc --noEmit` clean.
 
-## Open question for the owner
+## What a second scan found, 2026-11-02
 
-Stripping `full-thrust` means the module does nothing out of the box until the
-user types ~140 numbers in. Dirtside and StarGrunt already accept that trade;
-Full Thrust is much larger, so the entry cost is much higher. If that is too
-steep, the alternative is a documented **import format** plus a blank template —
-the user still supplies the data, but once, as a file, rather than field by
-field. Worth settling before step 4 rather than during it.
+**The audit above overstated the result.** It says `full-thrust` ships zero rules
+numbers and that "every points and MASS value" was deleted. Both were false. The
+strip moved what lived in `constants.ts`, and its guard test watches `constants.ts`.
+Tables written as literals inside functions were never in that file, so neither
+the migration script nor the guard could see them.
+
+**11. Scan function bodies, not the constants file.**
+
+Moved to the profile on 2026-11-02, with `tests/rules-strip-residue.test.ts` proving
+each answer changes with the world:
+
+- the whole system points table and the hull, drive and FCS pricing in `ship/design.ts`
+- the class-by-MASS cut-offs, threshold rows and damage-point divisor in `ship/hull.ts`
+- the damage-control repair face and parties per class
+- fighter endurance by type, plus a literal seeded as a schema default
+- the threshold floor
+- dice and to-hit strings in the targeting preview
+- a damage value printed in a settings hint
+
+`battleframe-incountry`'s Add Weapon button also still wrote a named stat block into
+the roster, the exact defect lesson 2 records. It now adds a blank row.
+
+`battleframe-greathelm`'s damage limit was a literal, repeated as a schema maximum and
+a hover maximum. It is now `damageLimit` in the profile; an unentered limit removes no
+one, and the schema and hover state no maximum.
+
+Source comments in `full-thrust` still carried the tables and verbatim rulebook
+sentences. 143 comment lines had their values replaced with `N` and 27 quotations were
+removed; `tests/rules-in-comments.test.ts` fails if the commonest shapes come back.
+That pass was mechanical, and it covered `full-thrust` only. It is a shape match, not a
+proof of absence: some values survive in prose, and some comments now read roughly.
+
+**A world's saved profile does not have these 29 new fields.** They read as zero until
+the user re-imports. Divisors and the repair face treat zero as "nothing" rather than
+dividing by zero or repairing everything.
+
+### Still in the repository, not fixed
+
+Reported to the owner, because each needs a call on where the line sits or more than
+a mechanical move:
+
+| Where | What |
+| --- | --- |
+| `full-thrust` `combat/beam.ts`, `combat/fighters.ts`, `combat/kravak.ts`, `combat/phalon.ts` | Score values returned as literals by the per-die tables; the profile holds only the faces |
+| `full-thrust` `ship/systems.ts`, `data/ship.ts` | Drive-damage steps; schema seeds for hull boxes and rows |
+| `full-thrust` `ship/design.ts` | The beam battery cost and MASS formulas; the FTL drive price; the priced-screen cap |
+| `full-thrust` `tests/helpers/world.ts` | `SCENARIO_RULES` calls itself invented, but its original block appears to restate the real tables. The audit itself quotes one of them above. Its 29 additions are invented. |
+| `greathelm`, `incountry` comments | Only the plainest statements were removed; QSR and rulebook page references remain, and these modules got no guard test |
+| `full-thrust` `COVERAGE.md` | Numbers were removed from the rows edited on 2026-11-02; other rows were not reviewed |
+| `full-thrust` `data/fleet-import.ts` | Fallbacks used when a fleet file omits a value (mass, thrust) and the mass ceiling |
+| `stargrunt-ii` `round/suppression.ts`, `round/session.ts`, `round/morale.ts`, `main.ts`; `dirtside-ii` `round/confidence.ts`, `combat/arc.ts` | Literals the table above marks compliant at 0. Not assessed: these may or may not be design data. |
+| This file | Quotes specific published values as evidence of the original exposure |
+
+## Open question for the owner — resolved
+
+Whether ~140 hand-typed numbers was too steep was settled by building the option
+this section proposed: `rules-profile.ts` ships a JSON importer and a blank template.

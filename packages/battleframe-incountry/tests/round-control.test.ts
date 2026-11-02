@@ -227,6 +227,28 @@ describe("beginRound + resolveActivation — a played round to victory", () => {
     expect((posted[0].lines ?? []).join("").toLowerCase()).toContain("wiped");
   });
 
+  it("posts a round-over card when the round ends, not only a GM-side toast", async () => {
+    const a1 = unit("a1", "A", system());
+    const b1 = unit("b1", "B", system());
+    const units = [a1, b1];
+    const dice = fakeDice([2, 8]); // A first
+    const posted: Array<{ title?: string; lines?: readonly string[]; cssClass?: string }> = [];
+    const postCard = (spec: { title?: string; lines?: readonly string[]; cssClass?: string }): void => {
+      posted.push(spec);
+    };
+
+    const { order } = await beginRound({ units, dice, roundsApi, rng: () => 0 });
+    await resolveActivation({ order, attacker: a1, dice, units, postCard });
+    expect(posted).toHaveLength(0);
+
+    const result = await resolveActivation({ order, attacker: b1, dice, units, postCard });
+
+    expect(result.roundComplete).toBe(true);
+    expect(posted).toHaveLength(1);
+    expect(posted[0].cssClass).toBe("incountry-victory");
+    expect(posted[0].title).toBe("Round over");
+  });
+
   it("does not post a card when there is no attack (no target)", async () => {
     const a1 = unit("a1", "A", system());
     const b1 = unit("b1", "B", system());

@@ -1,7 +1,7 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { MODULE_ID } from "../src/constants";
 import {
-  DAMAGE_LIMIT,
+  damageLimit,
   FLED_FLAG,
   hasFled,
   isKnightRemoved,
@@ -12,6 +12,16 @@ import {
 import { checkVictory } from "../src/round/victory";
 import { toVictoryKnights } from "../src/ui/round-control";
 import type { ActorLike } from "../src/round/loop";
+import { withScenarioProfile } from "./helpers/world";
+
+// The damage limit is the world's: every test here plays in a world that entered one.
+let restoreScenarioWorld: () => void;
+beforeEach(() => {
+  restoreScenarioWorld = withScenarioProfile();
+});
+afterEach(() => {
+  restoreScenarioWorld();
+});
 
 function actor(overrides: Partial<ActorLike> = {}): ActorLike {
   return {
@@ -30,11 +40,11 @@ afterEach(() => {
 
 describe("isKnightRemoved", () => {
   it("treats a knight at the damage limit as removed", () => {
-    expect(isKnightRemoved(actor({ system: { damage: DAMAGE_LIMIT } }))).toBe(true);
+    expect(isKnightRemoved(actor({ system: { damage: damageLimit() } }))).toBe(true);
   });
 
   it("leaves a knight below the damage limit in play", () => {
-    expect(isKnightRemoved(actor({ system: { damage: DAMAGE_LIMIT - 1 } }))).toBe(false);
+    expect(isKnightRemoved(actor({ system: { damage: damageLimit() - 1 } }))).toBe(false);
   });
 
   // The bug this module exists to close: victory.ts documents damage and
@@ -101,7 +111,7 @@ describe("hasFled", () => {
  */
 describe("syncKnightDefeatedStatus", () => {
   it("marks a knight at the damage limit defeated on the token", async () => {
-    const knight = actor({ system: { damage: DAMAGE_LIMIT } });
+    const knight = actor({ system: { damage: damageLimit() } });
     await syncKnightDefeatedStatus(knight);
     expect(knight.toggleStatusEffect).toHaveBeenCalledWith("dead", { active: true });
   });
@@ -113,7 +123,7 @@ describe("syncKnightDefeatedStatus", () => {
   });
 
   it("clears the status for a knight still in play", async () => {
-    const knight = actor({ system: { damage: DAMAGE_LIMIT - 1 } });
+    const knight = actor({ system: { damage: damageLimit() - 1 } });
     await syncKnightDefeatedStatus(knight);
     expect(knight.toggleStatusEffect).toHaveBeenCalledWith("dead", { active: false });
   });
@@ -122,7 +132,7 @@ describe("syncKnightDefeatedStatus", () => {
     (globalThis as { CONFIG?: unknown }).CONFIG = {
       specialStatusEffects: { DEFEATED: "defeated" },
     };
-    const knight = actor({ system: { damage: DAMAGE_LIMIT } });
+    const knight = actor({ system: { damage: damageLimit() } });
     await syncKnightDefeatedStatus(knight);
     expect(knight.toggleStatusEffect).toHaveBeenCalledWith("defeated", { active: true });
   });
@@ -144,7 +154,7 @@ describe("syncKnightDefeatedStatus", () => {
 describe("resetKnight", () => {
   it("clears damage, momentum, and the fled flag in one update", async () => {
     const knight = actor({
-      system: { damage: DAMAGE_LIMIT },
+      system: { damage: damageLimit() },
       flags: { [MODULE_ID]: { fled: true } },
     });
 
@@ -159,7 +169,7 @@ describe("resetKnight", () => {
 
   it("leaves the knight in play afterwards", async () => {
     const knight = actor({
-      system: { damage: DAMAGE_LIMIT },
+      system: { damage: damageLimit() },
       flags: { [MODULE_ID]: { fled: true } },
     });
 
@@ -178,7 +188,7 @@ describe("resetKnight", () => {
 
   it("clears the defeated skull from the token when a knight resets", async () => {
     const knight = actor({
-      system: { damage: DAMAGE_LIMIT },
+      system: { damage: damageLimit() },
       flags: { [MODULE_ID]: { fled: true } },
     });
     knight.update = vi.fn(async () => {
@@ -207,7 +217,7 @@ describe("toVictoryKnights", () => {
   it("wins the game for the side whose opponent is all dead", () => {
     const knights = [
       roundKnight("a", "friendly"),
-      roundKnight("b", "hostile", { system: { damage: DAMAGE_LIMIT } }),
+      roundKnight("b", "hostile", { system: { damage: damageLimit() } }),
     ];
 
     expect(checkVictory(toVictoryKnights(knights))).toEqual({
@@ -236,7 +246,7 @@ describe("toVictoryKnights", () => {
 
   it("reports a mutual wipe-out rather than inventing a winner", () => {
     const knights = [
-      roundKnight("a", "friendly", { system: { damage: DAMAGE_LIMIT } }),
+      roundKnight("a", "friendly", { system: { damage: damageLimit() } }),
       roundKnight("b", "hostile", { flags: { [MODULE_ID]: { fled: true } } }),
     ];
 
@@ -250,7 +260,7 @@ describe("toVictoryKnights", () => {
     const [victoryKnight] = toVictoryKnights([knight]);
 
     expect(victoryKnight.isRemoved?.()).toBe(false);
-    knight.actor.system = { damage: DAMAGE_LIMIT };
+    knight.actor.system = { damage: damageLimit() };
     expect(victoryKnight.isRemoved?.()).toBe(true);
   });
 });

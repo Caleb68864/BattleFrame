@@ -180,6 +180,19 @@ export function buildAttackReportHtml(
   return wrapCard(title, lines);
 }
 
+/** The round-over card. Side ids reach it as user-editable text, so they are escaped. */
+function victorySpec(victory: ReturnType<typeof checkVictoryInx>): AttackCardSpec {
+  let line: string;
+  if (victory.result === "winner") {
+    line = `<p><strong>${escapeHtml(victory.sideId)}</strong> holds the field.</p>`;
+  } else if (victory.result === "draw") {
+    line = "<p>No models remain on either side.</p>";
+  } else {
+    line = "<p>Both sides still hold. Start a new round.</p>";
+  }
+  return { title: "Round over", lines: [line], cssClass: "incountry-victory" };
+}
+
 /** A card spec the pure flow hands to the injected postCard seam. */
 export interface AttackCardSpec {
   title: string;
@@ -397,6 +410,8 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
   } else {
     notify("Round over: both sides still hold. Start a new round.");
   }
+  // The persistent record of how the round ended; the toast only reaches this client.
+  await postCard(victorySpec(victory));
 
   return { attack, roundComplete: true, victory };
 }

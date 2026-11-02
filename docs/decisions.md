@@ -4054,3 +4054,64 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   which is the right home for it: it covers the project, not the licensed work.
 - Commit: this commit.
 
+
+## 2026-11-02 — The Full Thrust strip missed every table not in constants.ts
+- Symptom: `ship/design.ts` still exported a complete system points table, and
+  `ship/hull.ts`, `combat/damage-control.ts`, `combat/fighters.ts` and
+  `data/fighter-group.ts` held class, repair and endurance tables as literals, while
+  `docs/rules-content-audit.md` said every points and MASS value had been deleted.
+- Cause: the strip and its guard both looked at `constants.ts`. A literal inside a
+  function was never a constant, so neither saw it. A shape 6 fix: the instances
+  went and the mechanism that let more arrive stayed.
+- Fix: 29 more flat profile fields, with `tests/rules-strip-residue.test.ts` proving each
+  answer moves with the world. Fixtures for them are invented; the published worked
+  example was removed from `design.test.ts`, not re-derived.
+- Watch: worlds with a saved profile read the new fields as zero until re-imported.
+  What still remains is listed in the audit, and is the owner's call.
+- Commit: this commit.
+
+## 2026-11-02 — Detached DialogV2 statics silently disabled three prompts
+- Symptom: GREATHELM's first-or-second and New Battle prompts and the core's orphan
+  conversion offer could only ever take their fallback.
+- Cause: `const wait = DialogV2.wait; wait(...)`. Foundry's statics read `this`, the
+  call throws, and each catch takes its default. `vi.fn()` does not read `this`, so the
+  suite was green. Same class as `d3b92dc` (`Scene.create`) and the notify service.
+- Fix: call as methods; test stubs read `this` the way Foundry does.
+- Not checked in a running Foundry.
+- Commit: this commit.
+
+## 2026-11-02 — Rolls post through Roll#toMessage
+- Problem: a bespoke formula/total card recompiled a Handlebars string on every roll
+  and hid Foundry's per-die breakdown.
+- Fix: `postRollToChat` calls `roll.toMessage` with a speaker, the flavor and the ruleset
+  id on a flag. This supersedes the P4 "register the card template" item: there is no
+  longer a card to register. Dice So Nice still sees the Roll on the message.
+- Watch: `roll.toMessage` is not exercised outside mocks. Check a live roll, and Dice So
+  Nice, before relying on it.
+- Commit: this commit.
+
+## 2026-11-02 — Penetrating damage now skips armour, and vector orders are checked
+- Penetrating damage was pooled into `totalDamage` and spent armour first, contrary to
+  `ship/fleet-book.ts`. `resolveWeaponFire` now reports the penetrating part.
+- `vectorMoveAction` never called `checkManoeuvres`. It now refuses an illegal order.
+- Conditional aft fire is wired through one `weaponBears` check on the shot, the preview
+  and split-fire allocation, so they cannot disagree.
+- Both new optional rules default off.
+- Commit: this commit.
+
+## 2026-11-02 — Recovery uses the group's move; variable hull arrives through import
+- Recovery compared against the attack range, while its own comment said the group's
+  move. It now uses `fighterMaxMove`, and applies `carrierCanRecover` with a per-turn flag.
+- The launch limit was left alone: it needs to know what an "actual carrier" is, and the
+  repo does not say. Raised with the owner rather than guessed from `bays`.
+- A fleet ship's `hullGrade` opts it into variable hull. Import only, no sheet control.
+- Commit: this commit.
+
+## 2026-11-02 — GREATHELM's damage limit joins its profile
+- `DAMAGE_LIMIT` was a literal the 2026-09-21 strip left behind, and the schema and hover
+  panel repeated it as a maximum. Now `damageLimit` in the profile.
+- Zero guards both ways: an unentered limit removes nobody (`damage >= 0` would remove
+  everyone) and does not cap clash damage to zero.
+- Saved profiles read it as zero until re-imported, so knights are not removed by damage
+  in those worlds until the owner of the world enters it.
+- Commit: this commit.

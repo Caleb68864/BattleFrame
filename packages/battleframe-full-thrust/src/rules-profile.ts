@@ -36,6 +36,35 @@ import { MODULE_ID, SETTING_RULES_PROFILE } from "./constants";
  * 110-way judgement call about taxonomy.
  */
 export interface RulesProfile {
+  shipClassEscortMaxMass: number;
+  shipClassCruiserMaxMass: number;
+  thresholdRowsEscort: number;
+  thresholdRowsCruiser: number;
+  thresholdRowsCapital: number;
+  warshipDamageMassDivisor: number;
+  hullCostPerMass: number;
+  systemsMassDivisor: number;
+  driveCostDivisorEscort: number;
+  driveCostDivisorCruiser: number;
+  driveCostDivisorCapital: number;
+  freeFcsEscort: number;
+  freeFcsCruiser: number;
+  freeFcsCapital: number;
+  pointsPdaf: number;
+  pointsAdaf: number;
+  pointsNeedle: number;
+  pointsTorpedo: number;
+  pointsSubmunition: number;
+  pointsExtraFcs: number;
+  pointsScreenLevel1: number;
+  pointsScreenLevel2: number;
+  damageControlRepairOn: number;
+  damageControlPartiesEscort: number;
+  damageControlPartiesCruiser: number;
+  damageControlPartiesCapital: number;
+  fighterEndurance: number;
+  fighterEnduranceLongRange: number;
+  thresholdMinKillOn: number;
   arcDegrees: number;
   attackFighterDogfightKillOn: number;
   beamRangeBandMu: number;
@@ -157,6 +186,35 @@ export interface RulesProfile {
  * a module that works out of the box is exactly what nobody investigates.
  */
 export const BLANK_PROFILE: RulesProfile = Object.freeze({
+  shipClassEscortMaxMass: 0,
+  shipClassCruiserMaxMass: 0,
+  thresholdRowsEscort: 0,
+  thresholdRowsCruiser: 0,
+  thresholdRowsCapital: 0,
+  warshipDamageMassDivisor: 0,
+  hullCostPerMass: 0,
+  systemsMassDivisor: 0,
+  driveCostDivisorEscort: 0,
+  driveCostDivisorCruiser: 0,
+  driveCostDivisorCapital: 0,
+  freeFcsEscort: 0,
+  freeFcsCruiser: 0,
+  freeFcsCapital: 0,
+  pointsPdaf: 0,
+  pointsAdaf: 0,
+  pointsNeedle: 0,
+  pointsTorpedo: 0,
+  pointsSubmunition: 0,
+  pointsExtraFcs: 0,
+  pointsScreenLevel1: 0,
+  pointsScreenLevel2: 0,
+  damageControlRepairOn: 0,
+  damageControlPartiesEscort: 0,
+  damageControlPartiesCruiser: 0,
+  damageControlPartiesCapital: 0,
+  fighterEndurance: 0,
+  fighterEnduranceLongRange: 0,
+  thresholdMinKillOn: 0,
   arcDegrees: 0,
   attackFighterDogfightKillOn: 0,
   beamRangeBandMu: 0,

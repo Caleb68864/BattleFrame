@@ -1,50 +1,54 @@
 /**
  * The ship damage track: hull boxes arranged in rows, and the threshold
  * bookkeeping that completing a row triggers. Pure functions -- no Foundry, no
- * documents -- so the rules are testable in isolation. Rules numbers come from
- * ../constants (this file adds no rules constants of its own).
+ * documents -- so the rules are testable in isolation. Every rules number comes
+ * from the world's profile.
  *
- * Sources: FT2 "Ship Classes" (class by MASS), "Hull Boxes & Damage",
+ * Mechanics follow FT2 "Ship Classes", "Hull Boxes & Damage",
  * "Threshold Check".
  */
 
+import { requireRules } from "../rules-profile";
+
 export type ShipClass = "escort" | "cruiser" | "capital";
 
-/** FT2 class-by-MASS: escort <= 18, cruiser 19-36, capital 37+. */
+/** Class by MASS, against the world's two cut-offs. */
 export function shipClass(mass: number): ShipClass {
-  if (mass <= 18) {
+  const rules = requireRules();
+  if (mass <= rules.shipClassEscortMaxMass) {
     return "escort";
   }
-  if (mass <= 36) {
+  if (mass <= rules.shipClassCruiserMaxMass) {
     return "cruiser";
   }
   return "capital";
 }
 
-/** Warship damage points = half the MASS, a half rounding up. */
+/** Warship damage points: the world's share of the MASS, a fraction rounding up. */
 export function warshipDamagePoints(mass: number): number {
-  return Math.ceil(mass / 2);
+  const divisor = requireRules().warshipDamageMassDivisor;
+  return divisor > 0 ? Math.ceil(mass / divisor) : 0;
 }
 
 /**
- * FT2 threshold rows by class: escort 2, cruiser 3, capital 4. The number of
- * threshold *checks* is one fewer -- completing the final row is destruction,
- * not a check.
+ * Threshold rows by class, from the world. The number of threshold *checks* is one
+ * fewer -- completing the final row is destruction, not a check.
  */
 export function thresholdRows(cls: ShipClass): number {
+  const rules = requireRules();
   switch (cls) {
     case "escort":
-      return 2;
+      return rules.thresholdRowsEscort;
     case "cruiser":
-      return 3;
+      return rules.thresholdRowsCruiser;
     case "capital":
-      return 4;
+      return rules.thresholdRowsCapital;
   }
 }
 
 /**
  * Cumulative box counts at which each row completes. Uneven boxes go into the
- * UPPER rows first (Fleet Book), so 26 boxes over 4 rows is 7/7/6/6 ->
+ * UPPER rows first (Fleet Book), so 26 boxes over 4 rows is N/N/N ->
  * boundaries [7, 14, 20, 26]. The last entry equals `boxes` (destruction).
  */
 export function rowBoundaries(boxes: number, rows: number): number[] {

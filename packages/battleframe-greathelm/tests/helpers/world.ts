@@ -28,6 +28,7 @@ export const TEST_PROFILE: RulesProfile = {
   dicePoolPerKnightBonus: 2,
   openingDicePoolSize: 9,
   minDicePoolFloor: 4,
+  damageLimit: 4,
   faceToAction: {
     1: "sprint",
     2: "encircle",
@@ -67,6 +68,7 @@ export const SCENARIO_PROFILE: RulesProfile = {
   dicePoolPerKnightBonus: 1,
   openingDicePoolSize: 0,
   minDicePoolFloor: 3,
+  damageLimit: 4,
   faceToAction: {
     6: "sprint",
     5: "encircle",

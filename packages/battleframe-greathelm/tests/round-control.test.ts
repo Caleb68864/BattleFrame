@@ -405,7 +405,8 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
       bash: { moveInches: 3, stripsDefenderMomentum: true },
       light: { damage: 1 },
       heavy: { damage: 2 }
-    }
+    },
+    damageLimit: 4
   } as const;
 
   let restoreScenario: () => void;
@@ -454,9 +455,9 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
     await playToCompletion(session);
 
     // Wounds reached the Actor documents -- resolveDieAction/applyClashDamage
-    // are actually on the path, and damage caps at 3.
+    // are actually on the path, and damage caps at the world's limit.
     expect(actorB.system.damage).toBe(2);
-    expect(actorA.system.damage).toBe(3);
+    expect(actorA.system.damage).toBe(4);
     expect(actorA.updates).toBeGreaterThan(0);
 
     // The courage phase ran after every die was spent (a defined, empty Map,
@@ -477,14 +478,14 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
   });
 
   it("counts only knights in play toward the pool -- a removed knight does not inflate it", async () => {
-    // QSR p1 (confirmed): pool = knights in the play area + 1, and it "shrinks
-    // as your knights die" -- the deliberate death-spiral. A knight removed by
+    // QSR p1 (confirmed): the pool is sized from knights in the play area and
+    // shrinks as they die -- the deliberate death-spiral. A knight removed by
     // damage keeps its token on the canvas, so it must be excluded from the pool
     // count, not merely from activation. Same family as the courage-difficulty
     // bug: a "knights in play" number that quietly counts the dead.
     const knights = [
       knight("kA1", "a", 0),                // in play
-      knight("kA2", "a", 0, fakeActor(3)),  // removed (damage 3); token still present
+      knight("kA2", "a", 0, fakeActor(SCENARIO_PROFILE.damageLimit)),  // removed; token still present
       knight("kB1", "b", 0),                // in play
     ];
     const { poolSizes } = await beginRoundFromControl({
@@ -494,7 +495,7 @@ describe("beginRoundFromControl -- initiative and a session the panel drives, no
       measure: lineMeasure(),
     });
 
-    // a has one knight in play -> pool 2, not 3.
+    // a has one knight in play, and the removed one does not count.
     const inPlayBonus = SCENARIO_PROFILE.dicePoolPerKnightBonus;
     expect(poolSizes.get("a")).toBe(1 + inPlayBonus);
     expect(poolSizes.get("b")).toBe(1 + inPlayBonus);

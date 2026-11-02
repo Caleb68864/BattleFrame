@@ -5,7 +5,7 @@
  *
  * Procedure (Making Course Changes): pivot half the total turn rounded DOWN,
  * move half the (resulting) velocity straight ahead, pivot the remaining turn,
- * move the remaining half. So a 1-point turn happens entirely at the mid-point.
+ * move the remaining half. So a N-point turn happens entirely at the mid-point.
  *
  * Output displacements are in scene distance units (mu), from the ship's start,
  * in screen space: x right, y DOWN, so course 12 ("up") is -y. A course N faces

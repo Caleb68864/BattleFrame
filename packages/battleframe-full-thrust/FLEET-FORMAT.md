@@ -51,7 +51,8 @@ An object with a `ships` array (a bare array of ships also works):
 | `name` | Ship name | `"Ship"` |
 | `mass` | Hull MASS (1–100) → sets class | `30` |
 | `thrust` | Drive rating (0–8) | `4` |
-| `hull` | `{ boxes, rows }` damage track | derived: `boxes` = ½ MASS, `rows` = 2/3/4 by class |
+| `hull` | `{ boxes, rows }` damage track | derived from MASS and class, from the rules profile |
+| `hullGrade` | Fleet Book variable hull: one of `fragile`, `weak`, `average`, `strong`, `super`. Sizes the damage track and prices the hull from the rules profile. An explicit `hull` still wins. | blank (fixed rule) |
 | `armour` | `{ boxes }` absorbed before hull | `0` |
 | `fcs` | Fire-control systems | `1` |
 | `screens` | Screen level (0–3) | `0` |

@@ -1,6 +1,6 @@
 /**
  * Fighter pilot quality (More Thrust, Aces and Turkeys). Most groups are average;
- * a "6" on a 1D6 gives the group an Ace (crack pilot) and a "1" makes it a whole
+ * a "N" on a N dice gives the group an Ace (crack pilot) and a "N" makes it a whole
  * Turkey group (raw pilots), with opposite effects on attack dice, morale, and
  * dogfight dice. Pure over the diced quality and the raw die faces; the rolling,
  * the group bookkeeping, and any Foundry surfacing live above.
@@ -16,7 +16,7 @@ import { requireRules } from "../rules-profile";
 
 export type PilotQuality = "standard" | "ace" | "turkey";
 
-/** The start-of-game 1D6: 6 = an Ace in the group, 1 = a Turkey group, 2-5 = average. */
+/** The start-of-game N dice: N = an Ace in the group, N = a Turkey group, N-N = average. */
 export function pilotQualityForRoll(roll: number): PilotQuality {
   if (roll >= requireRules().pilotQualityAceRoll) return "ace";
   if (roll <= requireRules().pilotQualityTurkeyRoll) return "turkey";
@@ -47,7 +47,7 @@ export function aceSystemSnipeDice(quality: PilotQuality): number {
   return quality === "ace" ? 1 : 0;
 }
 
-/** Modifier added to a morale roll: Ace -1, Turkey +1, standard 0. */
+/** Modifier added to a morale roll: Ace -N, Turkey +N, standard 0. */
 export function pilotMoraleModifier(quality: PilotQuality): number {
   if (quality === "ace") return requireRules().pilotAceMoraleModifier;
   if (quality === "turkey") return requireRules().pilotTurkeyMoraleModifier;
@@ -65,7 +65,7 @@ export function pilotMoralePasses(roll: number, size: number, quality: PilotQual
 
 /**
  * Whether a group must roll morale before attacking: any depleted group, and a
- * Turkey group even at full strength ("must roll even at full strength").
+ * Turkey group even at full strength ((rule text removed; see the rulebook)).
  */
 export function pilotRequiresMoraleCheck(
   size: number,

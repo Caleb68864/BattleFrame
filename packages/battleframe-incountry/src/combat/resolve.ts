@@ -30,7 +30,7 @@ export function countHits(faces: readonly number[], attackValue: number): number
 
 /**
  * The Attack Total is the **sum of the hitting faces**, not their count
- * (rulebook D.1 worked example: 1,4,10 vs 7 -> 1+4 = 5). Missing faces
+ * (rulebook D.1 has a worked example). Missing faces
  * contribute nothing.
  */
 export function attackTotal(faces: readonly number[], attackValue: number): number {
@@ -88,7 +88,7 @@ export interface ResolveAttackParams {
 /**
  * One attack action against a single target model. Rolls the weapon's d10 pool,
  * counts hits and sums their faces, adds DMG, then -- only if something hit --
- * rolls the target's armor and compares. Every die is a separate `1d10` through
+ * rolls the target's armor and compares. Every die is a separate single-die Roll through
  * the shared dice API, so each face is read individually and Dice So Nice
  * animates each throw.
  */
@@ -126,6 +126,6 @@ async function rollPool(
   flavor: string
 ): Promise<number[]> {
   // One Roll for the whole pool -- one chat card, one Dice So Nice animation --
-  // instead of N separate 1d10 rolls. The engine dice service reads the faces.
+  // instead of N separate single-die rolls. The engine dice service reads the faces.
   return dice.rollPool(Math.max(0, count), requireDieSize(), { rulesetId: MODULE_ID, flavor });
 }

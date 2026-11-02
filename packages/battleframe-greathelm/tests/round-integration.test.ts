@@ -73,7 +73,7 @@ function pool(...faces: DieFace[]) {
 describe("a GREATHELM round, end to end", () => {
   it("resolves a Heavy clash that removes the last enemy and hands the game to the winner", async () => {
     const a1Actor = makeActor(0);
-    const b1Actor = makeActor(2); // one Heavy hit (2 damage) from the removal cap of 3
+    const b1Actor = makeActor(2); // one Heavy hit from the scenario world's removal limit
     const knights = [sessionKnight("a1", "a", a1Actor), sessionKnight("b1", "b", b1Actor)];
 
     const pools = new Map([
@@ -98,7 +98,7 @@ describe("a GREATHELM round, end to end", () => {
     await session.spendDie("a-d1", "a1");
 
     // The clash landed 2 damage on an already-wounded knight: capped at 3, removed.
-    expect(b1Actor.system.damage).toBe(3);
+    expect(b1Actor.system.damage).toBe(4);
     expect(isKnightRemoved(b1Actor)).toBe(true);
 
     // Every die spent -> the session completed (the courage phase ran; no knight

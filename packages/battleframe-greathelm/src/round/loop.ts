@@ -1,6 +1,6 @@
 import { MODULE_ID, type ActionId, type DieFace } from "../constants";
 import { requiresClashTest } from "./actions";
-import { syncKnightDefeatedStatus } from "./removal";
+import { syncKnightDefeatedStatus , damageLimit } from "./removal";
 import {
   isInBaseContact,
   resolveClashTest,
@@ -49,7 +49,8 @@ export async function applyClashDamage(defenderActor: ActorLike, damage: number)
   }
 
   const current = defenderActor.system?.damage ?? 0;
-  const next = Math.min(3, current + damage);
+  const limit = damageLimit();
+  const next = limit > 0 ? Math.min(limit, current + damage) : current + damage;
   await defenderActor.update({ "system.damage": next });
   // The wound that reaches the damage limit is exactly when the knight is
   // removed from play -- surface that on the token (roadmap P1).

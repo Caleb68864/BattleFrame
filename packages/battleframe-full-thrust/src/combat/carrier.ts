@@ -49,7 +49,7 @@ export interface EnduranceGroup {
  * A carrier's capacity, in both units the note states: one 6-fighter group per
  * functional bay. So `groups` = bays and `fighters` = bays x 6. Passing the bay
  * count (rather than a ship class) keeps this damage-aware -- a knocked-out bay
- * simply lowers the count, matching "each lost bay reduces capacity by six".
+ * simply lowers the count, matching (rule text removed; see the rulebook).
  */
 export function bayCapacity(bays: number): { groups: number; fighters: number } {
   return { groups: bays, fighters: bays * requireRules().fightersPerBay };
@@ -73,8 +73,7 @@ export function canLaunch(carrier: CarrierState): boolean {
 /**
  * Whether the carrier may accept a returning group this turn: it has not yet
  * used its single recovery and has a free bay to land it in. Any fighter-carrying
- * ship recovers only one group per turn ("All fighter-carrying ships may recover
- * only 1 group per turn"). This is the capacity side of recovery; `canRecover`
+ * ship recovers only one group per turn ((rule text removed; see the rulebook)). This is the capacity side of recovery; `canRecover`
  * below is the geometric side (can the group physically reach the carrier).
  */
 export function carrierCanRecover(carrier: CarrierState): boolean {
@@ -83,10 +82,9 @@ export function carrierCanRecover(carrier: CarrierState): boolean {
 
 /**
  * Whether a deployed group can reach its carrier and dock this turn -- the
- * end-of-move rendezvous ("the group is moved to meet it at the END of the
- * move"). Reuses the movement core's `canReachToAttack` geometry: the group can
+ * end-of-move rendezvous ((rule text removed; see the rulebook)). Reuses the movement core's `canReachToAttack` geometry: the group can
  * dock exactly when it can end its move within `dockRangeMu` of the carrier,
- * using its type's movement allowance (Fast 18mu, else 12mu).
+ * using its type's movement allowance (Fast Nmu, else Nmu).
  *
  * ASSUMPTION (docking tolerance): the notes give no explicit docking distance, so
  * the default `dockRangeMu` is 0 -- the group must be able to land on the
@@ -106,8 +104,7 @@ export function canRecover(
 /**
  * A group's endurance after a turn. An ACTIVE turn (the group attacked or was
  * attacked) spends one endurance; a turn of pure movement/loitering spends
- * nothing ("Turns spent merely loitering or moving without combat cost
- * nothing"). Defaults to an active turn. Other group fields pass through
+ * nothing ((rule text removed; see the rulebook)). Defaults to an active turn. Other group fields pass through
  * unchanged.
  */
 export function enduranceAfterTurn<G extends EnduranceGroup>(group: G, active: boolean = true): G {
@@ -116,8 +113,7 @@ export function enduranceAfterTurn<G extends EnduranceGroup>(group: G, active: b
 }
 
 /**
- * Whether a group is out of fuel and MUST head back to a carrier ("Once
- * endurance is used up the group MUST head back ... to rearm and refuel").
+ * Whether a group is out of fuel and MUST head back to a carrier ((rule text removed; see the rulebook)).
  */
 export function mustReturn(group: EnduranceGroup): boolean {
   return enduranceExhausted(group.endurance);

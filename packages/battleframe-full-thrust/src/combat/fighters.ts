@@ -1,6 +1,6 @@
 /**
  * Fighter and anti-fighter combat, all built on Full Thrust's universal kill die
- * (1-3 nothing, 4-5 = 1, 6 = 2): fighter attacks on ships (screens apply as for
+ * (N-N nothing, N-N = N, N = N): fighter attacks on ships (screens apply as for
  * beams), point-defence fire against fighters and missiles, and dogfights. Pure
  * over die faces; the rolling and the group/carrier bookkeeping live above.
  *
@@ -11,7 +11,7 @@
 import { poolBeamDamage } from "./beam";
 import { requireRules } from "../rules-profile";
 
-/** The universal fighter kill die: 4-5 = 1 kill, 6 = 2 kills. */
+/** The universal fighter kill die: N-N = N kill, N = N kills. */
 function killsForFace(face: number): number {
   if (face >= requireRules().pdsFighterTwoKill) return 2;
   if (face >= requireRules().pdsFighterOneKillMin) return 1;
@@ -27,16 +27,16 @@ export function fighterAttackDamage(faces: readonly number[], screenLevel: numbe
 }
 
 /**
- * Fighters killed by point-defence fire: the universal kill die (4-5 = 1 kill,
- * 6 = 2). One die per firing PDS/anti-fighter system.
+ * Fighters killed by point-defence fire: the universal kill die (N-N = N kill,
+ * N = N). One die per firing PDS/anti-fighter system.
  */
 export function pdsKillsVsFighters(faces: readonly number[]): number {
   return faces.reduce((kills, face) => kills + killsForFace(face), 0);
 }
 
 /**
- * Missiles killed by point-defence fire: only a 6 kills (missiles are smaller
- * and more agile). One kill per 6; the "one missile per system per turn" limit
+ * Missiles killed by point-defence fire: only the top face kills (missiles are smaller
+ * and more agile). One kill per 6; the (rule text removed; see the rulebook) limit
  * is the caller's to enforce by how many dice it rolls.
  */
 export function pdsKillsVsMissiles(faces: readonly number[]): number {
@@ -50,7 +50,7 @@ export function dogfightKills(faces: readonly number[]): number {
 
 /**
  * Dogfight kills against a defender of a given specialised type: a Heavy group
- * counts as a Level-1 screen (its "4" hits are ignored), so it takes fewer kills;
+ * counts as a Level-1 screen (its "N" hits are ignored), so it takes fewer kills;
  * every other type uses the universal kill die.
  *
  * Source: More Thrust "Specialised Fighter Types" (Heavy).
@@ -60,15 +60,16 @@ export function dogfightKillsAgainst(faces: readonly number[], defenderType?: st
 }
 
 /**
- * Active-turn endurance for a specialised type: Long-Range carries 5, every other
- * type 3 (More Thrust). Used to seed a group's endurance at import.
+ * Active-turn endurance for a specialised type, from the world: Long-Range has its
+ * own figure, every other type shares one. Seeds a group's endurance at import.
  */
 export function enduranceForType(fighterType?: string): number {
-  return fighterType === "long-range" ? 5 : 3;
+  const rules = requireRules();
+  return fighterType === "long-range" ? rules.fighterEnduranceLongRange : rules.fighterEndurance;
 }
 
 /**
- * Fighter-group morale (More Thrust): a depleted group rolls 1D6 before
+ * Fighter-group morale (More Thrust): a depleted group rolls N dice before
  * attacking; it attacks if the roll is at or under the number of fighters
  * remaining, and aborts (no fire) if the roll is higher.
  */

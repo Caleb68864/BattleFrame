@@ -13,6 +13,7 @@ declare global {
     dice?: Array<{ results?: Array<{ result: number; active?: boolean }> }>;
     constructor(formula: string, data?: Record<string, unknown>);
     evaluate(options?: Record<string, unknown>): Promise<Roll>;
+    toMessage(messageData?: Record<string, unknown>): Promise<unknown>;
   }
 }
 
@@ -51,8 +52,6 @@ async function roll(
   await rollInstance.evaluate();
 
   await postRollToChat({
-    formula: rollInstance.formula,
-    total: rollInstance.total,
     rulesetId: options.rulesetId ?? SYSTEM_ID,
     flavor: options.flavor,
     roll: rollInstance,
@@ -73,8 +72,6 @@ async function rollPool(
   await rollInstance.evaluate();
 
   await postRollToChat({
-    formula: rollInstance.formula,
-    total: rollInstance.total,
     rulesetId: options.rulesetId ?? SYSTEM_ID,
     flavor: options.flavor,
     roll: rollInstance,

@@ -112,6 +112,16 @@ export function createUnitDataClass(
 
       return schema;
     }
+
+    /**
+     * The model count as the `{ value, max }` pair Foundry draws as a token resource
+     * bar. Derived, so the two counters stay the one source of truth (roadmap P1).
+     */
+    prepareDerivedData(): void {
+      super.prepareDerivedData?.();
+      const self = this as unknown as { modelCount?: number; modelsRemaining?: number; modelsBar?: unknown };
+      self.modelsBar = { value: self.modelsRemaining ?? 0, max: self.modelCount ?? 0 };
+    }
   }
 
   return UnitData as unknown as TypeDataModelBaseConstructor;
@@ -124,7 +134,12 @@ export function createUnitDataClass(
  */
 export function registerUnitDataModel(): void {
   const globalScope = globalThis as unknown as {
-    CONFIG?: { Actor?: { dataModels?: Record<string, unknown> } };
+    CONFIG?: {
+      Actor?: {
+        dataModels?: Record<string, unknown>;
+        trackableAttributes?: Record<string, { bar: string[]; value: string[] }>;
+      };
+    };
   };
 
   if (!globalScope.CONFIG) {
@@ -132,6 +147,10 @@ export function registerUnitDataModel(): void {
   }
 
   globalScope.CONFIG.Actor = globalScope.CONFIG.Actor ?? {};
+  // Foundry only offers an attribute for a token bar if it is declared trackable.
+  // `modelsBar` is derived, so it cannot be discovered from the schema.
+  globalScope.CONFIG.Actor.trackableAttributes = globalScope.CONFIG.Actor.trackableAttributes ?? {};
+  globalScope.CONFIG.Actor.trackableAttributes[`${MODULE_ID}.${UNIT_ACTOR_TYPE}`] = { bar: ["modelsBar"], value: [] };
   globalScope.CONFIG.Actor.dataModels = globalScope.CONFIG.Actor.dataModels ?? {};
   globalScope.CONFIG.Actor.dataModels[`${MODULE_ID}.${UNIT_ACTOR_TYPE}`] = createUnitDataClass();
 }

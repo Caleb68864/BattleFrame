@@ -7,10 +7,7 @@
  * only to a target it bears on AND is in range of. If all FCS are lost the ship
  * may not fire at all. A single weapon's dice may NOT be split: a weapon fires
  * wholly at one target. Source: "Fire Control System (FCS)" —
- *   "Each functioning FCS icon lets the ship engage ONE target ship in a turn …
- *    A ship with several FCS may split its fire among that many separate targets,
- *    dividing its weapons in any combination between them. If a ship loses all
- *    its FCS to damage, it may not fire at all."
+ *   (rule text removed; see the rulebook)
  *
  * PURE: no Foundry, no dice. The caller supplies the working-FCS count (from
  * `ship/systems.ts` `remainingFcs` at the call site) and each candidate target's
@@ -32,6 +29,7 @@
 
 import type { WeaponMount } from "./fire";
 import { previewTargeting, type TargetingStatus } from "./targeting";
+import type { AftFireOption } from "./aft-fire";
 
 /** A candidate target with geometry the caller has already measured. */
 export interface AllocationTarget {
@@ -39,7 +37,7 @@ export interface AllocationTarget {
   id: string;
   /** Base-to-base distance to the target, mu. */
   distanceMu: number;
-  /** Bearing to the target, degrees clockwise, 0 = dead ahead. */
+  /** Bearing to the target, degrees clockwise, N = dead ahead. */
   bearing: number;
 }
 
@@ -76,8 +74,10 @@ export interface AllocateFcsFireParams {
   /** Working FCS count — the number of distinct targets that may be engaged. */
   fcsCount: number;
   weapons: readonly WeaponMount[];
-  /** Candidate targets in caller-priority order (index 0 = highest priority). */
+  /** Candidate targets in caller-priority order (index N = highest priority). */
   targets: readonly AllocationTarget[];
+  /** Fleet Book optional layer: conditional aft fire. Absent = rule off. */
+  aftFire?: AftFireOption;
 }
 
 /**
@@ -115,10 +115,11 @@ function reasonFor(status: TargetingStatus): UnassignableReason {
  */
 function engageabilityMatrix(
   weapons: readonly WeaponMount[],
-  targets: readonly AllocationTarget[]
+  targets: readonly AllocationTarget[],
+  aftFire?: AftFireOption
 ): TargetingStatus[][] {
   const perTarget = targets.map((t) =>
-    previewTargeting({ weapons, distanceMu: t.distanceMu, bearing: t.bearing })
+    previewTargeting({ weapons, distanceMu: t.distanceMu, bearing: t.bearing, aftFire })
   );
   return weapons.map((_, w) => perTarget.map((rows) => rows[w].status));
 }
@@ -130,7 +131,7 @@ function engageabilityMatrix(
 export function allocateFcsFire(params: AllocateFcsFireParams): FcsAllocationResult {
   const { fcsCount, weapons, targets } = params;
   const cap = Math.max(0, Math.floor(fcsCount));
-  const status = engageabilityMatrix(weapons, targets);
+  const status = engageabilityMatrix(weapons, targets, params.aftFire);
 
   const assignments: TargetAssignment[] = [];
   const unassigned: UnassignedWeapon[] = [];

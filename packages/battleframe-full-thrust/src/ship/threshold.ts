@@ -18,14 +18,14 @@ import { requireRules } from "../rules-profile";
  * The die value that knocks a system out at the given threshold. `worst` is the
  * threshold number reached (1, 2, 3...); `extra` is how many *additional*
  * thresholds were crossed in the same attack (0 for a single threshold). Never
- * drops below 2 -- a system is never lost automatically.
+ * drops below the world's floor -- a system is never lost automatically.
  */
 export function thresholdKillOn(worst: number, extra: number): number {
   // Clamp `worst` into [1, table length] so a degenerate call cannot index off
   // the table and return NaN (which would silently disable every knockout).
   const clamped = Math.min(Math.max(1, Math.floor(worst)), requireRules().thresholdKillOn.length);
   const base = requireRules().thresholdKillOn[clamped - 1];
-  return Math.max(2, base - extra);
+  return Math.max(requireRules().thresholdMinKillOn, base - extra);
 }
 
 /**

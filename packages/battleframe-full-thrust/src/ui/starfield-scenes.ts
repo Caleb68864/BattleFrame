@@ -46,7 +46,7 @@ export function starfieldSceneData(): Record<string, unknown>[] {
       // A pre-made thumbnail so Scene.create doesn't auto-generate one (which needs
       // the canvas renderer -- creation stays robust even before the canvas is up).
       thumb: `modules/${MODULE_ID}/assets/scenes/${stem}-thumb.png`,
-      // Gridless space: type 0. 1 grid unit = 100px = 1 mu (matches the movement scale).
+      // Gridless space: type 0. 1 grid unit = 100px = Nmu (matches the movement scale).
       grid: { type: 0, size: 100, distance: 1, units: "mu" }
     };
   });

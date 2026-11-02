@@ -163,7 +163,25 @@ globalHooks?.once("init", () => {
   // Fleet Book optional layer: penetrating (rerolling) beam damage, off by default.
   (globalThis as any).game?.settings?.register?.(MODULE_ID, "penetratingDamage", {
     name: "Fleet Book: penetrating damage",
-    hint: "Beam 6s score AND reroll (chaining) instead of the FT2 '6 = 2, done'. Off = FT2 core.",
+    hint: "A beam's top face scores AND rerolls, chaining, instead of ending there. Off = the core rule.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: false
+  });
+  // Fleet Book optional layer: all-round turrets fire aft on a no-thrust turn.
+  (globalThis as any).game?.settings?.register?.(MODULE_ID, "conditionalAftFire", {
+    name: "Fleet Book: conditional aft fire",
+    hint: "All-round turrets may fire into the aft arc on a turn the ship spent no main-drive thrust.",
+    scope: "world",
+    config: true,
+    type: Boolean,
+    default: false
+  });
+  // More Thrust optional layer: an exhausted fighter group is lost after a grace period.
+  (globalThis as any).game?.settings?.register?.(MODULE_ID, "fighterLossRule", {
+    name: "More Thrust: exhausted fighters are lost",
+    hint: "A group out of endurance that has not reached a carrier within the rules profile's grace turns is lost.",
     scope: "world",
     config: true,
     type: Boolean,

@@ -1,12 +1,12 @@
 /**
  * The remaining specialised fighter types (More Thrust), as pure math. Heavy
- * (Level-1 screen), Interceptor (+1/die dogfight) and Long-Range (endurance 5)
- * already live in `fighters.ts`/`dogfight.ts`, and Attack's +1/die vs ships is
+ * (Level-1 screen), Interceptor (+N/die dogfight) and Long-Range (endurance N)
+ * already live in `fighters.ts`/`dogfight.ts`, and Attack's +N/die vs ships is
  * applied in `fire-fighters.ts`; this file adds the still-missing pieces:
  *
- *   - Fast: the 18mu movement allowance (a number for a movement orchestrator).
+ *   - Fast: the Nmu movement allowance (a number for a movement orchestrator).
  *   - Torpedo: the one-shot anti-ship torpedo attack run (to-hit + damage).
- *   - the Attack/spent-Torpedo reduced dogfight kill table (only a 6, one kill).
+ *   - the Attack/spent-Torpedo reduced dogfight kill table (only the top face, one kill).
  *
  * A Foundry orchestrator (who moves, when the torpedo is spent) is out of scope --
  * these are the numbers/predicates it would call.
@@ -39,8 +39,7 @@ export function torpedoRunDamage(rerollFaces: readonly number[]): number {
 
 /**
  * Dogfight kills for an Attack fighter (and a Torpedo group after its one-shot
- * torpedo is spent): they fight only in anti-fighter mode and "kill only on a 6
- * (one kill)" -- a single kill per 6, never the universal table's 2-on-a-6.
+ * torpedo is spent): they fight only in anti-fighter mode and (rule text removed; see the rulebook) -- a single kill per 6, never the universal table's 2-on-a-6.
  */
 export function attackFighterDogfightKills(faces: readonly number[]): number {
   return faces.reduce(

@@ -73,7 +73,7 @@ export async function resolveSalvoAtTarget(params: SalvoParams): Promise<SalvoRe
     return { ...idle, reason: "out-of-arc" };
   }
 
-  // Missiles that reach the target (1d6 of the salvo of 6).
+  // Missiles that reach the target (N dice of the salvo of 6).
   const [onTargetDie] = await context.dice.rollPool(1, requireRules().dieSize);
   const onTarget = onTargetDie ?? 0;
 

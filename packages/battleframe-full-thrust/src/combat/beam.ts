@@ -16,8 +16,8 @@ import { requireRules } from "../rules-profile";
 
 /**
  * Dice a Class-`cls` beam rolls at `distanceMu`: full class dice in the first
- * 12mu band, one fewer per further band, zero beyond reach (class x 12mu). Band
- * boundaries are inclusive at the lower band (a target at exactly 12mu is in the
+ * Nmu band, one fewer per further band, zero beyond reach (class x Nmu). Band
+ * boundaries are inclusive at the lower band (a target at exactly Nmu is in the
  * first band).
  */
 export function beamDiceAtRange(cls: number, distanceMu: number): number {
@@ -33,9 +33,9 @@ export function beamDiceAtRange(cls: number, distanceMu: number): number {
 }
 
 /**
- * Damage a single beam die scores against a target with `screenLevel` (0-3).
- * Unscreened: 4-5 = 1, 6 = 2. Each screen level downgrades: L1 ignores 4s, L2
- * makes 5 and 6 worth 1, L3 counts only a 6 as 1.
+ * Damage a single beam die scores against a target with `screenLevel` (N-N).
+ * Unscreened: N-N = N, N = N. Each screen level downgrades: L1 ignores 4s, L2
+ * makes 5 and 6 worth 1, L3 counts only the top face as 1.
  */
 export function beamDamageForFace(face: number, screenLevel: number): number {
   // A negative/absent screen level means unscreened -- never fall through to the

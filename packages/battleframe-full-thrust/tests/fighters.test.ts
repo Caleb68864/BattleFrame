@@ -10,7 +10,7 @@ import {
   enduranceAfterActiveTurn,
   enduranceExhausted
 } from "../src/combat/fighters";
-import { withRules } from "./helpers/world";
+import { SCENARIO_RULES, withRules } from "./helpers/world";
 
 // This module ships no rules numbers; a world supplies them. See helpers/world.ts.
 let restoreFtWorld: () => void;
@@ -72,9 +72,9 @@ describe("dogfightKillsAgainst (defender type modifies the kill table)", () => {
 
 describe("enduranceForType (More Thrust specialised types)", () => {
   it("gives Long-Range 5 active turns, others 3", () => {
-    expect(enduranceForType("long-range")).toBe(5);
-    expect(enduranceForType("standard")).toBe(3);
-    expect(enduranceForType("heavy")).toBe(3);
+    expect(enduranceForType("long-range")).toBe(SCENARIO_RULES.fighterEnduranceLongRange);
+    expect(enduranceForType("standard")).toBe(SCENARIO_RULES.fighterEndurance);
+    expect(enduranceForType("heavy")).toBe(SCENARIO_RULES.fighterEndurance);
   });
 });
 

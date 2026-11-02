@@ -19,8 +19,13 @@ import {
   HELD_FLAG,
   ACTIVE_MISSILES_FLAG,
   WAVE_GUN_CHARGE_FLAG,
-  LAUNCHED_GROUPS_FLAG
+  LAUNCHED_GROUPS_FLAG,
+  RECOVERED_THIS_TURN_FLAG,
+  THRUSTED_THIS_TURN_FLAG
 } from "../constants";
+import { sweepFighterEndurance, type EnduranceGroupActor, type EnduranceSweepResult } from "../combat/fighter-endurance";
+import type { AftFireOption } from "../combat/aft-fire";
+import { tr } from "../localize";
 import {
   collectFireShips,
   canShipFire,
@@ -39,9 +44,9 @@ import { advanceMissile, missileExpired, type ActiveMissile } from "../combat/mi
 import { resolveMissileAttack, missileCanAttack, type MissileAttackReport, type MissileWarhead } from "../combat/missile";
 import { drawMissiles, clearMissiles } from "./missile-overlay";
 import { waveGunDiceAtRange, waveGunDamage, novaCannonDiceForTurn, novaCannonDamage, waveGunChargeAfterTurn, waveGunIsCharged, waveGunChargeAfterFiring } from "../combat/spinal";
-import { canReachToAttack } from "../movement/fighter-move";
-import { bayCapacity } from "../combat/carrier";
-import { parseVectorOrder, resolveTurn, velocityMagnitude } from "../movement/vector";
+import { canReachToAttack, fighterMaxMove } from "../movement/fighter-move";
+import { bayCapacity, carrierCanRecover } from "../combat/carrier";
+import { checkManoeuvres, parseVectorOrder, resolveTurn, velocityMagnitude } from "../movement/vector";
 import { applyDamageAndThreshold } from "../combat/apply-damage";
 import { fireFighterGroupAtTarget, type FighterFireReport } from "../combat/fire-fighters";
 import { plotMovementPath, type MovementPath } from "../movement/path";
@@ -89,10 +94,6 @@ const REPORT = `${MODULE_ID}.report`;
  * already-interpolated current English, so the pure builders behave identically
  * without a running Foundry.
  */
-function tr(key: string, fallback: string, data?: Record<string, unknown>): string {
-  const i18n = g().game?.i18n;
-  return i18n?.format?.(key, data) ?? i18n?.localize?.(key) ?? fallback;
-}
 
 export interface FireReportNames {
   attacker: string;
@@ -174,10 +175,34 @@ export function buildFighterReportHtml(report: FighterFireReport, names: FireRep
       `<p>${tr(`${REPORT}.noAttack`, `No attack (${reason}).`, { reason })}</p>`
     ]);
   }
+  // Pilot quality and type change the dice, so the card says which applied.
+  const traits = [report.pilotQuality, report.fighterType]
+    .filter((trait): trait is string => !!trait && trait !== "standard")
+    .map((trait) => escapeHtml(trait))
+    .join(", ");
+  const traitLine = traits ? [`<p>${tr(`${REPORT}.fighterTraits`, `Group: ${traits}.`, { traits })}</p>`] : [];
   return wrapReport(tr(`${REPORT}.fighterHeading`, `${attacker} (fighters) &rarr; ${target}`, { attacker, target }), [
+    ...traitLine,
     ...pdsLine,
     ...reportBodyLines(report, target)
   ]);
+}
+
+/** Posts a report as a persistent chat card, attributed via Foundry's own speaker lookup. */
+export async function postReportCard(data: Record<string, unknown>): Promise<void> {
+  const chat = g().ChatMessage;
+  await chat?.create({ ...data, speaker: chat.getSpeaker?.() });
+}
+
+/** Builds the end-of-turn card naming fighter groups out of fuel, or lost. */
+export function buildEnduranceReportHtml(results: readonly EnduranceSweepResult[]): string {
+  const lines = results.map((result) => {
+    const name = escapeHtml(result.name);
+    return result.status === "lost"
+      ? `<p>${tr(`${REPORT}.fighterLost`, `${name} ran out of fuel and is lost.`, { name })}</p>`
+      : `<p>${tr(`${REPORT}.fighterMustReturn`, `${name} is out of endurance and must return to a carrier (${result.turns} turn(s) dry).`, { name, turns: result.turns })}</p>`;
+  });
+  return wrapReport(tr(`${REPORT}.fighterEnduranceHeading`, "Fighter endurance"), lines);
 }
 
 /** Builds the chat-card HTML for a needle-beam strike. */
@@ -359,7 +384,8 @@ export interface SpinalFireOutcome {
 /** Builds the chat card for a spinal-mount weapon (Nova Cannon / Wave Gun) shot. */
 export function buildSpinalReportHtml(outcome: SpinalFireOutcome, targetName: string): string {
   const target = escapeHtml(targetName);
-  const head = `${outcome.weapon} &rarr; ${target}`;
+  const weapon = escapeHtml(outcome.weapon);
+  const head = tr(`${REPORT}.spinalHeading`, `${weapon} &rarr; ${target}`, { weapon, target });
   if (outcome.outOfRange) {
     return wrapReport(head, [`<p>${tr(`${REPORT}.outOfRange`, `Out of range.`)}</p>`]);
   }
@@ -390,7 +416,8 @@ export async function resolveFireBetween(
     attacker,
     target,
     context: { measure: api.measure, facing: api.facing, dice: api.dice },
-    penetrating: fleetBookPenetrating()
+    penetrating: fleetBookPenetrating(),
+    aftFire: conditionalAftFire(attacker)
   });
   const html = buildFireReportHtml(report, {
     attacker: attacker.name ?? "Attacker",
@@ -450,7 +477,10 @@ interface GlobalScope {
   };
   ui?: { notifications?: { warn?: (t: string) => void; error?: (t: string) => void; info?: (t: string) => void } };
   Hooks?: { on?: (event: string, cb: (...args: unknown[]) => void) => void };
-  ChatMessage?: { create: (data: Record<string, unknown>) => Promise<unknown> };
+  ChatMessage?: {
+    create: (data: Record<string, unknown>) => Promise<unknown>;
+    getSpeaker?: () => Record<string, unknown>;
+  };
   Actor?: { createDocuments: (data: any[]) => Promise<unknown>; create: (data: any) => Promise<any> };
   foundry?: { applications?: { api?: { DialogV2?: { prompt: (opts: unknown) => Promise<unknown> } } } };
 }
@@ -574,7 +604,7 @@ export async function fireAction(): Promise<void> {
       defender: { token: targetToken, system: targetToken.actor.system, update: (d: any) => targetToken.actor.update(d) },
       context
     });
-    await g().ChatMessage?.create({
+    await postReportCard({
       content: buildDogfightReportHtml(report, {
         attacker: attackerToken?.name ?? "Fighters",
         target: targetToken?.name ?? "Fighters"
@@ -589,7 +619,7 @@ export async function fireAction(): Promise<void> {
     return;
   }
 
-  // A fighter group attacks a ship differently (size dice, 6mu fore arc).
+  // A fighter group attacks a ship differently (size dice, Nmu fore arc).
   if (attackerIsFighter) {
     const report = await fireFighterGroupAtTarget({
       group: { token: attackerToken, system: attackerToken.actor.system, update: (d: any) => attackerToken.actor.update(d) },
@@ -600,7 +630,7 @@ export async function fireAction(): Promise<void> {
       attacker: attackerToken?.name ?? "Fighters",
       target: targetToken?.name ?? "Target"
     });
-    await g().ChatMessage?.create({ content: html });
+    await postReportCard({ content: html });
     return;
   }
 
@@ -619,7 +649,7 @@ export async function fireAction(): Promise<void> {
   }
 
   const { html } = await resolveFireBetween(attacker, target, services);
-  await g().ChatMessage?.create({ content: html });
+  await postReportCard({ content: html });
 
   if (order) {
     await advanceFireOrder(order, attackerToken.id);
@@ -674,9 +704,10 @@ export async function splitFireAction(): Promise<void> {
     attacker,
     targets,
     context: { measure: services.measure, facing: services.facing, dice: services.dice },
-    penetrating: fleetBookPenetrating()
+    penetrating: fleetBookPenetrating(),
+    aftFire: conditionalAftFire(attacker)
   });
-  await g().ChatMessage?.create({
+  await postReportCard({
     content: buildSplitFireReportHtml(report, attackerToken?.name ?? "Attacker")
   });
 
@@ -735,7 +766,7 @@ export async function needleAction(): Promise<void> {
     attacker: attackerToken?.name ?? "Attacker",
     target: targetToken?.name ?? "Target"
   });
-  await g().ChatMessage?.create({ content: html });
+  await postReportCard({ content: html });
 }
 
 /** Salvo-tool action: launch a salvo at the targeted ship. */
@@ -773,7 +804,7 @@ export async function salvoAction(): Promise<void> {
     attacker: attackerToken?.name ?? "Attacker",
     target: targetToken?.name ?? "Target"
   });
-  await g().ChatMessage?.create({ content: html });
+  await postReportCard({ content: html });
 }
 
 /**
@@ -802,7 +833,7 @@ export async function checkTargetingAction(): Promise<void> {
   const distance = services.measure.between(attackerToken, targetToken, "centre-to-centre").distance;
   const bearing = services.facing.bearingOf(attackerToken, targetToken);
   const weapons = (attacker.system.weapons ?? []) as any[];
-  const rows = previewTargeting({ weapons, distanceMu: distance, bearing });
+  const rows = previewTargeting({ weapons, distanceMu: distance, bearing, aftFire: conditionalAftFire(attacker) });
 
   const html = buildTargetingReportHtml(
     rows,
@@ -810,7 +841,7 @@ export async function checkTargetingAction(): Promise<void> {
     distance
   );
   const userId = g().game?.user?.id;
-  await g().ChatMessage?.create({
+  await postReportCard({
     content: html,
     whisper: userId ? [userId] : undefined
   });
@@ -869,7 +900,7 @@ export async function launchMissileAction(): Promise<void> {
   const course = Number(token.actor.system?.course ?? 12);
   const disposition = Number(token.document?.disposition ?? 0);
   const { fx, fy } = courseForward(course);
-  // Place the missile ~2mu ahead of the ship's centre so it clears the hull.
+  // Place the missile ~Nmu ahead of the ship's centre so it clears the hull.
   const offset = (token?.w ?? 0) / 2 + 2 * scale;
 
   // Pick the warhead (and, for Needle, the system to snipe).
@@ -923,8 +954,8 @@ function missileToken(missile: ActiveMissile, scene: unknown): unknown {
 
 /**
  * Missile-phase tool (GM): advance every active missile one move, resolve a
- * strike on the nearest eligible enemy ship (≤6mu, not in the missile's rear
- * arc), and remove missiles that struck or burned out (3-turn life).
+ * strike on the nearest eligible enemy ship (≤Nmu, not in the missile's rear
+ * arc), and remove missiles that struck or burned out (multi-turn life).
  */
 export async function advanceMissilesAction(): Promise<void> {
   if (!isGM()) {
@@ -979,7 +1010,7 @@ async function advanceMissilesCore(): Promise<void> {
       if (target) {
         const report = await resolveMissileAttack({ missile: { token: mToken }, target, warhead: moved.warhead, systemType: moved.systemType as any, context });
         struck = report.attacked;
-        await g().ChatMessage?.create({
+        await postReportCard({
           content: buildMissileReportHtml(report, best.token?.name ?? "Target")
         });
       }
@@ -1013,7 +1044,7 @@ async function resolveSpinalWeapon(
   services: RoundControlApi
 ): Promise<void> {
   if (diceCount <= 0) {
-    await g().ChatMessage?.create({
+    await postReportCard({
       content: buildSpinalReportHtml(
         { weapon, outOfRange: true, distance, totalDamage: 0, thresholdsCrossed: [], systemsKnockedOut: 0, destroyed: false },
         targetName
@@ -1024,7 +1055,7 @@ async function resolveSpinalWeapon(
   const faces = await services.dice.rollPool(diceCount, requireRules().dieSize, { rulesetId: MODULE_ID, flavor: weapon });
   const damage = damageOf(faces);
   const outcome = await applyDamageAndThreshold(target, damage, services.dice);
-  await g().ChatMessage?.create({
+  await postReportCard({
     content: buildSpinalReportHtml({ weapon, distance, totalDamage: damage, ...outcome }, targetName)
   });
 }
@@ -1054,7 +1085,7 @@ function spinalContext(): { services: RoundControlApi; target: FiringShip & { na
   return { services, target, targetName: targetToken?.name ?? "Target", distance };
 }
 
-/** Nova-Cannon tool: fire the turn-1 blast (6D6, screens ignored) at the target. */
+/** Nova-Cannon tool: fire the turn-1 blast (N dice, screens ignored) at the target. */
 export async function fireNovaCannonAction(): Promise<void> {
   const ctx = spinalContext();
   if (!ctx) {
@@ -1065,7 +1096,7 @@ export async function fireNovaCannonAction(): Promise<void> {
 
 /**
  * Charge-Wave-Gun tool (GM): spend a turn charging the controlled ship's Wave Gun
- * — roll 1d6 and accumulate; it is ready to fire at a stored total of 6+.
+ * — roll N dice and accumulate; it is ready to fire at a stored total of 6+.
  */
 export async function chargeWaveGunAction(): Promise<void> {
   if (!isGM()) {
@@ -1102,8 +1133,8 @@ export async function fireWaveGunAction(): Promise<void> {
 
 /**
  * Move-Fighters tool: advance the controlled fighter group toward the targeted
- * ship, up to its move allowance (12mu / 18mu Fast), stopping at the edge of its
- * 6mu strike range (never overshooting onto the hull). Reuses the pure
+ * ship, up to its move allowance (Nmu / Nmu Fast), stopping at the edge of its
+ * Nmu strike range (never overshooting onto the hull). Reuses the pure
  * `canReachToAttack`; the token then fires with the normal Fire tool. Available to
  * the group's owner (they move their own fighters).
  */
@@ -1199,25 +1230,33 @@ export async function recoverFightersAction(): Promise<void> {
     return;
   }
   const deployed = Number(carrier.actor.getFlag?.(MODULE_ID, LAUNCHED_GROUPS_FLAG) ?? 0);
+  const recovered = Number(carrier.actor.getFlag?.(MODULE_ID, RECOVERED_THIS_TURN_FLAG) ?? 0);
+  const bays = Number(carrier.actor.system?.bays ?? 0);
+  // launchedThisTurn and isTrueCarrier only bear on launching, not on this check.
+  if (!carrierCanRecover({ bays, aboard: bays - deployed, isTrueCarrier: false, launchedThisTurn: 0, recoveredThisTurn: recovered })) {
+    notify("warn", `${MODULE_ID} | this carrier cannot recover another group this turn`);
+    return;
+  }
   const disposition = Number(carrier.document?.disposition ?? 0);
-  // Nearest friendly fighter group within its own move + docking reach of the carrier.
+  // Nearest friendly fighter group within its own move of the carrier.
   const groups = (g().canvas?.tokens?.placeables ?? []).filter(
     (t: any) => typeof t?.actor?.type === "string" && t.actor.type.endsWith(FIGHTER_GROUP_ACTOR_TYPE) && Number(t?.document?.disposition ?? 0) === disposition
   );
   let best: { token: any; distance: number } | undefined;
   for (const gp of groups) {
     const distance = services.measure.between(gp, carrier, "centre-to-centre").distance;
-    if (distance <= requireRules().fighterAttackRangeMu && (!best || distance < best.distance)) {
+    if (distance <= fighterMaxMove(gp.actor.system?.fighterType) && (!best || distance < best.distance)) {
       best = { token: gp, distance };
     }
   }
   if (!best) {
-    notify("warn", `${MODULE_ID} | no friendly fighter group within ${requireRules().fighterAttackRangeMu}mu to recover`);
+    notify("warn", `${MODULE_ID} | no friendly fighter group within reach to recover`);
     return;
   }
   const groupActor = best.token.actor;
   // Decrement the bay count FIRST so a delete hiccup can't strand the flag.
   await carrier.actor.setFlag?.(MODULE_ID, LAUNCHED_GROUPS_FLAG, Math.max(0, deployed - 1));
+  await carrier.actor.setFlag?.(MODULE_ID, RECOVERED_THIS_TURN_FLAG, recovered + 1);
   try {
     await best.token.document?.delete?.();
     await groupActor?.delete?.();
@@ -1253,6 +1292,14 @@ export async function vectorMoveAction(): Promise<void> {
   }
 
   const manoeuvres = parseVectorOrder(orderText);
+  const check = checkManoeuvres(manoeuvres, usableThrust(system));
+  if (!check.legal) {
+    notify("warn", `${MODULE_ID} | illegal vector order (${check.reason})`);
+    return;
+  }
+  if (manoeuvres.some((m) => m.kind === "main-drive" && m.points > 0)) {
+    await token.actor.setFlag?.(MODULE_ID, THRUSTED_THIS_TURN_FLAG, true);
+  }
   const next = resolveTurn({ position: { vx: 0, vy: 0 }, velocity, facing }, manoeuvres);
 
   const scale = tokenScale(token);
@@ -1294,6 +1341,19 @@ export function toggleArcsAction(): void {
       toggleArcPin(t);
     }
   }
+}
+
+/**
+ * The conditional aft-fire option for a firing ship: absent unless the world enabled
+ * the layer, else whether this ship has thrusted this turn.
+ */
+export function conditionalAftFire(ship: { token: unknown }): AftFireOption | undefined {
+  if (!(g().game as any)?.settings?.get?.(MODULE_ID, "conditionalAftFire")) {
+    return undefined;
+  }
+  // The firing-ship wrapper carries no flags of its own; they live on the token's Actor.
+  const actor = (ship.token as { actor?: { getFlag?: (scope: string, key: string) => unknown } } | null)?.actor;
+  return { thrusted: actor?.getFlag?.(MODULE_ID, THRUSTED_THIS_TURN_FLAG) === true };
 }
 
 /** Whether the world has enabled the Fleet Book penetrating-damage layer. */
@@ -1492,7 +1552,7 @@ async function advanceFireOrder(order: ActivationOrderLike, shipId: string): Pro
 async function announceFirePhase(order: ActivationOrderLike): Promise<void> {
   const line = escapeHtml(firePhaseStatusLine(order));
   const label = tr(`${REPORT}.firePhaseLabel`, `Fire phase:`);
-  await g().ChatMessage?.create({
+  await postReportCard({
     content: `<div class="ft-fire-report ft-phase-status"><p><strong>${label}</strong> ${line}</p></div>`
   });
 }
@@ -1584,6 +1644,10 @@ export async function executeManeuversAction(): Promise<void> {
     }
     const path = resolveMovementPath(actor.system ?? {}, orderText);
     if (path.legal) {
+      // A velocity change is main-drive thrust; course changes alone are not.
+      if (path.velocity !== (actor.system?.velocity ?? 0)) {
+        await actor.setFlag?.(MODULE_ID, THRUSTED_THIS_TURN_FLAG, true);
+      }
       await actor.update({ "system.velocity": path.velocity, "system.course": path.course });
       await executeMovementPath(token, path);
       moved += 1;
@@ -1738,7 +1802,13 @@ export async function advanceTurnCore(): Promise<{ cleared: number; missilesFlow
       await actor.unsetFlag?.(MODULE_ID, PLOTTED_ORDER_FLAG);
       cleared += 1;
     }
+    for (const perTurnFlag of [THRUSTED_THIS_TURN_FLAG, RECOVERED_THIS_TURN_FLAG]) {
+      if (actor.getFlag?.(MODULE_ID, perTurnFlag) !== undefined) {
+        await actor.unsetFlag?.(MODULE_ID, perTurnFlag);
+      }
+    }
   }
+  await sweepFighterEndurancePhase(tokens);
   await firePhaseDoc()?.unsetFlag(MODULE_ID, FIRE_PHASE_FLAG);
   clearMovementPreview();
   const missilesFlown = loadMissiles().length;
@@ -1746,6 +1816,22 @@ export async function advanceTurnCore(): Promise<{ cleared: number; missilesFlow
     await advanceMissilesCore();
   }
   return { cleared, missilesFlown };
+}
+
+/** Runs the end-of-turn endurance sweep over the scene's fighter groups and reports it. */
+async function sweepFighterEndurancePhase(tokens: readonly any[]): Promise<void> {
+  const groups = tokens
+    .map((token) => token?.actor)
+    .filter((actor) => typeof actor?.type === "string" && actor.type.endsWith(FIGHTER_GROUP_ACTOR_TYPE)) as EnduranceGroupActor[];
+  if (groups.length === 0) {
+    return;
+  }
+  const results = await sweepFighterEndurance(groups, {
+    lossRule: !!(g().game as any)?.settings?.get?.(MODULE_ID, "fighterLossRule")
+  });
+  if (results.length > 0) {
+    await postReportCard({ content: buildEnduranceReportHtml(results) });
+  }
 }
 
 /** Clears every ship's HELD ("done") flag -- run on each phase transition so each
@@ -1846,7 +1932,7 @@ export async function newBattleAction(): Promise<void> {
 
 /**
  * Damage-control action (GM, end of turn): each ship's Damage Control Parties
- * roll (a 6 repairs a system); repairs restore knocked-out systems in priority
+ * roll (the top face repairs a system); repairs restore knocked-out systems in priority
  * order. Reads `damageControl` (party count) off each ship.
  */
 export async function damageControlAction(): Promise<void> {
@@ -2019,7 +2105,7 @@ export function addSceneControl(controls: unknown): void {
   const gm = isGM();
   // ---------------------------------------------------------------------------
   // Ordering (discoverability): the everyday turn-loop tools take the low `order`
-  // band (0-8) so they sit at the TOP of the toolbar where a new player looks --
+  // band (N-N) so they sit at the TOP of the toolbar where a new player looks --
   // Plot + Fire stay prominent here (they also live on the token HUD). The
   // specialist per-weapon / per-mode tools take order 20+ so they recede below.
   // The `scene-tool-order.test.ts` invariant enforces core-before-niche.

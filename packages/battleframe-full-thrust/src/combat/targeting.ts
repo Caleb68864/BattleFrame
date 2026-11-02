@@ -8,7 +8,7 @@
  * (destroyed -> spent -> out-of-arc -> per-kind range), so the preview can never
  * disagree with what actually happens on commit. Salvo and needle -- which have
  * their own scene tools rather than the general Fire tool -- are previewed on
- * their own ranges (24mu / 9mu) so the whole loadout's reach is visible at once.
+ * their own ranges (Nmu / Nmu) so the whole loadout's reach is visible at once.
  *
  * Pure: no Foundry, no dice. The scene glue passes the already-measured range +
  * bearing (from game.battleframe.measure/facing) and formats the rows.
@@ -17,9 +17,10 @@
  * constants.ts alongside the resolution code that shares them.
  */
 
+import { tr } from "../localize";
 import { type WeaponKind } from "../constants";
 import type { WeaponMount } from "./fire";
-import { weaponBearsOn } from "./arcs";
+import { weaponBears, type AftFireOption } from "./aft-fire";
 import { beamDiceAtRange } from "./beam";
 import { torpedoToHit, submunitionDiceAtRange } from "./weapons";
 import { kgunToHit } from "./kravak";
@@ -50,23 +51,38 @@ export interface PreviewTargetingParams {
   weapons: readonly WeaponMount[];
   distanceMu: number;
   bearing: number;
+  /** Fleet Book optional layer: conditional aft fire. Absent = rule off. */
+  aftFire?: AftFireOption;
 }
 
 function statusLabel(status: TargetingStatus): string {
   switch (status) {
     case "destroyed":
-      return "destroyed";
+      return tr("battleframe-full-thrust.targeting.destroyed", "destroyed");
     case "spent":
-      return "spent";
+      return tr("battleframe-full-thrust.targeting.spent", "spent");
     case "out-of-arc":
-      return "out of arc";
+      return tr("battleframe-full-thrust.targeting.outOfArc", "out of arc");
     case "out-of-range":
-      return "out of range";
+      return tr("battleframe-full-thrust.targeting.outOfRange", "out of range");
     case "no-class":
-      return "no class set";
+      return tr("battleframe-full-thrust.targeting.noClass", "no class set");
     case "will-fire":
-      return "bears";
+      return tr("battleframe-full-thrust.targeting.bears", "bears");
   }
+}
+
+/** A dice pool, naming the world's die rather than assuming one. */
+function diceEffect(dice: number): string {
+  const size = requireRules().dieSize;
+  return tr("battleframe-full-thrust.targeting.dice", `${dice}D${size}`, { n: dice, size });
+}
+
+/** A to-hit number; the top face has no "or better" to it. */
+function hitEffect(toHit: number): string {
+  return toHit >= requireRules().dieSize
+    ? tr("battleframe-full-thrust.targeting.hitOn", `hit on ${toHit}`, { n: toHit })
+    : tr("battleframe-full-thrust.targeting.hitOnPlus", `hit on ${toHit}+`, { n: toHit });
 }
 
 /** Resolve one weapon's targeting row once it is confirmed available and in arc. */
@@ -82,7 +98,7 @@ function inArcRow(index: number, weapon: WeaponMount, distanceMu: number): Targe
       if (dice <= 0) {
         return { ...base, status: "out-of-range", effect: statusLabel("out-of-range") };
       }
-      return { ...base, status: "will-fire", dice, effect: `${dice}D6` };
+      return { ...base, status: "will-fire", dice, effect: diceEffect(dice) };
     }
     case "torpedo": {
       const toHit = torpedoToHit(distanceMu);
@@ -93,7 +109,7 @@ function inArcRow(index: number, weapon: WeaponMount, distanceMu: number): Targe
         ...base,
         status: "will-fire",
         toHit,
-        effect: toHit >= 6 ? "hit on 6" : `hit on ${toHit}+`
+        effect: hitEffect(toHit)
       };
     }
     case "submunition": {
@@ -101,19 +117,19 @@ function inArcRow(index: number, weapon: WeaponMount, distanceMu: number): Targe
       if (dice <= 0) {
         return { ...base, status: "out-of-range", effect: statusLabel("out-of-range") };
       }
-      return { ...base, status: "will-fire", dice, effect: `${dice}D6` };
+      return { ...base, status: "will-fire", dice, effect: diceEffect(dice) };
     }
     case "salvo": {
       if (!Number.isFinite(distanceMu) || distanceMu > requireRules().salvoRangeMu) {
         return { ...base, status: "out-of-range", effect: statusLabel("out-of-range") };
       }
-      return { ...base, status: "will-fire", effect: `salvo of ${requireRules().salvoSize}` };
+      return { ...base, status: "will-fire", effect: tr("battleframe-full-thrust.targeting.salvoOf", `salvo of ${requireRules().salvoSize}`, { n: requireRules().salvoSize }) };
     }
     case "needle": {
       if (!Number.isFinite(distanceMu) || distanceMu > requireRules().needleMaxRangeMu) {
         return { ...base, status: "out-of-range", effect: statusLabel("out-of-range") };
       }
-      return { ...base, status: "will-fire", effect: "knocks a system on 6" };
+      return { ...base, status: "will-fire", effect: tr("battleframe-full-thrust.targeting.knocksOn", `knocks a system on ${requireRules().needleKillOn}`, { n: requireRules().needleKillOn }) };
     }
     case "kgun": {
       // Every K-gun class shares one to-hit band table; class only sets the
@@ -131,7 +147,7 @@ function inArcRow(index: number, weapon: WeaponMount, distanceMu: number): Targe
         ...base,
         status: "will-fire",
         toHit,
-        effect: toHit >= 6 ? "hit on 6" : `hit on ${toHit}+`
+        effect: hitEffect(toHit)
       };
     }
     default:
@@ -145,7 +161,7 @@ function inArcRow(index: number, weapon: WeaponMount, distanceMu: number): Targe
  * per weapon kind against its own reach.
  */
 export function previewTargeting(params: PreviewTargetingParams): TargetingRow[] {
-  const { weapons, distanceMu, bearing } = params;
+  const { weapons, distanceMu, bearing, aftFire } = params;
   return weapons.map((weapon, index) => {
     const base = { index, kind: weapon.kind, dice: null as number | null, toHit: null as number | null };
     if (weapon.destroyed) {
@@ -154,7 +170,7 @@ export function previewTargeting(params: PreviewTargetingParams): TargetingRow[]
     if (weapon.spent) {
       return { ...base, status: "spent", effect: statusLabel("spent") };
     }
-    if (!weaponBearsOn(weapon.arcs, bearing)) {
+    if (!weaponBears(weapon.arcs, bearing, aftFire)) {
       return { ...base, status: "out-of-arc", effect: statusLabel("out-of-arc") };
     }
     return inArcRow(index, weapon, distanceMu);

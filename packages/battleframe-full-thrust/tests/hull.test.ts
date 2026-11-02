@@ -18,43 +18,38 @@ afterEach(() => {
 });
 
 
-describe("shipClass (FT2 class by MASS)", () => {
-  it("classes MASS <= 18 as an escort", () => {
+describe("shipClass (by the scenario world's invented MASS cut-offs)", () => {
+  it("classes up to the first cut-off as an escort", () => {
     expect(shipClass(2)).toBe("escort");
-    expect(shipClass(18)).toBe("escort");
+    expect(shipClass(21)).toBe("escort");
   });
 
-  it("classes MASS 19-36 as a cruiser", () => {
-    expect(shipClass(19)).toBe("cruiser");
-    expect(shipClass(36)).toBe("cruiser");
+  it("classes up to the second cut-off as a cruiser", () => {
+    expect(shipClass(22)).toBe("cruiser");
+    expect(shipClass(43)).toBe("cruiser");
   });
 
-  it("classes MASS 37-100 as a capital ship", () => {
-    expect(shipClass(37)).toBe("capital");
+  it("classes anything above as a capital ship", () => {
+    expect(shipClass(44)).toBe("capital");
     expect(shipClass(100)).toBe("capital");
   });
 });
 
-describe("warshipDamagePoints (half MASS)", () => {
-  it("is half the MASS", () => {
-    expect(warshipDamagePoints(36)).toBe(18);
-    expect(warshipDamagePoints(32)).toBe(16);
+describe("warshipDamagePoints (the world's share of MASS)", () => {
+  it("divides the MASS by the world's divisor", () => {
+    expect(warshipDamagePoints(36)).toBe(12);
   });
 
-  it("rounds a half up (odd MASS)", () => {
-    expect(warshipDamagePoints(15)).toBe(8);
+  it("rounds a fraction up", () => {
+    expect(warshipDamagePoints(10)).toBe(4);
   });
 });
 
-describe("thresholdRows (FT2: escort 2, cruiser 3, capital 4)", () => {
-  it("gives an escort 2 rows (1 threshold)", () => {
-    expect(thresholdRows("escort")).toBe(2);
-  });
-  it("gives a cruiser 3 rows (2 thresholds)", () => {
-    expect(thresholdRows("cruiser")).toBe(3);
-  });
-  it("gives a capital 4 rows (3 thresholds)", () => {
-    expect(thresholdRows("capital")).toBe(4);
+describe("thresholdRows (the world's rows per class)", () => {
+  it("reads each class from the world", () => {
+    expect(thresholdRows("escort")).toBe(3);
+    expect(thresholdRows("cruiser")).toBe(4);
+    expect(thresholdRows("capital")).toBe(5);
   });
 });
 

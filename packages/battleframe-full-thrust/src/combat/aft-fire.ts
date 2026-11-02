@@ -1,13 +1,10 @@
 /**
  * Fleet Book 1 OPTIONAL conditional aft fire (roadmap P2 #19). An opt-in layer
- * over combat/arcs.ts: it does NOT change weaponBearsOn or the default firing
- * path -- it adds a predicate the orchestration may consult when it knows whether
- * the firing ship spent main-drive thrust this turn.
+ * over combat/arcs.ts: it does NOT change weaponBearsOn, and the default firing
+ * path is unchanged while the world setting is off. With it on, the fire path asks
+ * `weaponBears` and the UI supplies whether the ship thrusted this turn.
  *
- * Source (user's "Fire Arcs" note, Fleet Book optional aft-arc fire): "all-round
- * turret weapons may fire aft on a turn in which the ship applied no main-drive
- * thrust (course changes / thruster use are fine; any accel/decel blocks aft fire
- * that turn)." The base FTL model blacks out the aft (A) arc on every weapon icon
+ * Source (user's "Fire Arcs" note, Fleet Book optional aft-arc fire): (rule text removed; see the rulebook) The base FTL model blacks out the aft (A) arc on every weapon icon
  * (the aft blind spot); this rule conditionally restores it for all-round turrets.
  *
  * We therefore model an "all-round turret" as a mount covering every arc EXCEPT
@@ -64,6 +61,27 @@ export function aftFirePermitted(
  * reduces exactly to weaponBearsOn -- so it is safe to swap in only where the
  * conditional rule is desired.
  */
+/** The world's optional aft-fire layer as the fire path sees it; absent = rule off. */
+export interface AftFireOption {
+  /** Whether the firing ship spent main-drive thrust this turn. */
+  thrusted: boolean;
+}
+
+/**
+ * The arc check the fire path uses: plain `weaponBearsOn` with the rule off, the
+ * conditional grant with it on. Shared so the shot, its preview and split-fire
+ * allocation can never disagree about what bears.
+ */
+export function weaponBears(
+  weaponArcs: readonly FireArc[],
+  bearing: number,
+  aftFire?: AftFireOption
+): boolean {
+  return aftFire
+    ? weaponBearsOnWithAftFire(weaponArcs, bearing, aftFire.thrusted)
+    : weaponBearsOn(weaponArcs, bearing);
+}
+
 export function weaponBearsOnWithAftFire(
   weaponArcs: readonly FireArc[],
   bearing: number,

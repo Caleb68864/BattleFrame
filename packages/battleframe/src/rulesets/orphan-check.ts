@@ -228,7 +228,7 @@ export interface OrphanConversionPrompt {
  * than converting against an API shape nobody has checked. Nothing here
  * ever converts on its own.
  */
-function resolveConversionPrompt(): OrphanConversionPrompt | null {
+export function resolveConversionPrompt(): OrphanConversionPrompt | null{
   const globalScope = globalThis as unknown as {
     foundry?: {
       applications?: {
@@ -240,13 +240,15 @@ function resolveConversionPrompt(): OrphanConversionPrompt | null {
     Dialog?: { confirm?: (options: Record<string, unknown>) => Promise<unknown> };
   };
 
-  const dialogV2Confirm = globalScope.foundry?.applications?.api?.DialogV2?.confirm;
+  // Kept as the class, and called as a method: Foundry's static confirm reads
+  // `this`, so a detached reference throws and the catch below answers "no".
+  const dialogV2 = globalScope.foundry?.applications?.api?.DialogV2;
 
-  if (typeof dialogV2Confirm === "function") {
+  if (typeof dialogV2?.confirm === "function") {
     return {
       confirm: async (message) => {
         try {
-          const answer = await dialogV2Confirm({
+          const answer = await dialogV2.confirm!({
             window: { title: "battleframe.orphans.convertTitle" },
             content: `<p>${message}</p>`,
             modal: true,
@@ -260,13 +262,13 @@ function resolveConversionPrompt(): OrphanConversionPrompt | null {
     };
   }
 
-  const dialogV1Confirm = globalScope.Dialog?.confirm;
+  const dialogV1 = globalScope.Dialog;
 
-  if (typeof dialogV1Confirm === "function") {
+  if (typeof dialogV1?.confirm === "function") {
     return {
       confirm: async (message) => {
         try {
-          const answer = await dialogV1Confirm({ content: `<p>${message}</p>` });
+          const answer = await dialogV1.confirm!({ content: `<p>${message}</p>` });
           return answer === true;
         } catch (error) {
           console.warn(`${SYSTEM_ID} | orphan conversion dialog failed`, error);

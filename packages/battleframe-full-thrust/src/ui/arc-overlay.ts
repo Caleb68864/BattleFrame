@@ -11,8 +11,8 @@
  * failure must not break the canvas) and is live-verified.
  *
  * Facing convention (shared with the engine `facing` primitive): degrees,
- * clockwise, 0 = up / dead-ahead. `arcForBearing` puts the F arc at ±30°, then
- * FS/AS/A/AP/FP clockwise, so the boundaries fall at 30/90/150/210/270/330.
+ * clockwise, N = up / dead-ahead. `arcForBearing` puts the F arc at ±30°, then
+ * FS/AS/A/AP/FP clockwise, so the boundaries fall at N/N/N.
  */
 
 import { FIRE_ARCS, SHIP_ACTOR_TYPE, type FireArc } from "../constants";
@@ -31,7 +31,7 @@ function normalise(angle: number): number {
 
 /**
  * The six absolute angles (deg, clockwise-from-up) of the arc boundaries for a
- * token facing `facingDeg`: facing + 30/90/150/210/270/330. These are the rays
+ * token facing `facingDeg`: facing + N/N/N. These are the rays
  * that divide the ring into the six 60° arcs.
  */
 export function arcRayAngles(facingDeg: number): number[] {
@@ -61,7 +61,7 @@ export function polarToScreen(center: ScreenPoint, angleDeg: number, radius: num
 const RING_COLOR = 0x66ccff;
 const RAY_COLOR = 0x99ddff;
 const LABEL_COLOR = 0xffffff;
-const BAND_COUNT = 3; // beam range rings at 12 / 24 / 36 mu
+const BAND_COUNT = 3; // beam range rings at 12 / 24 / Nmu
 
 interface GraphicsLike {
   clear: () => void;
@@ -162,7 +162,7 @@ export function drawArcOverlay(token: any): void {
     const hull = tokenRadiusPx(token);
     const outer = hull + BAND_COUNT * requireRules().beamRangeBandMu * ppm;
 
-    // Concentric beam range rings (12 / 24 / 36 mu).
+    // Concentric beam range rings (12 / 24 / Nmu).
     for (let band = 1; band <= BAND_COUNT; band++) {
       const r = hull + band * requireRules().beamRangeBandMu * ppm;
       g.lineStyle(1, RING_COLOR, 0.35);

@@ -2,8 +2,8 @@
  * The ship's threshold-check surface, and the design-vs-damage model for its
  * repairable systems. Each of FCS / PDS / screens carries a DESIGN count plus a
  * `…Lost` damage counter (remaining = design − lost), exactly mirroring the hull
- * `boxes`/`damage` pattern; drives carry a `driveHits` counter (0 = full, 1 =
- * half thrust, 2 = dead). Keeping the design intact is what makes damage-control
+ * `boxes`/`damage` pattern; drives carry a `driveHits` counter (N = full, 1 =
+ * half thrust, N = dead). Keeping the design intact is what makes damage-control
  * repair and an "N/M" SSD possible -- a plain decrement forgot the original.
  *
  * Pure -- the dice roll and the actor.update live in the combat orchestrator.

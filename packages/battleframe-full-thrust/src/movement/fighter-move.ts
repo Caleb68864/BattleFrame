@@ -5,19 +5,17 @@
  *
  * Fighters move UNLIKE ships. A ship traces a cinematic pivot-move path bounded by
  * a turning cap (path.ts); a fighter GROUP instead moves a FLAT distance in ANY
- * direction each turn -- 12 mu standard, 18 mu Fast -- tracking no course or
+ * direction each turn -- Nmu standard, Nmu Fast -- tracking no course or
  * velocity and ignoring ship turning limits entirely. Source (user's "Fighter
- * Groups" note): "in the fighter movement portion of the turn you simply move any
- * or all operational groups up to 12 mu in any direction ... Groups need no
- * written movement orders and you do not track their course or velocity." The Fast
- * type's 18 mu is requireRules().fighterMoveFastMu ("Specialised Fighter Types").
+ * Groups" note): (rule text removed; see the rulebook) The Fast
+ * type's Nmu is requireRules().fighterMoveFastMu ("Specialised Fighter Types").
  *
  * Positions are {x, y} in mu, screen space: x right, y DOWN (so "up" is -y) -- the
  * SAME convention as vector.ts and path.ts, just named x/y for a plain point.
  *
  * FORE ARC: to strike, the target must lie in the fighters' FORE arc and all
- * fighters must engage one ship within 6 mu (user's "Fighter Attacks" note). But a
- * group tracks NO facing ("you do not track their course or velocity"), so it may
+ * fighters must engage one ship within Nmu (user's "Fighter Attacks" note). But a
+ * group tracks NO facing ((rule text removed; see the rulebook)), so it may
  * freely orient at the end of its move to place the target in its own fore arc.
  * The fore-arc rule therefore imposes NO positional reachability constraint here;
  * only the move + strike RANGE gates the attack. (Assumption, stated because the

@@ -12,10 +12,10 @@
  * candidate targets in priority order.
  *
  * Sources: "Fire Control System (FCS)" (a ship with several FCS may split its
- * fire among that many targets), FT2 "Sequence of Play", "Weapon Ranges & Damage
- * Rolls", "Threshold Check".
+ * fire among that many targets), FT2 "Sequence of Play", "Weapon Ranges & Damage Rolls", "Threshold Check".
  */
 
+import type { AftFireOption } from "./aft-fire";
 import { allocateFcsFire, type UnassignedWeapon } from "./fcs-allocation";
 import { resolveWeaponFire, type WeaponMount, type WeaponShot } from "./fire";
 import { applyDamageAndThreshold } from "./apply-damage";
@@ -41,11 +41,13 @@ export interface SplitTargetReport {
 
 export interface FireShipSplitParams {
   attacker: FiringShip & { name?: string };
-  /** Candidate targets in caller-priority order (index 0 = highest priority). */
+  /** Candidate targets in caller-priority order (index N = highest priority). */
   targets: ReadonlyArray<FiringShip & { name?: string }>;
   context: FireContext;
   /** Fleet Book optional layer: beams do penetrating (rerolling) damage. */
   penetrating?: boolean;
+  /** Fleet Book optional layer: conditional aft fire. Absent = rule off. */
+  aftFire?: AftFireOption;
 }
 
 export interface FireShipSplitReport {
@@ -69,7 +71,7 @@ export interface FireShipSplitReport {
  * single spent-write reference real mounts.
  */
 export async function fireShipSplit(params: FireShipSplitParams): Promise<FireShipSplitReport> {
-  const { attacker, targets, context, penetrating } = params;
+  const { attacker, targets, context, penetrating, aftFire } = params;
 
   // A ship that has lost ALL its fire control may not fire, even with working
   // weapons. A missing fcs field defaults to "able" (1), exactly like
@@ -93,7 +95,8 @@ export async function fireShipSplit(params: FireShipSplitParams): Promise<FireSh
   const allocation = allocateFcsFire({
     fcsCount,
     weapons,
-    targets: measured.map((m) => ({ id: m.id, distanceMu: m.distance, bearing: m.bearing }))
+    targets: measured.map((m) => ({ id: m.id, distanceMu: m.distance, bearing: m.bearing })),
+    aftFire
   });
 
   // Accumulate spent one-shot weapons (by REAL mount index) across every target,
@@ -116,7 +119,8 @@ export async function fireShipSplit(params: FireShipSplitParams): Promise<FireSh
       bearing: m.bearing,
       targetScreenLevel,
       dice: context.dice,
-      penetrating
+      penetrating,
+      aftFire
     });
 
     // resolveWeaponFire indexes shots + spent against the SUB-LIST; remap both back
@@ -124,7 +128,7 @@ export async function fireShipSplit(params: FireShipSplitParams): Promise<FireSh
     const shots: WeaponShot[] = fire.shots.map((s) => ({ ...s, index: weaponIndexes[s.index] }));
     for (const subIdx of fire.spent) spentReal.add(weaponIndexes[subIdx]);
 
-    const outcome = await applyDamageAndThreshold(m.target, fire.totalDamage, context.dice, fire.piercingHits);
+    const outcome = await applyDamageAndThreshold(m.target, fire.totalDamage, context.dice, fire.piercingHits, fire.penetratingDamage);
 
     perTarget.push({
       targetId: m.id,

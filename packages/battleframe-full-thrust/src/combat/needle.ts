@@ -1,6 +1,6 @@
 /**
  * Needle-beam strike: a precision shot that knocks out ONE nominated enemy
- * system on a 6, ignoring screens and armour (it does no hull damage). Unlike
+ * system on the world's face, ignoring screens and armour (it does no hull damage). Unlike
  * ordinary weapons this targets a specific system, so it is its own orchestrator
  * rather than part of the pooled fire. Engine services injected.
  *

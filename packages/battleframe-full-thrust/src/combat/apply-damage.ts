@@ -27,9 +27,10 @@ export async function applyDamageAndThreshold(
   target: ShipActorLike & { system?: Record<string, any> },
   points: number,
   dice: ThresholdDiceLike,
-  piercingHits: readonly number[] = []
+  piercingHits: readonly number[] = [],
+  penetrating: number = 0
 ): Promise<ApplyDamageAndThresholdResult> {
-  const damageResult = await applyDamageToShip(target, points, piercingHits);
+  const damageResult = await applyDamageToShip(target, points, piercingHits, penetrating);
   const thresholdsCrossed = damageResult.hull.thresholdsCrossed;
 
   let systemsKnockedOut = 0;

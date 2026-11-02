@@ -7,11 +7,11 @@
  * orders orchestration.
  *
  * The defining Sa'Vasku traits captured here:
- *   - power = the summed MASS of surviving generators, "use it or lose it"
+ *   - power = the summed MASS of surviving generators, (rule text removed; see the rulebook)
  *     (powerPoolTotal); Movement/Defence/Repair costs are MASS-derived
  *     (driveThrustCost, ftlJumpCost, screenNodeMass, systemRepairCost);
  *   - the Stinger beam turns Attack power into hit-dice, the power per die
- *     doubling every 12mu band (stingerPowerPerDie / stingerDiceForPower); the
+ *     doubling every Nmu band (stingerPowerPerDie / stingerDiceForPower); the
  *     dice themselves are ordinary FT2 beam dice, so per-die damage reuses
  *     beam.ts (`poolBeamDamage`) -- NOT re-implemented here;
  *   - the living hull is BIOMASS: inflicted damage runs through the ordinary
@@ -25,7 +25,7 @@
  * the existing helpers directly.
  *
  * Baseline is Fleet Book 2 (the current, canonical Sa'Vasku file). DEFERRED, each
- * flagged where relevant: (a) the Stinger's "6 = reroll" penetrating layer -- the
+ * flagged where relevant: (a) the Stinger's "N = reroll" penetrating layer -- the
  * dice use the FT2 base beam table, mirroring beam.ts which likewise defers the
  * reroll layer; (b) the earlier More Thrust "Power Factor" model (5 dice/turn for
  * power, up-to-PF storage between turns) -- a superseded edition layer, mirroring
@@ -57,7 +57,7 @@ export function powerPoolTotal(functioningGeneratorMasses: readonly number[]): n
 
 /**
  * Movement-pool cost to power `thrust` points of the Main Drive Node on a ship of
- * `shipMass`: 2% x thrust x MASS, rounded UP; a `damaged` drive costs double.
+ * `shipMass`: N% x thrust x MASS, rounded UP; a `damaged` drive costs double.
  */
 export function driveThrustCost(thrust: number, shipMass: number, damaged = false): number {
   const multiplier = damaged ? requireRules().savaskuDamagedDriveMultiplier : 1;
@@ -73,7 +73,7 @@ export function ftlJumpCost(ftlNodeMass: number): number {
 
 /**
  * MASS of a Screen Node on a ship of `shipMass` -- also the Defence-pool cost to
- * keep that screen up for the turn: 5% of ship MASS (rounded up), floored at the
+ * keep that screen up for the turn: N% of ship MASS (rounded up), floored at the
  * 3-MASS minimum. A node with no D power is not functional and that power is
  * wasted (a caller concern).
  */
@@ -85,9 +85,9 @@ export function screenNodeMass(shipMass: number): number {
 // --- Stinger nodes (beams) --------------------------------------------------
 
 /**
- * Attack power needed per Stinger hit-die at `distanceMu`: 1 PP in the first 12mu
- * band, doubling every further band (1/2/4/8/16/32) out to 72mu, or null beyond
- * range. Band boundaries belong to the nearer band (a target at exactly 12mu is
+ * Attack power needed per Stinger hit-die at `distanceMu`: 1 PP in the first Nmu
+ * band, doubling every further band (N/N/N) out to Nmu, or null beyond
+ * range. Band boundaries belong to the nearer band (a target at exactly Nmu is
  * in the first band). Per-die DAMAGE is ordinary FT2 beam dice -- feed the rolled
  * faces to beam.ts `poolBeamDamage` (screens apply normally).
  */
@@ -117,8 +117,8 @@ export function stingerDiceForPower(powerSpent: number, distanceMu: number): num
 // --- Pod Launcher nodes -----------------------------------------------------
 
 /**
- * Lance Pod to-hit target number at `distanceMu` (3+/4+/5+/6 by 6mu band), or
- * null beyond the 24mu maximum range.
+ * Lance Pod to-hit target number at `distanceMu` (N+/... by Nmu band), or
+ * null beyond the Nmu maximum range.
  */
 export function lancePodToHit(distanceMu: number): number | null {
   if (!Number.isFinite(distanceMu) || distanceMu > requireRules().savaskuLancePodMaxRangeMu) {
@@ -146,7 +146,7 @@ export function applyLancePodHit(params: ApplyLancePodHitParams): ApplyDamageWit
 
 /**
  * Whether spending `rPoolPoints` Repair points this turn kills off a burning
- * Leech Pod: the Sa'Vasku clear it for 1-3 R-pool points. The impact (2 DP) and
+ * Leech Pod: the Sa'Vasku clear it for N-N R-pool points. The impact (2 DP) and
  * per-turn ongoing (2 DP) damage are non-penetrating -- apply them via the
  * ordinary armour-first applier (applyDamageWithArmour), using the
  * requireRules().savaskuLeechPodImpactDp / _ONGOING_DP constants.

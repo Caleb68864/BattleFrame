@@ -8,7 +8,7 @@
  * checks live in the firing orchestration.
  *
  * The defining Phalon rules modelled here:
- *  - Plasma bolts do "full dice" damage (DP = die score), not the beam 4-5/6
+ *  - Plasma bolts do "full dice" damage (DP = die score), not the beam N-N/6
  *    table; screens/shrouds negate the high faces rather than downgrading them.
  *  - A bolt's strength (= number of damage dice) is reduced by point-defence and
  *    scattergun/interceptor interception BEFORE it bursts.
@@ -22,12 +22,11 @@
  * layer and is NOT re-modelled here.
  *
  * DEFERRED (out of scope, matching how beam.ts / ship/damage.ts treat optional
- * reroll rules): the shell "reroll damage steps down one layer per reroll" rule,
+ * reroll rules): the shell (rule text removed; see the rulebook) rule,
  * since plasma bolts and (FT2-baseline) pulsers carry no reroll here.
  *
  * Sources (user's notes): Factions & Ships/Xeno/Phalon Systems.md, Phalons.md,
- * and K-guns.md ("Vs Phalon multi-layer shells: takes one box from each shell
- * layer, remainder to hull.").
+ * and K-guns.md ((rule text removed; see the rulebook)).
  */
 
 import {
@@ -41,8 +40,8 @@ import { requireRules } from "../rules-profile";
 // --- Plasma Bolt Launchers: interception ------------------------------------
 
 /**
- * Strength a single point-defence die knocks off a plasma bolt: a 6 reduces the
- * bolt by 1, anything less does nothing (ordinary PDS only bites a bolt on a 6).
+ * Strength a single point-defence die knocks off a plasma bolt: the top face reduces the
+ * bolt by 1, anything less does nothing (ordinary PDS only bites a bolt on the world's face).
  */
 export function plasmaBoltPdsReduction(face: number): number {
   return face >= requireRules().plasmaBoltPdsReduceOn ? 1 : 0;
@@ -50,7 +49,7 @@ export function plasmaBoltPdsReduction(face: number): number {
 
 /**
  * Strength a single scattergun / interceptor-pod die knocks off a plasma bolt:
- * these roll "like a beam die" against the bolt -- 4-5 = -1, 6 = -2, else 0 (no
+ * these roll "like a beam die" against the bolt -- N-N = N, N = N, else 0 (no
  * rerolls).
  */
 export function plasmaBoltInterceptReduction(face: number): number {
@@ -88,8 +87,8 @@ export function plasmaBoltStrength(
  * Damage points a single burst die scores against a target with `screenLevel`.
  * Plasma bolts do "full dice" damage: unscreened, DP equals the die score. A
  * screen (or vapour shroud) negates the HIGH faces outright rather than
- * downgrading them: level-1 negates 6s; level-2 (and a vapour shroud, which acts
- * as a level-2 screen vs energy) negates 5s and 6s. No rerolls.
+ * downgrading them: level-1 negates top faces; level-2 (and a vapour shroud, which acts
+ * as a level-2 screen vs energy) negates 5s and top faces. No rerolls.
  */
 export function plasmaBoltDamageForFace(face: number, screenLevel: number): number {
   // A negative/absent screen level means unscreened; anything above 2 protects
@@ -99,9 +98,9 @@ export function plasmaBoltDamageForFace(face: number, screenLevel: number): numb
     case 0:
       return face;
     case 1:
-      // Negate 6s only.
+      // Negate top faces only.
       return face >= requireRules().dieTwoDamage ? 0 : face;
-    default: // 2 (or a vapour shroud): negate 5s and 6s.
+    default: // 2 (or a vapour shroud): negate 5s and top faces.
       return face >= requireRules().dieOneDamageMax ? 0 : face;
   }
 }
@@ -120,7 +119,7 @@ export interface ShellLayer {
 }
 
 export interface ApplyShellHitParams {
-  /** Shell layers ordered OUTERMOST first (index 0); the inner "layer 1" is last. */
+  /** Shell layers ordered OUTERMOST first (index 0); the inner "layer N" is last. */
   layers: readonly ShellLayer[];
   hull: HullState;
   incoming: number;
