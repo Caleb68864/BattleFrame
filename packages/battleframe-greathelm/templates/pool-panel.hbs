@@ -18,6 +18,7 @@
       {{#each dice}}
         <li
           class="pool-panel__die {{#if this.offerable}}pool-panel__die--offerable{{/if}} {{#if this.selected}}pool-panel__die--selected{{/if}}"
+          data-action="selectDie"
           data-die-id="{{this.id}}"
           data-player-id="{{this.playerId}}"
         >
@@ -33,6 +34,7 @@
         {{#each knights}}
           <li
             class="pool-panel__knight {{#if this.legal}}pool-panel__knight--legal{{else}}pool-panel__knight--illegal{{/if}}"
+            data-action="spendOnKnight"
             data-knight-id="{{this.id}}"
           >
             <span class="pool-panel__knight-name">{{this.name}}</span>

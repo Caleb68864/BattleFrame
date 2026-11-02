@@ -9,13 +9,20 @@ and the three ruleset modules.
 | Item | Status |
 |---|---|
 | **P0** round state on Combat doc | ✅ ALL THREE rulesets (Simple Skirmish, InCountry, GREATHELM) — round state on the Combat document, live-verified to survive a reload. GREATHELM also RESUMES an in-progress round (dice-pool session restored from the document) instead of re-rolling. |
-| **P1** status effects | ✅ native `defeated`-on-threshold for ALL THREE rulesets — InCountry `suppressed`+`defeated`-on-wipe, Simple Skirmish `models==0`, GREATHELM `damage==3`/fled (all live-verified: the skull shows/clears on real actors + drops the unit from the P0 turn order). ⏳ still deferred: InCountry `engaged/reaction/injury/stun` (unbuilt features — build native when built, no migration debt) and binding model count to a token resource bar. |
-| **P2** chat/dice | ✅ `dice.rollPool` — one Roll/one card per pool (live-verified). ⏳ combat OUTCOMES → ChatMessage cards. |
+| **P1** status effects | ✅ native `defeated`-on-threshold for ALL THREE rulesets — InCountry `suppressed`+`defeated`-on-wipe, Simple Skirmish `models==0`, GREATHELM at its damage limit/fled (all live-verified: the skull shows/clears on real actors + drops the unit from the P0 turn order). ✅ 2026-11-02, unverified live: InCountry declares a `modelsBar` resource (`{value,max}`, trackable) a token bar can bind to. ⏳ Simple Skirmish has no starting-count field to be a bar's max. ⏸ InCountry `engaged/reaction/injury/stun`: unbuilt features whose rules are not in the repo; owner. |
+| **P2** chat/dice | ✅ `dice.rollPool` — one Roll/one card per pool (live-verified). ✅ combat OUTCOMES → ChatMessage cards through the engine's `chat.postCard`. ✅ 2026-11-02, unverified live: InCountry's round-over card, which only toasted; Full Thrust cards carry a speaker; rolls post through `Roll#toMessage`, so the native per-die breakdown replaces the bespoke card. |
 | **P3** non-gridless guard | ✅ done. |
-| **P4** native swaps | ✅ generic-sheet form/submitOnChange/prose-mirror fixed. ⏳ minor nits (isNewerVersion, pool-panel actions map, DialogV2.confirm). |
+| **P4** native swaps | ✅ generic-sheet form/submitOnChange/prose-mirror fixed. ✅ 2026-11-02, unverified live: `isNewerVersion`, pool-panel `actions` map, `DialogV2.confirm` for the reset, roll card retired for `toMessage`. ⏳ `game.system.id` namespacing: not started, lowest value. |
 
-The done items are committed, tested (514 passing), and verified in the live world.
-Remaining ⏳ items are documented follow-ups below.
+Items dated 2026-07-18 are committed, tested, and verified in the live world. Items dated 2026-11-02
+are proved by unit tests only; no Foundry world was available to that session. Remaining ⏳ items are
+documented follow-ups below.
+
+**Found while doing P4, not on the original list:** GREATHELM's prompts and the core's orphan-conversion
+prompt held `DialogV2.wait`/`confirm` as detached references. Foundry's statics read `this`, so the call
+throws and each catch takes its default: the initiative winner is never asked, New Battle never resets,
+the GM is never offered conversion. Mocks do not read `this`, so the suite could not see it. Fixed
+2026-11-02. The claim about Foundry's statics is from knowledge of its source, not a live check.
 
 ## Executive summary
 

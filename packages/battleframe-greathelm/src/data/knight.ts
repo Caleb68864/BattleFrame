@@ -43,15 +43,14 @@ function resolveFieldsNamespace(): Record<string, any> {
  * `KnightData` is GREATHELM's Actor subtype. Per
  * vault/greathelm/knights-have-no-stat-line.md, knights are mechanically
  * identical -- there is no stat line to model. This schema is
- * deliberately minimal: momentum and damage markers (both capped at 3,
- * see vault/greathelm/momentum.md and vault/greathelm/damage-and-removal.md)
+ * deliberately minimal: momentum and damage markers (any cap is the world's)
  * are the only per-knight numbers the QSR evidences. Equipment,
  * warband construction, and campaign identity are "not found" in the QSR
  * (see vault/greathelm/open-questions.md) and are intentionally absent
  * here, not invented.
  */
-function resolveNumberFieldOptions(max: number): Record<string, unknown> {
-  return { required: true, nullable: false, integer: true, min: 0, max, initial: 0 };
+function resolveNumberFieldOptions(): Record<string, unknown> {
+  return { required: true, nullable: false, integer: true, min: 0, initial: 0 };
 }
 
 export function createKnightDataClass(
@@ -65,8 +64,8 @@ export function createKnightDataClass(
       const schema: Record<string, unknown> = {};
 
       if (NumberField) {
-        schema.momentum = new NumberField(resolveNumberFieldOptions(3));
-        schema.damage = new NumberField(resolveNumberFieldOptions(3));
+        schema.momentum = new NumberField(resolveNumberFieldOptions());
+        schema.damage = new NumberField(resolveNumberFieldOptions());
       }
 
       return schema;

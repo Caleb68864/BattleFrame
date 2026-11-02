@@ -1,10 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDiceApi, installDiceApi } from "../src/dice/dice";
 
+const toMessage = vi.fn(async (_data?: Record<string, unknown>) => undefined);
+
 class MockRoll {
   formula: string;
   total = 0;
   dice?: Array<{ results: Array<{ result: number; active: boolean }> }>;
+  toMessage = toMessage;
 
   constructor(formula: string, public data?: Record<string, unknown>) {
     this.formula = formula;
@@ -25,12 +28,12 @@ class MockRoll {
 }
 
 beforeEach(() => {
+  toMessage.mockClear();
   vi.stubGlobal("Roll", MockRoll);
-  vi.stubGlobal("Handlebars", {
-    compile: (template: string) => (data: Record<string, unknown>) =>
-      template.replace(/{{\s*(\w+)\s*}}/g, (_match, key) => String(data[key] ?? "")),
+  vi.stubGlobal("ChatMessage", {
+    create: vi.fn(async () => undefined),
+    getSpeaker: () => ({ alias: "Speaker" }),
   });
-  vi.stubGlobal("ChatMessage", { create: vi.fn(async () => undefined) });
   vi.stubGlobal("game", undefined);
 });
 
@@ -40,21 +43,14 @@ describe("dice.rollPool", () => {
     const faces = await dice.rollPool(5, 10, { rulesetId: "inx" });
 
     expect(faces).toEqual([1, 2, 3, 4, 5]); // five faces, not five rolls
-
-    const chatMessage = (globalThis as unknown as {
-      ChatMessage: { create: ReturnType<typeof vi.fn> };
-    }).ChatMessage;
-    expect(chatMessage.create).toHaveBeenCalledTimes(1); // one card, not five
+    expect(toMessage).toHaveBeenCalledTimes(1); // one message, not five
   });
 
   it("rolls nothing (and posts nothing) for an empty pool", async () => {
     const dice = createDiceApi();
     const faces = await dice.rollPool(0, 10);
     expect(faces).toEqual([]);
-    const chatMessage = (globalThis as unknown as {
-      ChatMessage: { create: ReturnType<typeof vi.fn> };
-    }).ChatMessage;
-    expect(chatMessage.create).not.toHaveBeenCalled();
+    expect(toMessage).not.toHaveBeenCalled();
   });
 });
 
@@ -67,40 +63,27 @@ describe("dice.roll", () => {
     expect(result.formula).toBe("2d6+3");
   });
 
-  it("resolves normally and posts a chat card with no Dice So Nice present", async () => {
+  it("posts through Roll#toMessage with a speaker, the flavor and the ruleset id", async () => {
     const dice = createDiceApi();
-    const result = await dice.roll("1d20", undefined, { rulesetId: "test-ruleset" });
+    const result = await dice.roll("1d20", undefined, { rulesetId: "test-ruleset", flavor: "to hit" });
 
     expect(result.total).toBe(7);
-
-    const chatMessage = (globalThis as unknown as {
-      ChatMessage: { create: ReturnType<typeof vi.fn> };
-    }).ChatMessage;
-
-    expect(chatMessage.create).toHaveBeenCalledTimes(1);
-    const [payload] = chatMessage.create.mock.calls[0];
-    expect(payload.content).toContain("1d20");
-    expect(payload.content).toContain("test-ruleset");
+    expect(toMessage).toHaveBeenCalledTimes(1);
+    expect(toMessage.mock.calls[0][0]).toEqual({
+      speaker: { alias: "Speaker" },
+      flavor: "to hit",
+      flags: { battleframe: { rulesetId: "test-ruleset" } },
+    });
   });
 
-  /**
-   * The design's whole reason for a thin dice passthrough (design doc line
-   * 134: "Thin *because* thin = Dice So Nice works free"). Dice So Nice
-   * animates off the dice attached to the message, and Foundry builds the
-   * breakdown tooltip from the same place. Rendering `total` into an HTML
-   * string and posting only that produces a card that reads correctly and
-   * animates nothing -- which is what shipped.
-   */
-  it("attaches the evaluated Roll to the chat message so Dice So Nice can animate it", async () => {
-    const dice = createDiceApi();
-    const result = await dice.roll("2d6");
+  it("does not hand-build message content, which would suppress the native breakdown", async () => {
+    await createDiceApi().roll("2d6");
 
+    expect(toMessage.mock.calls[0][0]).not.toHaveProperty("content");
     const chatMessage = (globalThis as unknown as {
       ChatMessage: { create: ReturnType<typeof vi.fn> };
     }).ChatMessage;
-
-    const [payload] = chatMessage.create.mock.calls[0];
-    expect(payload.rolls).toEqual([result]);
+    expect(chatMessage.create).not.toHaveBeenCalled();
   });
 
   it("installs onto game.battleframe.dice", () => {

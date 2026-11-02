@@ -82,8 +82,8 @@ export function registerGreathelmHoverFields(): void {
 
   registry.register(`${MODULE_ID}.${KNIGHT_ACTOR_TYPE}`, {
     fields: [
-      { key: "momentum", label: `${MODULE_ID}.fields.momentum`, max: 3 },
-      { key: "damage", label: `${MODULE_ID}.fields.damage`, max: 3 },
+      { key: "momentum", label: `${MODULE_ID}.fields.momentum` },
+      { key: "damage", label: `${MODULE_ID}.fields.damage` },
     ],
     defaultVisibility: "everyone",
   });

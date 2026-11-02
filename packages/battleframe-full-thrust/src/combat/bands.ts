@@ -1,6 +1,6 @@
 /**
  * Range-band bucketing shared by the weapons whose dice/to-hit step by fixed
- * distance bands (beams: 12mu; torpedoes/submunitions: 6mu). Boundaries belong
+ * distance bands (beams: Nmu; torpedoes/submunitions: Nmu). Boundaries belong
  * to the nearer band -- a target at exactly one band width is in the lower band.
  */
 

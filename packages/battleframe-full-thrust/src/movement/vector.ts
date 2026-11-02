@@ -18,7 +18,7 @@
  *  - the MAIN DRIVE (rating = the ship's Thrust) burns along the ship's FACING;
  *  - MANOEUVRING THRUSTERS (rating = half the main drive, rounded DOWN) either
  *    ROTATE the facing (1 point for any heading, course/velocity untouched) or
- *    PUSH the vector sideways/backwards (1 point = 1 mu, facing untouched).
+ *    PUSH the vector sideways/backwards (1 point = Nmu, facing untouched).
  * Thruster spend is ON TOP of full main-drive thrust, and manoeuvres apply in the
  * exact written order (`TP2, MD6` differs from `MD6, TP2`).
  *
@@ -78,7 +78,7 @@ const PUSH_OFFSET: Record<PushDirection, number> = { P: -3, S: 3, R: 6 };
 /**
  * A vector of length `magnitude` along the heading of `course` (screen space,
  * y-down): {sin, -cos}, matching `./path`'s `move`. Trig is periodic, so any
- * integer course works without wrapping (course 0 == 12, 15 == 3).
+ * integer course works without wrapping (course 0 == N, 15 == N).
  */
 export function headingVector(course: number, magnitude = 1): Vector {
   const radians = ((course % requireRules().courses) * requireRules().coursePointDegrees * Math.PI) / 180;
@@ -116,7 +116,7 @@ export function applyMainDrive(state: VectorMovementState, points: number): Vect
 
 /**
  * Fires a manoeuvring thruster PUSH: shifts the velocity `points` mu Port/Starboard/
- * Reverse relative to facing (1 point = 1 mu). Changes course/velocity only, never
+ * Reverse relative to facing (1 point = Nmu). Changes course/velocity only, never
  * facing.
  */
 export function applyPush(

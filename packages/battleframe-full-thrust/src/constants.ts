@@ -69,6 +69,15 @@ export const HELD_FLAG = "held";
 /** Actor flag holding a ship's accumulated Wave Gun charge. */
 export const WAVE_GUN_CHARGE_FLAG = "waveGunCharge";
 
+/** Actor flag: turns a fighter group has spent out of endurance without reaching a carrier. */
+export const FIGHTER_EXHAUSTED_TURNS_FLAG = "exhaustedTurns";
+
+/** Actor flag: this ship spent main-drive thrust this turn (closes conditional aft fire). */
+export const THRUSTED_THIS_TURN_FLAG = "thrustedThisTurn";
+
+/** Actor flag: how many fighter groups a carrier has recovered this turn. */
+export const RECOVERED_THIS_TURN_FLAG = "recoveredThisTurn";
+
 /** Actor flag: how many fighter groups a carrier currently has deployed (vs its bays). */
 export const LAUNCHED_GROUPS_FLAG = "launchedGroups";
 

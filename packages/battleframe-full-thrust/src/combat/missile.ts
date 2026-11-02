@@ -1,16 +1,16 @@
 /**
  * Independent (More Thrust) missile combat resolution: a one-shot AI craft that,
- * after ships have moved, strikes a ship that FINISHED within 6mu of it and is
+ * after ships have moved, strikes a ship that FINISHED within Nmu of it and is
  * NOT in the missile's rear arc. The target's point defence fires first (a PDS or
- * anti-fighter system kills the missile on a 6 -- one die per system, and that
+ * anti-fighter system kills the missile on the world's face -- one die per system, and that
  * die can't also be anti-fighter that turn; the caller enforces the die budget by
  * how many it rolls). A surviving missile detonates its warhead. Three payloads
  * (all bypass screens):
  *   Normal (nuclear) — roll 2 dice, the TOTAL is the damage; armour DOES absorb.
  *   EMP — no hull damage; roll one die minus target screen level, then knock out
- *         systems as a threshold check (5-6 on a 3-4 roll, 4-6 on a 5-6 roll).
- *   Needle — like a needle beam: nominate one system; a 4-6 knocks it out, and
- *         the die is also dealt as normal damage (a 1-3 only does that damage).
+ *         systems as a threshold check (N-N on a N-N roll, N-N on a N-N roll).
+ *   Needle — like a needle beam: nominate one system; a N-N knocks it out, and
+ *         the die is also dealt as normal damage (a N-N only does that damage).
  * Engine services injected.
  *
  * This is distinct from `combat/salvo.ts` (Fleet Book salvo missiles, fired as a
@@ -72,8 +72,8 @@ export interface MissileAttackReport {
 
 /**
  * Whether a missile may attack a ship that finished at `distanceMu` and
- * `bearingFromMissile` (degrees, clockwise, 0 = the missile's dead ahead): within
- * 6mu AND not in the missile's rear ("A") arc. Pure -- the range/bearing come
+ * `bearingFromMissile` (degrees, clockwise, N = the missile's dead ahead): within
+ * Nmu AND not in the missile's rear ("A") arc. Pure -- the range/bearing come
  * from the engine's measure/facing services.
  */
 export function missileCanAttack(distanceMu: number, bearingFromMissile: number): boolean {
@@ -100,7 +100,7 @@ export async function resolveMissileAttack(params: MissileParams): Promise<Missi
     return { ...idle, reason: "in-rear-arc" };
   }
 
-  // Point defence fires first: each PDS rolls one die and a 6 kills the missile.
+  // Point defence fires first: each PDS rolls one die and the top face kills the missile.
   // Shared by every warhead type -- the interception step is warhead-agnostic.
   const pds = remainingPds(target.system ?? {});
   const pdsFaces = pds > 0 ? await context.dice.rollPool(pds, requireRules().dieSize) : [];
@@ -146,8 +146,8 @@ async function resolveNormalWarhead(
 
 /**
  * EMP warhead: no hull damage. Roll one die minus the target's screen level;
- * 1-2 = no effect, 3-4 = every system rolls a threshold check knocked out on
- * 5-6, 5-6 = every system rolls knocked out on 4-6. Reuses the same surviving-
+ * N-N = no effect, N-N = every system rolls a threshold check knocked out on
+ * N-N, N-N = every system rolls knocked out on N-N. Reuses the same surviving-
  * systems / threshold / knockout primitives as an ordinary threshold check.
  * Source: More Thrust "Missile Warheads" — EMP.
  */
@@ -186,7 +186,7 @@ async function resolveEmpWarhead(
 
 /**
  * Needle warhead: nominate one system. Roll a die; its face is dealt as normal
- * damage (armour absorbs, screens bypassed, via the shared path), and on a 4-6
+ * damage (armour absorbs, screens bypassed, via the shared path), and on a N-N
  * the nominated system is additionally knocked out. Reuses the same system-
  * knockout primitives as `combat/needle.ts`.
  * Source: More Thrust "Missile Warheads" — Needle. (Single-die reading; see the
@@ -200,7 +200,7 @@ async function resolveNeedleWarhead(
 ): Promise<MissileAttackReport> {
   const [face = 0] = await context.dice.rollPool(requireRules().missileNeedleWarheadDice, requireRules().dieSize);
 
-  // The die is always dealt as normal damage (1-6), whether or not it hits.
+  // The die is always dealt as normal damage (N-N), whether or not it hits.
   const outcome = await applyDamageAndThreshold(target, face, context.dice);
 
   let systemsKnockedOut = outcome.systemsKnockedOut;

@@ -19,11 +19,13 @@ yourself. Reference rulebooks used during development are kept strictly local
 and are never committed, released, or redistributed (they are kept local and
 git-ignored).
 
-**Where the code stands against that policy, stated honestly.** Every package
-meets it today. Five ruleset modules ship no rules numbers at all; the sixth,
-`simple-skirmish`, ships numbers it is **licensed** to ship, with attribution.
-See [`docs/rules-content-audit.md`](docs/rules-content-audit.md) for the
-per-module detail.
+**Where the code stands against that policy, stated honestly.** The tables have
+been moved out of the code, but the strip is not finished. A second scan on
+2026-11-02 found literals the first one could not see, and fixed most of them;
+what remains is listed in
+[`docs/rules-content-audit.md`](docs/rules-content-audit.md), and the table below
+should be read with that list. `simple-skirmish` ships numbers it is **licensed**
+to ship, with attribution.
 
 | Package | Ships rules numbers? | Source |
 | --- | --- | --- |
@@ -43,7 +45,7 @@ quietly corrected because the claim was published, and because `stargrunt-ii`
 and `dirtside-ii` — the same publisher as `full-thrust` — show the repository
 already knew the right shape.
 
-All four were resolved on 2026-09-21. Three were stripped. The fourth,
+All four were addressed on 2026-09-21. Three were stripped, with the residue noted above. The fourth,
 `simple-skirmish`, was never a strip — its source is CC BY-NC 4.0 and already
 properly attributed; what was wrong there was the repository licence, see
 [License](#license) below.

@@ -1,26 +1,15 @@
 import type { RulesetDefinition } from "./types";
 
-function parseVersionParts(version: string): number[] {
-  return version
-    .split(".")
-    .map((part) => Number.parseInt(part, 10))
-    .map((part) => (Number.isNaN(part) ? 0 : part));
-}
+/**
+ * Foundry's own version comparison. Absent only with no Foundry at all (a unit
+ * test), where there is no running system to be incompatible with.
+ */
+function isNewerVersion(candidate: string, baseline: string): boolean {
+  const utils = (globalThis as unknown as {
+    foundry?: { utils?: { isNewerVersion?: (a: string, b: string) => boolean } };
+  }).foundry?.utils;
 
-export function compareVersions(a: string, b: string): number {
-  const aParts = parseVersionParts(a);
-  const bParts = parseVersionParts(b);
-  const length = Math.max(aParts.length, bParts.length);
-
-  for (let i = 0; i < length; i += 1) {
-    const aPart = aParts[i] ?? 0;
-    const bPart = bParts[i] ?? 0;
-    if (aPart !== bPart) {
-      return aPart - bPart;
-    }
-  }
-
-  return 0;
+  return utils?.isNewerVersion?.(candidate, baseline) ?? false;
 }
 
 export function validateRulesetDefinition(
@@ -55,7 +44,7 @@ export function validateRulesetDefinition(
 
     if (!minimum || typeof minimum !== "string") {
       errors.push("battleframeCompatibility.minimum must be a non-empty string.");
-    } else if (compareVersions(minimum, runningVersion) > 0) {
+    } else if (isNewerVersion(minimum, runningVersion)) {
       errors.push(
         `Ruleset "${def.id}" requires battleframe >= ${minimum}, but the running system is ${runningVersion}.`
       );

@@ -46,6 +46,8 @@ export interface RulesProfile {
   openingDicePoolSize: number;
   /** The floor applied when the optional minimum-pool setting is on. */
   minDicePoolFloor: number;
+  /** Damage markers at which a knight is removed. Zero means none entered. */
+  damageLimit: number;
   /** Which action each die face buys. A face with no entry buys nothing. */
   faceToAction: Partial<Record<DieFace, ActionId>>;
   /** The actions that need a clash test rather than succeeding outright. */
@@ -67,6 +69,7 @@ export const BLANK_PROFILE: RulesProfile = Object.freeze({
   dicePoolPerKnightBonus: 0,
   openingDicePoolSize: 0,
   minDicePoolFloor: 0,
+  damageLimit: 0,
   faceToAction: Object.freeze({}),
   clashTestActions: Object.freeze([]),
   actions: Object.freeze({})
@@ -183,6 +186,7 @@ export function normalizeProfile(value: unknown): RulesProfile {
     dicePoolPerKnightBonus: wholeNumber(value.dicePoolPerKnightBonus),
     openingDicePoolSize: wholeNumber(value.openingDicePoolSize),
     minDicePoolFloor: wholeNumber(value.minDicePoolFloor),
+    damageLimit: wholeNumber(value.damageLimit),
     faceToAction,
     clashTestActions,
     actions
@@ -262,6 +266,7 @@ export function profileTemplate(): string {
       dicePoolPerKnightBonus: 0,
       openingDicePoolSize: 0,
       minDicePoolFloor: 0,
+      damageLimit: 0,
       faceToAction: Object.fromEntries(DIE_FACES.map((face) => [face, ""])),
       clashTestActions: [],
       actions: Object.fromEntries(

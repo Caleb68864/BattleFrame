@@ -18,6 +18,8 @@ import {
   type WeaponKind
 } from "../constants";
 import { shipClass, warshipDamagePoints, thresholdRows } from "../ship/hull";
+import { hullBoxesForGrade } from "../ship/variable-hull";
+import { HULL_GRADES, type HullGrade } from "../constants";
 import { requireRules } from "../rules-profile";
 
 export interface ShipCreateData {
@@ -75,14 +77,19 @@ function parseShip(raw: any, errors: string[]): ShipCreateData | null {
 
   // Hull: explicit if given, else derived from MASS (warship half-MASS boxes,
   // rows by class).
+  // A recognised `hullGrade` opts this ship into the Fleet Book variable-hull system.
   const cls = shipClass(mass);
+  const hullGrade: HullGrade | "" = HULL_GRADES.includes(raw.hullGrade) ? raw.hullGrade : "";
+  const derivedHull = hullGrade
+    ? { boxes: hullBoxesForGrade(mass, hullGrade), rows: requireRules().variableHullRows, damage: 0 }
+    : { boxes: warshipDamagePoints(mass), rows: thresholdRows(cls), damage: 0 };
   const hull = raw.hull && typeof raw.hull === "object"
     ? {
-        boxes: clampInt(raw.hull.boxes, 1, 10_000, warshipDamagePoints(mass)),
-        rows: clampInt(raw.hull.rows, 1, 100, thresholdRows(cls)),
+        boxes: clampInt(raw.hull.boxes, 1, 10_000, derivedHull.boxes),
+        rows: clampInt(raw.hull.rows, 1, 100, derivedHull.rows),
         damage: 0
       }
-    : { boxes: warshipDamagePoints(mass), rows: thresholdRows(cls), damage: 0 };
+    : derivedHull;
 
   const armour = { boxes: nonNegInt(raw.armour?.boxes, 0), damage: 0 };
 
@@ -99,6 +106,7 @@ function parseShip(raw: any, errors: string[]): ShipCreateData | null {
       ftl: raw.ftl === undefined ? true : raw.ftl !== false,
       driveHits: 0,
       hull,
+      hullGrade,
       armour,
       fcs: nonNegInt(raw.fcs, 1),
       screens: clampInt(raw.screens, 0, requireRules().maxScreenLevel, 0),

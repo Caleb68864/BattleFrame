@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createShipDataClass, registerShipDataModel } from "../src/data/ship";
-import { withRules } from "./helpers/world";
+import { SCENARIO_RULES, withRules } from "./helpers/world";
 
 // This module ships no rules numbers; a world supplies them. See helpers/world.ts.
 let restoreFtWorld: () => void;
@@ -118,8 +118,10 @@ describe("prepareDerivedData", () => {
       weapons: [{ kind: "beam", weaponClass: 1, arcs: ["F"] }]
     });
     instance.prepareDerivedData();
-    // hull 20 + drive (10*4/4=10) + battery cls1 1-arc (2+1=3) = 33.
-    expect(instance.pointsValue).toBe(33);
+    // The scenario world's hull + escort drive, plus a class-1, one-arc battery.
+    expect(instance.pointsValue).toBe(
+      10 * SCENARIO_RULES.hullCostPerMass + Math.ceil(40 / SCENARIO_RULES.driveCostDivisorEscort) + 3
+    );
   });
 });
 

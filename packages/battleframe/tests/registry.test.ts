@@ -36,9 +36,11 @@ describe("RulesetRegistry", () => {
   });
 
   it("rejects a minimum compatibility above the running system version without partial registration", () => {
+    vi.stubGlobal("foundry", { utils: { isNewerVersion: () => true } });
     const result = registry.registerRuleset(
       makeDefinition({ battleframeCompatibility: { minimum: "99.0.0", verified: "99.0.0" } })
     );
+    vi.unstubAllGlobals();
 
     expect(result.ok).toBe(false);
     expect(registry.getRuleset("core-ruleset")).toBeNull();

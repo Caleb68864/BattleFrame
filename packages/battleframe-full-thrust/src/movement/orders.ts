@@ -5,12 +5,12 @@
  * orchestrator's job.
  *
  * Notation: `+N`/`-N` accelerate/decelerate N mu; `PN`/`SN` turn N course points
- * to Port (anticlockwise, -) / Starboard (clockwise, +). 1 TP = 1 mu OR 1 course
+ * to Port (anticlockwise, -) / Starboard (clockwise, +). 1 TP = Nmu OR 1 course
  * point. Total TP spent <= thrust; turning TP <= half thrust (FT2 rounds UP),
  * and turning thrust cannot also accelerate. Ships never move backwards.
  *
  * `applyOrder` here computes only the FINAL velocity and heading. The cinematic
- * "half the turn at the start of the move, half at the mid-point" pivot-move-
+ * (rule text removed; see the rulebook) pivot-move-
  * pivot-move DISPLACEMENT (which changes the ship's final position, not just its
  * heading) is computed by `./path` `plotMovementPath` and traced on the canvas
  * by the Plot tool (ui/round-control `executeMovementPath`).

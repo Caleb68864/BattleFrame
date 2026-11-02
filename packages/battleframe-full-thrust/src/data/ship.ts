@@ -17,7 +17,7 @@ import {
   resolveFieldsNamespace,
   registerActorDataModel
 } from "./foundry-data-model";
-import { requireRules } from "../rules-profile";
+import { isRulesComplete, requireRules } from "../rules-profile";
 
 function nonNegativeInt(initial: number): Record<string, unknown> {
   return { required: true, nullable: false, integer: true, min: 0, initial };
@@ -42,11 +42,13 @@ export function createShipDataClass(
       });
       // Whether the ship carries an FTL drive (affects its Points value).
       schema.ftl = new BooleanField({ required: true, initial: true });
-      // Drive damage: 0 = full thrust, 1 = half (first hit), 2 = dead (second).
+      // Drive damage: N = full thrust, N = half (first hit), N = dead (second).
       schema.driveHits = new NumberField({ required: true, nullable: false, integer: true, min: 0, max: 2, initial: 0 });
 
       // The hull damage track: total boxes, boxes crossed off, and the number of
       // threshold rows the track is divided into.
+      // Fleet Book variable hull: the chosen grade, or blank for the fixed FT2 rule.
+      schema.hullGrade = new StringField({ required: true, blank: true, initial: "" });
       schema.hull = new SchemaField({
         boxes: new NumberField({ required: true, nullable: false, integer: true, min: 1, initial: 15 }),
         damage: new NumberField(nonNegativeInt(0)),
@@ -71,7 +73,7 @@ export function createShipDataClass(
       schema.pdsLost = new NumberField(nonNegativeInt(0));
       schema.damageControl = new NumberField(nonNegativeInt(0));
 
-      // Fighter bays: 0 = not a carrier; each bay holds one 6-fighter group. A
+      // Fighter bays: N = not a carrier; each bay holds one 6-fighter group. A
       // ship with 3+ bays counts as a "true carrier" (launches 2 groups/turn).
       schema.bays = new NumberField(nonNegativeInt(0));
 
@@ -123,7 +125,8 @@ export function createShipDataClass(
       self.screensTrack = `${remaining(self.screens ?? 0, self.screensLost ?? 0)}/${self.screens ?? 0}`;
 
       // Points value derived from the ship's systems (FT2 Mass/Points estimate).
-      self.pointsValue = shipPointsFromSystem(self);
+      // A world with no profile has no points to derive; the sheet must still open.
+      self.pointsValue = isRulesComplete() ? shipPointsFromSystem(self) : 0;
     }
   }
 

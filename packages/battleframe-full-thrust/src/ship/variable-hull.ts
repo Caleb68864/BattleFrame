@@ -5,19 +5,15 @@
  * model in ship/hull.ts (warshipDamagePoints) or ship/design.ts. The row/threshold
  * layout reuses ship/hull.ts rowBoundaries so the damage-track structure is shared.
  *
- * Source (user's "Variable Hull Strength" note): "you choose a hull integrity
- * grade from Fragile to Super. The grade consumes a percentage of the ship's total
- * MASS, and that same MASS figure becomes the ship's damage (hull) boxes. ...
- * Points cost of the hull integrity is always 2 x the MASS used on it." The five
- * grades take 10/20/30/40/50 percent of MASS. "Damage boxes are split into 4 rows;
- * if not divisible by 4, extra boxes go in the upper rows."
+ * Source (user's "Variable Hull Strength" note): (rule text removed; see the rulebook) The five
+ * grades take N/N/N percent of MASS. (rule text removed; see the rulebook)
  *
  * ASSUMPTIONS (flagged, not invented):
  *  - The note's worked example is a MASS-60 ship, where every grade's percentage
  *    is a whole number of boxes. It does not state how a fractional box count
  *    rounds. We use nearest-integer rounding (Math.round); if the intent was
  *    floor/ceil this is a one-line change.
- *  - Points cost is derived straight from the note ("2 x the MASS used") and, since
+ *  - Points cost is derived straight from the note ((rule text removed; see the rulebook)) and, since
  *    boxes == MASS used, equals 2 x boxes -- independent of the total MASS. The
  *    total MASS only bounds which grades/box counts are legal (10-50 percent).
  */

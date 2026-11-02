@@ -1,5 +1,5 @@
 /**
- * A fighter group attacks a ship: it must be within 6mu with the target in its
+ * A fighter group attacks a ship: it must be within Nmu with the target in its
  * FORE arc; the target's POINT DEFENCE fires first (shooting down fighters before
  * they strike); a depleted group then passes a morale roll; then the survivors
  * roll one die per fighter, an Attack-type group adding +1 to each die, the
@@ -7,9 +7,9 @@
  * through the shared armour/hull + threshold path. A fired attack spends one
  * endurance. Engine services injected; carrier bookkeeping is layered above.
  *
- * DEFERRED specialised types: only Attack (+1/die vs ships) is applied here.
+ * DEFERRED specialised types: only Attack (+N/die vs ships) is applied here.
  * Heavy (counts as a Level-1 screen vs incoming fire), Interceptor/Torpedo
- * (dogfight modes), Fast (18mu move) and Long-Range (endurance 5, not the default
+ * (dogfight modes), Fast (Nmu move) and Long-Range (endurance N, not the default
  * 3) touch movement / anti-fighter / dogfight contexts not resolved by this ship-
  * attack path, and are not yet modelled.
  *
@@ -70,6 +70,9 @@ export interface FighterFireReport {
   systemsKnockedOut: number;
   /** Fighters the target's point defence shot down on the way in. */
   pdsKills: number;
+  /** The group's pilot quality and type, so the card can say why the dice differ. */
+  pilotQuality?: string;
+  fighterType?: string;
 }
 
 export async function fireFighterGroupAtTarget(
@@ -89,7 +92,9 @@ export async function fireFighterGroupAtTarget(
     destroyed: false,
     thresholdsCrossed: [],
     systemsKnockedOut: 0,
-    pdsKills: 0
+    pdsKills: 0,
+    pilotQuality: quality,
+    fighterType: group.system?.fighterType
   };
 
   if (size <= 0) {
@@ -128,7 +133,7 @@ export async function fireFighterGroupAtTarget(
 
   // Morale: a depleted group (below full strength) rolls before attacking -- as
   // does a Turkey group even at full strength -- and aborts if the pilot-modified
-  // die (Ace -1, Turkey +1) exceeds the fighters remaining. Consecutive fails
+  // die (Ace -N, Turkey +N) exceeds the fighters remaining. Consecutive fails
   // break the group (Turkey after 2, others after 3); a passed check resets the
   // streak (More Thrust "Fighter Group Morale", "Fighter Pilot Quality").
   if (pilotRequiresMoraleCheck(remaining, quality)) {
@@ -168,6 +173,8 @@ export async function fireFighterGroupAtTarget(
     destroyed: outcome.destroyed,
     thresholdsCrossed: outcome.thresholdsCrossed,
     systemsKnockedOut: outcome.systemsKnockedOut,
-    pdsKills
+    pdsKills,
+    pilotQuality: quality,
+    fighterType: group.system?.fighterType
   };
 }

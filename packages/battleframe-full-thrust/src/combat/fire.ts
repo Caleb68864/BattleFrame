@@ -14,7 +14,7 @@ import { beamDiceAtRange, poolBeamDamage } from "./beam";
 import { poolPenetratingDamage } from "../ship/fleet-book";
 import { torpedoToHit, submunitionDiceAtRange } from "./weapons";
 import { kgunToHit, kgunDamageForFace } from "./kravak";
-import { weaponBearsOn } from "./arcs";
+import { weaponBears, type AftFireOption } from "./aft-fire";
 import { requireRules } from "../rules-profile";
 
 export interface WeaponMount {
@@ -50,6 +50,8 @@ export interface ResolveWeaponFireParams {
   dice: DiceLike;
   /** Fleet Book optional layer: beams do penetrating (rerolling) damage. Default off. */
   penetrating?: boolean;
+  /** Fleet Book optional layer: conditional aft fire. Absent = rule off. */
+  aftFire?: AftFireOption;
 }
 
 export interface WeaponFireResult {
@@ -60,12 +62,13 @@ export interface WeaponFireResult {
   /**
    * Kra'Vak K-gun hits, one DP figure per HITTING K-gun, kept SEPARATE from
    * `totalDamage`. The K-gun pierces armour per-hit (only the first DP of each
-   * single hit is stopped by armour), which the pooled "sum then apply armour
-   * once" model of `totalDamage` cannot express -- so these hits bypass that pool
+   * single hit is stopped by armour), which the pooled sum-then-apply-armour-once model of `totalDamage` cannot express -- so these hits bypass that pool
    * and are applied downstream, one at a time, via `applyKgunHit`. Kept as a list
    * (never pre-summed) precisely because the pierce is per-hit.
    */
   piercingHits: number[];
+  /** The part of `totalDamage` that penetrated (Fleet Book layer); zero by default. */
+  penetratingDamage: number;
 }
 
 async function resolveBeam(
@@ -74,7 +77,7 @@ async function resolveBeam(
   screenLevel: number,
   dice: DiceLike,
   penetrating: boolean
-): Promise<{ damage: number; faces: number[]; reason?: NoFireReason }> {
+): Promise<{ damage: number; faces: number[]; reason?: NoFireReason; penetrating?: number }> {
   const cls = weapon.weaponClass;
   if (!cls || cls < 1) {
     return { damage: 0, faces: [], reason: "no-class" };
@@ -97,7 +100,14 @@ async function resolveBeam(
     rerollFaces.push(...batch);
     pending = batch.filter((f) => f === requireRules().dieTwoDamage).length;
   }
-  return { damage: poolPenetratingDamage(faces, rerollFaces, screenLevel), faces: [...faces, ...rerollFaces] };
+  // The chain's total less what the initial dice scored on their own is the part
+  // that penetrated, which reaches the hull even while armour remains.
+  const damage = poolPenetratingDamage(faces, rerollFaces, screenLevel);
+  return {
+    damage,
+    faces: [...faces, ...rerollFaces],
+    penetrating: damage - poolBeamDamage(faces, screenLevel)
+  };
 }
 
 async function resolveTorpedo(
@@ -169,12 +179,13 @@ async function resolveKgun(
 export async function resolveWeaponFire(
   params: ResolveWeaponFireParams
 ): Promise<WeaponFireResult> {
-  const { weapons, distanceMu, bearing, targetScreenLevel, dice, penetrating } = params;
+  const { weapons, distanceMu, bearing, targetScreenLevel, dice, penetrating, aftFire } = params;
 
   const shots: WeaponShot[] = [];
   const spent: number[] = [];
   const piercingHits: number[] = [];
   let totalDamage = 0;
+  let penetratingDamage = 0;
 
   for (let index = 0; index < weapons.length; index++) {
     const weapon = weapons[index];
@@ -187,12 +198,12 @@ export async function resolveWeaponFire(
       shots.push({ index, kind: weapon.kind, fired: false, damage: 0, reason: "spent" });
       continue;
     }
-    if (!weaponBearsOn(weapon.arcs, bearing)) {
+    if (!weaponBears(weapon.arcs, bearing, aftFire)) {
       shots.push({ index, kind: weapon.kind, fired: false, damage: 0, reason: "out-of-arc" });
       continue;
     }
 
-    let outcome: { damage: number; faces: number[]; reason?: NoFireReason; piercingHit?: number };
+    let outcome: { damage: number; faces: number[]; reason?: NoFireReason; piercingHit?: number; penetrating?: number };
     switch (weapon.kind) {
       case "beam":
         outcome = await resolveBeam(weapon, distanceMu, targetScreenLevel, dice, penetrating ?? false);
@@ -223,6 +234,7 @@ export async function resolveWeaponFire(
       piercingHits.push(outcome.piercingHit);
     } else {
       totalDamage += outcome.damage;
+      penetratingDamage += outcome.penetrating ?? 0;
     }
     shots.push({ index, kind: weapon.kind, fired: true, damage: outcome.damage, faces: outcome.faces });
 
@@ -231,5 +243,5 @@ export async function resolveWeaponFire(
     }
   }
 
-  return { totalDamage, shots, spent, piercingHits };
+  return { totalDamage, shots, spent, piercingHits, penetratingDamage };
 }

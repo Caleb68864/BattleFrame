@@ -9,7 +9,7 @@
  *
  *  1. Reroll / penetrating damage ("Reroll Damage Rules"): a rolled 6 inflicts its
  *     normal damage AND grants a reroll die, cumulatively, with no cap on the chain
- *     of 6s -- replacing the FT2 "6 = 2 damage, done" behaviour. The reroll die
+ *     of top faces -- replacing the FT2 (rule text removed; see the rulebook) behaviour. The reroll die
  *     scores on the ordinary UNSCREENED per-die table, so this reuses
  *     beamDamageForFace rather than re-tabulating; screens downgrade only the
  *     initial dice, never the rerolls.
@@ -40,10 +40,9 @@ import { requireRules } from "../rules-profile";
 
 /**
  * Damage a single reroll ("penetrating") die scores: it is always unscreened, so
- * this is exactly the unscreened beam-die table (1-3 = 0, 4-5 = 1, 6 = 2). Built
+ * this is exactly the unscreened beam-die table (N-N = N, N-N = N, N = N). Built
  * on beamDamageForFace(face, 0) so the base per-die table is never duplicated.
- * Note (Reroll Damage Rules): "1-3 = nothing, 4-5 = +1 point, 6 = +2 points and
- * reroll again."
+ * Note (Reroll Damage Rules): (rule text removed; see the rulebook)
  */
 export function penetratingDamageForFace(face: number): number {
   return beamDamageForFace(face, 0);
@@ -51,8 +50,8 @@ export function penetratingDamageForFace(face: number): number {
 
 /**
  * Whether a die face penetrates and grants a reroll -- a physical 6, regardless of
- * screen (Reroll Damage Rules: "every roll of 6 ... allows a reroll"; the reroll
- * "is assumed to have already penetrated the screen"). A screened 6 still scores
+ * screen (Reroll Damage Rules: (rule text removed; see the rulebook); the reroll
+ * (rule text removed; see the rulebook)). A screened 6 still scores
  * its (downgraded) initial damage but the 6 face still triggers the reroll.
  */
 export function triggersReroll(face: number): boolean {
@@ -62,7 +61,7 @@ export function triggersReroll(face: number): boolean {
 /**
  * Total penetrating damage of a pool. `initialFaces` are the weapon's rolled dice
  * (downgraded by `screenLevel`); `rerollFaces` is the ordered list of faces rolled
- * for the rerolls the 6s spawn (the caller keeps rolling while 6s appear and hands
+ * for the rerolls the top faces spawn (the caller keeps rolling while top faces appear and hands
  * the results here). Each 6 -- initial or reroll -- consumes one reroll face, in
  * order, until the reroll supply is exhausted (a graceful stop if the caller
  * under-supplies). Reroll dice are always unscreened.
@@ -133,8 +132,7 @@ export interface ApplyPenetratingDamageWithArmourParams {
 
 /**
  * Splits an attack into its ordinary and penetrating parts (Reroll Damage Rules /
- * Armour: "normal dice hit armour boxes ... the reroll die's damage goes straight
- * to the hull"). Normal damage spends armour first then overflows to the hull; the
+ * Armour: (rule text removed; see the rulebook)). Normal damage spends armour first then overflows to the hull; the
  * penetrating damage is added directly onto the hull. A single hull application
  * runs on the combined hull-bound total so thresholds see it as one attack. With
  * penetratingDamage 0 this reduces exactly to applyDamageWithArmour.

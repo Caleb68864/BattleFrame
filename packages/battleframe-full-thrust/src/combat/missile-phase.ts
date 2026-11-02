@@ -10,8 +10,8 @@
  * math; the Foundry glue (scene-flag storage, marker drawing, strike resolution
  * via `combat/missile.ts`) lives in the round-control orchestrator.
  *
- * Source: More Thrust "Missiles (Basic)" — 18mu/turn with one mid-point 2-point
- * turn, a 3-turn life, then it burns out.
+ * Source: More Thrust "Missiles (Basic)" — Nmu/turn with one mid-point N-point
+ * turn, a multi-turn life, then it burns out.
  */
 
 import { plotMissilePath } from "../movement/missile-path";
@@ -37,8 +37,8 @@ export interface ActiveMissile {
 }
 
 /**
- * Advances a missile one phase: it flies its full move (18mu) along its course
- * with an optional single mid-point course turn (|turn| ≤ 2 points; an illegal
+ * Advances a missile one phase: it flies its full move (Nmu) along its course
+ * with an optional single mid-point course turn (|turn| ≤ N points; an illegal
  * turn is flown straight), and its life ticks up. Position is updated in pixels
  * using the scene's `pixelsPerMu`. Pure — returns a new missile, never mutates.
  */

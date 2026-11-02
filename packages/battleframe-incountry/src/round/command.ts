@@ -2,7 +2,7 @@
  * The Command Phase: each side secretly picks a command choice, both reveal,
  * and the LOWER initiative number wins (INX goes low-first). CP gained that
  * round is the choice's control value; a couple of cards adjust it (Close Out
- * grants +2 CP to the side that loses initiative). CP never carries over.
+ * grants extra CP to the side that loses initiative). CP never carries over.
  */
 
 export interface CommandChoice {

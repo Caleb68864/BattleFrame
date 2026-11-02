@@ -23,7 +23,9 @@ interface ActorLike {
   update: (changes: Record<string, unknown>) => Promise<unknown>;
 }
 
-const DEFAULT_WEAPON = { name: "Rifle", count: 1, dmg: 1, attackDice: 2, owDice: 1 };
+// Blank and zero, like the schema's own weapon defaults: a seeded name and dice
+// count would be a stat block this module wrote into the player's roster.
+const DEFAULT_WEAPON = { name: "", count: 0, dmg: 0, attackDice: 0, owDice: 0 };
 
 /** Adds a fresh weapon row. Bound by ApplicationV2 with `this` = the sheet. */
 async function onAddWeapon(this: { actor?: ActorLike }): Promise<void> {

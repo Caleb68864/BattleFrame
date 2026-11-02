@@ -25,7 +25,7 @@ import {
 } from "../round/session";
 import { checkVictory } from "../round/victory";
 import type { CheckVictoryKnight } from "../round/victory-types";
-import { DAMAGE_LIMIT, isKnightRemoved, resetKnight } from "../round/removal";
+import { damageLimit, isKnightRemoved, resetKnight } from "../round/removal";
 import {
   promptAttackTarget,
   promptFirstOrSecond,
@@ -303,7 +303,7 @@ export function nearestEnemy(
  *
  * `moveInches = min(allowance, distance-to-nearest-enemy)`: every GREATHELM
  * distance is "up to" (vault/greathelm/movement-and-measurement.md), so a
- * Sprint is capped at SPRINT_MOVE_INCHES = 5" and additionally stops at base
+ * Sprint is capped at the world's Sprint distance and additionally stops at base
  * contact rather than measuring through the enemy it is closing on.
  *
  * The plan is reported, NOT applied to the token. That is deliberate. The
@@ -312,7 +312,7 @@ export function nearestEnemy(
  * Kickstarter adds that models cannot move through other models -- so an
  * engine needs real collision, "not just range checks". Auto-sliding a token
  * along a straight line toward its target would break a confirmed rule
- * silently, on a board where 5" crosses most of the play area. Until
+ * silently, on a board where one move crosses most of the play area. Until
  * collision exists, the engine states the legal distance and the GM moves the
  * model, with the ruler agreeing with the rules engine.
  */
@@ -420,7 +420,7 @@ export function toVictoryKnights(
  * of irrational-in-pixels quantities (see clash.ts BASE_CONTACT_TOLERANCE_PX),
  * so a raw float reached the notification bar as `sprint up to
  * 0.0001574803149606563"`, which is not a number a human reads. Two places is
- * finer than any GREATHELM distance is written in (5"/3"/1") and finer than a
+ * finer than any GREATHELM distance is written in and finer than a
  * GM can place a model by hand.
  */
 const DISPLAY_DECIMAL_PLACES = 2;
@@ -429,7 +429,7 @@ const DISPLAY_DECIMAL_PLACES = 2;
 export function formatInches(inches: number): string {
   const factor = 10 ** DISPLAY_DECIMAL_PLACES;
 
-  // Number() drops trailing zeros, so 5 stays `5"` rather than becoming `5.00"`.
+  // Number() drops trailing zeros, so a whole number stays whole rather than gaining `.00`.
   return `${Number((Math.round(inches * factor) / factor).toFixed(DISPLAY_DECIMAL_PLACES))}`;
 }
 
@@ -500,7 +500,7 @@ function clashReportParts(outcome: ClashResolvedOutcome): { title: string; lines
   if (outcome.attackerWins && outcome.damage > 0) {
     lines.push(
       `<p><strong>${outcome.damage}</strong> damage ` +
-        `(${outcome.defenderDamageTotal}/${DAMAGE_LIMIT} wounds).</p>`
+        `(${outcome.defenderDamageTotal}/${damageLimit()} wounds).</p>`
     );
   } else {
     lines.push(`<p>No damage.</p>`);
@@ -630,8 +630,8 @@ export async function beginRoundFromControl(
     sides.map((playerId) => [
       playerId,
       computeDicePoolSize(
-        // QSR p1 (confirmed): "1 initiative die for every knight you control in
-        // the play area, plus 1" -- and the pool "shrinks as your knights die".
+        // QSR p1 (confirmed): the pool is sized from the knights in the play area,
+        // so it shrinks as they die. The bonus is the world's.
         // Removed knights keep their tokens on the canvas, so they must be
         // filtered out of the count here, or a wiped-down warband keeps rolling
         // a full pool and the death-spiral never bites.

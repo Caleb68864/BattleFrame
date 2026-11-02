@@ -6,6 +6,7 @@
  * is the pure ../ship/damage; this module is the Foundry I/O around it.
  */
 
+import { applyPenetratingDamageWithArmour } from "../ship/fleet-book";
 import { applyDamageWithArmour, type ApplyDamageWithArmourResult } from "../ship/damage";
 import { applyKgunHit } from "../combat/kravak";
 
@@ -57,20 +58,28 @@ function defeatedStatusId(): string {
  * threshold check downstream sees the union of every row this attack crossed.
  * Returns the full damage result -- including which thresholds were crossed --
  * so the caller can run the threshold check.
+ *
+ * `penetrating` is the part of `points` that penetrated (the Fleet Book layer). It
+ * goes straight to the hull while the rest spends armour first.
  */
 export async function applyDamageToShip(
   actor: ShipActorLike,
   points: number,
-  piercingHits: readonly number[] = []
+  piercingHits: readonly number[] = [],
+  penetrating: number = 0
 ): Promise<ApplyDamageWithArmourResult> {
   const armour = armourOf(actor);
   const hull = hullOf(actor);
 
-  const pooled = applyDamageWithArmour({
-    armour,
-    hull,
-    incoming: points
-  });
+  const pooled =
+    penetrating > 0
+      ? applyPenetratingDamageWithArmour({
+          armour,
+          hull,
+          normalDamage: points - penetrating,
+          penetratingDamage: penetrating
+        })
+      : applyDamageWithArmour({ armour, hull, incoming: points });
 
   // Fold the per-hit piercing stream onto the state the pooled damage left
   // behind, so armour/hull deplete continuously and thresholds accumulate.

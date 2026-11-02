@@ -25,9 +25,12 @@ function syntheticRulesetDefinition(): RulesetDefinition {
   };
 }
 
+const toMessage = vi.fn(async () => undefined);
+
 class MockRoll {
   formula: string;
   total = 0;
+  toMessage = toMessage;
 
   constructor(formula: string, public data?: Record<string, unknown>) {
     this.formula = formula;
@@ -42,12 +45,9 @@ class MockRoll {
 }
 
 beforeEach(() => {
+  toMessage.mockClear();
   vi.stubGlobal("Roll", MockRoll);
-  vi.stubGlobal("Handlebars", {
-    compile: (template: string) => (data: Record<string, unknown>) =>
-      template.replace(/{{\s*(\w+)\s*}}/g, (_match, key) => String(data[key] ?? "")),
-  });
-  vi.stubGlobal("ChatMessage", { create: vi.fn(async () => undefined) });
+  vi.stubGlobal("ChatMessage", { create: vi.fn(async () => undefined), getSpeaker: () => ({}) });
   vi.spyOn(console, "debug").mockImplementation(() => {});
 });
 
@@ -91,9 +91,6 @@ describe("seam: synthetic ruleset can register, activate, roll, order, measure, 
     expect(measurement.units).toBe(gridlessScene.grid.units);
     expect(measurement.distance).toBeCloseTo(5 - 1, 10);
 
-    const chatMessage = (globalThis as unknown as {
-      ChatMessage: { create: ReturnType<typeof vi.fn> };
-    }).ChatMessage;
-    expect(chatMessage.create).toHaveBeenCalledTimes(poolSize);
+    expect(toMessage).toHaveBeenCalledTimes(poolSize);
   });
 });

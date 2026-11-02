@@ -1,23 +1,37 @@
 /**
  * Damage control (More Thrust, optional): at the end of a turn each Damage
- * Control Party rolls 1D6 and a 6 brings one threshold-lost system back online.
+ * Control Party rolls, and the world's repair face brings one threshold-lost
+ * system back online.
  * Pure math here; which system a repair restores is a player choice the repair
  * UI drives (deferred), and DCPs cannot repair hull damage or needle losses.
  *
  * Source: More Thrust "Damage Control".
  */
 
+import { requireRules } from "../rules-profile";
 import type { ShipClass } from "../ship/hull";
 import { applySystemRepairs, type ShipSystemLike, type SystemRef } from "../ship/systems";
 
-/** Systems repaired this turn: one per Damage Control Party that rolls a 6. */
+/**
+ * Systems repaired this turn: one per party reaching the world's repair face. An
+ * empty face repairs nothing -- `face >= N` would otherwise repair every system.
+ */
 export function damageControlRepairs(faces: readonly number[]): number {
-  return faces.reduce((repairs, face) => repairs + (face >= 6 ? 1 : 0), 0);
+  const repairOn = requireRules().damageControlRepairOn;
+  if (repairOn <= 0) {
+    return 0;
+  }
+  return faces.reduce((repairs, face) => repairs + (face >= repairOn ? 1 : 0), 0);
 }
 
-/** Free Damage Control Parties by class: escort 1, cruiser 2, capital 3. */
+/** Free Damage Control Parties, by the world's per-class allowance. */
 export function standardDamageControlParties(cls: ShipClass): number {
-  return cls === "escort" ? 1 : cls === "cruiser" ? 2 : 3;
+  const rules = requireRules();
+  return cls === "escort"
+    ? rules.damageControlPartiesEscort
+    : cls === "cruiser"
+      ? rules.damageControlPartiesCruiser
+      : rules.damageControlPartiesCapital;
 }
 
 interface RepairableSystem extends ShipSystemLike {

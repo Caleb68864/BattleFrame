@@ -1,7 +1,7 @@
 /**
  * Independent-missile move EXECUTION: the move-pivot-move path a one-shot
  * More Thrust missile traces in its dedicated missile phase. It launches forward
- * along the firing ship's course and may run up to 18mu, taking ONE 2-point (60°)
+ * along the firing ship's course and may run up to Nmu, taking ONE N-point (60°)
  * course change at the MID-POINT of its move -- so, unlike a ship (whose turn is
  * split half-at-start / half-at-mid by `plotMovementPath`), the whole turn lands
  * at the mid-point: half the distance straight ahead, pivot, half on the new
@@ -12,7 +12,7 @@
  * (N mod 12) x 30 degrees clockwise from up. Pure -- the mu->pixel conversion and
  * the token move/rotate live in the (deferred) orchestrator.
  *
- * Sources: More Thrust "Missiles (Basic)" (18mu, one mid-point 2-point turn);
+ * Sources: More Thrust "Missiles (Basic)" (Nmu, one mid-point N-point turn);
  * FT2 "Course & the Clockface".
  */
 import { requireRules } from "../rules-profile";
@@ -59,10 +59,10 @@ function wrapCourse(course: number): number {
 }
 
 /**
- * Plots a missile's move-pivot-move path: up to `distance` mu (<= 18) with a
- * single `turn` course-point change (|turn| <= 2, + starboard / - port) taken at
+ * Plots a missile's move-pivot-move path: up to `distance` mu (<= N) with a
+ * single `turn` course-point change (|turn| <= N, + starboard / - port) taken at
  * the mid-point. Returns `legal: false` with a reason (and no path) when the turn
- * exceeds one 2-point change or the distance exceeds the missile's move.
+ * exceeds one N-point change or the distance exceeds the missile's move.
  */
 export function plotMissilePath(
   start: MissileState,

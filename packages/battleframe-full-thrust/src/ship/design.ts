@@ -1,33 +1,44 @@
 /**
  * FT2 Mass/Points ship-design helpers: the arithmetic that turns a ship's size,
  * drives and systems into its Points combat value (used to match fleets). Pure;
- * a design UI or a validation check calls these. Only the FT2 system is modelled
- * (not the alternative Fleet Book variable-hull system -- the two are not
- * balance-compatible).
+ * a design UI or a validation check calls these. A ship with a `hullGrade` prices
+ * its hull by the Fleet Book variable-hull system instead; the two systems are not
+ * balance-compatible, so a fleet should use one or the other.
  *
  * Sources: FT2 "Mass & Points", "Drive Systems Cost", "Beam Weapon Batteries",
  * the Ship Design cheat sheet.
  */
 
 import { shipClass, type ShipClass } from "./hull";
+import { hullPointsForGrade } from "./variable-hull";
+import { requireRules } from "../rules-profile";
+import type { HullGrade } from "../constants";
 
-/** Warship hull cost in points: 2 x MASS. */
+/** Dividing by a value the world left empty yields zero rather than Infinity. */
+function divide(amount: number, divisor: number): number {
+  return divisor > 0 ? amount / divisor : 0;
+}
+
+/** Warship hull cost in points, from the world's per-MASS cost. */
 export function hullCost(mass: number): number {
-  return 2 * mass;
+  return requireRules().hullCostPerMass * mass;
 }
 
-/** Warship system-mass budget: half the ship's MASS. */
+/** Warship system-mass budget: the world's share of the ship's MASS. */
 export function systemsMassBudget(mass: number): number {
-  return Math.floor(mass / 2);
+  return Math.floor(divide(mass, requireRules().systemsMassDivisor));
 }
 
-/**
- * Main-drive cost in points, scaling by class: escort MASS x thrust / 4, cruiser
- * / 2, capital / 1. Drives cost points but no MASS.
- */
+/** The world's per-class value for one of the class-keyed tables. */
+function byClass(cls: ShipClass, escort: number, cruiser: number, capital: number): number {
+  return cls === "escort" ? escort : cls === "cruiser" ? cruiser : capital;
+}
+
+/** Main-drive cost in points, by the world's per-class divisor. Drives cost no MASS. */
 export function mainDriveCost(cls: ShipClass, mass: number, thrust: number): number {
-  const divisor = cls === "escort" ? 4 : cls === "cruiser" ? 2 : 1;
-  return Math.ceil((mass * thrust) / divisor);
+  const rules = requireRules();
+  const divisor = byClass(cls, rules.driveCostDivisorEscort, rules.driveCostDivisorCruiser, rules.driveCostDivisorCapital);
+  return Math.ceil(divide(mass * thrust, divisor));
 }
 
 /** Optional FTL drive: costs its MASS in points. */
@@ -35,41 +46,23 @@ export function ftlDriveCost(mass: number): number {
   return mass;
 }
 
-/** Free fire-control systems by class: escort 1, cruiser 2, capital 3. */
+/** Free fire-control systems, by the world's per-class allowance. */
 export function freeFcs(cls: ShipClass): number {
-  return cls === "escort" ? 1 : cls === "cruiser" ? 2 : 3;
+  const rules = requireRules();
+  return byClass(cls, rules.freeFcsEscort, rules.freeFcsCruiser, rules.freeFcsCapital);
 }
 
-/**
- * Beam-battery point cost: base + per-arc x arcs, where a Class-N battery has
- * base (N+1) and per-arc N. (FT2 'A'/'B'/'C' = class 3/2/1: A 3-arc = 13, etc.)
- */
+/** Beam-battery point cost: base + per-arc x arcs, both derived from the class. */
 export function beamBatteryCost(cls: number, arcs: number): number {
   const base = cls + 1;
   const perArc = cls;
   return base + perArc * arcs;
 }
 
-/** Beam-battery MASS in the FT2 range: equals the class number (C=1, B=2, A=3). */
+/** Beam-battery MASS: equals the class number. */
 export function beamBatteryMass(cls: number): number {
   return cls;
 }
-
-/**
- * Fixed point costs of the common non-beam systems, from the FT2 Ship Design
- * cheat sheet systems table (PDAF 3, ADAF 10, Needle 6, Pulse Torpedo 15,
- * Submunition 3, extra Fire Control 10, Level-1 Screen 25, Level-2 Screen 50).
- */
-export const SYSTEM_POINTS = {
-  pdaf: 3,
-  adaf: 10,
-  needle: 6,
-  torpedo: 15,
-  submunition: 3,
-  extraFcs: 10,
-  screenLevel1: 25,
-  screenLevel2: 50
-} as const;
 
 export interface BatterySpec {
   cls: number;
@@ -82,7 +75,7 @@ export interface DesignSpec {
   shipClass: ShipClass;
   thrust: number;
   ftl?: boolean;
-  /** Screen level 0-2 (FT2 costs a level-1 at 25, level-2 at 50). */
+  /** Screen level; the world prices the first two levels. */
   screens?: number;
   pdaf?: number;
   adaf?: number;
@@ -92,6 +85,8 @@ export interface DesignSpec {
   /** Extra fire-control systems beyond the free allowance. */
   extraFcs?: number;
   batteries?: BatterySpec[];
+  /** Fleet Book variable hull: prices the hull by this grade instead of the fixed rule. */
+  hullGrade?: HullGrade | "";
 }
 
 /**
@@ -100,21 +95,22 @@ export interface DesignSpec {
  * validate it against the half-MASS budget -- that is a separate design check.)
  */
 export function designPoints(spec: DesignSpec): number {
-  let total = hullCost(spec.mass);
+  const rules = requireRules();
+  let total = spec.hullGrade ? hullPointsForGrade(spec.mass, spec.hullGrade) : hullCost(spec.mass);
   total += mainDriveCost(spec.shipClass, spec.mass, spec.thrust);
   if (spec.ftl) {
     total += ftlDriveCost(spec.mass);
   }
 
-  if (spec.screens === 1) total += SYSTEM_POINTS.screenLevel1;
-  if (spec.screens === 2) total += SYSTEM_POINTS.screenLevel2;
+  if (spec.screens === 1) total += rules.pointsScreenLevel1;
+  if (spec.screens === 2) total += rules.pointsScreenLevel2;
 
-  total += (spec.pdaf ?? 0) * SYSTEM_POINTS.pdaf;
-  total += (spec.adaf ?? 0) * SYSTEM_POINTS.adaf;
-  total += (spec.needles ?? 0) * SYSTEM_POINTS.needle;
-  total += (spec.torpedoes ?? 0) * SYSTEM_POINTS.torpedo;
-  total += (spec.submunitions ?? 0) * SYSTEM_POINTS.submunition;
-  total += (spec.extraFcs ?? 0) * SYSTEM_POINTS.extraFcs;
+  total += (spec.pdaf ?? 0) * rules.pointsPdaf;
+  total += (spec.adaf ?? 0) * rules.pointsAdaf;
+  total += (spec.needles ?? 0) * rules.pointsNeedle;
+  total += (spec.torpedoes ?? 0) * rules.pointsTorpedo;
+  total += (spec.submunitions ?? 0) * rules.pointsSubmunition;
+  total += (spec.extraFcs ?? 0) * rules.pointsExtraFcs;
 
   for (const battery of spec.batteries ?? []) {
     total += beamBatteryCost(battery.cls, battery.arcs) * battery.count;
@@ -124,6 +120,7 @@ export function designPoints(spec: DesignSpec): number {
 }
 
 interface ShipSystemForPoints {
+  hullGrade?: HullGrade | "";
   mass?: number;
   thrust?: number;
   ftl?: boolean;
@@ -153,6 +150,7 @@ export function shipPointsFromSystem(system: ShipSystemForPoints): number {
 
   const spec: DesignSpec = {
     mass,
+    hullGrade: system.hullGrade,
     shipClass: cls,
     thrust: system.thrust ?? 0,
     ftl: system.ftl ?? false,

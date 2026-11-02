@@ -232,6 +232,22 @@ export function createPoolPanelClass(
       tag: "div",
       window: { title: "battleframe-greathelm.poolPanel.title" },
       position: { width: 380, height: "auto" },
+      // ApplicationV2 delegates `data-action` clicks from the root and calls these
+      // with the panel as `this`, so a re-render never re-binds or doubles a listener.
+      actions: {
+        selectDie(this: PoolPanel, _event: unknown, target: HTMLElement): void {
+          const dieId = target.dataset.dieId;
+          if (dieId) {
+            this.selectDie(dieId);
+          }
+        },
+        spendOnKnight(this: PoolPanel, _event: unknown, target: HTMLElement): Promise<void> | void {
+          const knightId = target.dataset.knightId;
+          if (knightId) {
+            return this.spendOnKnight(knightId);
+          }
+        },
+      },
     };
 
     static PARTS = {
@@ -298,42 +314,6 @@ export function createPoolPanelClass(
 
       if (typeof super._onClose === "function") {
         await super._onClose(options);
-      }
-    }
-
-    async _onRender(context: unknown, options: unknown): Promise<void> {
-      if (typeof super._onRender === "function") {
-        await super._onRender(context, options);
-      }
-
-      const root = (this as unknown as { element?: { querySelectorAll?: Function } }).element;
-
-      if (!root?.querySelectorAll) {
-        return;
-      }
-
-      const dieButtons = root.querySelectorAll("[data-die-id]") as Iterable<HTMLElement>;
-
-      for (const el of dieButtons) {
-        el.addEventListener("click", () => {
-          const dieId = el.dataset.dieId;
-
-          if (dieId) {
-            this.selectDie(dieId);
-          }
-        });
-      }
-
-      const knightButtons = root.querySelectorAll("[data-knight-id]") as Iterable<HTMLElement>;
-
-      for (const el of knightButtons) {
-        el.addEventListener("click", () => {
-          const knightId = el.dataset.knightId;
-
-          if (knightId) {
-            void this.spendOnKnight(knightId);
-          }
-        });
       }
     }
 

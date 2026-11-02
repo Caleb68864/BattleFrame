@@ -10,8 +10,8 @@ import { bandIndex } from "./bands";
 import { requireRules } from "../rules-profile";
 
 /**
- * Pulse-torpedo to-hit target number at `distanceMu` (2+/3+/4+/5+/6 by 6mu
- * band), or null beyond the 30mu maximum range.
+ * Pulse-torpedo to-hit target number at `distanceMu` (N+/... by Nmu
+ * band), or null beyond the Nmu maximum range.
  */
 export function torpedoToHit(distanceMu: number): number | null {
   if (!Number.isFinite(distanceMu) || distanceMu > requireRules().torpedoMaxRangeMu) {
@@ -28,8 +28,8 @@ export function countHits(faces: readonly number[], target: number): number {
 }
 
 /**
- * Submunition-pack dice at `distanceMu` (3D6 0-6, 2D6 6-12, 1D6 12-18), zero
- * beyond the 18mu maximum. Submunitions ignore screens, so their per-die damage
+ * Submunition-pack dice at `distanceMu` (N dice N-N, N dice 6-12, N dice 12-18), zero
+ * beyond the Nmu maximum. Submunitions ignore screens, so their per-die damage
  * uses the unscreened beam table.
  */
 export function submunitionDiceAtRange(distanceMu: number): number {

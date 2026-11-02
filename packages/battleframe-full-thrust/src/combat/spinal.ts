@@ -22,7 +22,7 @@ import { bandIndex } from "./bands";
 import { requireRules } from "../rules-profile";
 
 /**
- * Both weapons deal damage = the sum of the actual die faces (a 6 is 6 points, no
+ * Both weapons deal damage = the sum of the actual die faces (the top face is N points, no
  * reroll), and no defence reduces it. Shared here so the "damage = die score"
  * rule is expressed once.
  */
@@ -34,7 +34,7 @@ function sumFaces(faces: readonly number[]): number {
 
 /**
  * The turn-of-life index (0-based) if `turn` (1-based) is within the cannon's
- * 3-turn life, else null (not yet armed, or burnt out).
+ * multi-turn life, else null (not yet armed, or burnt out).
  */
 function novaTurnIndex(turn: number): number | null {
   if (!Number.isInteger(turn) || turn < 1 || turn > requireRules().novaCannonLifeTurns) {
@@ -48,13 +48,13 @@ export function novaCannonDamage(faces: readonly number[]): number {
   return sumFaces(faces);
 }
 
-/** Damage dice the Nova Cannon rolls on `turn` of its life (6/4/2), else 0. */
+/** Damage dice the Nova Cannon rolls on `turn` of its life (N/N/N), else 0. */
 export function novaCannonDiceForTurn(turn: number): number {
   const i = novaTurnIndex(turn);
   return i === null ? 0 : requireRules().novaCannonDiceByTurn[i];
 }
 
-/** Template diameter (inches) on `turn` of the Nova Cannon's life (2/4/6), else 0. */
+/** Template diameter (inches) on `turn` of the Nova Cannon's life (N/N/N), else 0. */
 export function novaCannonTemplateInches(turn: number): number {
   const i = novaTurnIndex(turn);
   return i === null ? 0 : requireRules().novaCannonTemplateInchesByTurn[i];
@@ -76,7 +76,7 @@ export interface NovaCannonSweep {
 
 /**
  * The Nova Cannon's contiguous forward sweep on `turn` of its life, or null if it
- * is not yet armed or has burnt out. The sweep starts at the 6mu arming point on
+ * is not yet armed or has burnt out. The sweep starts at the Nmu arming point on
  * turn 1 and continues from the previous turn's end point thereafter (see the
  * requireRules().novaCannonTravelMuByTurn note for that assumption).
  */
@@ -109,8 +109,8 @@ export function waveGunDamage(faces: readonly number[]): number {
 }
 
 /**
- * Damage dice the Wave Gun rolls at `distanceMu` (4D6 0-12, 3D6 12-24, 2D6
- * 24-36), zero beyond its 36mu reach. Boundaries belong to the nearer band.
+ * Damage dice the Wave Gun rolls at `distanceMu` (N dice 0-12, N dice 12-24, N dice
+ * 24-36), zero beyond its Nmu reach. Boundaries belong to the nearer band.
  */
 export function waveGunDiceAtRange(distanceMu: number): number {
   if (!Number.isFinite(distanceMu) || distanceMu > requireRules().waveGunMaxRangeMu) {
@@ -120,7 +120,7 @@ export function waveGunDiceAtRange(distanceMu: number): number {
 }
 
 /**
- * Template diameter (inches) the Wave Gun projects at `distanceMu` (2"/3"/4" by
+ * Template diameter (inches) the Wave Gun projects at `distanceMu` (N"/N"/N" by
  * band), zero beyond reach.
  */
 export function waveGunTemplateInches(distanceMu: number): number {

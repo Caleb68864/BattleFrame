@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { parseFleet } from "../src/data/fleet-import";
 import { requireRules } from "../src/rules-profile";
-import { withRules } from "./helpers/world";
+import { SCENARIO_RULES, withRules } from "./helpers/world";
 
 // This module ships no rules numbers; a world supplies them. See helpers/world.ts.
 let restoreFtWorld: () => void;
@@ -44,10 +44,13 @@ describe("parseFleet", () => {
     expect(ship.system.weapons[0]).toMatchObject({ kind: "beam", weaponClass: 3, destroyed: false, spent: false });
   });
 
-  it("derives the hull damage track from MASS when it is omitted (cruiser -> 3 rows)", () => {
+  it("derives the hull damage track from MASS when it is omitted (by the world's cruiser rows)", () => {
     const result = parseFleet({ ships: [{ name: "CA", mass: 32 }] });
-    // Warship DP = half MASS = 16; cruiser (19-36) -> 3 rows.
-    expect(result.ships[0].system.hull).toMatchObject({ boxes: 16, rows: 3, damage: 0 });
+    expect(result.ships[0].system.hull).toMatchObject({
+      boxes: Math.ceil(32 / SCENARIO_RULES.warshipDamageMassDivisor),
+      rows: SCENARIO_RULES.thresholdRowsCruiser,
+      damage: 0
+    });
   });
 
   it("honours an explicit hull over the derived one", () => {

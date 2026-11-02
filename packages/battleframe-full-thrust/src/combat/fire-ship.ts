@@ -11,6 +11,7 @@
  * "Threshold Check".
  */
 
+import type { AftFireOption } from "./aft-fire";
 import { type ShipActorLike } from "../data/ship-state";
 import { resolveWeaponFire, type WeaponMount, type WeaponShot } from "./fire";
 import { applyDamageAndThreshold } from "./apply-damage";
@@ -39,6 +40,8 @@ export interface FireShipParams {
   context: FireContext;
   /** Fleet Book optional layer: beams do penetrating (rerolling) damage. */
   penetrating?: boolean;
+  /** Fleet Book optional layer: conditional aft fire. Absent = rule off. */
+  aftFire?: AftFireOption;
 }
 
 export interface FireReport {
@@ -55,7 +58,7 @@ export interface FireReport {
 }
 
 export async function fireShipAtTarget(params: FireShipParams): Promise<FireReport> {
-  const { attacker, target, context, penetrating } = params;
+  const { attacker, target, context, penetrating, aftFire } = params;
 
   const distance = context.measure.between(attacker.token, target.token, "centre-to-centre").distance;
   const bearing = context.facing.bearingOf(attacker.token, target.token);
@@ -87,7 +90,8 @@ export async function fireShipAtTarget(params: FireShipParams): Promise<FireRepo
     bearing,
     targetScreenLevel,
     dice: context.dice,
-    penetrating
+    penetrating,
+    aftFire
   });
 
   // Flag any one-shot weapons that fired as spent on the attacker. Write only the
@@ -101,7 +105,7 @@ export async function fireShipAtTarget(params: FireShipParams): Promise<FireRepo
     await attacker.update(spentUpdate);
   }
 
-  const outcome = await applyDamageAndThreshold(target, fire.totalDamage, context.dice, fire.piercingHits);
+  const outcome = await applyDamageAndThreshold(target, fire.totalDamage, context.dice, fire.piercingHits, fire.penetratingDamage);
 
   return {
     distance,

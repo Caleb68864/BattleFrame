@@ -1,12 +1,12 @@
 /**
- * Fighter-vs-fighter combat (a dogfight): one group attacks another within 6mu
+ * Fighter-vs-fighter combat (a dogfight): one group attacks another within Nmu
  * in its fore arc, rolling one die per fighter (the universal kill die); the
  * defender returns fire if IT has the attacker in its own fore arc. Both attacks
  * are simultaneous -- a fighter killed this exchange still fires -- so both use
  * their pre-combat strength, then casualties apply to each group. Engine
  * services injected.
  *
- * SIMPLIFICATION: the "bases touching -> both fire regardless of facing" special
+ * SIMPLIFICATION: the (rule text removed; see the rulebook) special
  * case is not modelled; engagement uses the fore-arc rule.
  *
  * Sources: FT2/More Thrust "Fighter-to-Fighter Combat".
@@ -78,7 +78,7 @@ export async function resolveDogfight(params: DogfightParams): Promise<DogfightR
   const defenderQuality: PilotQuality = defender.system?.pilotQuality ?? "standard";
 
   // Attacker fires; the defender returns fire only if IT bears on the attacker.
-  // Interceptors roll +1/die and Aces throw an extra die; a Turkey rolls -1/die;
+  // Interceptors roll +N/die and Aces throw an extra die; a Turkey rolls -1/die;
   // a Heavy target is screened (dogfightKillsAgainst).
   const attackerRolled = await context.dice.rollPool(pilotAttackDice(attackerSize, attackerQuality), requireRules().dieSize);
   const attackerFaces = dogfightFaces(attackerRolled, attackerType, attackerQuality);

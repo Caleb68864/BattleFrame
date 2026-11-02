@@ -22,25 +22,25 @@ afterEach(() => {
 });
 
 
-describe("FT2 hull / drive costs", () => {
-  it("hull cost is 2 x mass (warship)", () => {
-    expect(hullCost(36)).toBe(72);
+describe("hull / drive costs (the scenario world's invented prices)", () => {
+  it("hull cost is the world's per-MASS price", () => {
+    expect(hullCost(36)).toBe(108);
   });
-  it("systems mass budget is half the mass", () => {
-    expect(systemsMassBudget(36)).toBe(18);
+  it("systems mass budget is the world's share of the mass", () => {
+    expect(systemsMassBudget(36)).toBe(12);
   });
-  it("main drive cost scales by class: cruiser mass 36 thrust 4 = 72", () => {
-    expect(mainDriveCost("cruiser", 36, 4)).toBe(72);
-    expect(mainDriveCost("escort", 16, 4)).toBe(16); // 16*4/4
-    expect(mainDriveCost("capital", 40, 2)).toBe(80); // 40*2/1
+  it("main drive cost scales by the world's per-class divisor", () => {
+    expect(mainDriveCost("cruiser", 36, 4)).toBe(48);
+    expect(mainDriveCost("escort", 15, 4)).toBe(12);
+    expect(mainDriveCost("capital", 40, 2)).toBe(40);
   });
   it("FTL drive costs its mass in points", () => {
     expect(ftlDriveCost(36)).toBe(36);
   });
-  it("free FCS by class: escort 1, cruiser 2, capital 3", () => {
-    expect(freeFcs("escort")).toBe(1);
-    expect(freeFcs("cruiser")).toBe(2);
-    expect(freeFcs("capital")).toBe(3);
+  it("free FCS comes from the world's per-class allowance", () => {
+    expect(freeFcs("escort")).toBe(2);
+    expect(freeFcs("cruiser")).toBe(3);
+    expect(freeFcs("capital")).toBe(4);
   });
 });
 
@@ -57,8 +57,10 @@ describe("beam battery costs (FT2 A/B/C = class 3/2/1)", () => {
   });
 });
 
-describe("designPoints (worked FT2 example -> 267)", () => {
-  it("totals the MASS 36 superheavy cruiser at 267 points", () => {
+describe("designPoints", () => {
+  // hull 108 + drive 48 + ftl 36 + screen 29 + pdaf 21 + batteries 53, in the
+  // scenario world's invented prices. Not a published worked example.
+  it("totals a design from every fitted system", () => {
     const total = designPoints({
       mass: 36,
       shipClass: "cruiser",
@@ -71,19 +73,19 @@ describe("designPoints (worked FT2 example -> 267)", () => {
         { cls: 2, arcs: 3, count: 3 }
       ]
     });
-    expect(total).toBe(267);
+    expect(total).toBe(295);
   });
 });
 
 describe("shipPointsFromSystem (points from a ship's live systems)", () => {
-  it("reproduces the worked example from an in-play ship system", () => {
+  it("reaches the same total from an in-play ship system", () => {
     const points = shipPointsFromSystem({
       mass: 36,
       thrust: 4,
       ftl: true,
       screens: 1,
       pds: 3,
-      fcs: 2, // cruiser free allowance -> no extra FCS cost
+      fcs: 3, // the cruiser's free allowance -> no extra FCS cost
       weapons: [
         { kind: "beam", weaponClass: 3, arcs: ["F", "FS", "FP"] },
         { kind: "beam", weaponClass: 3, arcs: ["F", "AS", "AP"] },
@@ -92,7 +94,7 @@ describe("shipPointsFromSystem (points from a ship's live systems)", () => {
         { kind: "beam", weaponClass: 2, arcs: ["A", "AS", "AP"] }
       ]
     });
-    expect(points).toBe(267);
+    expect(points).toBe(295);
   });
 
   it("charges extra FCS beyond the free allowance and non-beam weapons", () => {
@@ -102,14 +104,14 @@ describe("shipPointsFromSystem (points from a ship's live systems)", () => {
       ftl: false,
       screens: 0,
       pds: 0,
-      fcs: 2, // escort free 1 -> 1 extra FCS at 10
+      fcs: 3, // one beyond the escort's free allowance
       weapons: [
         { kind: "torpedo", arcs: ["F"] },
         { kind: "submunition", arcs: ["F"] },
         { kind: "needle", arcs: ["F"] }
       ]
     });
-    // hull 20 + drive (10*4/4=10) + extraFcs 10 + torpedo 15 + submunition 3 + needle 6 = 64
-    expect(points).toBe(64);
+    // hull 30 + drive 8 + extra FCS 23 + torpedo 17 + submunition 19 + needle 13
+    expect(points).toBe(110);
   });
 });

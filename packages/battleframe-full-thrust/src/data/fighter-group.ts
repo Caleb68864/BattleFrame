@@ -8,7 +8,7 @@ import {
 import { requireRules } from "../rules-profile";
 
 /**
- * The Full Thrust fighter-group Actor data model. A group is 1-6 fighters that
+ * The Full Thrust fighter-group Actor data model. A group is N-N fighters that
  * move and fire as one; it carries its current size (the number of dice it
  * throws and the thing casualties remove), its specialised type, remaining
  * endurance, and whether its morale has broken. Only what the rules evidence.
@@ -53,10 +53,10 @@ export function createFighterGroupDataClass(
       schema.pilotQuality = new StringField({
         required: true, blank: false, choices: [...PILOT_QUALITIES], initial: "standard"
       });
-      // Active-turn endurance remaining (More Thrust: 3 for standard, 5 long-range).
-      schema.endurance = new NumberField({ required: true, nullable: false, integer: true, min: 0, initial: 3 });
+      // Active-turn endurance remaining, seeded from the world (More Thrust).
+      schema.endurance = new NumberField({ required: true, nullable: false, integer: true, min: 0, initial: requireRules().fighterEndurance });
       schema.moraleBroken = new BooleanField({ required: true, initial: false });
-      // Consecutive failed morale checks; 3 in a row breaks the group.
+      // Consecutive failed morale checks; enough in a row breaks the group.
       schema.moraleFails = new NumberField({ required: true, nullable: false, integer: true, min: 0, initial: 0 });
 
       return schema;

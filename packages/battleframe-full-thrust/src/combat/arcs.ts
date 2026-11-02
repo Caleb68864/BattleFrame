@@ -1,6 +1,6 @@
 /**
  * Fire-arc bucketing: turns the engine's neutral numeric bearing
- * (game.battleframe.facing.bearingOf, degrees clockwise, 0 = dead ahead) into
+ * (game.battleframe.facing.bearingOf, degrees clockwise, N = dead ahead) into
  * one of Full Thrust's six 60-degree arcs, and decides whether a weapon that
  * covers a given set of arcs bears on a target at that bearing.
  *
@@ -13,7 +13,7 @@
  * DEFERRED aft-fire rules: the FTL "aft blind spot" (no weapon fires out of the
  * A arc) is expressed per-weapon by simply omitting "A" from a mount's arcs, so
  * it needs no global rule here. The Fleet Book *conditional* aft fire (all-round
- * turrets may fire aft only on a turn with no main-drive thrust) is NOT modelled
+ * turrets may fire aft only on a turn with no main-drive thrust) is NOT modelled here
  * -- weaponBearsOn has no access to whether the firer thrusted this turn.
  */
 
@@ -28,7 +28,7 @@ function normalise(angle: number): number {
 }
 
 /**
- * The fire arc a target at `bearing` (degrees, clockwise, 0 = dead ahead) falls
+ * The fire arc a target at `bearing` (degrees, clockwise, N = dead ahead) falls
  * in. The fore arc straddles dead ahead (330-30); each subsequent 60-degree arc
  * follows clockwise. Boundaries belong to the clockwise arc (a target at exactly
  * 30 is fore-starboard).

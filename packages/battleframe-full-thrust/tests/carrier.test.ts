@@ -10,7 +10,7 @@ import {
   isLost,
   recover
 } from "../src/combat/carrier";
-import { withRules } from "./helpers/world";
+import { SCENARIO_RULES, withRules } from "./helpers/world";
 
 // This module ships no rules numbers; a world supplies them. See helpers/world.ts.
 let restoreFtWorld: () => void;
@@ -161,15 +161,15 @@ describe("isLost", () => {
 
 describe("recover", () => {
   it("refuels a group back to its type's full endurance, preserving other fields", () => {
-    // standard type -> 3 endurance restored
+    // standard type -> the scenario world's standard endurance restored
     expect(recover({ endurance: 0, fighterType: "standard", size: 6 })).toEqual({
-      endurance: 3,
+      endurance: SCENARIO_RULES.fighterEndurance,
       fighterType: "standard",
       size: 6
     });
     // Long-Range -> 5 restored
     expect(recover({ endurance: 1, fighterType: "long-range" })).toEqual({
-      endurance: 5,
+      endurance: SCENARIO_RULES.fighterEnduranceLongRange,
       fighterType: "long-range"
     });
   });

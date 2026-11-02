@@ -50,6 +50,15 @@ interface DialogChooseOptions {
  */
 export interface DialogChooserLike {
   choose: (options: DialogChooseOptions) => Promise<string | null | undefined>;
+  /** Foundry's yes/no dialog, when it has one. Resolves true only on an explicit yes. */
+  confirm?: (options: DialogConfirmOptions) => Promise<boolean>;
+}
+
+interface DialogConfirmOptions {
+  title: string;
+  content: string;
+  yesLabel: string;
+  noLabel: string;
 }
 
 /**
@@ -66,21 +75,26 @@ export function resolveDialogChooser(): DialogChooserLike | undefined {
     foundry?: {
       applications?: {
         api?: {
-          DialogV2?: { wait?: (options: Record<string, unknown>) => Promise<unknown> };
+          DialogV2?: {
+            wait?: (options: Record<string, unknown>) => Promise<unknown>;
+            confirm?: (options: Record<string, unknown>) => Promise<unknown>;
+          };
         };
       };
     };
   };
 
-  const dialogV2Wait = globalScope.foundry?.applications?.api?.DialogV2?.wait;
+  // Kept as the class, and called as a method: Foundry's static wait/confirm read
+  // `this`, so a detached reference throws and every prompt takes its default.
+  const dialogV2 = globalScope.foundry?.applications?.api?.DialogV2;
 
-  if (typeof dialogV2Wait !== "function") {
+  if (typeof dialogV2?.wait !== "function") {
     return undefined;
   }
 
   return {
     choose: async ({ title, content, buttons }) => {
-      const result = await dialogV2Wait({
+      const result = await dialogV2.wait!({
         window: { title },
         content,
         modal: true,
@@ -89,6 +103,18 @@ export function resolveDialogChooser(): DialogChooserLike | undefined {
 
       return typeof result === "string" ? result : null;
     },
+    ...(typeof dialogV2.confirm === "function"
+      ? {
+          confirm: async ({ title, content, yesLabel, noLabel }: DialogConfirmOptions) =>
+            (await dialogV2.confirm!({
+              window: { title },
+              content,
+              modal: true,
+              yes: { label: yesLabel },
+              no: { label: noLabel },
+            })) === true,
+        }
+      : {}),
   };
 }
 
@@ -203,21 +229,24 @@ export async function promptResetConfirmation(
   }
 
   try {
+    const title = localize("battleframe-greathelm.prompts.resetBattle.title", "Start a new battle?");
+    const content = `<p>${localize(
+      "battleframe-greathelm.prompts.resetBattle.body",
+      "This clears every knight's wounds, momentum and flight. This cannot be undone."
+    )}</p>`;
+    const yesLabel = localize("battleframe-greathelm.prompts.resetBattle.confirm", "New Battle");
+    const noLabel = localize("battleframe-greathelm.prompts.resetBattle.cancel", "Cancel");
+
+    if (dialog.confirm) {
+      return await dialog.confirm({ title, content, yesLabel, noLabel });
+    }
+
     const chosen = await dialog.choose({
-      title: localize("battleframe-greathelm.prompts.resetBattle.title", "Start a new battle?"),
-      content: `<p>${localize(
-        "battleframe-greathelm.prompts.resetBattle.body",
-        "This clears every knight's wounds, momentum and flight. This cannot be undone."
-      )}</p>`,
+      title,
+      content,
       buttons: [
-        {
-          id: "confirm",
-          label: localize("battleframe-greathelm.prompts.resetBattle.confirm", "New Battle"),
-        },
-        {
-          id: "cancel",
-          label: localize("battleframe-greathelm.prompts.resetBattle.cancel", "Cancel"),
-        },
+        { id: "confirm", label: yesLabel },
+        { id: "cancel", label: noLabel },
       ],
     });
 
