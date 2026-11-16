@@ -4186,6 +4186,21 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - With no restorable order (no engine rounds service) it warns `noFireOrder` instead of
   silently doing nothing; Fire treats that case as free fire, but there is nothing to end.
 - Scene tool chosen over a chat-card button: Fire is a scene tool, and chat-card buttons need
-  a render hook this module does not have. Not added to the token HUD; a follow-up if wanted.
+  a render hook this module does not have. Not added to the token HUD at first; see the next entry.
 - Strings: `controls.doneFiring`, `notify.doneFiring`, `notify.noFireOrder`.
 - Not checked in a running Foundry. Commit: this commit.
+
+## 2026-11-16 — "Done firing" on the ship token HUD
+- Follow-up to the entry above. Uses the existing `renderTokenHUD` hook in
+  `ui/token-hud-actions.ts`; no new hook or pattern.
+- Not added to the per-actor `BUTTON_CATALOGUE`: its gate depends on the fire order, not the
+  ship's systems. A new `tokenHudButtonModels(token, phase, showDoneFiring)` adds
+  `DONE_FIRING_HUD_BUTTON` to `hudButtonModels` output; the hook now calls it.
+- Visibility is `mayShowDoneFiring(token)` in `round-control.ts`: GM, `firePhaseActive`, a
+  restorable `activeFireOrder`, and `canShipFire` for that token's side and id. The same checks
+  as `doneFiringAction` but with no toasts, since it runs on every HUD render. Players never see
+  the button.
+- The click goes through the HUD's usual `runHudAction` (control the token, `runGuarded`), so it
+  runs `doneFiringAction` against that ship, which re-checks everything.
+- Placement: right after Fire (matching the scene tool), else before Hold.
+- Tests: `done-firing-hud` (15). Not checked in a running Foundry. Commit: this commit.
