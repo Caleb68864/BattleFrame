@@ -43,7 +43,13 @@ by unit tests only. No Foundry world was available to that session.
    **Closed 2026-11-16 (owner decision):** a GM "Done firing" scene tool (`doneFiringAction`, core
    band right after Fire) ends the controlled ship's fire activation without beams and advances to
    the next side through the same `advanceFireOrder` Fire uses. Same gate as Fire (GM, fire phase,
-   active side's unfired ship). Strings in `lang/en.json`. Not on the token HUD yet. Unverified live.
+   active side's unfired ship). Strings in `lang/en.json`. Unverified live.
+
+   **Token HUD 2026-11-16:** Done firing is also a ship token-HUD button (`DONE_FIRING_HUD_BUTTON`,
+   added by `tokenHudButtonModels` right after Fire, or before Hold when the ship has no Fire). It
+   shows only when `mayShowDoneFiring(token)` holds -- the same checks, silently: GM, fire phase, a
+   restorable order, and that token's ship is one of the active side's unfired ships -- and runs
+   the same `doneFiringAction`. Reuses `controls.doneFiring`. Unverified live.
 5. ~~**[wire] Damage control.**~~ ✅ **DONE 2026-07-22.** `resolveDamageControl` + GM tool.
 6. ~~**[wire] Ship-design points.**~~ ✅ **DONE 2026-07-22.** `shipPointsFromSystem`. **Corrected
    2026-11-02:** every price it uses now comes from the world's profile, see the audit.

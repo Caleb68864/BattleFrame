@@ -33,6 +33,8 @@ import {
   launchFightersAction,
   recoverFightersAction,
   holdShipAction,
+  doneFiringAction,
+  mayShowDoneFiring,
   currentPhase,
   runGuarded
 } from "./round-control";
@@ -81,6 +83,21 @@ const BUTTON_CATALOGUE: readonly HudButtonModel[] = [
 ];
 
 /**
+ * Done firing on the HUD: ends this ship's fire activation and passes the turn,
+ * through the SAME `doneFiringAction` the GM scene tool runs. Not in the per-actor
+ * catalogue because its gate depends on the fire order, not the ship's systems:
+ * `tokenHudButtonModels` adds it only when `mayShowDoneFiring(token)` holds.
+ */
+export const DONE_FIRING_HUD_BUTTON: HudButtonModel = {
+  key: "doneFiring",
+  phase: "fire",
+  icon: "fa-hand",
+  tooltipKey: `${MODULE_ID}.controls.doneFiring`,
+  tooltipFallback: "Done firing (end this ship's fire activation)",
+  action: doneFiringAction
+};
+
+/**
  * The HUD buttons a token should show: none unless it is a Full Thrust ship, then
  * only those (a) whose availability flag is live for its current system + damage
  * state AND (b) that belong to the current turn `phase` (so plot-phase HUDs show
@@ -101,6 +118,27 @@ export function hudButtonModels(
     const inPhase = phase === undefined || model.phase === undefined || model.phase === phase;
     return availableNow && inPhase;
   });
+}
+
+/**
+ * The full HUD set for a token: its per-actor buttons (`hudButtonModels`) plus
+ * Done firing when `mayShowDoneFiring` holds (GM, fire phase, and this ship is one
+ * of the active side's unfired ships). Done firing sits right after Fire, matching
+ * the scene tool's order; it is appended when the ship has no Fire button.
+ */
+export function tokenHudButtonModels(
+  token: { actor?: { type?: string; system?: unknown } } | undefined,
+  phase?: TurnPhase,
+  showDoneFiring: (token: unknown) => boolean = mayShowDoneFiring
+): HudButtonModel[] {
+  const models = hudButtonModels(token?.actor, phase);
+  if (token?.actor?.type !== SHIP_TYPE || !showDoneFiring(token)) {
+    return models;
+  }
+  const fireAt = models.findIndex((m) => m.key === "fire");
+  const holdAt = models.findIndex((m) => m.key === "hold");
+  const at = fireAt >= 0 ? fireAt + 1 : holdAt >= 0 ? holdAt : models.length;
+  return [...models.slice(0, at), DONE_FIRING_HUD_BUTTON, ...models.slice(at)];
 }
 
 // --- DOM injection (DOM-tolerant so it tests with a fake element) ------------
@@ -202,7 +240,8 @@ export function registerTokenHudActions(): void {
   hooks.on("renderTokenHUD", (hud: any, html: unknown) => {
     const token = hud?.object;
     // Show only the CURRENT phase's actions (plot-phase -> Plot; fire-phase -> weapons).
-    const models = hudButtonModels(token?.actor, currentPhase());
+    // Done firing joins them when this ship may end its fire activation (GM only).
+    const models = tokenHudButtonModels(token, currentPhase());
     if (models.length === 0) {
       return;
     }

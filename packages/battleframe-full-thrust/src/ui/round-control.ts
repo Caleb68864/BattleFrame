@@ -771,6 +771,20 @@ export async function doneFiringAction(): Promise<void> {
   await advanceFireOrder(order, shipToken.id);
 }
 
+/**
+ * Whether the token HUD should offer Done firing for `token`: the same checks
+ * `doneFiringAction` makes (GM, fire phase, a running fire order, and the token's
+ * ship is one of the active side's unfired ships), but silent -- a HUD render must
+ * not toast. Exported for the token-HUD wiring and its tests.
+ */
+export function mayShowDoneFiring(token: any): boolean {
+  if (!isGM() || !token?.id || !firePhaseActive()) {
+    return false;
+  }
+  const order = activeFireOrder();
+  return order !== undefined && canShipFire(order, shipSideOf(token), token.id);
+}
+
 /** Needle-tool action: snipe one nominated system on the targeted ship. */
 export async function needleAction(): Promise<void> {
   if (!isGM()) {
