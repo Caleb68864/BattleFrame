@@ -49,8 +49,11 @@ by unit tests only. No Foundry world was available to that session.
     the tracker landed 2026-07-22. The fully localized cards landed now: the fire-phase line, side
     names, targeting rows and spinal heading go through `src/localize.ts`, and
     `tests/localized-cards.test.ts` fails on any key missing from `lang/en.json`. Every report card
-    also now carries a speaker (`postReportCard`). Toasts (`notify`) are still English. Unverified
-    live.
+    also now carries a speaker (`postReportCard`). **Toasts localized 2026-11-16:** every `notify` in
+    `ui/round-control.ts` names a `notify.*` key in `lang/en.json`, with the English as fallback;
+    `tests/localized-toasts.test.ts` fails on a raw-text toast, a missing key or an unsupplied
+    placeholder. Not covered: the ownership warning's toast fallback (`ui/ownership-warning.ts`) and
+    the dialog titles/labels, which are still English. Unverified live.
 13. ~~**[qol] Friendlier plot entry.**~~ ✅ **DONE 2026-07-22.**
 
 ## P2 — Advanced rules (need new math)

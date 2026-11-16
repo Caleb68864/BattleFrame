@@ -4136,3 +4136,20 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   written by several modules as a literal. Swapping the engine alone would split the
   namespace on a rename, silently. Reasoning in `docs/roadmap-foundry-integration.md`.
 
+
+## 2026-11-16 — Full Thrust toasts localized (roadmap P1 #12 remnant)
+- Audit first: every P0 item (fire order, PDS vs fighters and missiles, needle, salvo,
+  damage control, design points) and every P1 item has a caller in the shipped code
+  (scene tools in `ui/round-control.ts`, the ship sheet, `data/ship.ts`). The one
+  remnant the roadmap named was "Toasts (`notify`) are still English".
+- Fix: `notify(kind, key, fallback, data?)` routes through `tr()` under
+  `battleframe-full-thrust.notify.<key>`; 64 keys added to `lang/en.json`. Where the
+  old text branched (`" -- ready to fire"`, missiles flown, in range vs short, ready vs
+  not), the call picks between two keys rather than formatting a fragment, so a
+  translation never has to splice English.
+- The `${MODULE_ID} | ` prefix stays outside the translation: it is an identifier, and
+  existing tests match on it.
+- Kept the old wording "all N bay(s) are empty -- recover a group first" though it
+  reads backwards (the bays are full); changing text was out of scope.
+- Not done: dialog titles/labels and the ownership warning remain English.
+- Not checked in a running Foundry. Commit: this commit.

@@ -494,8 +494,12 @@ function api(): RoundControlApi | undefined {
   return scope.game?.battleframe ?? scope.battleframe;
 }
 
-function notify(kind: "warn" | "error" | "info", text: string): void {
-  g().ui?.notifications?.[kind]?.(text);
+/**
+ * A toast, localized: `key` names `battleframe-full-thrust.notify.<key>` in
+ * `lang/en.json`; `fallback` is the English shown when no translation is loaded.
+ */
+function notify(kind: "warn" | "error" | "info", key: string, fallback: string, data?: Record<string, unknown>): void {
+  g().ui?.notifications?.[kind]?.(`${MODULE_ID} | ${tr(`${MODULE_ID}.notify.${key}`, fallback, data)}`);
 }
 
 /**
@@ -513,7 +517,7 @@ export function runGuarded(fn: () => unknown): void {
     .then(fn)
     .catch((error) => {
       console.warn(`${MODULE_ID} | action failed`, error);
-      notify("error", `${MODULE_ID} | action failed -- see console`);
+      notify("error", "actionFailed", `action failed -- see console`);
     });
 }
 
@@ -525,7 +529,7 @@ function isGM(): boolean {
 function controlledToken(): any | undefined {
   const controlled = g().canvas?.tokens?.controlled ?? [];
   if (controlled.length !== 1) {
-    notify("warn", `${MODULE_ID} | select exactly one of your ships first`);
+    notify("warn", "selectOneShip", `select exactly one of your ships first`);
     return undefined;
   }
   return controlled[0];
@@ -536,7 +540,7 @@ function targetedToken(): any | undefined {
   const targets = g().game?.user?.targets;
   const first = targets && typeof targets.first === "function" ? targets.first() : undefined;
   if (!first) {
-    notify("warn", `${MODULE_ID} | target one enemy ship (T over the token) first`);
+    notify("warn", "targetOneShip", `target one enemy ship (T over the token) first`);
     return undefined;
   }
   return first;
@@ -572,12 +576,12 @@ function toFiringShip(token: any): (FiringShip & { name?: string }) | undefined 
 /** Fire-tool action: resolve the controlled ship's fire at the targeted ship. */
 export async function fireAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM resolves fire`);
+    notify("warn", "gmResolvesFire", `only the GM resolves fire`);
     return;
   }
   const services = api();
   if (!services) {
-    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+    notify("error", "noServices", `the battleframe services were not found`);
     return;
   }
   const attackerToken = controlledToken();
@@ -615,7 +619,7 @@ export async function fireAction(): Promise<void> {
 
   const target = toFiringShip(targetToken);
   if (!target) {
-    notify("warn", `${MODULE_ID} | the target needs a ship actor`);
+    notify("warn", "targetNeedsShip", `the target needs a ship actor`);
     return;
   }
 
@@ -636,7 +640,7 @@ export async function fireAction(): Promise<void> {
 
   const attacker = toFiringShip(attackerToken);
   if (!attacker) {
-    notify("warn", `${MODULE_ID} | the attacker needs a ship actor`);
+    notify("warn", "attackerNeedsShip", `the attacker needs a ship actor`);
     return;
   }
 
@@ -644,7 +648,7 @@ export async function fireAction(): Promise<void> {
   // side's still-unfired ships may fire. With no fire phase, firing is free.
   const order = activeFireOrder();
   if (order && !canShipFire(order, shipSideOf(attackerToken), attackerToken.id)) {
-    notify("warn", `${MODULE_ID} | it is side ${order.activeSideId()}'s turn to fire (pick one of its ships)`);
+    notify("warn", "notYourSide", `it is side ${order.activeSideId()}'s turn to fire (pick one of its ships)`, { side: order.activeSideId() });
     return;
   }
 
@@ -663,12 +667,12 @@ export async function fireAction(): Promise<void> {
  */
 export async function splitFireAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM resolves fire`);
+    notify("warn", "gmResolvesFire", `only the GM resolves fire`);
     return;
   }
   const services = api();
   if (!services) {
-    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+    notify("error", "noServices", `the battleframe services were not found`);
     return;
   }
   const attackerToken = controlledToken();
@@ -680,23 +684,23 @@ export async function splitFireAction(): Promise<void> {
   }
   const targetTokens = targetedTokens();
   if (targetTokens.length === 0) {
-    notify("warn", `${MODULE_ID} | target one or more enemy ships (T over each) first`);
+    notify("warn", "targetShips", `target one or more enemy ships (T over each) first`);
     return;
   }
   const attacker = toFiringShip(attackerToken);
   if (!attacker) {
-    notify("warn", `${MODULE_ID} | the attacker needs a ship actor`);
+    notify("warn", "attackerNeedsShip", `the attacker needs a ship actor`);
     return;
   }
   const targets = targetTokens.map(toFiringShip).filter(Boolean) as (FiringShip & { name?: string })[];
   if (targets.length === 0) {
-    notify("warn", `${MODULE_ID} | the targets need ship actors`);
+    notify("warn", "targetsNeedShips", `the targets need ship actors`);
     return;
   }
 
   const order = activeFireOrder();
   if (order && !canShipFire(order, shipSideOf(attackerToken), attackerToken.id)) {
-    notify("warn", `${MODULE_ID} | it is side ${order.activeSideId()}'s turn to fire (pick one of its ships)`);
+    notify("warn", "notYourSide", `it is side ${order.activeSideId()}'s turn to fire (pick one of its ships)`, { side: order.activeSideId() });
     return;
   }
 
@@ -719,12 +723,12 @@ export async function splitFireAction(): Promise<void> {
 /** Needle-tool action: snipe one nominated system on the targeted ship. */
 export async function needleAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM resolves fire`);
+    notify("warn", "gmResolvesFire", `only the GM resolves fire`);
     return;
   }
   const services = api();
   if (!services) {
-    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+    notify("error", "noServices", `the battleframe services were not found`);
     return;
   }
   const attackerToken = controlledToken();
@@ -734,7 +738,7 @@ export async function needleAction(): Promise<void> {
   }
   const target = toFiringShip(targetToken);
   if (!target || !attackerToken.actor) {
-    notify("warn", `${MODULE_ID} | both tokens need a ship actor`);
+    notify("warn", "bothNeedShips", `both tokens need a ship actor`);
     return;
   }
 
@@ -772,12 +776,12 @@ export async function needleAction(): Promise<void> {
 /** Salvo-tool action: launch a salvo at the targeted ship. */
 export async function salvoAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM resolves fire`);
+    notify("warn", "gmResolvesFire", `only the GM resolves fire`);
     return;
   }
   const services = api();
   if (!services) {
-    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+    notify("error", "noServices", `the battleframe services were not found`);
     return;
   }
   const attackerToken = controlledToken();
@@ -787,7 +791,7 @@ export async function salvoAction(): Promise<void> {
   }
   const target = toFiringShip(targetToken);
   if (!target || !attackerToken.actor) {
-    notify("warn", `${MODULE_ID} | both tokens need a ship actor`);
+    notify("warn", "bothNeedShips", `both tokens need a ship actor`);
     return;
   }
 
@@ -816,7 +820,7 @@ export async function salvoAction(): Promise<void> {
 export async function checkTargetingAction(): Promise<void> {
   const services = api();
   if (!services) {
-    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+    notify("error", "noServices", `the battleframe services were not found`);
     return;
   }
   const attackerToken = controlledToken();
@@ -826,7 +830,7 @@ export async function checkTargetingAction(): Promise<void> {
   }
   const attacker = toFiringShip(attackerToken);
   if (!attacker || !attacker.system) {
-    notify("warn", `${MODULE_ID} | select one of your ships to check its targeting`);
+    notify("warn", "selectShipTargeting", `select one of your ships to check its targeting`);
     return;
   }
 
@@ -888,7 +892,7 @@ function courseForward(course: number): { fx: number; fy: number } {
  */
 export async function launchMissileAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM launches missiles`);
+    notify("warn", "gmLaunchesMissiles", `only the GM launches missiles`);
     return;
   }
   const token = controlledToken();
@@ -919,7 +923,7 @@ export async function launchMissileAction(): Promise<void> {
     ownerDisposition: disposition
   });
   await saveMissiles(missiles);
-  notify("info", `${MODULE_ID} | ${warhead} missile launched (course ${course})`);
+  notify("info", "missileLaunched", `${warhead} missile launched (course ${course})`, { warhead, course });
 }
 
 /** Prompts for a missile warhead (and, for Needle, the target system). */
@@ -959,11 +963,11 @@ function missileToken(missile: ActiveMissile, scene: unknown): unknown {
  */
 export async function advanceMissilesAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM runs the missile phase`);
+    notify("warn", "gmMissilePhase", `only the GM runs the missile phase`);
     return;
   }
   if (loadMissiles().length === 0) {
-    notify("info", `${MODULE_ID} | no missiles in flight`);
+    notify("info", "noMissiles", `no missiles in flight`);
     return;
   }
   await advanceMissilesCore();
@@ -1019,7 +1023,7 @@ async function advanceMissilesCore(): Promise<void> {
     if (!struck && !missileExpired(moved)) {
       survivors.push(moved);
     } else if (!struck && missileExpired(moved)) {
-      notify("info", `${MODULE_ID} | a missile burned out`);
+      notify("info", "missileBurnedOut", `a missile burned out`);
     }
   }
 
@@ -1063,12 +1067,12 @@ async function resolveSpinalWeapon(
 /** Shared setup for a spinal tool: GM check + controlled/targeted ship + range. */
 function spinalContext(): { services: RoundControlApi; target: FiringShip & { name?: string }; targetName: string; distance: number } | undefined {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM fires spinal weapons`);
+    notify("warn", "gmSpinal", `only the GM fires spinal weapons`);
     return undefined;
   }
   const services = api();
   if (!services) {
-    notify("error", `${MODULE_ID} | the battleframe services were not found`);
+    notify("error", "noServices", `the battleframe services were not found`);
     return undefined;
   }
   const attackerToken = controlledToken();
@@ -1078,7 +1082,7 @@ function spinalContext(): { services: RoundControlApi; target: FiringShip & { na
   }
   const target = toFiringShip(targetToken);
   if (!target) {
-    notify("warn", `${MODULE_ID} | the target needs a ship actor`);
+    notify("warn", "targetNeedsShip", `the target needs a ship actor`);
     return undefined;
   }
   const distance = services.measure.between(attackerToken, targetToken, "centre-to-centre").distance;
@@ -1100,7 +1104,7 @@ export async function fireNovaCannonAction(): Promise<void> {
  */
 export async function chargeWaveGunAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM charges the Wave Gun`);
+    notify("warn", "gmWaveGun", `only the GM charges the Wave Gun`);
     return;
   }
   const services = api();
@@ -1112,7 +1116,13 @@ export async function chargeWaveGunAction(): Promise<void> {
   const [face] = await services.dice.rollPool(1, requireRules().dieSize, { rulesetId: MODULE_ID, flavor: "Wave Gun charge" });
   const next = waveGunChargeAfterTurn(current, face ?? 0);
   await ship.actor.setFlag?.(MODULE_ID, WAVE_GUN_CHARGE_FLAG, next);
-  notify("info", `${MODULE_ID} | Wave Gun charge ${next}/${requireRules().waveGunFullCharge}${waveGunIsCharged(next) ? " -- ready to fire" : ""}`);
+  const full = requireRules().waveGunFullCharge;
+  notify(
+    "info",
+    waveGunIsCharged(next) ? "waveGunReady" : "waveGunCharge",
+    `Wave Gun charge ${next}/${full}${waveGunIsCharged(next) ? " -- ready to fire" : ""}`,
+    { charge: next, full }
+  );
 }
 
 /** Wave-Gun tool: fire at the target if charged (6+); firing discharges it. */
@@ -1124,7 +1134,8 @@ export async function fireWaveGunAction(): Promise<void> {
   const ship = controlledToken();
   const charge = Number(ship?.actor?.getFlag?.(MODULE_ID, WAVE_GUN_CHARGE_FLAG) ?? 0);
   if (!waveGunIsCharged(charge)) {
-    notify("warn", `${MODULE_ID} | Wave Gun not charged (${charge}/${requireRules().waveGunFullCharge}) -- use Charge Wave Gun first`);
+    const full = requireRules().waveGunFullCharge;
+    notify("warn", "waveGunNotCharged", `Wave Gun not charged (${charge}/${full}) -- use Charge Wave Gun first`, { charge, full });
     return;
   }
   await resolveSpinalWeapon("Wave Gun", waveGunDiceAtRange(ctx.distance), ctx.distance, ctx.target, ctx.targetName, waveGunDamage, ctx.services);
@@ -1146,7 +1157,7 @@ export async function fighterMoveAction(): Promise<void> {
   }
   const type = groupToken.actor?.type as string | undefined;
   if (!type?.endsWith(FIGHTER_GROUP_ACTOR_TYPE)) {
-    notify("warn", `${MODULE_ID} | select one of your fighter groups to move`);
+    notify("warn", "selectFighters", `select one of your fighter groups to move`);
     return;
   }
   const ppm = tokenScale(groupToken);
@@ -1162,9 +1173,12 @@ export async function fighterMoveAction(): Promise<void> {
   const halfW = (groupToken.w ?? 0) / 2;
   const halfH = (groupToken.h ?? 0) / 2;
   await doc?.update?.({ x: reach.intercept.x * ppm - halfW, y: reach.intercept.y * ppm - halfH });
+  const short = Math.round(reach.distanceToTarget);
   notify(
     "info",
-    `${MODULE_ID} | fighters moved${reach.canAttack ? " — in strike range" : ` — ${Math.round(reach.distanceToTarget)}mu short`}`
+    reach.canAttack ? "fightersInRange" : "fightersShort",
+    `fighters moved${reach.canAttack ? " — in strike range" : ` — ${short}mu short`}`,
+    { short }
   );
 }
 
@@ -1176,7 +1190,7 @@ export async function fighterMoveAction(): Promise<void> {
  */
 export async function launchFightersAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM launches fighters`);
+    notify("warn", "gmLaunchesFighters", `only the GM launches fighters`);
     return;
   }
   const carrier = controlledToken();
@@ -1185,12 +1199,12 @@ export async function launchFightersAction(): Promise<void> {
   }
   const bays = Number(carrier.actor.system?.bays ?? 0);
   if (bays <= 0) {
-    notify("warn", `${MODULE_ID} | that ship has no fighter bays (set system.bays)`);
+    notify("warn", "noBays", `that ship has no fighter bays (set system.bays)`);
     return;
   }
   const deployed = Number(carrier.actor.getFlag?.(MODULE_ID, LAUNCHED_GROUPS_FLAG) ?? 0);
   if (deployed >= bayCapacity(bays).groups) {
-    notify("info", `${MODULE_ID} | all ${bays} bay(s) are empty -- recover a group first`);
+    notify("info", "baysFull", `all ${bays} bay(s) are empty -- recover a group first`, { bays });
     return;
   }
 
@@ -1204,7 +1218,7 @@ export async function launchFightersAction(): Promise<void> {
     system: { size: requireRules().fighterGroupMax }
   });
   if (!group?.getTokenDocument) {
-    notify("error", `${MODULE_ID} | could not create the fighter group`);
+    notify("error", "fighterCreateFailed", `could not create the fighter group`);
     return;
   }
   // Link the token to its actor so recovery can delete both cleanly (an unlinked
@@ -1212,7 +1226,7 @@ export async function launchFightersAction(): Promise<void> {
   const td = await group.getTokenDocument({ x: start.x + offset, y: start.y - offset, disposition, width: 1, height: 1, actorLink: true });
   await carrier.document?.parent?.createEmbeddedDocuments?.("Token", [td.toObject()]);
   await carrier.actor.setFlag?.(MODULE_ID, LAUNCHED_GROUPS_FLAG, deployed + 1);
-  notify("info", `${MODULE_ID} | launched a fighter group (${deployed + 1}/${bayCapacity(bays).groups} bays used)`);
+  notify("info", "fightersLaunched", `launched a fighter group (${deployed + 1}/${bayCapacity(bays).groups} bays used)`, { used: deployed + 1, total: bayCapacity(bays).groups });
 }
 
 /**
@@ -1221,7 +1235,7 @@ export async function launchFightersAction(): Promise<void> {
  */
 export async function recoverFightersAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM recovers fighters`);
+    notify("warn", "gmRecoversFighters", `only the GM recovers fighters`);
     return;
   }
   const services = api();
@@ -1234,7 +1248,7 @@ export async function recoverFightersAction(): Promise<void> {
   const bays = Number(carrier.actor.system?.bays ?? 0);
   // launchedThisTurn and isTrueCarrier only bear on launching, not on this check.
   if (!carrierCanRecover({ bays, aboard: bays - deployed, isTrueCarrier: false, launchedThisTurn: 0, recoveredThisTurn: recovered })) {
-    notify("warn", `${MODULE_ID} | this carrier cannot recover another group this turn`);
+    notify("warn", "recoveryLimit", `this carrier cannot recover another group this turn`);
     return;
   }
   const disposition = Number(carrier.document?.disposition ?? 0);
@@ -1250,7 +1264,7 @@ export async function recoverFightersAction(): Promise<void> {
     }
   }
   if (!best) {
-    notify("warn", `${MODULE_ID} | no friendly fighter group within reach to recover`);
+    notify("warn", "noGroupInReach", `no friendly fighter group within reach to recover`);
     return;
   }
   const groupActor = best.token.actor;
@@ -1263,7 +1277,7 @@ export async function recoverFightersAction(): Promise<void> {
   } catch {
     /* the token may take its (linked) actor with it; a leftover is harmless */
   }
-  notify("info", `${MODULE_ID} | recovered a fighter group (${Math.max(0, deployed - 1)} still out)`);
+  notify("info", "fightersRecovered", `recovered a fighter group (${Math.max(0, deployed - 1)} still out)`, { out: Math.max(0, deployed - 1) });
 }
 
 /**
@@ -1294,7 +1308,7 @@ export async function vectorMoveAction(): Promise<void> {
   const manoeuvres = parseVectorOrder(orderText);
   const check = checkManoeuvres(manoeuvres, usableThrust(system));
   if (!check.legal) {
-    notify("warn", `${MODULE_ID} | illegal vector order (${check.reason})`);
+    notify("warn", "illegalVector", `illegal vector order (${check.reason})`, { reason: check.reason });
     return;
   }
   if (manoeuvres.some((m) => m.kind === "main-drive" && m.points > 0)) {
@@ -1318,7 +1332,7 @@ export async function vectorMoveAction(): Promise<void> {
     "system.course": next.facing,
     "system.velocity": speed
   });
-  notify("info", `${MODULE_ID} | vector move -- speed ${speed}mu, course ${next.facing}`);
+  notify("info", "vectorMoved", `vector move -- speed ${speed}mu, course ${next.facing}`, { speed, course: next.facing });
 }
 
 /**
@@ -1332,7 +1346,7 @@ export function toggleArcsAction(): void {
   const controlled = (g().canvas?.tokens?.controlled ?? []).filter(isShip);
   const ships = controlled.length > 0 ? controlled : (g().canvas?.tokens?.placeables ?? []).filter(isShip);
   if (ships.length === 0) {
-    notify("info", `${MODULE_ID} | no ship tokens to show fire arcs for`);
+    notify("info", "noArcShips", `no ship tokens to show fire arcs for`);
     return;
   }
   const wantPinned = !ships.some(isArcPinned);
@@ -1467,12 +1481,12 @@ export async function plotAction(): Promise<void> {
 
   const path = resolveMovementPath(system, orderText);
   if (!path.legal) {
-    notify("warn", `${MODULE_ID} | illegal order (${path.reason})`);
+    notify("warn", "illegalOrder", `illegal order (${path.reason})`, { reason: path.reason });
     return;
   }
   // Store secretly; the token stays put until maneuvers are executed.
   await token.actor.setFlag?.(MODULE_ID, PLOTTED_ORDER_FLAG, orderText);
-  notify("info", `${MODULE_ID} | plotted "${orderText || "no change"}" (hidden until execute)`);
+  notify("info", "plotted", `plotted "${orderText || "no change"}" (hidden until execute)`, { order: orderText || "no change" });
 }
 
 // --- Fire-phase turn order (initiative + strict alternation) ----------------
@@ -1506,7 +1520,7 @@ export function currentPhase(): TurnPhase {
  */
 function ensureFirePhase(): boolean {
   if (!firePhaseActive()) {
-    notify("warn", `${MODULE_ID} | Fire happens in the fire phase -- mark ready to advance`);
+    notify("warn", "fireInFirePhase", `Fire happens in the fire phase -- mark ready to advance`);
     return false;
   }
   return true;
@@ -1565,7 +1579,7 @@ async function announceFirePhase(order: ActivationOrderLike): Promise<void> {
 export async function phaseStatusAction(): Promise<void> {
   const order = activeFireOrder();
   if (!order) {
-    notify("info", `${MODULE_ID} | no fire phase is running (use Begin Fire Phase)`);
+    notify("info", "noFirePhase", `no fire phase is running (use Begin Fire Phase)`);
     return;
   }
   await announceFirePhase(order);
@@ -1580,19 +1594,19 @@ const MAX_INITIATIVE_REROLLS = 5;
  */
 export async function beginFirePhaseAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM begins the fire phase`);
+    notify("warn", "gmFirePhase", `only the GM begins the fire phase`);
     return;
   }
   const services = api();
   const rounds = services?.rounds;
   if (!rounds) {
-    notify("error", `${MODULE_ID} | the battleframe rounds service was not found`);
+    notify("error", "noRounds", `the battleframe rounds service was not found`);
     return;
   }
   const ships = collectFireShips(g().canvas?.tokens?.placeables ?? []);
   const sides = [...new Set(ships.map((s) => s.sideId))];
   if (sides.length < 2) {
-    notify("warn", `${MODULE_ID} | need ships on two sides (set one fleet Friendly, one Hostile)`);
+    notify("warn", "needTwoSides", `need ships on two sides (set one fleet Friendly, one Hostile)`);
     return;
   }
 
@@ -1610,7 +1624,7 @@ export async function beginFirePhaseAction(): Promise<void> {
     firstSideId = determineInitiative(rolls);
   }
   if (firstSideId === null) {
-    notify("warn", `${MODULE_ID} | initiative stayed tied -- try again`);
+    notify("warn", "initiativeTied", `initiative stayed tied -- try again`);
     return;
   }
 
@@ -1627,7 +1641,7 @@ export async function beginFirePhaseAction(): Promise<void> {
  */
 export async function executeManeuversAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM executes maneuvers`);
+    notify("warn", "gmExecutes", `only the GM executes maneuvers`);
     return;
   }
   const tokens = g().canvas?.tokens?.placeables ?? [];
@@ -1656,7 +1670,7 @@ export async function executeManeuversAction(): Promise<void> {
   }
 
   clearMovementPreview();
-  notify("info", `${MODULE_ID} | executed ${moved} maneuver(s)`);
+  notify("info", "executed", `executed ${moved} maneuver(s)`, { n: moved });
 }
 
 /**
@@ -1666,11 +1680,16 @@ export async function executeManeuversAction(): Promise<void> {
  */
 export async function newTurnAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM starts a new turn`);
+    notify("warn", "gmNewTurn", `only the GM starts a new turn`);
     return;
   }
   const { cleared, missilesFlown } = await advanceTurnCore();
-  notify("info", `${MODULE_ID} | new turn -- cleared ${cleared} plot(s), ended the fire phase${missilesFlown > 0 ? `, flew ${missilesFlown} missile(s)` : ""}`);
+  notify(
+    "info",
+    missilesFlown > 0 ? "newTurnMissiles" : "newTurn",
+    `new turn -- cleared ${cleared} plot(s), ended the fire phase${missilesFlown > 0 ? `, flew ${missilesFlown} missile(s)` : ""}`,
+    { cleared, missiles: missilesFlown }
+  );
 }
 
 /**
@@ -1681,7 +1700,7 @@ export async function newTurnAction(): Promise<void> {
 export async function readyAction(): Promise<void> {
   const advance = (g().game as any)?.battleframe?.advance;
   if (!advance?.toggleReady) {
-    notify("warn", `${MODULE_ID} | the battleframe advance service was not found`);
+    notify("warn", "noAdvance", `the battleframe advance service was not found`);
     return;
   }
 
@@ -1698,9 +1717,13 @@ export async function readyAction(): Promise<void> {
 
   await advance.toggleReady();
   const status = advance.status?.();
+  const ready = status?.ready?.length ?? 0;
+  const total = status?.participants?.length ?? 0;
   notify(
     "info",
-    `${MODULE_ID} | you are ${advance.isReady?.() ? "READY" : "not ready"} (${status?.ready?.length ?? 0}/${status?.participants?.length ?? 0} ready)`
+    advance.isReady?.() ? "youAreReady" : "youAreNotReady",
+    `you are ${advance.isReady?.() ? "READY" : "not ready"} (${ready}/${total} ready)`,
+    { ready, total }
   );
 }
 
@@ -1771,10 +1794,10 @@ export async function holdShipAction(): Promise<void> {
   }
   if (actor.getFlag?.(MODULE_ID, HELD_FLAG)) {
     await actor.unsetFlag?.(MODULE_ID, HELD_FLAG);
-    notify("info", `${MODULE_ID} | ${token?.name ?? "ship"} no longer held`);
+    notify("info", "unheld", `${token?.name ?? "ship"} no longer held`, { name: token?.name ?? "ship" });
   } else {
     await actor.setFlag?.(MODULE_ID, HELD_FLAG, true);
-    notify("info", `${MODULE_ID} | ${token?.name ?? "ship"} held (done this phase)`);
+    notify("info", "held", `${token?.name ?? "ship"} held (done this phase)`, { name: token?.name ?? "ship" });
   }
 }
 
@@ -1883,7 +1906,7 @@ export async function advancePhaseCore(): Promise<void> {
  */
 export async function newBattleAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM resets the battle`);
+    notify("warn", "gmNewBattle", `only the GM resets the battle`);
     return;
   }
   const confirm = g().foundry?.applications?.api?.DialogV2 as any;
@@ -1927,7 +1950,7 @@ export async function newBattleAction(): Promise<void> {
   await firePhaseDoc()?.unsetFlag(MODULE_ID, FIRE_PHASE_FLAG);
   await saveMissiles([]);
   clearMovementPreview();
-  notify("info", `${MODULE_ID} | new battle -- reset ${ships} ship(s); cleared plots, fire phase, missiles`);
+  notify("info", "newBattle", `new battle -- reset ${ships} ship(s); cleared plots, fire phase, missiles`, { n: ships });
 }
 
 /**
@@ -1937,7 +1960,7 @@ export async function newBattleAction(): Promise<void> {
  */
 export async function damageControlAction(): Promise<void> {
   if (!isGM()) {
-    notify("warn", `${MODULE_ID} | only the GM runs damage control`);
+    notify("warn", "gmDamageControl", `only the GM runs damage control`);
     return;
   }
   const services = api();
@@ -1965,7 +1988,7 @@ export async function damageControlAction(): Promise<void> {
     }
   }
 
-  notify("info", `${MODULE_ID} | damage control repaired systems on ${repairedShips} ship(s)`);
+  notify("info", "damageControl", `damage control repaired systems on ${repairedShips} ship(s)`, { n: repairedShips });
 }
 
 /**
@@ -1996,10 +2019,10 @@ export async function importFleetAction(): Promise<void> {
 
   const { ships, errors } = parseFleet(json);
   for (const error of errors) {
-    notify("warn", `${MODULE_ID} | ${error}`);
+    notify("warn", "importError", `${error}`, { error });
   }
   if (ships.length === 0) {
-    notify("warn", `${MODULE_ID} | no ships imported`);
+    notify("warn", "noShipsImported", `no ships imported`);
     return;
   }
 
@@ -2011,16 +2034,17 @@ export async function importFleetAction(): Promise<void> {
 
   const actorClass = g().Actor;
   if (!actorClass?.createDocuments) {
-    notify("error", `${MODULE_ID} | cannot create actors in this context`);
+    notify("error", "noActorCreate", `cannot create actors in this context`);
     return;
   }
   try {
     await actorClass.createDocuments(toCreate);
-    notify("info", `${MODULE_ID} | imported ${ships.length} ship(s)`);
+    notify("info", "imported", `imported ${ships.length} ship(s)`, { n: ships.length });
   } catch {
     notify(
       "error",
-      `${MODULE_ID} | could not create the ships -- ask your GM to enable "Create New Actors" ` +
+      "importNoPermission",
+      `could not create the ships -- ask your GM to enable "Create New Actors" ` +
         `for players, or to import the fleet for you`
     );
   }
