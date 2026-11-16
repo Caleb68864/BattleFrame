@@ -103,6 +103,10 @@ by unit tests only. No Foundry world was available to that session.
     Cannon's multi-turn sweep (it fires its first turn only), and wiring Sa'Vasku and Phalon as fireable
     kinds with their design and damage models.
 
+    **Fixed 2026-11-16:** Nova Cannon and Wave Gun skipped the fire-order gate the same way needles and
+    salvos did. They now take `mayFireNow` too (fire phase only, the active side's unfired ships only)
+    and, like them, do not advance the order. A refused Wave Gun keeps its charge. Unverified live.
+
 ## P3 — Live-verification debt
 
 The pure logic is unit-tested; these UI shells need a real Foundry v14 world: scene-control

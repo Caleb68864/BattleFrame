@@ -4165,3 +4165,13 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   needles or salvos has no tool that closes its activation. Left for the owner; a
   "Done firing" control or advancing when the ship has no other weapon would both do it.
 - Not checked in a running Foundry. Commit: this commit.
+
+## 2026-11-16 — Nova Cannon and Wave Gun take the fire-order gate
+- Symptom: same gap as the entry above. `fireNovaCannonAction` and `fireWaveGunAction`
+  (through `spinalContext`) checked neither the fire phase nor whose turn it is.
+- Fix: `spinalContext` calls `mayFireNow(attackerToken)` after resolving the target, so
+  both spinal tools refuse before rolling. The Wave Gun gate runs before its charge check
+  and before discharging, so a refused shot keeps the charge.
+- Same choice as needles/salvos: the order is not advanced. Charge Wave Gun is not gated;
+  charging is not firing.
+- Not checked in a running Foundry. Commit: this commit.

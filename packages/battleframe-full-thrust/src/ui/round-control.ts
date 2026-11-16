@@ -1109,6 +1109,12 @@ function spinalContext(): { services: RoundControlApi; target: FiringShip & { na
     notify("warn", "targetNeedsShip", `the target needs a ship actor`);
     return undefined;
   }
+  // The fire-order gate Needle Beam and Fire Salvo take: fire phase only, the
+  // active side's unfired ships only. Like them it leaves the order for Fire or
+  // Done Firing to close.
+  if (!mayFireNow(attackerToken)) {
+    return undefined;
+  }
   const distance = services.measure.between(attackerToken, targetToken, "centre-to-centre").distance;
   return { services, target, targetName: targetToken?.name ?? "Target", distance };
 }
