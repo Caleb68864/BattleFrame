@@ -4115,3 +4115,24 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Saved profiles read it as zero until re-imported, so knights are not removed by damage
   in those worlds until the owner of the world enters it.
 - Commit: this commit.
+
+## 2026-11-16 — Simple Skirmish units get a starting count, so a token bar has a max
+- Problem: `models` is the live count only, so there was no `max` for a token resource
+  bar (roadmap P1). InCountry had `modelCount`; Simple Skirmish had nothing.
+- Fix: `startingModels` on the unit schema and sheet, and a derived `modelsBar`
+  declared in `CONFIG.Actor.trackableAttributes`, the same shape as InCountry's.
+- The data model keeps `startingModels >= models`: `_preCreate` raises it for a unit
+  created with more models, and `_preUpdate` raises it when the sheet sets `models`
+  higher. Without that, a unit created with the default 1 and then set to 5 on the
+  sheet would draw a full bar after every casualty. Casualties only lower `models`.
+- Existing units: a GM-only `ready` pass raises `startingModels` to `models` where it
+  is lower. A unit that had already lost models gets its current count as its max;
+  the saved data cannot say more. Not `migrateData`, because Foundry also runs that on
+  partial update diffs, and copying `models` there would reset the max on every casualty.
+- Not checked in a running Foundry. Commit: this commit.
+
+## 2026-11-16 — `game.system.id` namespacing (P4) not done
+- The id is fixed, so the swap changes nothing, and the `battleframe` flag scope is
+  written by several modules as a literal. Swapping the engine alone would split the
+  namespace on a rename, silently. Reasoning in `docs/roadmap-foundry-integration.md`.
+

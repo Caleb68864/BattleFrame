@@ -9,14 +9,28 @@ and the three ruleset modules.
 | Item | Status |
 |---|---|
 | **P0** round state on Combat doc | ✅ ALL THREE rulesets (Simple Skirmish, InCountry, GREATHELM) — round state on the Combat document, live-verified to survive a reload. GREATHELM also RESUMES an in-progress round (dice-pool session restored from the document) instead of re-rolling. |
-| **P1** status effects | ✅ native `defeated`-on-threshold for ALL THREE rulesets — InCountry `suppressed`+`defeated`-on-wipe, Simple Skirmish `models==0`, GREATHELM at its damage limit/fled (all live-verified: the skull shows/clears on real actors + drops the unit from the P0 turn order). ✅ 2026-11-02, unverified live: InCountry declares a `modelsBar` resource (`{value,max}`, trackable) a token bar can bind to. ⏳ Simple Skirmish has no starting-count field to be a bar's max. ⏸ InCountry `engaged/reaction/injury/stun`: unbuilt features whose rules are not in the repo; owner. |
+| **P1** status effects | ✅ native `defeated`-on-threshold for ALL THREE rulesets — InCountry `suppressed`+`defeated`-on-wipe, Simple Skirmish `models==0`, GREATHELM at its damage limit/fled (all live-verified: the skull shows/clears on real actors + drops the unit from the P0 turn order). ✅ 2026-11-02, unverified live: InCountry declares a `modelsBar` resource (`{value,max}`, trackable) a token bar can bind to. ✅ 2026-11-16, unverified live: Simple Skirmish has a `startingModels` field (on the sheet, raised with `models` on create/update) and a derived trackable `modelsBar` (`{value: models, max: startingModels}`); existing units are migrated at `ready` by the GM. ⏸ InCountry `engaged/reaction/injury/stun`: unbuilt features whose rules are not in the repo; owner. |
 | **P2** chat/dice | ✅ `dice.rollPool` — one Roll/one card per pool (live-verified). ✅ combat OUTCOMES → ChatMessage cards through the engine's `chat.postCard`. ✅ 2026-11-02, unverified live: InCountry's round-over card, which only toasted; Full Thrust cards carry a speaker; rolls post through `Roll#toMessage`, so the native per-die breakdown replaces the bespoke card. |
 | **P3** non-gridless guard | ✅ done. |
-| **P4** native swaps | ✅ generic-sheet form/submitOnChange/prose-mirror fixed. ✅ 2026-11-02, unverified live: `isNewerVersion`, pool-panel `actions` map, `DialogV2.confirm` for the reset, roll card retired for `toMessage`. ⏳ `game.system.id` namespacing: not started, lowest value. |
+| **P4** native swaps | ✅ generic-sheet form/submitOnChange/prose-mirror fixed. ✅ 2026-11-02, unverified live: `isNewerVersion`, pool-panel `actions` map, `DialogV2.confirm` for the reset, roll card retired for `toMessage`. ⏸ `game.system.id` namespacing: assessed 2026-11-16 and not done; see below. Owner to close or keep. |
 
 Items dated 2026-07-18 are committed, tested, and verified in the live world. Items dated 2026-11-02
 are proved by unit tests only; no Foundry world was available to that session. Remaining ⏳ items are
 documented follow-ups below.
+
+Items dated 2026-11-16 are also proved by unit tests only; no Foundry world was available.
+
+**P4 `game.system.id` namespacing, why it was not done (2026-11-16).** The id is `"battleframe"` in
+`system.json`, and nothing in the repo plans to change it, so `game.system.id` and `SYSTEM_ID` are the same string and
+the swap changes no behaviour. It is also not contained: the `battleframe` flag scope is shared across
+packages — Simple Skirmish, InCountry and Stargrunt II hardcode `FLAG_SCOPE = "battleframe"`, GREATHELM
+calls `setFlag("battleframe", …)`, and the engine's combat reads the order those modules write. Every
+module's `module.json` names the system id, and the i18n keys and template paths carry it too. Swapping
+only the engine would split the namespace if the id ever did change. Worse, on a rename it would make the
+system write to a new scope while the world's data sits under the old one, silently; the hardcoded
+constant fails loudly instead, because Foundry rejects a flag scope that is not an active package (from knowledge of Foundry's source, not
+a live check). The
+recommendation is to drop the item.
 
 **Found while doing P4, not on the original list:** GREATHELM's prompts and the core's orphan-conversion
 prompt held `DialogV2.wait`/`confirm` as detached references. Foundry's statics read `this`, so the call
