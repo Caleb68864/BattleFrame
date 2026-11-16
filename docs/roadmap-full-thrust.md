@@ -32,6 +32,13 @@ by unit tests only. No Foundry world was available to that session.
 4. ~~**[wire] Salvo missiles.**~~ ✅ **DONE 2026-07-22.** `combat/salvo.ts` + "Fire Salvo" tool.
    SIMPLIFICATION: resolves directly against a chosen target; the point-of-aim and
    movement-prediction step is deferred.
+
+   **Fixed 2026-11-16 (#1, #3, #4):** both tools skipped the fire-order gate, so a GM could needle
+   or launch a salvo during plotting or out of turn. They now take Fire's gate (`mayFireNow`): the
+   fire phase only, the active side's unfired ships only. They do not advance the order, since a
+   ship fires every weapon in one activation and the Fire tool closes it; use them before Fire. A
+   ship armed only with needles or salvos therefore never closes its activation through them.
+   Unverified live.
 5. ~~**[wire] Damage control.**~~ ✅ **DONE 2026-07-22.** `resolveDamageControl` + GM tool.
 6. ~~**[wire] Ship-design points.**~~ ✅ **DONE 2026-07-22.** `shipPointsFromSystem`. **Corrected
    2026-11-02:** every price it uses now comes from the world's profile, see the audit.

@@ -720,6 +720,24 @@ export async function splitFireAction(): Promise<void> {
   }
 }
 
+/**
+ * The fire-phase gate Fire and Split Fire apply, for the weapons that resolve on
+ * their own tool (Needle Beam, Fire Salvo): only in the fire phase, and only the
+ * active side's still-unfired ships. It does not advance the order -- a ship fires
+ * every weapon in one activation, and the Fire tool is what closes it.
+ */
+function mayFireNow(attackerToken: any): boolean {
+  if (!ensureFirePhase()) {
+    return false;
+  }
+  const order = activeFireOrder();
+  if (order && !canShipFire(order, shipSideOf(attackerToken), attackerToken.id)) {
+    notify("warn", "notYourSide", `it is side ${order.activeSideId()}'s turn to fire (pick one of its ships)`, { side: order.activeSideId() });
+    return false;
+  }
+  return true;
+}
+
 /** Needle-tool action: snipe one nominated system on the targeted ship. */
 export async function needleAction(): Promise<void> {
   if (!isGM()) {
@@ -739,6 +757,9 @@ export async function needleAction(): Promise<void> {
   const target = toFiringShip(targetToken);
   if (!target || !attackerToken.actor) {
     notify("warn", "bothNeedShips", `both tokens need a ship actor`);
+    return;
+  }
+  if (!mayFireNow(attackerToken)) {
     return;
   }
 
@@ -792,6 +813,9 @@ export async function salvoAction(): Promise<void> {
   const target = toFiringShip(targetToken);
   if (!target || !attackerToken.actor) {
     notify("warn", "bothNeedShips", `both tokens need a ship actor`);
+    return;
+  }
+  if (!mayFireNow(attackerToken)) {
     return;
   }
 

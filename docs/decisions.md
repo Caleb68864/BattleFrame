@@ -4153,3 +4153,15 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   reads backwards (the bays are full); changing text was out of scope.
 - Not done: dialog titles/labels and the ownership warning remain English.
 - Not checked in a running Foundry. Commit: this commit.
+
+## 2026-11-16 — Needle Beam and Fire Salvo take the fire-order gate
+- Symptom: `fireAction` and `splitFireAction` refuse outside the fire phase and out of
+  turn (`ensureFirePhase`, `canShipFire`). `needleAction` and `salvoAction` checked
+  neither, so the P0 fire order (roadmap #1) was bypassable through two of its own tools.
+- Fix: `mayFireNow(attackerToken)`, the same two checks, called by both.
+- Deliberately does **not** call `advanceFireOrder`. A ship fires every weapon in one
+  activation and the Fire tool resolves its beams and closes it; advancing on a needle
+  shot would lock the ship out of its beams. The cost: a ship whose only weapons are
+  needles or salvos has no tool that closes its activation. Left for the owner; a
+  "Done firing" control or advancing when the ship has no other weapon would both do it.
+- Not checked in a running Foundry. Commit: this commit.
