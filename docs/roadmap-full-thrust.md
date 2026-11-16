@@ -39,6 +39,11 @@ by unit tests only. No Foundry world was available to that session.
    ship fires every weapon in one activation and the Fire tool closes it; use them before Fire. A
    ship armed only with needles or salvos therefore never closes its activation through them.
    Unverified live.
+
+   **Closed 2026-11-16 (owner decision):** a GM "Done firing" scene tool (`doneFiringAction`, core
+   band right after Fire) ends the controlled ship's fire activation without beams and advances to
+   the next side through the same `advanceFireOrder` Fire uses. Same gate as Fire (GM, fire phase,
+   active side's unfired ship). Strings in `lang/en.json`. Not on the token HUD yet. Unverified live.
 5. ~~**[wire] Damage control.**~~ ✅ **DONE 2026-07-22.** `resolveDamageControl` + GM tool.
 6. ~~**[wire] Ship-design points.**~~ ✅ **DONE 2026-07-22.** `shipPointsFromSystem`. **Corrected
    2026-11-02:** every price it uses now comes from the world's profile, see the audit.
@@ -102,6 +107,10 @@ by unit tests only. No Foundry world was available to that session.
     `combat/fire.ts`. Remaining, none started: the swept/expanding template on the canvas, the Nova
     Cannon's multi-turn sweep (it fires its first turn only), and wiring Sa'Vasku and Phalon as fireable
     kinds with their design and damage models.
+
+    **Fixed 2026-11-16:** Nova Cannon and Wave Gun skipped the fire-order gate the same way needles and
+    salvos did. They now take `mayFireNow` too (fire phase only, the active side's unfired ships only)
+    and, like them, do not advance the order. A refused Wave Gun keeps its charge. Unverified live.
 
 ## P3 — Live-verification debt
 

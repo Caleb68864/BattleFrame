@@ -738,6 +738,39 @@ function mayFireNow(attackerToken: any): boolean {
   return true;
 }
 
+/**
+ * Done-Firing tool (GM): ends the controlled ship's fire activation without
+ * resolving beams, and advances to the next side exactly as Fire does. This is
+ * how a ship armed only with weapons that resolve on their own tool (needles,
+ * salvos, spinal mounts) closes its activation. Same gate as Fire: fire phase
+ * only, the active side's still-unfired ships only.
+ */
+export async function doneFiringAction(): Promise<void> {
+  if (!isGM()) {
+    notify("warn", "gmResolvesFire", `only the GM resolves fire`);
+    return;
+  }
+  const shipToken = controlledToken();
+  if (!shipToken) {
+    return;
+  }
+  if (!ensureFirePhase()) {
+    return;
+  }
+  const order = activeFireOrder();
+  if (!order) {
+    notify("warn", "noFireOrder", `no fire order is running -- begin the fire phase first`);
+    return;
+  }
+  if (!canShipFire(order, shipSideOf(shipToken), shipToken.id)) {
+    notify("warn", "notYourSide", `it is side ${order.activeSideId()}'s turn to fire (pick one of its ships)`, { side: order.activeSideId() });
+    return;
+  }
+  const name = shipToken?.name ?? "ship";
+  notify("info", "doneFiring", `${name} is done firing`, { name });
+  await advanceFireOrder(order, shipToken.id);
+}
+
 /** Needle-tool action: snipe one nominated system on the targeted ship. */
 export async function needleAction(): Promise<void> {
   if (!isGM()) {
@@ -1107,6 +1140,12 @@ function spinalContext(): { services: RoundControlApi; target: FiringShip & { na
   const target = toFiringShip(targetToken);
   if (!target) {
     notify("warn", "targetNeedsShip", `the target needs a ship actor`);
+    return undefined;
+  }
+  // The fire-order gate Needle Beam and Fire Salvo take: fire phase only, the
+  // active side's unfired ships only. Like them it leaves the order for Fire or
+  // Done Firing to close.
+  if (!mayFireNow(attackerToken)) {
     return undefined;
   }
   const distance = services.measure.between(attackerToken, targetToken, "centre-to-centre").distance;
@@ -2220,6 +2259,17 @@ export function addSceneControl(controls: unknown): void {
     order: 5,
     onClick: () => runGuarded(fireAction),
   };
+  // End the controlled ship's fire activation without beams (needle/salvo/spinal-only
+  // ships) and pass the turn to the next side -- GM only, like Fire.
+  const doneFiringTool = {
+    name: "full-thrust-done-firing",
+    title: "battleframe-full-thrust.controls.doneFiring",
+    icon: "fas fa-hand",
+    button: true,
+    visible: gm,
+    order: 6,
+    onClick: () => runGuarded(doneFiringAction),
+  };
   // Start a fresh turn: clear leftover plots + end the fire phase -- GM only.
   const newTurnTool = {
     name: "full-thrust-new-turn",
@@ -2227,7 +2277,7 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-forward",
     button: true,
     visible: gm,
-    order: 6,
+    order: 7,
     onClick: () => runGuarded(newTurnAction),
   };
   // Full reset: restore all ships + clear plots/fire phase/missiles -- GM only.
@@ -2237,7 +2287,7 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-arrows-rotate",
     button: true,
     visible: gm,
-    order: 7,
+    order: 8,
     onClick: () => runGuarded(newBattleAction),
   };
   // Import a fleet from JSON -- any player (subject to Foundry's create-actor perm).
@@ -2247,7 +2297,7 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-file-import",
     button: true,
     visible: true,
-    order: 8,
+    order: 9,
     onClick: () => runGuarded(importFleetAction),
   };
 
@@ -2410,7 +2460,7 @@ export function addSceneControl(controls: unknown): void {
     tools: {} as Record<string, unknown> | unknown[]
   };
 
-  const tools = [readyTool, initiativeTool, phaseStatusTool, fireTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, chargeWaveGunTool, waveGunTool, launchFightersTool, recoverFightersTool, fighterMoveTool, vectorMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, newBattleTool, importTool];
+  const tools = [readyTool, initiativeTool, phaseStatusTool, fireTool, doneFiringTool, splitFireTool, arcsTool, targetingTool, needleTool, salvoTool, launchMissileTool, advanceMissilesTool, novaCannonTool, chargeWaveGunTool, waveGunTool, launchFightersTool, recoverFightersTool, fighterMoveTool, vectorMoveTool, plotTool, executeTool, damageControlTool, newTurnTool, newBattleTool, importTool];
   if (Array.isArray(controls)) {
     control.tools = tools;
     controls.push(control);

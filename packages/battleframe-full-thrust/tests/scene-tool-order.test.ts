@@ -22,6 +22,7 @@ const CORE = [
   "full-thrust-plot",
   "full-thrust-execute",
   "full-thrust-fire",
+  "full-thrust-done-firing",
   "full-thrust-new-turn",
   "full-thrust-new-battle",
   "full-thrust-import"
