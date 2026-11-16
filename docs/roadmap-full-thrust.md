@@ -32,6 +32,13 @@ by unit tests only. No Foundry world was available to that session.
 4. ~~**[wire] Salvo missiles.**~~ ✅ **DONE 2026-07-22.** `combat/salvo.ts` + "Fire Salvo" tool.
    SIMPLIFICATION: resolves directly against a chosen target; the point-of-aim and
    movement-prediction step is deferred.
+
+   **Fixed 2026-11-16 (#1, #3, #4):** both tools skipped the fire-order gate, so a GM could needle
+   or launch a salvo during plotting or out of turn. They now take Fire's gate (`mayFireNow`): the
+   fire phase only, the active side's unfired ships only. They do not advance the order, since a
+   ship fires every weapon in one activation and the Fire tool closes it; use them before Fire. A
+   ship armed only with needles or salvos therefore never closes its activation through them.
+   Unverified live.
 5. ~~**[wire] Damage control.**~~ ✅ **DONE 2026-07-22.** `resolveDamageControl` + GM tool.
 6. ~~**[wire] Ship-design points.**~~ ✅ **DONE 2026-07-22.** `shipPointsFromSystem`. **Corrected
    2026-11-02:** every price it uses now comes from the world's profile, see the audit.
@@ -49,8 +56,11 @@ by unit tests only. No Foundry world was available to that session.
     the tracker landed 2026-07-22. The fully localized cards landed now: the fire-phase line, side
     names, targeting rows and spinal heading go through `src/localize.ts`, and
     `tests/localized-cards.test.ts` fails on any key missing from `lang/en.json`. Every report card
-    also now carries a speaker (`postReportCard`). Toasts (`notify`) are still English. Unverified
-    live.
+    also now carries a speaker (`postReportCard`). **Toasts localized 2026-11-16:** every `notify` in
+    `ui/round-control.ts` names a `notify.*` key in `lang/en.json`, with the English as fallback;
+    `tests/localized-toasts.test.ts` fails on a raw-text toast, a missing key or an unsupplied
+    placeholder. Not covered: the ownership warning's toast fallback (`ui/ownership-warning.ts`) and
+    the dialog titles/labels, which are still English. Unverified live.
 13. ~~**[qol] Friendlier plot entry.**~~ ✅ **DONE 2026-07-22.**
 
 ## P2 — Advanced rules (need new math)
