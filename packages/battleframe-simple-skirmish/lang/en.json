@@ -10,6 +10,7 @@
     },
     "fields": {
       "models": "Models",
+      "startingModels": "Starting Models",
       "move": "Move",
       "attackMelee": "Melee Attack",
       "attackRanged": "Ranged Attack",

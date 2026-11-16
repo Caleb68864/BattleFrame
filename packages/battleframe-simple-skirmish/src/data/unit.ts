@@ -45,6 +45,9 @@ function resolveFieldsNamespace(): Record<string, any> {
  *
  * - `models`  -- how many models remain; the number of dice thrown, and the
  *   thing removed by casualties. A unit at 0 is destroyed.
+ * - `startingModels` -- how many models the unit mustered with: the `max` of
+ *   the token resource bar (`modelsBar`). Kept at or above `models` on create
+ *   and update, so the bar is never fuller than full.
  * - `move`    -- move speed in inches (3 shambling / 6 standard / 9 fast).
  * - `attackMelee/Ranged/Magic` -- roll >= this on a d6 to hit; null = cannot.
  * - `save`    -- the defender rolls a d6 per hit; **< save = one casualty**;
@@ -74,6 +77,13 @@ export function createUnitDataClass(
           min: 0,
           initial: 1
         });
+        schema.startingModels = new NumberField({
+          required: true,
+          nullable: false,
+          integer: true,
+          min: 0,
+          initial: 1
+        });
         schema.move = new NumberField({
           required: true,
           nullable: false,
@@ -90,6 +100,52 @@ export function createUnitDataClass(
 
       return schema;
     }
+
+    /**
+     * The model count as the `{ value, max }` pair Foundry draws as a token
+     * resource bar (roadmap P1). Derived, so `models` stays the one live count.
+     * `max` is floored at `value` for a unit the ready migration has not reached.
+     */
+    prepareDerivedData(): void {
+      super.prepareDerivedData?.();
+      const self = this as unknown as { models?: number; startingModels?: number; modelsBar?: unknown };
+      const value = self.models ?? 0;
+      self.modelsBar = { value, max: Math.max(self.startingModels ?? 0, value) };
+    }
+
+    /** A unit created with more models than its starting count starts with them all. */
+    async _preCreate(data: unknown, options: unknown, user: unknown): Promise<boolean | void> {
+      const allowed = await super._preCreate?.(data, options, user);
+      if (allowed === false) return false;
+      const self = this as unknown as {
+        models?: number;
+        startingModels?: number;
+        parent?: { updateSource?: (changes: Record<string, unknown>) => unknown };
+      };
+      const models = self.models ?? 0;
+      if ((self.startingModels ?? 0) < models) {
+        self.parent?.updateSource?.({ "system.startingModels": models });
+      }
+    }
+
+    /**
+     * Setting the count above the starting count (the usual way a fresh unit is
+     * filled in, on the sheet) raises the starting count with it. Casualties
+     * lower `models` only, and leave the max alone.
+     */
+    async _preUpdate(changes: Record<string, any>, options: unknown, user: unknown): Promise<boolean | void> {
+      const allowed = await super._preUpdate?.(changes, options, user);
+      if (allowed === false) return false;
+      const self = this as unknown as { startingModels?: number };
+      // Foundry normally hands this an expanded diff; a flattened key is handled too.
+      const flat = "system.models" in changes;
+      const models = flat ? changes["system.models"] : changes.system?.models;
+      if (typeof models !== "number") return;
+      const starting = changes.system?.startingModels ?? changes["system.startingModels"] ?? self.startingModels ?? 0;
+      if (starting >= models) return;
+      if (flat) changes["system.startingModels"] = models;
+      else changes.system.startingModels = models;
+    }
   }
 
   return UnitData as unknown as TypeDataModelBaseConstructor;
@@ -102,7 +158,12 @@ export function createUnitDataClass(
  */
 export function registerUnitDataModel(): void {
   const globalScope = globalThis as unknown as {
-    CONFIG?: { Actor?: { dataModels?: Record<string, unknown> } };
+    CONFIG?: {
+      Actor?: {
+        dataModels?: Record<string, unknown>;
+        trackableAttributes?: Record<string, { bar: string[]; value: string[] }>;
+      };
+    };
   };
 
   if (!globalScope.CONFIG) {
@@ -110,7 +171,40 @@ export function registerUnitDataModel(): void {
   }
 
   globalScope.CONFIG.Actor = globalScope.CONFIG.Actor ?? {};
+  // Foundry only offers an attribute for a token bar if it is declared trackable.
+  // `modelsBar` is derived, so it cannot be discovered from the schema.
+  globalScope.CONFIG.Actor.trackableAttributes = globalScope.CONFIG.Actor.trackableAttributes ?? {};
+  globalScope.CONFIG.Actor.trackableAttributes[`${MODULE_ID}.${UNIT_ACTOR_TYPE}`] = { bar: ["modelsBar"], value: [] };
   globalScope.CONFIG.Actor.dataModels = globalScope.CONFIG.Actor.dataModels ?? {};
   globalScope.CONFIG.Actor.dataModels[`${MODULE_ID}.${UNIT_ACTOR_TYPE}`] =
     createUnitDataClass();
+}
+
+export interface MigratableUnit {
+  type?: string;
+  system?: { models?: number; startingModels?: number };
+  update: (changes: Record<string, unknown>) => Promise<unknown>;
+}
+
+/**
+ * Gives units saved before `startingModels` existed a starting count. Such a
+ * unit loads with the schema's initial value, so any unit whose starting count
+ * is below its live count is raised to the live count. That is the best the
+ * saved data can say: a unit that had already taken casualties gets its
+ * current count as its max. Idempotent, so it is safe to run at every ready.
+ * `migrateData` is not used because Foundry also runs it on partial update
+ * diffs, where copying `models` would reset the max on every casualty.
+ *
+ * Returns how many units it updated.
+ */
+export async function migrateStartingModels(actors: Iterable<MigratableUnit>): Promise<number> {
+  let migrated = 0;
+  for (const actor of actors) {
+    if (actor.type !== `${MODULE_ID}.${UNIT_ACTOR_TYPE}`) continue;
+    const models = actor.system?.models ?? 0;
+    if ((actor.system?.startingModels ?? 0) >= models) continue;
+    await actor.update({ "system.startingModels": models });
+    migrated += 1;
+  }
+  return migrated;
 }

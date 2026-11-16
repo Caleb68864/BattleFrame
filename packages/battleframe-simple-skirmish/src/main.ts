@@ -1,5 +1,5 @@
 import { MODULE_ID, UNIT_ACTOR_TYPE } from "./constants";
-import { registerUnitDataModel } from "./data/unit";
+import { migrateStartingModels, registerUnitDataModel, type MigratableUnit } from "./data/unit";
 import { registerUnitSheet } from "./sheets/unit-sheet";
 import { registerSimpleSkirmishTokenDefaults } from "./token-defaults";
 import { registerRoundControl, advanceRoundCore } from "./ui/round-control";
@@ -131,4 +131,14 @@ globalHooks?.once("init", () => {
     (globalThis as any).battleframe?.advance ?? (globalThis as any).game?.battleframe?.advance;
   advance?.registerAdvance?.(() => advanceRoundCore());
   registerSimpleSkirmishRuleset();
+});
+
+// Existing worlds: give units saved before `startingModels` existed a starting
+// count. GM only -- only a GM may update every actor, and one writer is enough.
+globalHooks?.once("ready", async () => {
+  const game = (globalThis as unknown as {
+    game?: { user?: { isGM?: boolean }; actors?: Iterable<MigratableUnit> };
+  }).game;
+  if (!game?.user?.isGM || !game.actors) return;
+  await migrateStartingModels(game.actors);
 });
