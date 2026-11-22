@@ -14,6 +14,8 @@
  */
 
 import { availableShipActions, type ShipActionAvailability } from "../ship/ship-actions";
+import { tr } from "../localize";
+import { MODULE_ID } from "../constants";
 
 /** The two mechanical phases of a Full Thrust turn. */
 export type TurnPhase = "plot" | "fire";
@@ -91,5 +93,7 @@ const ACTION_LABELS: ReadonlyArray<[keyof ShipActionAvailability, string]> = [
 
 /** The available-action labels for a ship, in catalogue order (for the guard line). */
 export function pendingActionLabels(actions: ShipActionAvailability): string[] {
-  return ACTION_LABELS.filter(([key]) => actions[key]).map(([, label]) => label);
+  return ACTION_LABELS.filter(([key]) => actions[key]).map(([key, label]) =>
+    tr(`${MODULE_ID}.dialog.pendingAction.${key}`, label)
+  );
 }

@@ -4238,3 +4238,18 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Tests: `lost-group-bay-stays-empty` (1): launch, lose the group, launch again must be
   refused. It fails on `0f36829` (count went 1 -> 0) and passes after the revert.
   Commit: this commit.
+
+## 2026-11-21 — Full Thrust dialogs and the ownership warning go through the translation
+- Roadmap P1 #12 remainder. Needle system, missile warhead, vector move, plot, ready guard,
+  New Battle and Import dialogs: titles, buttons, prompts, `<label>`s, the plot button's
+  illegal-order tooltip and the dropdown options now go through `tr` under a new
+  `battleframe-full-thrust.dialog.*` prefix (`DIALOG` constant), English as the fallback.
+- The ready guard's per-ship action names (`pendingActionLabels`) and its "not plotted" /
+  "not fired" reasons too. The ownership warning's title, button and message, which is also
+  the toast fallback, take `{name}`.
+- Visible change: the dropdowns now show display names ("Fire control", "EMP") instead of
+  the raw values; the submitted values are unchanged.
+- Not localized: the movement-order codes in the plot buttons (P2, S1...), which are notation
+  the player types.
+- Tests: `localized-dialogs` (7), all failing on the old code. Not checked in a running
+  Foundry. Commit: this commit.

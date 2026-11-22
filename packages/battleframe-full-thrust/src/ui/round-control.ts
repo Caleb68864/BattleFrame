@@ -86,6 +86,8 @@ export function escapeHtml(value: string): string {
 
 /** i18n key prefix for the chat report cards. */
 const REPORT = `${MODULE_ID}.report`;
+/** Prefix of every dialog string's `lang/en.json` key. */
+const DIALOG = `${MODULE_ID}.dialog`;
 
 /**
  * Localizes a report string. When `game.i18n` is live it uses Foundry's
@@ -815,13 +817,13 @@ export async function needleAction(): Promise<void> {
   let systemType: SystemRef["type"] = "fcs";
   if (dialog?.prompt) {
     const options = ["fcs", "drive", "screen", "pds", "weapon"]
-      .map((t) => `<option value="${t}">${t}</option>`)
+      .map((t) => `<option value="${t}">${tr(`${DIALOG}.system.${t}`, t)}</option>`)
       .join("");
     const value = (await dialog.prompt({
-      window: { title: "Full Thrust: Needle Beam -- target system" },
-      content: `<p>System to snipe:</p><select name="system">${options}</select>`,
+      window: { title: tr(`${DIALOG}.needleTitle`, "Full Thrust: Needle Beam -- target system") },
+      content: `<p>${tr(`${DIALOG}.needleSystem`, "System to snipe:")}</p><select name="system">${options}</select>`,
       ok: {
-        label: "Fire",
+        label: tr(`${DIALOG}.needleOk`, "Fire"),
         callback: (_event: unknown, button: any) => button?.form?.elements?.system?.value ?? "fcs"
       }
     })) as string;
@@ -1003,15 +1005,19 @@ async function pickWarhead(): Promise<{ warhead: MissileWarhead; systemType?: st
   if (!dialog?.prompt) {
     return { warhead: "normal" };
   }
-  const warheadOpts = ["normal", "emp", "needle"].map((w) => `<option value="${w}">${w}</option>`).join("");
-  const systemOpts = ["fcs", "drive", "screen", "pds", "weapon"].map((t) => `<option value="${t}">${t}</option>`).join("");
+  const warheadOpts = ["normal", "emp", "needle"]
+    .map((w) => `<option value="${w}">${tr(`${DIALOG}.warheadKind.${w}`, w)}</option>`)
+    .join("");
+  const systemOpts = ["fcs", "drive", "screen", "pds", "weapon"]
+    .map((t) => `<option value="${t}">${tr(`${DIALOG}.system.${t}`, t)}</option>`)
+    .join("");
   const result = (await dialog.prompt({
-    window: { title: "Full Thrust: Launch Missile -- warhead" },
+    window: { title: tr(`${DIALOG}.warheadTitle`, "Full Thrust: Launch Missile -- warhead") },
     content:
-      `<p>Warhead:</p><select name="warhead">${warheadOpts}</select>` +
-      `<p>Needle target system (Needle warhead only):</p><select name="system">${systemOpts}</select>`,
+      `<p>${tr(`${DIALOG}.warhead`, "Warhead:")}</p><select name="warhead">${warheadOpts}</select>` +
+      `<p>${tr(`${DIALOG}.warheadNeedleSystem`, "Needle target system (Needle warhead only):")}</p><select name="system">${systemOpts}</select>`,
     ok: {
-      label: "Launch",
+      label: tr(`${DIALOG}.warheadOk`, "Launch"),
       callback: (_event: unknown, button: any) => ({
         warhead: button?.form?.elements?.warhead?.value ?? "normal",
         system: button?.form?.elements?.system?.value ?? "fcs"
@@ -1376,9 +1382,9 @@ export async function vectorMoveAction(): Promise<void> {
   const dialog = g().foundry?.applications?.api?.DialogV2;
   if (dialog?.prompt) {
     orderText = ((await dialog.prompt({
-      window: { title: "Full Thrust: Vector Move (MD = burn, TP/TS = turn, PP/PS/PR = thrusters)" },
-      content: `<p>Vector order (e.g. <code>MD6,TP2</code>):</p><input type="text" name="order" value="" autofocus />`,
-      ok: { label: "Move", callback: (_e: unknown, button: any) => button?.form?.elements?.order?.value ?? "" }
+      window: { title: tr(`${DIALOG}.vectorTitle`, "Full Thrust: Vector Move (MD = burn, TP/TS = turn, PP/PS/PR = thrusters)") },
+      content: `<p>${tr(`${DIALOG}.vectorOrder`, "Vector order (e.g. <code>MD6,TP2</code>):")}</p><input type="text" name="order" value="" autofocus />`,
+      ok: { label: tr(`${DIALOG}.vectorOk`, "Move"), callback: (_e: unknown, button: any) => button?.form?.elements?.order?.value ?? "" }
     })) as string) ?? "";
   }
 
@@ -1493,21 +1499,21 @@ export async function plotAction(): Promise<void> {
   if (dialog?.prompt) {
     redraw(""); // show the "no change" start state
     const value = (await dialog.prompt({
-      window: { title: "Full Thrust: Plot Movement (hidden until execute)" },
+      window: { title: tr(`${DIALOG}.plotTitle`, "Full Thrust: Plot Movement (hidden until execute)") },
       content:
         `<div class="ft-plot-builder">` +
-        `<div class="ft-plot-row"><label>Thrust (max ${maxThrust})</label>` +
+        `<div class="ft-plot-row"><label>${tr(`${DIALOG}.plotThrust`, `Thrust (max ${maxThrust})`, { maxThrust })}</label>` +
         `<button type="button" data-thrust="-1">&minus;</button>` +
         `<span class="ft-thrust-val">0</span>` +
         `<button type="button" data-thrust="1">+</button></div>` +
-        `<div class="ft-plot-row"><label>Turn</label>` +
+        `<div class="ft-plot-row"><label>${tr(`${DIALOG}.plotTurn`, "Turn")}</label>` +
         `<button type="button" data-turn="P2">P2</button>` +
         `<button type="button" data-turn="P1">P1</button>` +
         `<button type="button" data-turn="0">0</button>` +
         `<button type="button" data-turn="S1">S1</button>` +
         `<button type="button" data-turn="S2">S2</button></div>` +
         `</div>` +
-        `<p>Order (editable — e.g. <code>+4,P2</code>):</p><input type="text" name="order" value="+0" autofocus />`,
+        `<p>${tr(`${DIALOG}.plotOrder`, "Order (editable — e.g. <code>+4,P2</code>):")}</p><input type="text" name="order" value="+0" autofocus />`,
       render: (_event: unknown, dlg: any) => {
         const root = dlg?.element;
         const input = root?.querySelector?.('input[name="order"]');
@@ -1516,7 +1522,7 @@ export async function plotAction(): Promise<void> {
         const setLegal = (legal: boolean): void => {
           if (okButton) {
             okButton.disabled = !legal;
-            okButton.title = legal ? "" : "Illegal order -- exceeds this ship's thrust budget or turn cap";
+            okButton.title = legal ? "" : tr(`${DIALOG}.plotIllegal`, "Illegal order -- exceeds this ship's thrust budget or turn cap");
           }
         };
         let thrust = 0;
@@ -1547,7 +1553,7 @@ export async function plotAction(): Promise<void> {
         setLegal(redraw("")); // initial "+0" is legal; sync the button state
       },
       ok: {
-        label: "Plot",
+        label: tr(`${DIALOG}.plotOk`, "Plot"),
         callback: (_event: unknown, button: any) => button?.form?.elements?.order?.value ?? ""
       }
     })) as string;
@@ -1839,7 +1845,7 @@ function ownedShipStates(): OwnedShipState[] {
  */
 async function confirmReadyAnyway(pending: readonly PendingShip[]): Promise<boolean> {
   const dialog = g().foundry?.applications?.api?.DialogV2 as any;
-  const reason = currentPhase() === "plot" ? "not plotted" : "not fired";
+  const reason = currentPhase() === "plot" ? tr(`${DIALOG}.readyNotPlotted`, "not plotted") : tr(`${DIALOG}.readyNotFired`, "not fired");
   const items = pending
     .map((p) => {
       const labels = pendingActionLabels(p.actions);
@@ -1851,10 +1857,10 @@ async function confirmReadyAnyway(pending: readonly PendingShip[]): Promise<bool
     return true; // no dialog (tests / early boot): don't block the ready toggle
   }
   return !!(await dialog.confirm({
-    window: { title: "Full Thrust: Ready to advance?" },
-    content: `<p>These ships still have actions this phase:</p><ul class="ft-pending">${items}</ul>`,
-    yes: { label: "Ready anyway" },
-    no: { label: "Cancel", default: true }
+    window: { title: tr(`${DIALOG}.readyTitle`, "Full Thrust: Ready to advance?") },
+    content: `<p>${tr(`${DIALOG}.readyPending`, "These ships still have actions this phase:")}</p><ul class="ft-pending">${items}</ul>`,
+    yes: { label: tr(`${DIALOG}.readyYes`, "Ready anyway") },
+    no: { label: tr(`${DIALOG}.readyNo`, "Cancel"), default: true }
   }));
 }
 
@@ -1989,8 +1995,8 @@ export async function newBattleAction(): Promise<void> {
   const confirm = g().foundry?.applications?.api?.DialogV2 as any;
   if (confirm?.confirm) {
     const ok = await confirm.confirm({
-      window: { title: "Full Thrust: New Battle" },
-      content: `<p>Restore ALL ships to undamaged and clear plots, the fire phase, and in-flight missiles?</p>`
+      window: { title: tr(`${DIALOG}.newBattleTitle`, "Full Thrust: New Battle") },
+      content: `<p>${tr(`${DIALOG}.newBattleConfirm`, "Restore ALL ships to undamaged and clear plots, the fire phase, and in-flight missiles?")}</p>`
     });
     if (!ok) {
       return;
@@ -2080,12 +2086,12 @@ export async function importFleetAction(): Promise<void> {
   let json = "";
   if (dialog?.prompt) {
     json = ((await dialog.prompt({
-      window: { title: "Full Thrust: Import Fleet" },
+      window: { title: tr(`${DIALOG}.importTitle`, "Full Thrust: Import Fleet") },
       content:
-        `<p>Paste your fleet JSON (an object with a <code>ships</code> array):</p>` +
+        `<p>${tr(`${DIALOG}.importPaste`, "Paste your fleet JSON (an object with a <code>ships</code> array):")}</p>` +
         `<textarea name="fleet" rows="14" style="width:100%"></textarea>`,
       ok: {
-        label: "Import",
+        label: tr(`${DIALOG}.importOk`, "Import"),
         callback: (_event: unknown, button: any) => button?.form?.elements?.fleet?.value ?? ""
       }
     })) as string) ?? "";
