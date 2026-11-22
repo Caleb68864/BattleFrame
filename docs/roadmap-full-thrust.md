@@ -125,6 +125,10 @@ by unit tests only. No Foundry world was available to that session.
     Cannon's multi-turn sweep (it fires its first turn only), and wiring Sa'Vasku and Phalon as fireable
     kinds with their design and damage models.
 
+    **Geometry 2026-11-21:** the engine had no swept shape (circles and rectangles only). It now has
+    `areas.capsule(from, to, radius)`, a circle swept along a segment with the same exact, base-aware
+    containment as the circle, drawable as Region shapes.
+
     **Fixed 2026-11-16:** Nova Cannon and Wave Gun skipped the fire-order gate the same way needles and
     salvos did. They now take `mayFireNow` too (fire phase only, the active side's unfired ships only)
     and, like them, do not advance the order. A refused Wave Gun keeps its charge. Unverified live.

@@ -4272,3 +4272,16 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Tests: `hull-grade-sheet` (7), all failing on the old code. Not checked in a running Foundry:
   that the select renders and saves, and that `_preUpdate` receives the changes in the shape
   assumed (expanded or flat, both handled). Commit: this commit.
+
+## 2026-11-21 — Engine: capsule area (a circle swept along a segment)
+- Roadmap Full Thrust P2 #20 asked whether the repo had the geometry for a swept template. It
+  did not: `areas` had circles and rectangles, and the 2026-07-17 entry left lines unbuilt.
+- `areas.capsule(from, to, radius)`: every point within `radius` of the segment. `contains`
+  measures the token centre to the nearest point of the segment and compares with
+  `radius + baseRadius`, the same exact, base-aware rule as the circle (radii summed before
+  comparing). `centre` mode ignores the base. Equal end points behave as the circle.
+- `toRegionShapes` draws it as two end circles plus the body as a `polygon` (a new
+  `RegionShapeData` type with flat `points`). Drawing only, as before.
+- Ruleset-neutral: no weapon vocabulary. Tests in `tests/areas.test.ts` (6 new, plus the API
+  surface lists in `areas.test.ts` and `battleframe.test.ts`), all failing on the old code.
+  Commit: this commit.

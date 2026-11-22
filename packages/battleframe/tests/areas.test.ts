@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  capsule,
   circle,
   contains,
   createAreaApi,
@@ -225,11 +226,72 @@ describe("toRegionShapes -- rendering only", () => {
 describe("the area api surface", () => {
   it("exposes exactly the shape/containment verbs and no rules verbs", () => {
     expect(Object.keys(createAreaApi()).sort()).toEqual([
+      "capsule",
       "circle",
       "contains",
       "rectangle",
       "toRegionShapes",
       "tokensInside"
+    ]);
+  });
+});
+
+describe("capsule -- a circle swept along a segment", () => {
+  // A swept or travelling template (a blast moving along a line) covers every
+  // point within `radius` of the segment: a stadium. Same base-aware, exact rule
+  // as the circle, against the nearest point of the segment instead of a centre.
+  const from = { x: 1000, y: 1000 };
+  const to = { x: 1000 + 10 * PX_PER_UNIT, y: 1000 };
+
+  it("refuses a non-positive radius", () => {
+    expect(() => capsule(from, to, 0)).toThrow(InvalidAreaError);
+  });
+
+  it("catches a model beside the middle of the sweep, and misses one past its side", () => {
+    const area = capsule(from, to, 1);
+
+    expect(contains(area, knightAt(1000 + 5 * PX_PER_UNIT, 1000 + 1.5 * PX_PER_UNIT))).toBe(true);
+    expect(contains(area, knightAt(1000 + 5 * PX_PER_UNIT, 1000 + 2 * PX_PER_UNIT))).toBe(false);
+  });
+
+  it("has round ends: past the end it measures to the end point, not the line", () => {
+    const area = capsule(from, to, 1);
+    // 1.5in beyond the end along the line: outside 1 + 0.63 by end-point distance.
+    expect(contains(area, knightAt(to.x + 1.5 * PX_PER_UNIT, to.y + 1.5 * PX_PER_UNIT))).toBe(false);
+    expect(contains(area, knightAt(to.x + 1.5 * PX_PER_UNIT, to.y))).toBe(true);
+    // Behind the start.
+    expect(contains(area, knightAt(from.x - 3 * PX_PER_UNIT, from.y))).toBe(false);
+  });
+
+  it("is base-aware, and the centre mode ignores the base", () => {
+    const area = capsule(from, to, 1);
+    const token = knightAt(1000 + 5 * PX_PER_UNIT, 1000 + 1.5 * PX_PER_UNIT);
+
+    expect(contains(area, token, "base-overlap")).toBe(true);
+    expect(contains(area, token, "centre")).toBe(false);
+  });
+
+  it("works on a diagonal, and a zero-length sweep is a circle", () => {
+    const diagonal = capsule({ x: 0, y: 0 }, { x: 10 * PX_PER_UNIT, y: 10 * PX_PER_UNIT }, 1);
+    expect(contains(diagonal, knightAt(5 * PX_PER_UNIT, 5 * PX_PER_UNIT))).toBe(true);
+    expect(contains(diagonal, knightAt(10 * PX_PER_UNIT, 0))).toBe(false);
+
+    const point = capsule(from, from, 3);
+    const asCircle = circle(from, 3);
+    for (const dx of [0, 3.5, 3.7, 4]) {
+      const token = knightAt(from.x + dx * PX_PER_UNIT, from.y);
+      expect(contains(point, token)).toBe(contains(asCircle, token));
+    }
+  });
+
+  it("draws as two end circles and the body polygon, in pixels", () => {
+    const shapes = toRegionShapes(capsule({ x: 0, y: 0 }, { x: 100, y: 0 }, 1), gridlessScene);
+    const r = PX_PER_UNIT;
+
+    expect(shapes).toEqual([
+      { type: "circle", x: 0, y: 0, radius: r },
+      { type: "circle", x: 100, y: 0, radius: r },
+      { type: "polygon", points: [0, r, 100, r, 100, -r, 0, -r] }
     ]);
   });
 });

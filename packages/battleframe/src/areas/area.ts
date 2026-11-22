@@ -5,6 +5,7 @@ import type { MeasurableToken } from "../measurement/types";
 import type {
   Area,
   AreaApi,
+  CapsuleArea,
   CircleArea,
   ContainmentMode,
   Point,
@@ -96,6 +97,27 @@ export function rectangle(
 }
 
 /**
+ * A circle of `radius` (scene distance units) swept from `from` to `to` (pixel
+ * points). Foundry has no swept shape to test against: a Region polygon would
+ * carry the same point-not-disc and inscribed-polygon problems as its circle.
+ */
+export function capsule(from: Point, to: Point, radius: number): CapsuleArea {
+  assertPositive("radius", radius);
+
+  return { kind: "capsule", from, to, radius };
+}
+
+/** Distance in pixels from a point to the nearest point of the segment a-b. */
+function pointToSegmentPx(point: Point, a: Point, b: Point): number {
+  const dx = b.x - a.x;
+  const dy = b.y - a.y;
+  const lengthSq = dx * dx + dy * dy;
+  const t = lengthSq === 0 ? 0 : Math.min(1, Math.max(0, ((point.x - a.x) * dx + (point.y - a.y) * dy) / lengthSq));
+
+  return Math.hypot(point.x - (a.x + t * dx), point.y - (a.y + t * dy));
+}
+
+/**
  * Distance from a point to the nearest point of an axis-aligned rectangle, in
  * pixels. Zero when the point is inside. The standard clamp-and-hypot: clamp
  * the point into the rect, then measure to the clamped point.
@@ -148,6 +170,11 @@ export function contains(
     return centreDistPx <= area.radius * scale + baseRadiusPx;
   }
 
+  if (area.kind === "capsule") {
+    // Sums the radii before comparing, as the circle does.
+    return pointToSegmentPx(token.center, area.from, area.to) <= area.radius * scale + baseRadiusPx;
+  }
+
   return pointToRectPx(token.center, area, scene) <= baseRadiusPx;
 }
 
@@ -188,6 +215,35 @@ export function toRegionShapes(
     ];
   }
 
+  if (area.kind === "capsule") {
+    const r = area.radius * scale;
+    const ends: RegionShapeData[] = [
+      { type: "circle", x: area.from.x, y: area.from.y, radius: r },
+      { type: "circle", x: area.to.x, y: area.to.y, radius: r }
+    ];
+    const dx = area.to.x - area.from.x;
+    const dy = area.to.y - area.from.y;
+    const length = Math.hypot(dx, dy);
+    if (length === 0) {
+      return [ends[0]];
+    }
+    // The body: the segment widened by r on each side (normal = (-dy, dx) / length).
+    const nx = (-dy / length) * r;
+    const ny = (dx / length) * r;
+    return [
+      ...ends,
+      {
+        type: "polygon",
+        points: [
+          area.from.x + nx, area.from.y + ny,
+          area.to.x + nx, area.to.y + ny,
+          area.to.x - nx, area.to.y - ny,
+          area.from.x - nx, area.from.y - ny
+        ]
+      }
+    ];
+  }
+
   return [
     {
       type: "rectangle",
@@ -200,7 +256,7 @@ export function toRegionShapes(
 }
 
 export function createAreaApi(): AreaApi {
-  return { circle, rectangle, contains, tokensInside, toRegionShapes };
+  return { circle, rectangle, capsule, contains, tokensInside, toRegionShapes };
 }
 
 declare global {
