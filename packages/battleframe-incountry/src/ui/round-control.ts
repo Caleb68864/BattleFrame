@@ -123,27 +123,39 @@ function attackReportParts(
   const a = result.attack;
 
   const lines: string[] = [
-    `<p><strong>${a.hits}</strong> hit(s) &middot; <strong>${a.damage}</strong> damage.</p>`
+    `<p>${tr("report.hits", `<strong>${a.hits}</strong> hit(s) &middot; <strong>${a.damage}</strong> damage.`, {
+      hits: a.hits,
+      damage: a.damage
+    })}</p>`
   ];
   if (a.hits > 0) {
+    const data = { armor: a.armorTotal, damage: a.damage };
     lines.push(
-      `<p>Armor ${a.armorTotal} vs ${a.damage} &mdash; ` +
-        `${a.destroyed ? "model destroyed" : "model holds"}.</p>`
+      `<p>${
+        a.destroyed
+          ? tr("report.armorDestroyed", `Armor ${a.armorTotal} vs ${a.damage} &mdash; model destroyed.`, data)
+          : tr("report.armorHolds", `Armor ${a.armorTotal} vs ${a.damage} &mdash; model holds.`, data)
+      }</p>`
     );
   }
   if (a.destroyed && !result.targetDestroyed) {
-    lines.push(`<p>Model down &mdash; ${result.targetModelsAfter} model(s) left.</p>`);
+    const left = result.targetModelsAfter;
+    lines.push(`<p>${tr("report.modelDown", `Model down &mdash; ${left} model(s) left.`, { left })}</p>`);
   }
   if (result.suppressionRoll !== undefined) {
+    const roll = result.suppressionRoll;
     lines.push(
       result.suppressed
-        ? `<p class="inx-suppressed">Suppression check ${result.suppressionRoll}: ` +
-            `<strong>${target} suppressed.</strong></p>`
-        : `<p>Suppression check ${result.suppressionRoll}: ${target} holds.</p>`
+        ? `<p class="inx-suppressed">${tr(
+            "report.suppressed",
+            `Suppression check ${roll}: <strong>${target} suppressed.</strong>`,
+            { roll, target }
+          )}</p>`
+        : `<p>${tr("report.suppressionHolds", `Suppression check ${roll}: ${target} holds.`, { roll, target })}</p>`
     );
   }
   if (result.targetDestroyed) {
-    lines.push(`<p class="inx-wiped"><strong>${target} wiped out.</strong></p>`);
+    lines.push(`<p class="inx-wiped"><strong>${tr("report.wiped", `${target} wiped out.`, { target })}</strong></p>`);
   }
 
   return { title: `${attacker} &rarr; ${target}`, lines };
@@ -186,13 +198,14 @@ export function buildAttackReportHtml(
 function victorySpec(victory: ReturnType<typeof checkVictoryInx>): AttackCardSpec {
   let line: string;
   if (victory.result === "winner") {
-    line = `<p><strong>${escapeHtml(victory.sideId)}</strong> holds the field.</p>`;
+    const side = escapeHtml(victory.sideId);
+    line = `<p>${tr("report.winner", `<strong>${side}</strong> holds the field.`, { side })}</p>`;
   } else if (victory.result === "draw") {
-    line = "<p>No models remain on either side.</p>";
+    line = `<p>${tr("report.draw", "No models remain on either side.")}</p>`;
   } else {
-    line = "<p>Both sides still hold. Start a new round.</p>";
+    line = `<p>${tr("report.continue", "Both sides still hold. Start a new round.")}</p>`;
   }
-  return { title: "Round over", lines: [line], cssClass: "incountry-victory" };
+  return { title: tr("report.roundOver", "Round over"), lines: [line], cssClass: "incountry-victory" };
 }
 
 /** A card spec the pure flow hands to the injected postCard seam. */
@@ -386,11 +399,12 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
       suppressed: target.actor.system.suppressed || attack.suppressed
     });
 
+    const names = { attacker: label(attacker), target: label(target), hits: attack.attack.hits };
     notify(
-      `${label(attacker)} vs ${label(target)}: ${attack.attack.hits} hit(s)` +
-        (attack.attack.destroyed ? ", model down" : "") +
-        (attack.suppressed ? " -- target suppressed" : "") +
-        (attack.targetDestroyed ? ` -- ${label(target)} wiped` : "")
+      tr("notify.attack", `${names.attacker} vs ${names.target}: ${names.hits} hit(s)`, names) +
+        (attack.attack.destroyed ? tr("notify.modelDown", ", model down") : "") +
+        (attack.suppressed ? tr("notify.targetSuppressed", " -- target suppressed") : "") +
+        (attack.targetDestroyed ? tr("notify.targetWiped", ` -- ${names.target} wiped`, names) : "")
     );
 
     // Persistent outcome card (survives reload, syncs to every client) in
@@ -401,7 +415,7 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
     });
     await postCard({ ...parts, cssClass: ATTACK_REPORT_CLASS });
   } else if (target && !weapon) {
-    notify(`${label(attacker)} has no weapon to attack with.`, "warn");
+    notify(tr("notify.noWeapon", `${label(attacker)} has no weapon to attack with.`, { unit: label(attacker) }), "warn");
   }
 
   order.activate(attacker.id);
@@ -412,11 +426,11 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
 
   const victory = checkVictoryInx(units);
   if (victory.result === "winner") {
-    notify(`Round over: ${victory.sideId} holds the field.`);
+    notify(tr("notify.roundWinner", `Round over: ${victory.sideId} holds the field.`, { side: victory.sideId }));
   } else if (victory.result === "draw") {
-    notify("Round over: no models remain on either side.", "warn");
+    notify(tr("notify.roundDraw", "Round over: no models remain on either side."), "warn");
   } else {
-    notify("Round over: both sides still hold. Start a new round.");
+    notify(tr("notify.roundContinue", "Round over: both sides still hold. Start a new round."));
   }
   // The persistent record of how the round ended; the toast only reaches this client.
   await postCard(victorySpec(victory));
@@ -801,7 +815,7 @@ export async function readyAction(): Promise<void> {
   const status = advance.status?.();
   notifyUser(
     format("controls.ready.status", {
-      state: advance.isReady?.() ? "READY" : "not ready",
+      state: advance.isReady?.() ? tr("notify.ready", "READY") : tr("notify.notReady", "not ready"),
       ready: status?.ready?.length ?? 0,
       total: status?.participants?.length ?? 0
     })
@@ -819,6 +833,17 @@ interface AdvanceApiLike {
   toggleReady?: () => Promise<void>;
   isReady?: (userId?: string) => boolean;
   status?: () => { ready: string[]; participants: string[]; allReady: boolean };
+}
+
+/**
+ * Foundry's translation of `battleframe-incountry.<suffix>`, with the English
+ * fallback (already filled in) for when no translation is loaded.
+ */
+function tr(suffix: string, fallback: string, data?: Record<string, unknown>): string {
+  const i18n = globalScope().game?.i18n;
+  const key = `${MODULE_ID}.${suffix}`;
+  if (data && i18n?.format) return i18n.format(key, data);
+  return i18n?.localize?.(key) ?? fallback;
 }
 
 function localize(suffix: string): string {

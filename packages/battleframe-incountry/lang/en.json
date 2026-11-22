@@ -46,6 +46,31 @@
         "name": "Die size",
         "hint": "The die your rulebook resolves on. This module ships no rules numbers, so nothing can be rolled until you set this."
       }
+    },
+    "report": {
+      "hits": "<strong>{hits}</strong> hit(s) &middot; <strong>{damage}</strong> damage.",
+      "armorDestroyed": "Armor {armor} vs {damage} &mdash; model destroyed.",
+      "armorHolds": "Armor {armor} vs {damage} &mdash; model holds.",
+      "modelDown": "Model down &mdash; {left} model(s) left.",
+      "suppressed": "Suppression check {roll}: <strong>{target} suppressed.</strong>",
+      "suppressionHolds": "Suppression check {roll}: {target} holds.",
+      "wiped": "{target} wiped out.",
+      "roundOver": "Round over",
+      "winner": "<strong>{side}</strong> holds the field.",
+      "draw": "No models remain on either side.",
+      "continue": "Both sides still hold. Start a new round."
+    },
+    "notify": {
+      "attack": "{attacker} vs {target}: {hits} hit(s)",
+      "modelDown": ", model down",
+      "targetSuppressed": " -- target suppressed",
+      "targetWiped": " -- {target} wiped",
+      "noWeapon": "{unit} has no weapon to attack with.",
+      "roundWinner": "Round over: {side} holds the field.",
+      "roundDraw": "Round over: no models remain on either side.",
+      "roundContinue": "Round over: both sides still hold. Start a new round.",
+      "ready": "READY",
+      "notReady": "not ready"
     }
   }
 }

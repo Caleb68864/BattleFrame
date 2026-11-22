@@ -4391,3 +4391,11 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Not changed: why a second primary is refused in the same session, and that the active ruleset
   is not restored at startup. Both are recorded for the owner in the roadmap's bug-hunt section.
 - Tests: one in `settings.test.ts`, failing on the old code. Commit: this commit.
+
+## 2026-11-21 — InCountry: the round's cards and toasts go through the translation
+- The attack card, the round-over card, the activation and round-over toasts, the no-weapon
+  warning and the ready toast's "READY"/"not ready" were raw English. Each now names a
+  `battleframe-incountry.report.*` or `.notify.*` key through a local `tr`, with the filled-in
+  English as the fallback, so the existing English-pinning tests still hold without i18n.
+- Not changed: thrown engine error messages that reach toasts, and the unit sheet template.
+- Tests: `localized-round` (4), all failing on the old code. Commit: this commit.
