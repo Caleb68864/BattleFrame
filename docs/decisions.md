@@ -4556,3 +4556,15 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   priority order, a bad main-tier selector, an unknown first side) now use `createI18nApi().format`
   under `battleframe.activation.*`, English as the fallback, so existing tests read the same text.
 - Tests: `activation-i18n.test.ts` (2), failing on the old code. Commit: this commit.
+
+## 2026-11-21 — GREATHELM's pool panel stays with the GM (no change)
+- Asked to open the dice-pool panel for each player from the round saved on the Combat. Checked
+  first: the panel is a GM-only affordance. `PoolPanel.canUserAccess()` returns `isGM()` and every
+  spend re-checks it; a spend persists the round with `combat.setFlag` and wounds with actor
+  updates, both GM writes. Since the engine now delegates a ready-driven advance only to a GM on
+  the players' scene, the panel opens for that GM, who is the one able to use it.
+- Opening it on players' clients would show a panel that refuses every click. Recorded in the
+  roadmap as decided by agent (owner may revisit); a read-only per-player pool view would be a new
+  feature. The earlier roadmap line that called this a defect was a misreading and is corrected.
+- No code change; the GM-only rule is already pinned by `tests/pool-panel.test.ts`.
+  Commit: this commit.
