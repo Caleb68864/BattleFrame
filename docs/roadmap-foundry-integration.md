@@ -106,8 +106,8 @@ token-keyed rulesets). A GREATHELM or Stargrunt round saved before this will not
 - ✅ 2026-11-21 both modules' dice-roll labels, the activation and initiative errors shown as
   toasts, InCountry's die-size error, and both registration-failure toasts (each package's
   `tests/i18n-errors-dice.test.ts`).
-- **Raw English** left: the engine's own activation-order errors (`rounds/activation.ts`), which a
-  module's pre-check now stops before they are thrown in play. The existing i18n tests only check that referenced keys exist.
+- ✅ 2026-11-21 the engine's activation-order errors (`rounds/activation.ts`,
+  `tests/activation-i18n.test.ts`). The existing i18n tests only check that referenced keys exist.
   (Both modules' round cards and toasts: ✅ 2026-11-21, each package's `tests/localized-round.test.ts`.)
 - ✅ 2026-11-21 **A delegated advance ran on the GM's canvas.** The engine now delegates only to a
   connected GM viewing the host's scene (`delegateTarget`, socketlib `executeAsUser`), and warns

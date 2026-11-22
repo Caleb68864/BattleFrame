@@ -4549,3 +4549,10 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   and has no `onChange`, so the check allows a button only when it does not act on change.
 - Tests: `scene-control-active-tool.test.ts` runs all six rulesets' controls as a player; the
   Simple Skirmish and GREATHELM cases fail on the old code. Commit: this commit.
+
+## 2026-11-21 — Engine: activation-order errors go through the translation
+- `rounds/activation.ts` threw `IllegalActivationError` with developer English, and a module's
+  toast can show the message. All seven (out of turn, unknown, already activated, resolved, no
+  priority order, a bad main-tier selector, an unknown first side) now use `createI18nApi().format`
+  under `battleframe.activation.*`, English as the fallback, so existing tests read the same text.
+- Tests: `activation-i18n.test.ts` (2), failing on the old code. Commit: this commit.
