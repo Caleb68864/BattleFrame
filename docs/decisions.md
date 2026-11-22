@@ -4334,3 +4334,18 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   Foundry hook family the model already uses (`_preCreate`/`_preUpdate`).
 - Tests: `activation-defects` (5), all failing on the old code. Not checked in a running Foundry.
   Commit: this commit.
+
+## 2026-11-21 — Engine: socketlib actually carries GM-less play
+- `docs/gm-less-play.md` promises plain players can drive the turn with socketlib and a GM
+  online. Two things prevented it. `system.json` lacked `"socket": true`; socketlib's
+  `registerSystem` refuses a package without it (socketlib's own documented requirement, not
+  checked live here), so `socket` stayed undefined and every advance ran locally. And
+  `toggleReady` always wrote the ready flag directly to the GM-owned document, which a plain
+  player may not do, so even a registered socket could not help.
+- `toggleReady` now delegates to a GM (`executeAsGM("setReady", next)`) when the ready document
+  reports `isOwner === false`, socketlib is registered and a GM is connected; otherwise it writes
+  directly as before. The GM handler takes the user from socketlib's `this.socketdata.userId`,
+  not from an argument, so a client can only set its own flag. The write itself is the shared
+  `writeReady` (set to ready; delete the key to un-ready).
+- Tests: three in `ready-advance.test.ts`; the delegation and manifest tests fail on the old
+  code. Not checked in a running Foundry with socketlib. Commit: this commit.

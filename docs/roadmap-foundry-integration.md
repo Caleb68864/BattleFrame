@@ -60,6 +60,12 @@ listed with the reason they were not fixed here.
 - ✅ The defeated status was only ever set. Restoring a unit's models on the sheet left the skull on.
   The unit data model's `_onUpdate` now re-syncs it when `models` changes, on the changing client only.
 
+**Engine, fixed** (`packages/battleframe/tests/`):
+- ✅ GM-less play through socketlib could not work for plain players. `system.json` had no
+  `"socket": true`, which socketlib needs before it registers a system, and the ready toggle was
+  always written straight to the GM-owned Combat/Scene. A player who does not own it now asks a
+  connected GM to write it (`setReady`, keyed to socketlib's record of the caller). (`ready-advance.test.ts`)
+
 ## Executive summary
 
 The concern — "are we recreating Foundry instead of building on it?" — is **valid but
