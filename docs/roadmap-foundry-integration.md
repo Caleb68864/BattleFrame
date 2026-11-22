@@ -78,18 +78,22 @@ listed with the reason they were not fixed here.
   nothing on screen. It now warns with them. (`settings.test.ts`)
 
 **Open, needs the owner:**
-- **Switching the primary ruleset.** Once primary A is active in a session, activating primary B is
-  refused (`registry.activateRuleset`), although the wizard says the choice can be changed later.
-  Separately, nothing restores the active ruleset from the `activeRulesetId` setting at startup, so
-  `game.battleframe.api.getActiveRuleset()` is `null` after every reload (no module reads it today).
-  Restoring it would make the refusal permanent, so both need one decision: should a new primary
-  replace the old one?
+- ✅ **Switching the primary ruleset.** Decided by agent 2026-11-21 (owner may revisit): the GM's
+  choice in the setup wizard replaces the current primary (`activateRuleset(id, { replacePrimary: true })`),
+  as the wizard's own text promises; any other caller of the API is still refused a second primary.
+  The saved choice (`activeRulesetId`) is re-activated at `ready` on every client
+  (`restoreActiveRuleset`), so `getActiveRuleset()` no longer reads `null` after a reload; a saved
+  id whose module is gone restores nothing. No data is changed. (`settings.test.ts`)
 - **InCountry suppression never clears.** Nothing sets `system.suppressed` back to false, and the
   sheet checkbox and the token's status icon can disagree. When suppression ends is a rule.
 - **InCountry `armorType` → `armorModifier`/`armorDice`.** Existing actors are not migrated and load
   with no armour. May be deliberate under `rules-content-audit.md`.
-- **Simple Skirmish neutral/secret tokens.** A neutral token fights as friendly and a secret one as
-  hostile (`sideFromDisposition`). Which units take part is a rules/table call.
+- ✅ **Neutral and secret tokens.** Decided by agent 2026-11-21 (owner may revisit): a Neutral token is
+  on no side and by default takes no part in a round, in all five rulesets that read sides from
+  disposition (Simple Skirmish, InCountry, Stargrunt II, GREATHELM, Dirtside II). The world setting
+  "Neutral tokens" (`battleframe.neutralTokens`) set to "Fight as friendly" restores the old
+  behaviour. Secret tokens still fight as hostile, unchanged. No data is touched.
+  (`packages/battleframe/tests/neutral-token-sides.test.ts`)
 
 **Open, not fixed here (no owner decision needed):**
 - ✅ 2026-11-21 InCountry's unit sheet template (`tests/unit-sheet-i18n.test.ts`).
@@ -101,10 +105,19 @@ listed with the reason they were not fixed here.
 - **Raw English** left: the engine's own activation-order errors (`rounds/activation.ts`), which a
   module's pre-check now stops before they are thrown in play. The existing i18n tests only check that referenced keys exist.
   (Both modules' round cards and toasts: ✅ 2026-11-21, each package's `tests/localized-round.test.ts`.)
-- **A delegated advance runs on the GM's canvas.** `advanceRoundCore` reads `canvas.tokens` on the GM
-  who receives the socket call, which may be another scene; the players who readied see no toast.
-- **InCountry creates its Combat inactive** (`Combat.create` without `active: true`), so the engine's
-  ready flags (on `combats.active`) may sit on another combat. Unverified live.
+- ✅ 2026-11-21 **A delegated advance ran on the GM's canvas.** The engine now delegates only to a
+  connected GM viewing the host's scene (`delegateTarget`, socketlib `executeAsUser`), and warns
+  instead of advancing when none is. An advance callback may return `{ message, level }`, which the
+  engine shows on every client (`executeForEveryone`); Simple Skirmish and InCountry return theirs.
+  Full Thrust, Dirtside II, Stargrunt II and GREATHELM still toast on the client that runs the
+  advance. (`ready-advance.test.ts`, the two modules' round tests.)
+- ✅ 2026-11-21 **Modules created their Combat inactive.** Decided by agent 2026-11-21 (owner may
+  revisit): treated as a bug, not a design choice. An inactive combat is neither `game.combat` nor
+  `combats.active`, so every module's `getOrCreateCombat` missed it and created another each round,
+  and the engine's ready flags (on `combats.active`) sat elsewhere. Simple Skirmish, InCountry,
+  Dirtside II and Stargrunt II now call `combat.activate()` on the combat they create, as Foundry's
+  own "create encounter" does. Reversible; existing combats are untouched. (`module-combat-active.test.ts`
+  and the two modules' round tests.)
 - **Simple Skirmish's scene control** sets `activeTool` to a GM-only button tool.
 
 ## Executive summary

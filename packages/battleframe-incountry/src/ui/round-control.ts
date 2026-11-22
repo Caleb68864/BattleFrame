@@ -496,8 +496,28 @@ function notifyUser(message: string, level: "info" | "warn" | "error" = "info"):
 }
 
 /** Which side a unit fights for, from its token disposition. */
-export function sideFromDisposition(disposition: number | undefined): string {
+/**
+ * The side a token fights on, from its disposition: hostile and secret tokens are
+ * "hostile", friendly ones "friendly". A NEUTRAL token is on neither and takes no
+ * part (undefined) unless the world setting `battleframe.neutralTokens` is
+ * "friendly", the behaviour before 2026-11-21. Decided by agent; owner may revisit.
+ */
+export function sideFromDisposition(disposition: number | undefined): string | undefined {
+  if (disposition === 0 && neutralTokensExcluded()) {
+    return undefined;
+  }
   return (disposition ?? 0) < 0 ? "hostile" : "friendly";
+}
+
+/** The engine's world setting; unreadable (tests, before init) means the default. */
+function neutralTokensExcluded(): boolean {
+  try {
+    const settings = (globalThis as unknown as { game?: { settings?: { get?: (ns: string, key: string) => unknown } } })
+      .game?.settings;
+    return settings?.get?.("battleframe", "neutralTokens") !== "friendly";
+  } catch {
+    return true;
+  }
 }
 
 interface CanvasTokenLike {
@@ -526,11 +546,15 @@ function unitFromToken(placeable: CanvasTokenLike): CanvasUnit | null {
   if (!id) {
     return null;
   }
+  const sideId = sideFromDisposition(placeable.document?.disposition);
+  if (!sideId) {
+    return null;
+  }
   const scene = placeable.scene ?? (globalScope().canvas as { scene?: { id?: string } })?.scene;
   return {
     id,
     name: actor.name ?? id,
-    sideId: sideFromDisposition(placeable.document?.disposition),
+    sideId,
     actor,
     tokenId: placeable.document?.id ?? placeable.id,
     sceneId: scene?.id
@@ -596,7 +620,12 @@ async function getOrCreateCombat(): Promise<CombatLike | undefined> {
   if (existing) {
     return existing;
   }
-  return scope.Combat?.create ? scope.Combat.create({ scene: scope.canvas?.scene?.id }) : undefined;
+  // Activate it, as Foundry's own "create encounter" does: only an active combat is
+  // game.combat / combats.active, which is where this finds it next round and where
+  // the engine keeps the ready flags. Activating also deactivates any other.
+  const created = await (scope.Combat?.create ? scope.Combat.create({ scene: scope.canvas?.scene?.id }) : undefined);
+  await (created as { activate?: () => Promise<unknown> } | undefined)?.activate?.();
+  return created;
 }
 
 async function ensureCombatants(combat: CombatLike, units: readonly CanvasUnit[]): Promise<void> {
@@ -661,13 +690,23 @@ async function applyStateToActor(
   await actor.toggleStatusEffect?.(defeated, { active: state.modelsRemaining <= 0 });
 }
 
+/**
+ * What a round advance reports (the engine's `AdvanceOutcome` shape). Returned rather
+ * than toasted, so a ready-driven advance delegated to a GM reaches every player.
+ */
+export interface AdvanceOutcome {
+  message: string;
+  level: "info" | "warn" | "error";
+}
+
 /** "Run Round" (GM manual): gate, then run the ungated round-advance. */
 export async function runRoundControl(): Promise<void> {
   if (!isGM()) {
     notifyUser(localize("controls.round.gmOnly"), "warn");
     return;
   }
-  await advanceRoundCore();
+  const outcome = await advanceRoundCore();
+  notifyUser(outcome.message, outcome.level);
 }
 
 /**
@@ -678,12 +717,11 @@ export async function runRoundControl(): Promise<void> {
  * Registered as the engine's advance callback via
  * `game.battleframe.advance.registerAdvance` (see main.ts).
  */
-export async function advanceRoundCore(): Promise<void> {
+export async function advanceRoundCore(): Promise<AdvanceOutcome> {
   const dice = globalScope().game?.battleframe?.dice;
   const roundsApi = globalScope().game?.battleframe?.rounds;
   if (!dice || !roundsApi) {
-    notifyUser(localize("controls.round.noApi"), "error");
-    return;
+    return { message: localize("controls.round.noApi"), level: "error" };
   }
 
   // "In progress" is read off the Combat document, so it survives a reload.
@@ -696,29 +734,25 @@ export async function advanceRoundCore(): Promise<void> {
       state: existingState
     });
     if (!round.isComplete()) {
-      notifyUser(localize("controls.round.inProgress"), "warn");
-      return;
+      return { message: localize("controls.round.inProgress"), level: "warn" };
     }
   }
 
   const units = gatherUnitsFromCanvas();
   if (units.length === 0) {
-    notifyUser(localize("controls.round.noUnits"), "warn");
-    return;
+    return { message: localize("controls.round.noUnits"), level: "warn" };
   }
   // The module's victory read: once one side (or neither) holds the field, a new
   // round has nothing to play.
   if (checkVictoryInx(units).result !== "continue") {
-    notifyUser(localize("controls.round.battleOver"), "warn");
-    return;
+    return { message: localize("controls.round.battleOver"), level: "warn" };
   }
 
   try {
     const { order, firstSideId } = await beginRound({ units, dice, roundsApi });
     const combat = existing ?? (await getOrCreateCombat());
     if (!combat) {
-      notifyUser(localize("controls.round.noApi"), "error");
-      return;
+      return { message: localize("controls.round.noApi"), level: "error" };
     }
     await ensureCombatants(combat, units);
     await combat.setFlag(FLAG_SCOPE, ORDER_FLAG, orderFlag(combat, units));
@@ -730,9 +764,9 @@ export async function advanceRoundCore(): Promise<void> {
         /* already started -- fine */
       }
     }
-    notifyUser(format("controls.round.started", { side: firstSideId }));
+    return { message: format("controls.round.started", { side: firstSideId }), level: "info" };
   } catch (error) {
-    notifyUser(error instanceof Error ? error.message : String(error), "error");
+    return { message: error instanceof Error ? error.message : String(error), level: "error" };
   }
 }
 

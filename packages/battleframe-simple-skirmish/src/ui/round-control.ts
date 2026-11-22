@@ -450,8 +450,28 @@ function notifyUser(message: string, level: "info" | "warn" | "error" = "info"):
 }
 
 /** Which side a unit fights for, from its token disposition -- Foundry's own two-sided split. */
-export function sideFromDisposition(disposition: number | undefined): string {
+/**
+ * The side a token fights on, from its disposition: hostile and secret tokens are
+ * "hostile", friendly ones "friendly". A NEUTRAL token is on neither and takes no
+ * part (undefined) unless the world setting `battleframe.neutralTokens` is
+ * "friendly", the behaviour before 2026-11-21. Decided by agent; owner may revisit.
+ */
+export function sideFromDisposition(disposition: number | undefined): string | undefined {
+  if (disposition === 0 && neutralTokensExcluded()) {
+    return undefined;
+  }
   return (disposition ?? 0) < 0 ? "hostile" : "friendly";
+}
+
+/** The engine's world setting; unreadable (tests, before init) means the default. */
+function neutralTokensExcluded(): boolean {
+  try {
+    const settings = (globalThis as unknown as { game?: { settings?: { get?: (ns: string, key: string) => unknown } } })
+      .game?.settings;
+    return settings?.get?.("battleframe", "neutralTokens") !== "friendly";
+  } catch {
+    return true;
+  }
 }
 
 interface CanvasTokenLike {
@@ -482,11 +502,15 @@ function unitFromToken(placeable: CanvasTokenLike): CanvasUnit | null {
     return null;
   }
 
+  const playerId = sideFromDisposition(placeable.document?.disposition);
+  if (!playerId) {
+    return null;
+  }
   const scene = (placeable.scene ?? globalScope().canvas?.scene) as { id?: string } | undefined;
   return {
     id,
     name: actor.name ?? id,
-    playerId: sideFromDisposition(placeable.document?.disposition),
+    playerId,
     // Centre-to-centre needs only the centre and the scene; no base flags.
     token: { center: placeable.center, scene },
     actor,
@@ -571,7 +595,12 @@ async function getOrCreateCombat(): Promise<CombatLike | undefined> {
   if (existing) {
     return existing;
   }
-  return scope.Combat?.create ? scope.Combat.create({ scene: scope.canvas?.scene?.id }) : undefined;
+  // Activate it, as Foundry's own "create encounter" does: only an active combat is
+  // game.combat / combats.active, which is where this finds it next round and where
+  // the engine keeps the ready flags. Activating also deactivates any other.
+  const created = await (scope.Combat?.create ? scope.Combat.create({ scene: scope.canvas?.scene?.id }) : undefined);
+  await (created as { activate?: () => Promise<unknown> } | undefined)?.activate?.();
+  return created;
 }
 
 /** Seats each unit token as a Combatant (skipping tokens already in the combat). */
@@ -617,13 +646,23 @@ function readRoundState(combat: CombatLike | undefined): SkirmishRoundState | un
   return combat?.getFlag(FLAG_SCOPE, ROUND_FLAG) as SkirmishRoundState | undefined;
 }
 
+/**
+ * What a round advance reports (the engine's `AdvanceOutcome` shape). Returned rather
+ * than toasted, so a ready-driven advance delegated to a GM reaches every player.
+ */
+export interface AdvanceOutcome {
+  message: string;
+  level: "info" | "warn" | "error";
+}
+
 /** "Run Round": rolls initiative and opens a round for the GM to play unit by unit. */
 export async function runRoundControl(): Promise<void> {
   if (!isGM()) {
     notifyUser(localize("controls.round.gmOnly"), "warn");
     return;
   }
-  await advanceRoundCore();
+  const outcome = await advanceRoundCore();
+  notifyUser(outcome.message, outcome.level);
 }
 
 /**
@@ -635,7 +674,7 @@ export async function runRoundControl(): Promise<void> {
  * round still in progress is respected: advancing only opens a fresh round once
  * the current one's every unit has acted.
  */
-export async function advanceRoundCore(): Promise<void> {
+export async function advanceRoundCore(): Promise<AdvanceOutcome> {
   // A round in progress is not silently thrown away (a footgun a GM hits by
   // reflex). The check now reads the persisted state off the Combat document, so
   // it survives a reload -- a round is "in progress" until its last unit acts.
@@ -651,29 +690,25 @@ export async function advanceRoundCore(): Promise<void> {
   if (existingState && isSkirmishRoundResumable(toSkirmishUnits(gatherUnitsFromCanvas()), existingState)) {
     const round = restoreSkirmishRound(toSkirmishUnits(gatherUnitsFromCanvas()), existingState);
     if (!round.isComplete()) {
-      notifyUser(localize("controls.round.inProgress"), "warn");
-      return;
+      return { message: localize("controls.round.inProgress"), level: "warn" };
     }
   }
 
   const dice = globalScope().game?.battleframe?.dice;
   if (!dice) {
-    notifyUser(localize("controls.round.noApi"), "error");
-    return;
+    return { message: localize("controls.round.noApi"), level: "error" };
   }
 
   const units = gatherUnitsFromCanvas();
   if (units.length === 0) {
-    notifyUser(localize("controls.round.noUnits"), "warn");
-    return;
+    return { message: localize("controls.round.noUnits"), level: "warn" };
   }
 
   try {
     const { round, firstPlayerId } = await beginRound({ units, dice });
     const combat = existing ?? (await getOrCreateCombat());
     if (!combat) {
-      notifyUser(localize("controls.round.noApi"), "error");
-      return;
+      return { message: localize("controls.round.noApi"), level: "error" };
     }
     await ensureCombatants(combat, units);
     await combat.setFlag(FLAG_SCOPE, ORDER_FLAG, orderFlag(combat, units));
@@ -685,9 +720,9 @@ export async function advanceRoundCore(): Promise<void> {
         /* already started -- fine */
       }
     }
-    notifyUser(format("controls.round.started", { player: firstPlayerId }));
+    return { message: format("controls.round.started", { player: firstPlayerId }), level: "info" };
   } catch (error) {
-    notifyUser(error instanceof Error ? error.message : String(error), "error");
+    return { message: error instanceof Error ? error.message : String(error), level: "error" };
   }
 }
 

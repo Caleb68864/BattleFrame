@@ -4450,3 +4450,69 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   `init`), and the engine's activation-order errors.
 - Tests: `i18n-errors-dice` in each package (4 + 3 behaviour tests, all failing on the old code;
   plus a scan that every literal `tr()` key exists in `lang/en.json`). Commit: this commit.
+
+## 2026-11-21 — Engine: delegate an advance to a GM on the players' scene; show its outcome to all
+- `performAdvance` delegated with `executeAsGM`, which picks any GM. Every ruleset's advance reads
+  the canvas of the client it runs on, so a GM viewing another scene advanced that scene (or found
+  no units), and the advance's toasts appeared only on that GM's screen.
+- Delegation now goes to `delegateTarget(users, canvas.scene.id)`: an active GM whose
+  `User#viewedScene` is the host's scene (a full GM preferred), through socketlib's
+  `executeAsUser`. With no such GM, a host that is itself a GM runs it locally; a plain player is
+  told no GM is on the scene (`battleframe.advance.noGmOnScene`) and nothing advances. Moving a
+  ruleset's advance onto a scene it is not viewing would mean rewriting six modules' canvas reads;
+  choosing the right GM fixes it for all of them.
+- `registerAdvance` callbacks may return `{ message, level }` (`AdvanceOutcome`). The engine shows
+  it on every client through a new socket handler `notify` (`executeForEveryone`), or locally
+  without socketlib. Simple Skirmish and InCountry now return their outcome from
+  `advanceRoundCore` instead of toasting; their GM Run Round tool toasts the returned outcome. The
+  other four rulesets return nothing and behave as before.
+- `User#viewedScene` and `executeAsUser`/`executeForEveryone` are from knowledge of Foundry and
+  socketlib, not a live check.
+- Tests: three in `ready-advance.test.ts`, one in each module's round tests; all failing on the old
+  code. Commit: this commit.
+
+## 2026-11-21 — Modules activate the Combat they create
+- Simple Skirmish, InCountry, Dirtside II and Stargrunt II created their round's Combat with
+  `Combat.create({ scene })`, which Foundry leaves inactive. Each module's `getOrCreateCombat`
+  looks only at `game.combat` / `game.combats.active`, neither of which returns an inactive
+  combat, so once a round finished (and its round flag was cleared) the next advance created
+  another combat. The engine's ready flags live on `combats.active`, so they were not on the
+  module's combat either.
+- Each now calls `activate()` on the combat it creates: Foundry's own method, which also
+  deactivates any other combat, and the state Foundry's tracker button produces. Existing combats
+  are not touched. Recorded in the roadmap as decided by agent: the coordinator asked for this
+  only "if it is clearly a bug"; the pile-up makes it one.
+- `Combat#activate` and how `combats.active` resolves are from knowledge of Foundry, not a live
+  check. GREATHELM and Full Thrust create no combat of their own.
+- Tests: a behaviour test in Simple Skirmish's and InCountry's round tests, and a scan of every
+  module's sources (`module-combat-active.test.ts`); all failing on the old code. Commit: this commit.
+
+## 2026-11-21 — The wizard can change the primary ruleset; the choice is restored at ready
+- Decided by agent under the owner's standing rule for design choices (owner may revisit).
+- The wizard says the primary "can be changed later from Settings", but `activateRuleset` refused
+  any primary while another was active, so in a session the choice could not change. It now takes
+  `{ replacePrimary }`; `activatePrimarySelection` (the wizard's only path) passes it. A direct API
+  caller still gets the refusal, so nothing switches primaries silently.
+- The registry's active id lived only in memory and nothing restored it, so after any reload, on
+  every client, `game.battleframe.api.getActiveRuleset()` was `null` though the world setting held
+  the choice. `restoreActiveRuleset()` re-activates the saved id at `ready` when that ruleset is
+  registered; otherwise it does nothing, and the wizard shows the world as it is.
+- Set-aside primary claims are still per session (in memory); not changed here.
+- Tests: four in `settings.test.ts` (three failing on the old code; the API-refusal one guards the
+  unchanged behaviour). The existing ordering test now expects the option. Commit: this commit.
+
+## 2026-11-21 — Neutral tokens take no part in a round by default (setting to restore)
+- Decided by agent under the owner's standing rule for design choices (owner may revisit).
+- Five rulesets mapped a token's disposition with `disposition < 0 ? "hostile" : "friendly"`, so a
+  NEUTRAL token (a bystander or objective marker) joined the friendly side, rolled initiative and
+  counted toward victory. Each `sideFromDisposition` now returns `undefined` for a neutral token,
+  and its gather function leaves that token out.
+- Reversible: the engine registers a world setting `battleframe.neutralTokens` ("exclude" by
+  default, "friendly" for the old behaviour), visible in the settings menu. The modules read it
+  through `game.settings`; an unreadable setting means the default.
+- SECRET tokens (-2) still fight as hostile: a secret disposition hides allegiance from players
+  and is how hidden enemies are usually placed, and keeping it changes nothing for existing tables.
+  A token with no disposition at all (test doubles) is still friendly.
+- Tests: `neutral-token-sides.test.ts` drives each ruleset's real gather function; the default-
+  behaviour cases and the setting registration fail on the old code, the "friendly" cases guard
+  the restored behaviour. Commit: this commit.

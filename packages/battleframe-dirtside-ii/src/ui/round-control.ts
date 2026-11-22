@@ -88,8 +88,28 @@ function format(suffix: string, data: Record<string, unknown>): string {
   return glob().game?.i18n?.format?.(key, data) ?? key;
 }
 
-function sideFromDisposition(disposition: number | undefined): string {
+/**
+ * The side a token fights on, from its disposition: hostile and secret tokens are
+ * "hostile", friendly ones "friendly". A NEUTRAL token is on neither and takes no
+ * part (undefined) unless the world setting `battleframe.neutralTokens` is
+ * "friendly", the behaviour before 2026-11-21. Decided by agent; owner may revisit.
+ */
+export function sideFromDisposition(disposition: number | undefined): string | undefined {
+  if (disposition === 0 && neutralTokensExcluded()) {
+    return undefined;
+  }
   return (disposition ?? 0) < 0 ? "hostile" : "friendly";
+}
+
+/** The engine's world setting; unreadable (tests, before init) means the default. */
+function neutralTokensExcluded(): boolean {
+  try {
+    const settings = (globalThis as unknown as { game?: { settings?: { get?: (ns: string, key: string) => unknown } } })
+      .game?.settings;
+    return settings?.get?.("battleframe", "neutralTokens") !== "friendly";
+  } catch {
+    return true;
+  }
 }
 
 /**
@@ -111,11 +131,15 @@ export function gatherUnitsFromCanvas(): RoundUnit[] {
     if (!unitId || byUnit.has(unitId)) {
       continue;
     }
+    const playerId = sideFromDisposition(token?.document?.disposition);
+    if (!playerId) {
+      continue;
+    }
     const unitActor = actors?.get?.(unitId);
     byUnit.set(unitId, {
       id: unitId,
       name: unitActor?.name ?? unitId,
-      playerId: sideFromDisposition(token?.document?.disposition),
+      playerId,
       // A unit is never "destroyed" for activation purposes (its elements die,
       // not the grouping); the session's isDestroyed stays unset.
     });
@@ -133,7 +157,12 @@ async function getOrCreateCombat(): Promise<any | undefined> {
   const g = glob();
   const existing = g.game?.combat ?? g.game?.combats?.active;
   if (existing) return existing;
-  return g.Combat?.create ? g.Combat.create({ scene: g.canvas?.scene?.id }) : undefined;
+  // Activate it, as Foundry's own "create encounter" does: only an active combat is
+  // game.combat / combats.active, which is where this finds it next round and where
+  // the engine keeps the ready flags. Activating also deactivates any other.
+  const created = await (g.Combat?.create ? g.Combat.create({ scene: g.canvas?.scene?.id }) : undefined);
+  await (created as { activate?: () => Promise<unknown> } | undefined)?.activate?.();
+  return created;
 }
 
 /** "End Turn / New Round": resets markers then opens a fresh round (the advance callback, G4). */

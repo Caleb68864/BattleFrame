@@ -10,6 +10,7 @@ import {
   resolveActivation,
   rollInitiative,
   runRoundControl,
+  advanceRoundCore,
   selectAttackTarget,
   sideFromDisposition,
   _resetActiveRoundForTests,
@@ -116,6 +117,35 @@ describe("the round-control glue against a stubbed Foundry", () => {
     const { notes } = stubFoundry({ isGM: false, placeables: [fakeToken("a1", "Blue", 1, {})] });
     await runRoundControl();
     expect(notes.some((n) => n.startsWith("warn"))).toBe(true);
+  });
+
+  it("a combat the round creates is made active, so the next round finds it", async () => {
+    // Created inactive, it was neither game.combat nor combats.active, so every
+    // later round created another combat, and the engine's ready flags (kept on
+    // combats.active) sat elsewhere.
+    const blue = fakeToken("a1", "Blue", 1, {});
+    const red = fakeToken("b1", "Red", -1, {}, 300);
+    stubFoundry({ placeables: [blue, red] });
+    const created = { ...fakeCombat(), activate: vi.fn(async () => undefined) };
+    const create = vi.fn(async () => created);
+    const g = (globalThis as any).game;
+    g.combat = undefined;
+    g.combats = { active: undefined, contents: [] };
+    vi.stubGlobal("Combat", { create });
+
+    await runRoundControl();
+
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(created.activate).toHaveBeenCalledTimes(1);
+  });
+
+  it("the ready-driven advance reports its outcome instead of toasting it", async () => {
+    // Delegated to a GM, a toast would reach only that GM; the engine shows the
+    // returned outcome to every player.
+    const { notes } = stubFoundry({ placeables: [] });
+    const outcome = await advanceRoundCore();
+    expect(outcome).toEqual({ message: "battleframe-simple-skirmish.controls.round.noUnits", level: "warn" });
+    expect(notes).toEqual([]);
   });
 
   it("runRoundControl warns when the canvas holds no units", async () => {

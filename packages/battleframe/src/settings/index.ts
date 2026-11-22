@@ -2,6 +2,8 @@ import { SYSTEM_ID } from "../constants";
 import type { VisibilitySetting } from "../ui/hover-visibility";
 
 export const SETTING_ACTIVE_RULESET_ID = "activeRulesetId";
+/** World setting: whether neutral-disposition tokens take part in a ruleset's round. */
+export const SETTING_NEUTRAL_TOKENS = "neutralTokens";
 export const SETTING_SETUP_COMPLETED = "setupCompleted";
 export const SETTING_DEFAULT_GRID_UNIT = "defaultGridUnit";
 export const SETTING_STAT_VISIBILITY = "statVisibility";
@@ -169,6 +171,21 @@ export function registerBattleframeSettings(
       gm: "battleframe.settings.statVisibility.choices.gm",
     },
     default: "ruleset",
+  });
+
+  // Decided by agent 2026-11-21 (owner may revisit): a neutral token is on no side.
+  // "friendly" restores the earlier behaviour, where it fought as friendly.
+  settings.register(SYSTEM_ID, SETTING_NEUTRAL_TOKENS, {
+    name: "battleframe.settings.neutralTokens.name",
+    hint: "battleframe.settings.neutralTokens.hint",
+    scope: "world",
+    config: true,
+    type: String,
+    choices: {
+      exclude: "battleframe.settings.neutralTokens.choices.exclude",
+      friendly: "battleframe.settings.neutralTokens.choices.friendly",
+    },
+    default: "exclude",
   });
 
   if (wizardApplicationClass) {
