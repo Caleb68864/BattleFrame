@@ -4305,3 +4305,18 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   are not built.
 - Tests: `spinal-template` (6; the 3 behaviour tests fail on the old round-control). Not
   checked in a running Foundry. Commit: this commit.
+
+## 2026-11-21 — InCountry: round-flow defects from the bug hunt
+- `resolveActivation` checked only the active side before resolving the attack; the engine's
+  `activate` (which refuses an activated or resolved unit) ran after the damage was saved. It
+  now calls `order.eligible(sideId)` first and throws before rolling. `eligible` is optional on
+  the module's order interface, so a fake order without it keeps the old check only.
+- `unitFromToken` keyed units by `actor.id`; an unlinked token's synthetic actor shares its base
+  actor's id, so two squads from one actor collapsed into one. Keyed by token id now. An
+  in-progress round saved under actor ids will not restore across this change.
+- `beginRound` rolled initiative for every side present, wiped ones included. Living sides only.
+- `advanceRoundCore` opened new rounds after `checkVictoryInx` had a winner or a draw. It now
+  warns `controls.round.battleOver` and stops. This follows the module's own baseline victory
+  read ("last side standing"); a scenario with other victory rules would need its own read.
+- Tests: `round-defects` (5), all failing on the old code. Not checked in a running Foundry.
+  Commit: this commit.

@@ -42,6 +42,8 @@ interface ActivationOrderStateLike {
 /** Minimal structural view of the engine's rounds service (game.battleframe.rounds). */
 interface ActivationOrderLike {
   activeSideId(): string | undefined;
+  /** The side's units that may activate now (not activated, not resolved, priority tier honoured). */
+  eligible?(sideId: string): string[];
   activate(unitId: string): void;
   isComplete(): boolean;
   serialize(): ActivationOrderStateLike;
@@ -274,7 +276,8 @@ export interface BeginRoundResult {
 /** Rolls initiative and builds the activation order (bag draw), destroyed units dropping out live. */
 export async function beginRound(params: BeginRoundParams): Promise<BeginRoundResult> {
   const { units, dice, roundsApi } = params;
-  const sideIds = distinct(units.map((unit) => unit.sideId));
+  // A side with no models left is out of the battle: it does not roll initiative.
+  const sideIds = distinct(units.filter((unit) => !isDestroyed(unit.actor.system)).map((unit) => unit.sideId));
   const { firstSideId, rerolls } = await rollInitiativeInx(sideIds, dice, params.maxRerolls);
 
   const order = roundsApi.createActivationOrder({
@@ -358,6 +361,11 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
     throw new IllegalActivationError(
       `it is not ${attacker.sideId}'s turn to activate (expected ${order.activeSideId() ?? "no one"})`
     );
+  }
+  // Ask the order BEFORE the attack: `activate` below would refuse an activated or
+  // wiped unit, but only after its attack had rolled and its damage was saved.
+  if (order.eligible && !order.eligible(attacker.sideId).includes(attacker.id)) {
+    throw new IllegalActivationError(`${label(attacker)} cannot activate now`);
   }
 
   let attack: AttackFlowResult | undefined;
@@ -493,7 +501,9 @@ function unitFromToken(placeable: CanvasTokenLike): CanvasUnit | null {
   if (!actor || actor.type !== UNIT_TYPE) {
     return null;
   }
-  const id = actor.id ?? placeable.document?.id ?? placeable.id;
+  // The token, not the actor: unlinked tokens of one actor share the actor's id,
+  // and would collapse into a single unit in the activation order.
+  const id = placeable.document?.id ?? placeable.id ?? actor.id;
   if (!id) {
     return null;
   }
@@ -675,6 +685,12 @@ export async function advanceRoundCore(): Promise<void> {
   const units = gatherUnitsFromCanvas();
   if (units.length === 0) {
     notifyUser(localize("controls.round.noUnits"), "warn");
+    return;
+  }
+  // The module's victory read: once one side (or neither) holds the field, a new
+  // round has nothing to play.
+  if (checkVictoryInx(units).result !== "continue") {
+    notifyUser(localize("controls.round.battleOver"), "warn");
     return;
   }
 

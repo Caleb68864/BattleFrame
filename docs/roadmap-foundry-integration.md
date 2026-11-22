@@ -38,6 +38,21 @@ throws and each catch takes its default: the initiative winner is never asked, N
 the GM is never offered conversion. Mocks do not read `this`, so the suite could not see it. Fixed
 2026-11-02. The claim about Foundry's statics is from knowledge of its source, not a live check.
 
+## Bug hunt, 2026-11-21 (unit tests only; no Foundry world)
+
+An audit of Simple Skirmish, InCountry and the engine. Fixed items cite their test; open items are
+listed with the reason they were not fixed here.
+
+**InCountry, fixed** (`packages/battleframe-incountry/tests/round-defects.test.ts`):
+- ✅ An attack resolved, and its damage was saved, before the order checked the attacker could
+  activate, so an already-activated or wiped unit on the active side could fire. It now asks
+  `order.eligible` first.
+- ✅ Units were keyed by actor id, so two unlinked tokens of one actor were a single unit. They are
+  keyed by token id now. A round saved before this keyed by actor id will not restore; start a new one.
+- ✅ A side with no models still rolled initiative, and Run Round kept opening rounds after one side
+  held the field. Initiative is rolled by living sides only, and Run Round refuses once the
+  module's own victory read is not "continue" (`controls.round.battleOver`).
+
 ## Executive summary
 
 The concern — "are we recreating Foundry instead of building on it?" — is **valid but

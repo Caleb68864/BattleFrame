@@ -25,7 +25,8 @@
         "started": "New round: {side} takes initiative. Select one of your units and activate it.",
         "tie": "Initiative is tied — roll off (both sides roll a d10, lower wins).",
         "inProgress": "A round is already in progress. Finish activating every unit before starting a new one.",
-        "complete": "Round complete."
+        "complete": "Round complete.",
+        "battleOver": "The battle is over: at most one side still has models. Start a new battle to play another round."
       },
       "ready": {
         "tool": "Ready to Advance",
