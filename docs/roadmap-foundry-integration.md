@@ -112,9 +112,14 @@ token-keyed rulesets). A GREATHELM or Stargrunt round saved before this will not
 - ✅ 2026-11-21 **A delegated advance ran on the GM's canvas.** The engine now delegates only to a
   connected GM viewing the host's scene (`delegateTarget`, socketlib `executeAsUser`), and warns
   instead of advancing when none is. An advance callback may return `{ message, level }`, which the
-  engine shows on every client (`executeForEveryone`); Simple Skirmish and InCountry return theirs.
-  Full Thrust, Dirtside II, Stargrunt II and GREATHELM still toast on the client that runs the
-  advance. (`ready-advance.test.ts`, the two modules' round tests.)
+  engine shows on every client (`executeForEveryone`); all six rulesets now return theirs (Dirtside II,
+  Stargrunt II, Full Thrust and GREATHELM ✅ 2026-11-21, `advance-outcomes.test.ts`). Full Thrust
+  returns the phase it moved to; its results are chat cards already. GREATHELM returns refusals and
+  failures; messages from inside its round still toast where the round runs.
+  (`ready-advance.test.ts`, the modules' round tests.)
+- **GREATHELM's dice-pool panel opens on the client that runs the advance.** A ready-driven advance
+  delegated to a GM puts the panel on the GM's screen, not the players'. Not fixed: the panel is the
+  round's UI and would have to be opened per player from the session on the Combat document.
 - ✅ 2026-11-21 **Modules created their Combat inactive.** Decided by agent 2026-11-21 (owner may
   revisit): treated as a bug, not a design choice. An inactive combat is neither `game.combat` nor
   `combats.active`, so every module's `getOrCreateCombat` missed it and created another each round,

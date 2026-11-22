@@ -1137,6 +1137,20 @@ export async function onRoundControlActivated(
 }
 
 /**
+ * The ready-driven advance: `advanceRoundCore`, with its refusals and failures
+ * returned as the engine's `{ message, level }` instead of toasted, so the engine
+ * shows them to every player when the advance ran on a GM's client. Messages from
+ * inside the round (initiative, clashes) still toast where the round runs.
+ */
+export async function advanceRoundForReady(): Promise<{ message: string; level: "info" | "warn" | "error" } | undefined> {
+  let outcome: { message: string; level: "info" | "warn" | "error" } | undefined;
+  await advanceRoundCore(1, (message, level = "info") => {
+    outcome = { message, level };
+  });
+  return outcome;
+}
+
+/**
  * The round-advance work, UNGATED: set up one round (roll initiative, resume a
  * persisted round after a reload) and open the pool panel to play it die by die.
  *
@@ -1149,7 +1163,8 @@ export async function onRoundControlActivated(
  * `game.battleframe.advance.registerAdvance`.
  */
 export async function advanceRoundCore(
-  roundNumber = 1
+  roundNumber = 1,
+  report: (message: string, level?: "info" | "warn" | "error") => void = notifyUser
 ): Promise<PoolPanelInstance | undefined> {
   const game = resolveGame();
   const dice = game?.battleframe?.dice;
@@ -1157,13 +1172,13 @@ export async function advanceRoundCore(
   const combat = game?.combat;
 
   if (!dice || !measure) {
-    notifyUser(localize("battleframe-greathelm.controls.round.noApi"), "error");
+    report(localize("battleframe-greathelm.controls.round.noApi"), "error");
 
     return undefined;
   }
 
   if (!combat) {
-    notifyUser(localize("battleframe-greathelm.controls.round.noCombat"), "warn");
+    report(localize("battleframe-greathelm.controls.round.noCombat"), "warn");
 
     return undefined;
   }
@@ -1234,7 +1249,7 @@ export async function advanceRoundCore(
     // Contained: a ruleset throwing in its own loop must surface the ruleset
     // id and leave the world usable (see the Edge Cases table).
     const message = error instanceof Error ? error.message : String(error);
-    notifyUser(message, "error");
+    report(message, "error");
     console.error(`${MODULE_ID} | round failed`, error);
 
     return undefined;

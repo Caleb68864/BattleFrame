@@ -166,7 +166,7 @@ async function getOrCreateCombat(): Promise<any | undefined> {
 }
 
 /** "End Turn / New Round": resets markers then opens a fresh round (the advance callback, G4). */
-export async function advanceTurnCore(): Promise<void> {
+export async function advanceTurnCore(): Promise<AdvanceOutcome> {
   // Clear every unit's per-turn markers.
   const actors = (glob().game?.actors?.contents ?? glob().game?.actors ?? []) as any[];
   for (const actor of actors) {
@@ -178,15 +178,29 @@ export async function advanceTurnCore(): Promise<void> {
       }
     }
   }
-  await advanceRoundCore();
+  return advanceRoundCore();
+}
+
+/** The GM's New Round tool: the same advance, its outcome toasted here. */
+export async function runTurnControl(): Promise<void> {
+  const outcome = await advanceTurnCore();
+  notify(outcome.message, outcome.level);
 }
 
 /** Rolls first-chooser and opens a fresh round, refusing while one is in progress. */
-export async function advanceRoundCore(): Promise<void> {
+/**
+ * What a round advance reports (the engine's `AdvanceOutcome` shape). Returned rather
+ * than toasted, so a ready-driven advance delegated to a GM reaches every player.
+ */
+export interface AdvanceOutcome {
+  message: string;
+  level: "info" | "warn" | "error";
+}
+
+export async function advanceRoundCore(): Promise<AdvanceOutcome> {
   const units = gatherUnitsFromCanvas();
   if (units.length === 0) {
-    notify(localize("controls.round.noUnits"), "warn");
-    return;
+    return { message: localize("controls.round.noUnits"), level: "warn" };
   }
 
   const existing = activeRoundCombat();
@@ -195,8 +209,7 @@ export async function advanceRoundCore(): Promise<void> {
     if (state) {
       const round = restoreDirtsideRound(units, state);
       if (!round.isComplete()) {
-        notify(localize("controls.round.inProgress"), "warn");
-        return;
+        return { message: localize("controls.round.inProgress"), level: "warn" };
       }
     }
   }
@@ -205,8 +218,7 @@ export async function advanceRoundCore(): Promise<void> {
     const { state, tie, firstChooserId } = beginRoundState(units);
     const combat = existing ?? (await getOrCreateCombat());
     if (!combat) {
-      notify(localize("controls.round.noApi"), "error");
-      return;
+      return { message: localize("controls.round.noApi"), level: "error" };
     }
     await combat.setFlag(FLAG_SCOPE, ROUND_FLAG, state);
     if (combat.startCombat) {
@@ -216,12 +228,13 @@ export async function advanceRoundCore(): Promise<void> {
         /* already started */
       }
     }
-    if (tie) {
-      notify(localize("controls.round.tie"), "warn");
-    }
-    notify(format("controls.round.started", { side: firstChooserId ?? state.firstPlayerId }));
+    const started = format("controls.round.started", { side: firstChooserId ?? state.firstPlayerId });
+    // A tie was broken by a roll-off: say so in the same message, as a warning.
+    return tie
+      ? { message: `${localize("controls.round.tie")} ${started}`, level: "warn" }
+      : { message: started, level: "info" };
   } catch (error) {
-    notify(error instanceof Error ? error.message : String(error), "error");
+    return { message: error instanceof Error ? error.message : String(error), level: "error" };
   }
 }
 
@@ -331,8 +344,8 @@ export function addSceneControl(controls: unknown): void {
     button: true,
     visible: isGM(),
     order: 2,
-    onClick: () => runGuarded(advanceTurnCore),
-    onChange: () => runGuarded(advanceTurnCore),
+    onClick: () => runGuarded(runTurnControl),
+    onChange: () => runGuarded(runTurnControl),
   };
 
   const control = {

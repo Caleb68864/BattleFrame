@@ -2027,7 +2027,7 @@ async function clearHeldFlags(): Promise<void> {
  * or via socketlib delegation), so the GM-only steps' checks pass. The manual
  * Execute / Begin-fire-phase / New-turn scene tools stay as overrides.
  */
-export async function advancePhaseCore(): Promise<void> {
+export async function advancePhaseCore(): Promise<{ message: string; level: "info" | "warn" | "error" }> {
   const action = nextPhaseAction(firePhaseActive());
   if (action === "execute-then-fire") {
     await executeManeuversAction();
@@ -2036,6 +2036,11 @@ export async function advancePhaseCore(): Promise<void> {
     await advanceTurnCore();
   }
   await clearHeldFlags();
+  // The phase it moved to, for every player: a delegated advance's own toasts reach
+  // only the GM it ran on. The results themselves are chat cards, which all see.
+  return action === "execute-then-fire"
+    ? { message: tr(`${MODULE_ID}.notify.phaseFire`, "Ships have moved: the fire phase begins."), level: "info" }
+    : { message: tr(`${MODULE_ID}.notify.phaseNewTurn`, "The turn is over: plot the next turn's orders."), level: "info" };
 }
 
 /**
