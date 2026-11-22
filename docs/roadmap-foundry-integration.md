@@ -74,6 +74,32 @@ listed with the reason they were not fixed here.
 - ✅ The combat tracker override skipped the base class's `_prepareTrackerContext`, so `turns` (what
   core's tracker template renders) was never built. It now calls the base and reorders `turns` by the
   battleframe order. (`combat.test.ts`)
+- ✅ The setup wizard dropped a refused primary selection's reasons, so "Make Primary" could fail with
+  nothing on screen. It now warns with them. (`settings.test.ts`)
+
+**Open, needs the owner:**
+- **Switching the primary ruleset.** Once primary A is active in a session, activating primary B is
+  refused (`registry.activateRuleset`), although the wizard says the choice can be changed later.
+  Separately, nothing restores the active ruleset from the `activeRulesetId` setting at startup, so
+  `game.battleframe.api.getActiveRuleset()` is `null` after every reload (no module reads it today).
+  Restoring it would make the refusal permanent, so both need one decision: should a new primary
+  replace the old one?
+- **InCountry suppression never clears.** Nothing sets `system.suppressed` back to false, and the
+  sheet checkbox and the token's status icon can disagree. When suppression ends is a rule.
+- **InCountry `armorType` → `armorModifier`/`armorDice`.** Existing actors are not migrated and load
+  with no armour. May be deliberate under `rules-content-audit.md`.
+- **Simple Skirmish neutral/secret tokens.** A neutral token fights as friendly and a secret one as
+  hostile (`sideFromDisposition`). Which units take part is a rules/table call.
+
+**Open, not fixed here (no owner decision needed):**
+- **Raw English** in both modules' round cards and toasts, InCountry's whole unit sheet template, the
+  engine's orphan warning, ready-advance toasts and countdown setting, and engine error messages
+  shown as toasts. The existing i18n tests only check that referenced keys exist.
+- **A delegated advance runs on the GM's canvas.** `advanceRoundCore` reads `canvas.tokens` on the GM
+  who receives the socket call, which may be another scene; the players who readied see no toast.
+- **InCountry creates its Combat inactive** (`Combat.create` without `active: true`), so the engine's
+  ready flags (on `combats.active`) may sit on another combat. Unverified live.
+- **Simple Skirmish's scene control** sets `activeTool` to a GM-only button tool.
 
 ## Executive summary
 

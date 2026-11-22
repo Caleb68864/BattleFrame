@@ -4383,3 +4383,11 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   order renders an empty list, not some other ordering.
 - Tests: two in `combat.test.ts` with a base that builds `turns`, failing on the old code. Not
   checked in a running Foundry. Commit: this commit.
+
+## 2026-11-21 — Engine: the setup wizard reports a refused primary selection
+- `onSelectPrimary` re-rendered on success and did nothing on failure, discarding
+  `activatePrimarySelection`'s `errors`. Each is now a warning toast. The messages themselves are
+  still English (listed under the roadmap's open i18n item).
+- Not changed: why a second primary is refused in the same session, and that the active ruleset
+  is not restored at startup. Both are recorded for the owner in the roadmap's bug-hunt section.
+- Tests: one in `settings.test.ts`, failing on the old code. Commit: this commit.

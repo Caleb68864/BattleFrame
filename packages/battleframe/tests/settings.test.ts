@@ -18,6 +18,7 @@ import {
 import {
   activatePrimarySelection,
   clearSetAsidePrimaryClaims,
+  createSetupWizardClass,
   evaluateWizardState,
   isPrimaryClaimSetAside,
   restorePrimaryClaim,
@@ -310,5 +311,29 @@ describe("two-primary conflict resolution", () => {
 
     expect(evaluateWizardState(rulesetRegistry.listRulesets()).state).toBe("conflict");
     expect((await activatePrimarySelection("alpha")).ok).toBe(false);
+  });
+});
+
+describe("the wizard shows why a primary selection was refused", () => {
+  // activatePrimarySelection returns its reasons; the wizard's click handler
+  // dropped them, so a refused "Make Primary" did nothing visible at all.
+  afterEach(() => {
+    vi.unstubAllGlobals();
+    delete (globalThis as unknown as { game?: unknown }).game;
+  });
+
+  it("warns with the refusal's errors", async () => {
+    (globalThis as unknown as { game?: unknown }).game = { settings: makeFakeSettings() };
+    registerBattleframeSettings();
+    const warn = vi.fn();
+    vi.stubGlobal("ui", { notifications: { warn, info: vi.fn(), error: vi.fn() } });
+    const Wizard = createSetupWizardClass(class {} as never);
+    const wizard = new (Wizard as any)();
+    wizard.rerender = vi.fn();
+
+    await wizard.onSelectPrimary({}, { dataset: { rulesetId: "nonexistent-ruleset" } });
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("nonexistent-ruleset"));
+    expect(wizard.rerender).not.toHaveBeenCalled();
   });
 });
