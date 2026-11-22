@@ -4423,3 +4423,15 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Tests: `unit-sheet-i18n` (2), failing on the old template: no letters may remain once tags,
   Handlebars and entities are stripped, and every `title` must be a localize call.
   Commit: this commit.
+
+## 2026-11-21 — Engine: orphan, ready-advance and activation text goes through the translation
+- The orphan warning and conversion prompt, the "advancing in Ns" and "could not mark ready"
+  toasts, the countdown setting's name and hint, and the two activation refusals in the registry
+  and two in `activatePrimarySelection` were literal English. They use the engine's own
+  `createI18nApi` with the English as the fallback, so the existing tests without `game.i18n`
+  read the same text. The setting passes keys, which Foundry localizes itself.
+- New flat keys in `lang/en.json` (the file's existing style): `battleframe.orphans.*`,
+  `.advance.*`, `.rulesets.*`, `.settings.advanceTimer.*`, `.setupWizard.errors.*`.
+- Ruleset-registration validation errors (`validate.ts`) stay English: they are for a module
+  author reading the console, not for a player.
+- Tests: `engine-i18n` (5), all failing on the old code. Commit: this commit.

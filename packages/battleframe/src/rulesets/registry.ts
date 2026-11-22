@@ -5,6 +5,7 @@ import type {
 } from "./types";
 import { validateRulesetDefinition } from "./validate";
 import { runningBattleframeVersion } from "../version";
+import { createI18nApi } from "../ui/i18n";
 
 function callHook(hook: string, ...args: unknown[]): void {
   if (typeof Hooks === "undefined") {
@@ -48,7 +49,10 @@ export class RulesetRegistry {
     const def = this.rulesets.get(id);
 
     if (!def) {
-      return { ok: false, errors: [`Ruleset "${id}" is not registered.`] };
+      return {
+        ok: false,
+        errors: [createI18nApi().format("battleframe.rulesets.notRegistered", { id }, `Ruleset "${id}" is not registered.`)],
+      };
     }
 
     if (def.primary && this.activeId && this.activeId !== id) {
@@ -58,7 +62,11 @@ export class RulesetRegistry {
         return {
           ok: false,
           errors: [
-            `Cannot activate primary ruleset "${id}": primary ruleset "${activeDef.id}" is already active.`,
+            createI18nApi().format(
+              "battleframe.rulesets.primaryActive",
+              { id, active: activeDef.id },
+              `Cannot activate primary ruleset "${id}": primary ruleset "${activeDef.id}" is already active.`
+            ),
           ],
         };
       }

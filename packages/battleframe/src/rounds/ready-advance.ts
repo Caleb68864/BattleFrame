@@ -18,6 +18,7 @@
  * unit-tested; the timer + Document + hook wiring is defensive glue.
  */
 
+import { createI18nApi } from "../ui/i18n";
 import { battleframeNamespace } from "../api/index";
 import { SYSTEM_ID } from "../constants";
 
@@ -214,7 +215,10 @@ async function evaluate(): Promise<void> {
       return;
     }
     const seconds = timerSeconds();
-    glob().ui?.notifications?.info?.(`${SYSTEM_ID} | all players ready -- advancing in ${seconds}s`);
+    glob().ui?.notifications?.info?.(
+      `${SYSTEM_ID} | ` +
+        createI18nApi().format("battleframe.advance.countdown", { seconds }, `all players ready -- advancing in ${seconds}s`)
+    );
     countdownTimer = setTimeout(() => {
       void performAdvance();
     }, seconds * 1000);
@@ -317,7 +321,11 @@ export function createReadyAdvanceApi(): ReadyAdvanceApi {
         // stays as it was.
         console.warn(`${SYSTEM_ID} | could not toggle ready`, error);
         glob().ui?.notifications?.warn?.(
-          `${SYSTEM_ID} | could not mark ready -- you may need Assistant-GM permission or socketlib for GM-less play`
+          `${SYSTEM_ID} | ` +
+            createI18nApi().localize(
+              "battleframe.advance.readyFailed",
+              "could not mark ready -- you may need Assistant-GM permission or socketlib for GM-less play"
+            )
         );
       }
     },
@@ -349,8 +357,9 @@ export function installReadyAdvanceApi(): ReadyAdvanceApi {
 /** Registers the settable timer setting + the ready-flag change listeners. Call at init. */
 export function registerReadyAdvance(): void {
   glob().game?.settings?.register?.(SYSTEM_ID, TIMER_SETTING, {
-    name: "Turn-advance countdown (seconds)",
-    hint: "When all players mark ready, the round advances after this countdown. A player un-readying cancels it.",
+    // Foundry localizes a setting's name and hint from these keys.
+    name: "battleframe.settings.advanceTimer.name",
+    hint: "battleframe.settings.advanceTimer.hint",
     scope: "world",
     config: true,
     type: Number,
