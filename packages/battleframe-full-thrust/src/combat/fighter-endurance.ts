@@ -9,12 +9,13 @@
  * until it is recovered. A lost group goes to size zero and takes Foundry's native
  * defeated status, the same threshold pattern the ships use.
  *
- * The orchestrator has no way to return a group's bay to its carrier: the launch
- * flag lives on the carrier and a group does not record which carrier launched it.
- * A lost group's bay therefore stays occupied until the GM corrects it.
+ * A lost group hands its bay back to the carrier that launched it: Launch Fighters
+ * records the carrier's uuid on the group (`LAUNCHED_BY_FLAG`), and the caller passes
+ * the carriers it can see. A group launched before that flag existed, or whose carrier
+ * is not among them, frees nothing, and the GM corrects the bay count by hand.
  */
 
-import { FIGHTER_EXHAUSTED_TURNS_FLAG, MODULE_ID } from "../constants";
+import { FIGHTER_EXHAUSTED_TURNS_FLAG, LAUNCHED_BY_FLAG, LAUNCHED_GROUPS_FLAG, MODULE_ID } from "../constants";
 import { isLost, mustReturn } from "./carrier";
 
 export interface EnduranceGroupActor {
@@ -27,6 +28,14 @@ export interface EnduranceGroupActor {
   unsetFlag: (scope: string, key: string) => Promise<unknown>;
   update: (data: Record<string, unknown>) => Promise<unknown>;
   toggleStatusEffect: (id: string, options: { active: boolean }) => Promise<unknown>;
+}
+
+/** The carrier side of a bay release: just its identity and its launch count. */
+export interface CarrierActor {
+  uuid?: string;
+  isOwner?: boolean;
+  getFlag: (scope: string, key: string) => unknown;
+  setFlag: (scope: string, key: string, value: unknown) => Promise<unknown>;
 }
 
 export interface EnduranceSweepResult {
@@ -48,7 +57,7 @@ function defeatedStatusId(): string {
  */
 export async function sweepFighterEndurance(
   groups: readonly EnduranceGroupActor[],
-  options: { lossRule: boolean }
+  options: { lossRule: boolean; carriers?: readonly CarrierActor[] }
 ): Promise<EnduranceSweepResult[]> {
   const results: EnduranceSweepResult[] = [];
 
@@ -72,6 +81,7 @@ export async function sweepFighterEndurance(
     if (options.lossRule && isLost(turns)) {
       await group.update({ "system.size": 0 });
       await group.toggleStatusEffect(defeatedStatusId(), { active: true });
+      await releaseLaunchingBay(group, options.carriers ?? []);
       results.push({ name, status: "lost", turns });
     } else {
       results.push({ name, status: "must-return", turns });
@@ -79,4 +89,28 @@ export async function sweepFighterEndurance(
   }
 
   return results;
+}
+
+/**
+ * Frees the bay a group was launched from: lowers that carrier's launch count by one
+ * (never below zero) and clears the group's record of it, so it is released once.
+ * Returns whether a bay was freed. A carrier this client may not write is left alone,
+ * as the sweep does with groups.
+ */
+export async function releaseLaunchingBay(
+  group: Pick<EnduranceGroupActor, "getFlag" | "unsetFlag">,
+  carriers: readonly CarrierActor[]
+): Promise<boolean> {
+  const ref = group.getFlag(MODULE_ID, LAUNCHED_BY_FLAG);
+  if (typeof ref !== "string" || ref === "") {
+    return false;
+  }
+  const carrier = carriers.find((candidate) => candidate.uuid === ref);
+  if (!carrier || carrier.isOwner === false) {
+    return false;
+  }
+  const deployed = Number(carrier.getFlag(MODULE_ID, LAUNCHED_GROUPS_FLAG) ?? 0);
+  await carrier.setFlag(MODULE_ID, LAUNCHED_GROUPS_FLAG, Math.max(0, deployed - 1));
+  await group.unsetFlag(MODULE_ID, LAUNCHED_BY_FLAG);
+  return true;
 }

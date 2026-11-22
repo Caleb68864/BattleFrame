@@ -4204,3 +4204,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   runs `doneFiringAction` against that ship, which re-checks everything.
 - Placement: right after Fire (matching the scene tool), else before Hold.
 - Tests: `done-firing-hud` (15). Not checked in a running Foundry. Commit: this commit.
+
+## 2026-11-21 — A fighter group lost to endurance frees its carrier's bay
+- Roadmap P2 #14 remainder: the More Thrust loss rule zeroed a group but its carrier's
+  `LAUNCHED_GROUPS_FLAG` kept counting it, because a group did not record its carrier.
+- `launchFightersAction` now creates the group with `flags[MODULE_ID][LAUNCHED_BY_FLAG]` set to
+  the carrier actor's uuid. A uuid rather than an id, so an unlinked carrier token's synthetic
+  actor (whose flags live on the token) is the one matched, not the base actor.
+- `sweepFighterEndurance` takes `carriers` and, on a loss, calls `releaseLaunchingBay`: it finds
+  the carrier by uuid, lowers its count by one (floored at zero) and clears the group's flag so
+  the bay is released once. A carrier this client cannot write is skipped, as groups are.
+- `sweepFighterEndurancePhase` passes the scene's ship actors. A carrier not on the scene, or a
+  group launched before this change, frees nothing; the GM corrects those by hand as before.
+- Not changed: Recover Fighters still frees the recovering carrier's bay, not the launching
+  one, so a group landing on a different carrier leaves the bookkeeping off.
+- Tests: `lost-group-frees-bay` (6; 5 fail on the old code). Not checked in a running Foundry.
+  Commit: this commit.
