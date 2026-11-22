@@ -1,5 +1,11 @@
 import { battleframeNamespace } from "../api/index";
 import { SYSTEM_ID } from "../constants";
+import { createI18nApi } from "../ui/i18n";
+
+/** A localized activation-order message, English as the fallback. */
+function t(key: string, data: Record<string, unknown>, fallback: string): string {
+  return createI18nApi().format(`battleframe.activation.${key}`, data, fallback);
+}
 
 /**
  * Ruleset-neutral, two-tier activation order.
@@ -159,7 +165,7 @@ export function createActivationOrder(params: CreateActivationOrderParams): Acti
       const choice = selectMain(candidates, counts);
       if (!candidates.includes(choice)) {
         throw new IllegalActivationError(
-          `main-tier selector returned "${choice}", which has no eligible unit`
+          t("selectorInvalid", { side: choice }, `main-tier selector returned "${choice}", which has no eligible unit`)
         );
       }
       return choice;
@@ -202,25 +208,34 @@ export function createActivationOrder(params: CreateActivationOrderParams): Acti
     activate(unitId) {
       const unit = unitById.get(unitId);
       if (!unit) {
-        throw new IllegalActivationError(`unknown unit: ${unitId}`);
+        throw new IllegalActivationError(t("unknownUnit", { unit: unitId }, `unknown unit: ${unitId}`));
       }
       if (activated.has(unitId)) {
-        throw new IllegalActivationError(`unit ${unitId} is already activated this round`);
+        throw new IllegalActivationError(
+          t("alreadyActivated", { unit: unitId }, `unit ${unitId} is already activated this round`)
+        );
       }
       if (isResolved(unit)) {
-        throw new IllegalActivationError(`unit ${unitId} is resolved and cannot be activated`);
+        throw new IllegalActivationError(
+          t("resolved", { unit: unitId }, `unit ${unitId} is resolved and cannot be activated`)
+        );
       }
 
       const current = phase();
       const expected = activeSideId();
       if (unit.sideId !== expected) {
+        const shown = expected ?? t("noOne", {}, "no one");
         throw new IllegalActivationError(
-          `it is not ${unit.sideId}'s turn to activate (expected ${expected ?? "no one"})`
+          t("notYourTurn", { side: unit.sideId, expected: shown }, `it is not ${unit.sideId}'s turn to activate (expected ${shown})`)
         );
       }
       if (current === "priority" && !isPriority(unit)) {
         throw new IllegalActivationError(
-          `unit ${unitId} has no priority order; the priority tier must be cleared first`
+          t(
+            "noPriority",
+            { unit: unitId },
+            `unit ${unitId} has no priority order; the priority tier must be cleared first`
+          )
         );
       }
 
@@ -346,7 +361,7 @@ function orderedSides(units: readonly ActivationUnit[], firstSideId: string): st
   const index = order.indexOf(firstSideId);
   if (index < 0) {
     throw new IllegalActivationError(
-      `firstSideId "${firstSideId}" controls none of the units in this round`
+      t("firstSideUnknown", { side: firstSideId }, `firstSideId "${firstSideId}" controls none of the units in this round`)
     );
   }
 

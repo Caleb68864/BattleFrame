@@ -106,8 +106,8 @@ token-keyed rulesets). A GREATHELM or Stargrunt round saved before this will not
 - ✅ 2026-11-21 both modules' dice-roll labels, the activation and initiative errors shown as
   toasts, InCountry's die-size error, and both registration-failure toasts (each package's
   `tests/i18n-errors-dice.test.ts`).
-- **Raw English** left: the engine's own activation-order errors (`rounds/activation.ts`), which a
-  module's pre-check now stops before they are thrown in play. The existing i18n tests only check that referenced keys exist.
+- ✅ 2026-11-21 the engine's activation-order errors (`rounds/activation.ts`,
+  `tests/activation-i18n.test.ts`). The existing i18n tests only check that referenced keys exist.
   (Both modules' round cards and toasts: ✅ 2026-11-21, each package's `tests/localized-round.test.ts`.)
 - ✅ 2026-11-21 **A delegated advance ran on the GM's canvas.** The engine now delegates only to a
   connected GM viewing the host's scene (`delegateTarget`, socketlib `executeAsUser`), and warns
@@ -117,9 +117,14 @@ token-keyed rulesets). A GREATHELM or Stargrunt round saved before this will not
   returns the phase it moved to; its results are chat cards already. GREATHELM returns refusals and
   failures; messages from inside its round still toast where the round runs.
   (`ready-advance.test.ts`, the modules' round tests.)
-- **GREATHELM's dice-pool panel opens on the client that runs the advance.** A ready-driven advance
-  delegated to a GM puts the panel on the GM's screen, not the players'. Not fixed: the panel is the
-  round's UI and would have to be opened per player from the session on the Combat document.
+- ✔ **GREATHELM's dice-pool panel opens on the client that runs the advance.** Decided by agent
+  2026-11-21 (owner may revisit): not a defect, left as is. The panel is GM-only by design
+  (`PoolPanel.canUserAccess()` is `isGM()`, checked again on every spend, pinned by
+  `tests/pool-panel.test.ts`), and a spend writes the round onto the Combat and wounds onto knights,
+  which a plain player may not. A ready-driven advance is delegated to a GM on the players' scene,
+  so the panel opens for the GM who runs the round, which is where it can be used. Opening it for
+  each player would show them a panel whose clicks are refused. A read-only per-player view of the
+  pool would be a new feature, not a fix.
 - ✅ 2026-11-21 **Modules created their Combat inactive.** Decided by agent 2026-11-21 (owner may
   revisit): treated as a bug, not a design choice. An inactive combat is neither `game.combat` nor
   `combats.active`, so every module's `getOrCreateCombat` missed it and created another each round,
