@@ -4253,3 +4253,22 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   the player types.
 - Tests: `localized-dialogs` (7), all failing on the old code. Not checked in a running
   Foundry. Commit: this commit.
+
+## 2026-11-21 — Hull grade on the ship sheet
+- Roadmap P2 #19: the Fleet Book variable hull was reachable through fleet import only.
+- `templates/ship-sheet.hbs` has a `system.hullGrade` select in the hull section, fed by
+  `prepareHullGradeOptions` (blank = the fixed track, then `HULL_GRADES`), labels localized
+  under `hullGrade.*`.
+- The resize is in `ShipData._preUpdate` (the data model, the same hook Simple Skirmish uses
+  for `startingModels`), so any edit path keeps the track consistent, not just the sheet.
+  It fires when the grade changes, or when the mass changes on a graded ship; a fixed-track
+  ship's mass edit leaves the hull alone, as before. It compares against current values,
+  because the sheet's submit sends unchanged fields. A box count typed in the same edit wins.
+  Damage is clamped to the new track.
+- `hullTrackForGrade` (in `ship/variable-hull.ts`) is now the one derivation; fleet import
+  uses it instead of its inline copy.
+- No rules decision needed: the grade's track is the existing import rule. The schema field
+  is still a plain `StringField` (no `choices`); an unknown grade counts as none.
+- Tests: `hull-grade-sheet` (7), all failing on the old code. Not checked in a running Foundry:
+  that the select renders and saves, and that `_preUpdate` receives the changes in the shape
+  assumed (expanded or flat, both handled). Commit: this commit.

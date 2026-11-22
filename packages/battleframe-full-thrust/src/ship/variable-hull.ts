@@ -18,7 +18,7 @@
  *    total MASS only bounds which grades/box counts are legal (10-50 percent).
  */
 
-import { rowBoundaries } from "./hull";
+import { rowBoundaries, shipClass, thresholdRows, warshipDamagePoints } from "./hull";
 import { requireRules } from "../rules-profile";
 import { HULL_GRADES, type HullGrade } from "../constants";
 
@@ -67,4 +67,17 @@ export function hullPointsForGrade(totalMass: number, grade: HullGrade): number 
  */
 export function variableHullLayout(boxes: number, rows: number = requireRules().variableHullRows): number[] {
   return rowBoundaries(boxes, rows);
+}
+
+/**
+ * The hull track a ship of `totalMass` gets for a grade: the grade's boxes on the
+ * variable-hull rows, or with no grade the fixed FT2 track (warship boxes, rows by
+ * class). The one derivation fleet import and the ship sheet both use. An unknown
+ * grade counts as none.
+ */
+export function hullTrackForGrade(totalMass: number, grade: string | undefined): { boxes: number; rows: number } {
+  if (grade && (HULL_GRADES as readonly string[]).includes(grade)) {
+    return { boxes: hullBoxesForGrade(totalMass, grade as HullGrade), rows: requireRules().variableHullRows };
+  }
+  return { boxes: warshipDamagePoints(totalMass), rows: thresholdRows(shipClass(totalMass)) };
 }

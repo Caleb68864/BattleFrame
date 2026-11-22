@@ -1,4 +1,4 @@
-import { MODULE_ID, SHIP_ACTOR_TYPE, FIRE_ARCS, WEAPON_KINDS } from "../constants";
+import { MODULE_ID, SHIP_ACTOR_TYPE, FIRE_ARCS, WEAPON_KINDS, HULL_GRADES } from "../constants";
 import { addWeaponTo, removeWeaponAt, type WeaponMountData } from "./weapon-edit";
 import { rowBoundaries } from "../ship/hull";
 import { weaponTypeIcon } from "../ship/weapon-icons";
@@ -167,6 +167,18 @@ export async function onRemoveWeapon(this: any, _event: unknown, target: any): P
   await actor.update({ "system.weapons": removeWeaponAt(actor.system?.weapons, index) });
 }
 
+/**
+ * The hull-grade dropdown: the fixed FT2 track (blank) and each Fleet Book grade,
+ * the current one selected. `label` is a `lang/en.json` key the template localizes.
+ */
+export function prepareHullGradeOptions(current: string | undefined): { value: string; label: string; selected: boolean }[] {
+  return ["", ...HULL_GRADES].map((value) => ({
+    value,
+    label: `${MODULE_ID}.hullGrade.${value || "fixed"}`,
+    selected: value === (current ?? "")
+  }));
+}
+
 /** Builds the per-weapon view rows: kind options + arc options with selected flags. */
 export function prepareWeaponRows(weapons: readonly WeaponMountData[] | undefined): unknown[] {
   return (weapons ?? []).map((weapon, index) => ({
@@ -288,6 +300,8 @@ export function createShipSheetClass(
       // Clickable hull damage track (visual SSD).
       const hull = actor?.system?.hull ?? {};
       context.hullBoxes = prepareHullBoxes(hull.boxes ?? 0, hull.damage ?? 0, hull.rows ?? 1);
+      // Fleet Book variable hull: picking a grade resizes the track (ShipData._preUpdate).
+      context.hullGrades = prepareHullGradeOptions(actor?.system?.hullGrade);
       // Clickable armour damage track (no threshold rows).
       const armour = actor?.system?.armour ?? {};
       context.armourBoxes = prepareArmourBoxes(armour.boxes ?? 0, armour.damage ?? 0);

@@ -17,8 +17,7 @@ import {
   type FireArc,
   type WeaponKind
 } from "../constants";
-import { shipClass, warshipDamagePoints, thresholdRows } from "../ship/hull";
-import { hullBoxesForGrade } from "../ship/variable-hull";
+import { hullTrackForGrade } from "../ship/variable-hull";
 import { HULL_GRADES, type HullGrade } from "../constants";
 import { requireRules } from "../rules-profile";
 
@@ -78,11 +77,8 @@ function parseShip(raw: any, errors: string[]): ShipCreateData | null {
   // Hull: explicit if given, else derived from MASS (warship half-MASS boxes,
   // rows by class).
   // A recognised `hullGrade` opts this ship into the Fleet Book variable-hull system.
-  const cls = shipClass(mass);
   const hullGrade: HullGrade | "" = HULL_GRADES.includes(raw.hullGrade) ? raw.hullGrade : "";
-  const derivedHull = hullGrade
-    ? { boxes: hullBoxesForGrade(mass, hullGrade), rows: requireRules().variableHullRows, damage: 0 }
-    : { boxes: warshipDamagePoints(mass), rows: thresholdRows(cls), damage: 0 };
+  const derivedHull = { ...hullTrackForGrade(mass, hullGrade), damage: 0 };
   const hull = raw.hull && typeof raw.hull === "object"
     ? {
         boxes: clampInt(raw.hull.boxes, 1, 10_000, derivedHull.boxes),

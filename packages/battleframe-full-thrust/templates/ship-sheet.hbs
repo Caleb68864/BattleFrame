@@ -71,6 +71,14 @@
       <input type="number" name="system.armour.boxes" value="{{system.armour.boxes}}" min="0" step="1" />
     </div>
     <h3>{{localize "battleframe-full-thrust.fields.hull"}}</h3>
+    <div class="ft-field ft-hull-grade">
+      <label>{{localize "battleframe-full-thrust.fields.hullGrade"}}</label>
+      <select name="system.hullGrade" title="{{localize "battleframe-full-thrust.hullGrade.hint"}}">
+        {{#each hullGrades}}
+          <option value="{{this.value}}" {{#if this.selected}}selected{{/if}}>{{localize this.label}}</option>
+        {{/each}}
+      </select>
+    </div>
     <div class="ft-hull-track" title="{{localize "battleframe-full-thrust.hull.trackHint"}}">
       {{#each hullBoxes}}
         <button type="button" class="ft-hull-box{{#if this.damaged}} ft-damaged{{/if}}"

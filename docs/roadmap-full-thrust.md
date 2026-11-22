@@ -109,8 +109,11 @@ by unit tests only. No Foundry world was available to that session.
     - Penetrating damage now reaches the hull while armour remains. It was wired as ordinary damage,
       which spent armour first, contrary to what `ship/fleet-book.ts` itself describes.
 
-    - **Variable hull** is wired through import, not through a design UI: a fleet ship's `hullGrade`
-      sizes its track and prices its hull (`FLEET-FORMAT.md`). No sheet control yet.
+    - **Variable hull** is wired through import: a fleet ship's `hullGrade` sizes its track and prices
+      its hull (`FLEET-FORMAT.md`). **Sheet control done 2026-11-21 (unverified live):** a "Hull grade"
+      dropdown on the ship sheet; choosing or clearing a grade, or changing a graded ship's mass, resizes
+      the hull track through `ShipData._preUpdate`, using the same `hullTrackForGrade` as import. A box
+      count typed in the same edit wins (`tests/hull-grade-sheet.test.ts`).
 
     Remaining:
     - **⏸ Owner, rules not in the repo:** Core Systems threshold bonus, Needle-Beam core immunity,
