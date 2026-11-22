@@ -65,6 +65,9 @@ listed with the reason they were not fixed here.
   `"socket": true`, which socketlib needs before it registers a system, and the ready toggle was
   always written straight to the GM-owned Combat/Scene. A player who does not own it now asks a
   connected GM to write it (`setReady`, keyed to socketlib's record of the caller). (`ready-advance.test.ts`)
+- ✅ The orphan check never found an orphan. An actor whose module is disabled fails validation and
+  is only in `invalidDocumentIds`, which holds ids; the check read them as documents. It now resolves
+  each through `getInvalid`. (`orphan-check.test.ts`)
 
 ## Executive summary
 

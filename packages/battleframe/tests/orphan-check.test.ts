@@ -393,3 +393,30 @@ describe("getSchemaVersion / setSchemaVersion", () => {
     expect(getSchemaVersion(doc)).toBe(5);
   });
 });
+
+describe("registerOrphanCheck finds actors Foundry could not validate", () => {
+  // An actor whose module is disabled fails validation, so it is never in
+  // `game.actors.contents`. Foundry keeps it as an id in `invalidDocumentIds` (a
+  // Set of ids) and hands out the document through `getInvalid(id)`. The check
+  // read the Set's values as documents, so every orphan was skipped.
+  it("warns the GM about an orphan known only by its invalid id", async () => {
+    const orphan = actor({ id: "x1", type: "ruleset-a.trooper" });
+    const warn = vi.fn();
+    vi.stubGlobal("game", {
+      user: { isGM: true },
+      actors: {
+        contents: [],
+        invalidDocumentIds: new Set(["x1"]),
+        getInvalid: (id: string) => (id === "x1" ? orphan : undefined),
+        [Symbol.iterator]: function* () {}
+      },
+      modules: [module({ id: "ruleset-a", active: false })]
+    });
+    vi.stubGlobal("ui", { notifications: { warn, error: vi.fn(), info: vi.fn() } });
+    vi.stubGlobal("foundry", undefined);
+
+    await registerOrphanCheck();
+
+    expect(warn).toHaveBeenCalledWith(expect.stringContaining("ruleset-a"));
+  });
+});

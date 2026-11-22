@@ -4349,3 +4349,13 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   `writeReady` (set to ready; delete the key to un-ready).
 - Tests: three in `ready-advance.test.ts`; the delegation and manifest tests fail on the old
   code. Not checked in a running Foundry with socketlib. Commit: this commit.
+
+## 2026-11-21 — Engine: the orphan check reads invalid actors by id
+- `collectAllActors` took `game.actors.invalidDocumentIds.values()` as documents. In Foundry that
+  collection is a Set of ids, and an actor whose module is disabled fails validation, so it is in
+  neither `contents` nor anywhere else the check looked. `findOrphanedActors` therefore always got
+  nothing from a live world: no warning, no conversion offer.
+- Now each id goes through `game.actors.getInvalid(id)`; an id Foundry no longer holds is skipped.
+  The Set-of-ids shape and `getInvalid` are from knowledge of Foundry's source, not a live check;
+  neither is whether `update` on an invalid document converts it as `convertOrphanToGeneric` expects.
+- Tests: one in `orphan-check.test.ts`, failing on the old code. Commit: this commit.
