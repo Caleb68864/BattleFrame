@@ -4285,3 +4285,23 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Ruleset-neutral: no weapon vocabulary. Tests in `tests/areas.test.ts` (6 new, plus the API
   surface lists in `areas.test.ts` and `battleframe.test.ts`), all failing on the old code.
   Commit: this commit.
+
+## 2026-11-21 — Full Thrust: spinal weapons only hit a ship under their template
+- Symptom: `fireNovaCannonAction` rolled the Nova's first-turn dice against the targeted ship at
+  any range or bearing; `fireWaveGunAction` checked range only (`waveGunDiceAtRange`), so a ship
+  astern inside 36mu took full damage. Both weapons fire straight ahead along the centreline.
+- Fix: `combat/spinal-template.ts` turns the profile into centreline segments (the Nova's sweep
+  for a turn of its life; one Wave Gun segment per range band, that band's diameter) and lays
+  them along the attacker's facing as engine `capsule` areas. `spinalContext` now returns the
+  tokens; each tool tests the target and, on a miss, posts "Not under the template."
+  (`report.notInTemplate`). A Wave Gun miss spends the charge, as an out-of-range shot already did.
+- Centre containment, not base overlap: Full Thrust scenes are in `mu`, and `radiusPx` converts
+  through millimetres, so any base-aware call throws `UnknownGridUnitError` on them. This is
+  also why the module measures centre-to-centre everywhere. The test scene uses `mu` so a
+  switch to base overlap fails loudly.
+- Without `areas` or `facing.facingOf` on the services the check is skipped, as before.
+- Assumptions and the open rules (fixed-in-space plasma, per-ship rolls, friendly fire, bow vs
+  centre, inches vs mu) are in the roadmap's owner list. Later Nova turns and canvas drawing
+  are not built.
+- Tests: `spinal-template` (6; the 3 behaviour tests fail on the old round-control). Not
+  checked in a running Foundry. Commit: this commit.

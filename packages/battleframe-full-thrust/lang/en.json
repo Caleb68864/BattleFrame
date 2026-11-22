@@ -88,6 +88,7 @@
   "battleframe-full-thrust.report.missileWarhead": "{warhead} warhead: <strong>{n}</strong> damage.",
   "battleframe-full-thrust.report.nominatedKnockedOut": "The nominated system was knocked out.",
   "battleframe-full-thrust.report.outOfRange": "Out of range.",
+  "battleframe-full-thrust.report.notInTemplate": "Not under the template.",
   "battleframe-full-thrust.report.firePhaseLabel": "Fire phase:",
   "battleframe-full-thrust.report.spinalHeading": "{weapon} &rarr; {target}",
   "battleframe-full-thrust.side.friendly": "Friendly",

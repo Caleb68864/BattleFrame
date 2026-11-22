@@ -53,6 +53,7 @@ import { plotMovementPath, type MovementPath } from "../movement/path";
 import { usableThrust } from "../ship/systems";
 import { previewPointsPx } from "../movement/preview";
 import { drawMovementPreview, clearMovementPreview } from "./preview-overlay";
+import { novaTemplateSegments, templateCapsules, waveGunTemplateSegments, type TemplateSegment } from "../combat/spinal-template";
 import { parseFleet } from "../data/fleet-import";
 import { fireNeedleAtSystem, type NeedleReport } from "../combat/needle";
 import { resolveSalvoAtTarget, type SalvoReport } from "../combat/salvo";
@@ -376,6 +377,8 @@ export function buildMissileReportHtml(report: MissileAttackReport, targetName: 
 export interface SpinalFireOutcome {
   weapon: "Nova Cannon" | "Wave Gun";
   outOfRange?: boolean;
+  /** The target is not under the weapon's template (ahead along the centreline). */
+  notInTemplate?: boolean;
   distance: number;
   totalDamage: number;
   thresholdsCrossed: number[];
@@ -388,6 +391,9 @@ export function buildSpinalReportHtml(outcome: SpinalFireOutcome, targetName: st
   const target = escapeHtml(targetName);
   const weapon = escapeHtml(outcome.weapon);
   const head = tr(`${REPORT}.spinalHeading`, `${weapon} &rarr; ${target}`, { weapon, target });
+  if (outcome.notInTemplate) {
+    return wrapReport(head, [`<p>${tr(`${REPORT}.notInTemplate`, `Not under the template.`)}</p>`]);
+  }
   if (outcome.outOfRange) {
     return wrapReport(head, [`<p>${tr(`${REPORT}.outOfRange`, `Out of range.`)}</p>`]);
   }
@@ -402,6 +408,11 @@ export interface RoundControlApi {
   dice: FireContext["dice"];
   /** The engine's activation-order service (game.battleframe.rounds). */
   rounds?: RoundsApiLike;
+  /** The engine's area service (game.battleframe.areas): the spinal templates' containment. */
+  areas?: {
+    capsule: (from: { x: number; y: number }, to: { x: number; y: number }, radius: number) => unknown;
+    contains: (area: any, token: unknown, mode?: "base-overlap" | "centre") => boolean;
+  };
   /** The engine's neutral chat-card builder (game.battleframe.chat). */
   chat?: {
     card: (spec: { title?: string; lines?: readonly string[]; cssClass?: string }) => string;
@@ -1141,8 +1152,43 @@ async function resolveSpinalWeapon(
   });
 }
 
+/**
+ * Whether the target's centre is under the weapon's template, laid ahead of the
+ * attacker along its facing (`combat/spinal-template.ts`). Without the engine's
+ * area or facing service there is no geometry to test, and the shot resolves
+ * against the chosen target as it did before.
+ */
+function spinalTemplateCatches(
+  attackerToken: any,
+  targetToken: any,
+  segments: readonly TemplateSegment[],
+  services: RoundControlApi
+): boolean {
+  const areas = services.areas;
+  const facingOf = (services.facing as { facingOf?: (token: unknown) => number }).facingOf;
+  if (!areas || !facingOf || !attackerToken?.center) {
+    return true;
+  }
+  const capsules = templateCapsules(attackerToken.center, facingOf(attackerToken), tokenScale(attackerToken), segments, areas.capsule);
+  // Centre containment: Full Thrust scenes are in mu, and the engine cannot size a
+  // base in mu (it converts through millimetres), so every range here is centre-to-centre.
+  return capsules.some((area) => areas.contains(area, targetToken, "centre"));
+}
+
+/** Posts the miss card for a target the template does not reach. */
+async function postNotInTemplate(weapon: SpinalFireOutcome["weapon"], distance: number, targetName: string): Promise<void> {
+  await postReportCard({
+    content: buildSpinalReportHtml(
+      { weapon, notInTemplate: true, distance, totalDamage: 0, thresholdsCrossed: [], systemsKnockedOut: 0, destroyed: false },
+      targetName
+    )
+  });
+}
+
 /** Shared setup for a spinal tool: GM check + controlled/targeted ship + range. */
-function spinalContext(): { services: RoundControlApi; target: FiringShip & { name?: string }; targetName: string; distance: number } | undefined {
+function spinalContext():
+  | { services: RoundControlApi; attackerToken: any; targetToken: any; target: FiringShip & { name?: string }; targetName: string; distance: number }
+  | undefined {
   if (!isGM()) {
     notify("warn", "gmSpinal", `only the GM fires spinal weapons`);
     return undefined;
@@ -1169,13 +1215,18 @@ function spinalContext(): { services: RoundControlApi; target: FiringShip & { na
     return undefined;
   }
   const distance = services.measure.between(attackerToken, targetToken, "centre-to-centre").distance;
-  return { services, target, targetName: targetToken?.name ?? "Target", distance };
+  return { services, attackerToken, targetToken, target, targetName: targetToken?.name ?? "Target", distance };
 }
 
 /** Nova-Cannon tool: fire the turn-1 blast (N dice, screens ignored) at the target. */
 export async function fireNovaCannonAction(): Promise<void> {
   const ctx = spinalContext();
   if (!ctx) {
+    return;
+  }
+  // First turn of its life only; the later turns' sweep is not built (see the roadmap).
+  if (!spinalTemplateCatches(ctx.attackerToken, ctx.targetToken, novaTemplateSegments(1), ctx.services)) {
+    await postNotInTemplate("Nova Cannon", ctx.distance, ctx.targetName);
     return;
   }
   await resolveSpinalWeapon("Nova Cannon", novaCannonDiceForTurn(1), ctx.distance, ctx.target, ctx.targetName, novaCannonDamage, ctx.services);
@@ -1219,6 +1270,12 @@ export async function fireWaveGunAction(): Promise<void> {
   if (!waveGunIsCharged(charge)) {
     const full = requireRules().waveGunFullCharge;
     notify("warn", "waveGunNotCharged", `Wave Gun not charged (${charge}/${full}) -- use Charge Wave Gun first`, { charge, full });
+    return;
+  }
+  if (!spinalTemplateCatches(ctx.attackerToken, ctx.targetToken, waveGunTemplateSegments(), ctx.services)) {
+    // A miss is still a shot: the charge is spent, as it is on an out-of-range one.
+    await postNotInTemplate("Wave Gun", ctx.distance, ctx.targetName);
+    await ship?.actor?.setFlag?.(MODULE_ID, WAVE_GUN_CHARGE_FLAG, waveGunChargeAfterFiring());
     return;
   }
   await resolveSpinalWeapon("Wave Gun", waveGunDiceAtRange(ctx.distance), ctx.distance, ctx.target, ctx.targetName, waveGunDamage, ctx.services);

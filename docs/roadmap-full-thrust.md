@@ -129,6 +129,30 @@ by unit tests only. No Foundry world was available to that session.
     `areas.capsule(from, to, radius)`, a circle swept along a segment with the same exact, base-aware
     containment as the circle, drawable as Region shapes.
 
+    **Fixed 2026-11-21 (unverified live):** both tools resolved against whatever ship was targeted. The
+    Nova rolled its first-turn dice at any range or bearing; the Wave Gun checked range only, so a ship
+    astern was hit. A target now has to be under the template laid ahead along the firing ship's facing
+    (`combat/spinal-template.ts`, the engine capsule); otherwise the card says "Not under the template."
+    A Wave Gun miss spends its charge, as an out-of-range shot already did
+    (`tests/spinal-template.test.ts`).
+
+    Still not built, and why:
+    - **Drawing the template on the canvas.** The shapes exist (`areas.toRegionShapes`); drawing is
+      PIXI/Region glue nothing here can check without a live world.
+    - **The Nova's later turns.** The sweep geometry for every turn exists (`novaTemplateSegments`),
+      but turns 2 and 3 need answers the repo does not have (below).
+    - **Auto-hitting every ship under the template.** The tools still resolve one targeted ship.
+
+    **⏸ Owner, rules not in the repo (spinal weapons):**
+    - Does the Nova's plasma travel on from where it was fired (fixed in space), or from the ship's
+      bow each turn?
+    - One damage roll applied to every ship it touches, or one roll per ship? Does it hit friendly ships?
+    - Is the sweep measured from the bow or the centre? The code uses the centre, like every other range.
+    - Does "touches" mean the base or the centre? On mu scenes the engine cannot size a base (it
+      converts through millimetres), so the code uses the centre. Answering this needs mm per mu.
+    - Template diameters are quoted in inches and ranges in mu; the code treats both as the scene
+      unit.
+
     **Fixed 2026-11-16:** Nova Cannon and Wave Gun skipped the fire-order gate the same way needles and
     salvos did. They now take `mayFireNow` too (fire phase only, the active side's unfired ships only)
     and, like them, do not advance the order. A refused Wave Gun keeps its charge. Unverified live.
