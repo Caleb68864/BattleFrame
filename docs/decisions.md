@@ -4412,3 +4412,14 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - The glue test's i18n stub now echoes `format` data, as Foundry's interpolation would, so its
   "the toast names both units" check still means something with keyed strings.
 - Tests: `localized-round` (4), all failing on the old code. Commit: this commit.
+
+## 2026-11-21 — InCountry: the unit sheet goes through the translation
+- Every heading, label, column head, tooltip and the empty-weapons line in
+  `templates/unit-sheet.hbs` is a `{{localize "battleframe-incountry.sheet.*"}}` call. The two
+  strings that carry an HTML entity (`Move&Prime;`, `Attack &amp; Armor`) use triple braces so the
+  entity renders rather than being escaped a second time.
+- The attack-dice tooltip said "(d10)"; the die size is the world's setting, not the module's, so
+  under `rules-content-audit.md` the tooltip now names the mechanic only ("Attack dice").
+- Tests: `unit-sheet-i18n` (2), failing on the old template: no letters may remain once tags,
+  Handlebars and entities are stripped, and every `title` must be a localize call.
+  Commit: this commit.

@@ -71,6 +71,32 @@
       "roundContinue": "Round over: both sides still hold. Start a new round.",
       "ready": "READY",
       "notReady": "not ready"
+    },
+    "sheet": {
+      "tag": "INCOUNTRY",
+      "muster": "Muster",
+      "models": "Models",
+      "move": "Move&Prime;",
+      "morale": "Morale",
+      "attackArmor": "Attack &amp; Armor",
+      "clear": "Clear",
+      "inCover": "In Cover",
+      "armorModifier": "Armor +",
+      "armorRatingHint": "Destroyed by damage",
+      "armorDice": "Armor dice",
+      "suppressed": "Suppressed",
+      "weapons": "Weapons",
+      "addWeaponHint": "Add a weapon",
+      "add": "Add",
+      "colWeapon": "Weapon",
+      "colCount": "#",
+      "colDmg": "DMG",
+      "colAttack": "Atk",
+      "colOverwatch": "O/W",
+      "attackDiceHint": "Attack dice",
+      "owDiceHint": "Overwatch/react dice (0 = cannot react)",
+      "removeHint": "Remove",
+      "noWeapons": "No weapons. Add one to arm this unit."
     }
   }
 }

@@ -92,7 +92,8 @@ listed with the reason they were not fixed here.
   hostile (`sideFromDisposition`). Which units take part is a rules/table call.
 
 **Open, not fixed here (no owner decision needed):**
-- **Raw English** in InCountry's whole unit sheet template, the engine's orphan warning, ready-advance
+- ✅ 2026-11-21 InCountry's unit sheet template (`tests/unit-sheet-i18n.test.ts`).
+- **Raw English** in the engine's orphan warning, ready-advance
   toasts and countdown setting, engine error messages shown as toasts, dice-roll flavors, and both
   modules' registration-failure toasts. The existing i18n tests only check that referenced keys exist.
   (Both modules' round cards and toasts: ✅ 2026-11-21, each package's `tests/localized-round.test.ts`.)
