@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import { MODULE_ID, UNIT_ACTOR_TYPE } from "./constants";
 import { migrateStartingModels, registerUnitDataModel, type MigratableUnit } from "./data/unit";
 import { registerUnitSheet } from "./sheets/unit-sheet";
@@ -35,7 +36,7 @@ function resolveBattleframeApi(): BattleframeApi | undefined {
  * nothing -- loud failure over plausible output.
  */
 function failRegistration(reason: string): never {
-  const message = `${MODULE_ID} | Simple Skirmish did not register: ${reason}`;
+  const message = `${MODULE_ID} | ${tr("errors.registrationFailed", `Simple Skirmish did not register: ${reason}`, { reason })}`;
 
   const notifications = (globalThis as unknown as {
     ui?: { notifications?: { error?: (text: string) => void } };

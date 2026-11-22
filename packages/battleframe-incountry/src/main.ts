@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import { MODULE_ID, UNIT_ACTOR_TYPE } from "./constants";
 import { registerUnitDataModel } from "./data/unit";
 import { registerSettings } from "./settings";
@@ -30,7 +31,7 @@ function resolveBattleframeApi(): BattleframeApi | undefined {
 
 /** Reports a fatal registration failure to the GM, then throws. Never returns. */
 function failRegistration(reason: string): never {
-  const message = `${MODULE_ID} | InCountry did not register: ${reason}`;
+  const message = `${MODULE_ID} | ${tr("errors.registrationFailed", `InCountry did not register: ${reason}`, { reason })}`;
   const notifications = (globalThis as unknown as {
     ui?: { notifications?: { error?: (text: string) => void } };
   }).ui?.notifications;

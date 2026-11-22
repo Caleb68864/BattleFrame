@@ -1,3 +1,4 @@
+import { tr } from "../i18n";
 import { MODULE_ID } from "../constants";
 import { requireDieSize } from "../settings";
 import { resolveAttack, type AttackResult, type DiceApiLike } from "../combat/resolve";
@@ -57,7 +58,7 @@ export async function resolveUnitAttack(params: AttackFlowParams): Promise<Attac
   }
 
   const suppressionRoll = (
-    await dice.roll(`1d${requireDieSize()}`, {}, { rulesetId: MODULE_ID, flavor: "suppression" })
+    await dice.roll(`1d${requireDieSize()}`, {}, { rulesetId: MODULE_ID, flavor: tr("dice.suppression", "suppression") })
   ).total;
   const suppressed = rollSuppresses(suppressionRoll, target.morale);
 

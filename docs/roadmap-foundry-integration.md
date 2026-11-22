@@ -95,8 +95,11 @@ listed with the reason they were not fixed here.
 - ✅ 2026-11-21 InCountry's unit sheet template (`tests/unit-sheet-i18n.test.ts`).
 - ✅ 2026-11-21 the engine's orphan warning and conversion prompt, ready-advance toasts, countdown
   setting, and the ruleset-activation refusals the wizard shows (`tests/engine-i18n.test.ts`).
-- **Raw English** in engine error messages shown as toasts, dice-roll flavors, and both
-  modules' registration-failure toasts. The existing i18n tests only check that referenced keys exist.
+- ✅ 2026-11-21 both modules' dice-roll labels, the activation and initiative errors shown as
+  toasts, InCountry's die-size error, and both registration-failure toasts (each package's
+  `tests/i18n-errors-dice.test.ts`).
+- **Raw English** left: the engine's own activation-order errors (`rounds/activation.ts`), which a
+  module's pre-check now stops before they are thrown in play. The existing i18n tests only check that referenced keys exist.
   (Both modules' round cards and toasts: ✅ 2026-11-21, each package's `tests/localized-round.test.ts`.)
 - **A delegated advance runs on the GM's canvas.** `advanceRoundCore` reads `canvas.tokens` on the GM
   who receives the socket call, which may be another scene; the players who readied see no toast.

@@ -1,3 +1,4 @@
+import { tr } from "../i18n";
 import {
   ATTACK_TYPES,
   DEFAULT_RANGE_INCHES,
@@ -167,7 +168,7 @@ export function buildVictoryHtml(victory: VictoryOutcome): string {
 
 export class InitiativeUnresolvedError extends Error {
   constructor(rerolls: number) {
-    super(`${MODULE_ID} | initiative stayed tied after ${rerolls} re-rolls`);
+    super(`${MODULE_ID} | ${tr("errors.initiativeUnresolved", `initiative stayed tied after ${rerolls} re-rolls`, { rerolls })}`);
     this.name = "InitiativeUnresolvedError";
   }
 }
@@ -189,7 +190,7 @@ export async function rollInitiative(
   for (let rerolls = 0; rerolls <= maxRerolls; rerolls += 1) {
     const rolls = [];
     for (const playerId of playerIds) {
-      const result = await dice.roll("1d6", {}, { rulesetId: MODULE_ID, flavor: `initiative (${playerId})` });
+      const result = await dice.roll("1d6", {}, { rulesetId: MODULE_ID, flavor: tr("dice.initiative", `initiative (${playerId})`, { side: playerId }) });
       rolls.push({ playerId, roll: result.total });
     }
 
@@ -327,14 +328,18 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
   const postCard = params.postCard ?? (() => undefined);
 
   if (round.activePlayerId() !== attacker.playerId) {
+    const expected = round.activePlayerId() ?? tr("errors.noOne", "no one");
     throw new IllegalActivationError(
-      `it is not ${attacker.playerId}'s turn to activate (expected ${round.activePlayerId() ?? "no one"})`
+      tr("errors.notYourTurn", `it is not ${attacker.playerId}'s turn to activate (expected ${expected})`, {
+        side: attacker.playerId,
+        expected
+      })
     );
   }
   // Ask the round BEFORE the attack: `activate` below refuses an activated or
   // destroyed unit, but only after its attack had rolled and its casualties were saved.
   if (!round.unactivated(attacker.playerId).includes(attacker.id)) {
-    throw new IllegalActivationError(`${label(attacker)} cannot activate now`);
+    throw new IllegalActivationError(tr("errors.cannotActivate", `${label(attacker)} cannot activate now`, { unit: label(attacker) }));
   }
 
   let attack: AttackOutcome | undefined;
@@ -768,19 +773,6 @@ export async function activateSelectedControl(): Promise<void> {
   } catch (error) {
     notifyUser(error instanceof Error ? error.message : String(error), "warn");
   }
-}
-
-/**
- * Foundry's translation of `battleframe-simple-skirmish.<suffix>`, with the English
- * fallback (already filled in) for when no translation is loaded.
- */
-function tr(suffix: string, fallback: string, data?: Record<string, string | number>): string {
-  const i18n = (globalThis as unknown as {
-    game?: { i18n?: { localize?: (k: string) => string; format?: (k: string, d: Record<string, string | number>) => string } };
-  }).game?.i18n;
-  const key = `${MODULE_ID}.${suffix}`;
-  if (data && i18n?.format) return i18n.format(key, data);
-  return i18n?.localize?.(key) ?? fallback;
 }
 
 /** An attack type's display name (`attackTypes.*`), the raw type as the fallback. */

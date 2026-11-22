@@ -97,6 +97,20 @@
       "owDiceHint": "Overwatch/react dice (0 = cannot react)",
       "removeHint": "Remove",
       "noWeapons": "No weapons. Add one to arm this unit."
+    },
+    "dice": {
+      "initiative": "initiative ({side})",
+      "attack": "{prefix}attack",
+      "armor": "{prefix}armor",
+      "suppression": "suppression"
+    },
+    "errors": {
+      "registrationFailed": "InCountry did not register: {reason}",
+      "notYourTurn": "it is not {side}'s turn to activate (expected {expected})",
+      "noOne": "no one",
+      "cannotActivate": "{unit} cannot activate now",
+      "initiativeUnresolved": "initiative stayed tied after {rerolls} re-rolls",
+      "dieSizeNotSet": "no die size set. This module ships no rules numbers: open the module settings and enter the die your rulebook uses."
     }
   }
 }

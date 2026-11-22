@@ -4435,3 +4435,18 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Ruleset-registration validation errors (`validate.ts`) stay English: they are for a module
   author reading the console, not for a player.
 - Tests: `engine-i18n` (5), all failing on the old code. Commit: this commit.
+
+## 2026-11-21 — Simple Skirmish and InCountry: dice labels and error toasts localized
+- Each module gets `src/i18n.ts` with one `tr(suffix, fallback, data)` (the copies in
+  round-control are gone). It falls back to the English when Foundry hands back the bare key,
+  which it does for an untranslated string and before the language files load; a registration
+  failure fires at `init`, when that can happen.
+- Localized: dice flavors (initiative, attack, save, armor, suppression; Simple Skirmish's attack
+  type through `attackTypes.*`), the activation errors the round controls toast (out of turn,
+  cannot activate, and Simple Skirmish's session errors), the initiative-unresolved error,
+  InCountry's die-size error, and both registration-failure toasts. English text unchanged, so
+  tests matching it still hold.
+- Not localized: the ruleset `title` passed to `registerRuleset` (a proper name, registered at
+  `init`), and the engine's activation-order errors.
+- Tests: `i18n-errors-dice` in each package (4 + 3 behaviour tests, all failing on the old code;
+  plus a scan that every literal `tr()` key exists in `lang/en.json`). Commit: this commit.

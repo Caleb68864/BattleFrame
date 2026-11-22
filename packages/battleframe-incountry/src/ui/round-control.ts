@@ -1,3 +1,4 @@
+import { tr } from "../i18n";
 import { MODULE_ID, UNIT_ACTOR_TYPE } from "../constants";
 import { requireDieSize } from "../settings";
 import type { DiceApiLike } from "../combat/resolve";
@@ -217,7 +218,7 @@ export interface AttackCardSpec {
 
 export class InitiativeUnresolvedError extends Error {
   constructor(rerolls: number) {
-    super(`${MODULE_ID} | initiative stayed tied after ${rerolls} re-rolls`);
+    super(`${MODULE_ID} | ${tr("errors.initiativeUnresolved", `initiative stayed tied after ${rerolls} re-rolls`, { rerolls })}`);
     this.name = "InitiativeUnresolvedError";
   }
 }
@@ -247,7 +248,7 @@ export async function rollInitiativeInx(
       const result = await dice.roll(
         `1d${requireDieSize()}`,
         {},
-        { rulesetId: MODULE_ID, flavor: `initiative (${sideId})` }
+        { rulesetId: MODULE_ID, flavor: tr("dice.initiative", `initiative (${sideId})`, { side: sideId }) }
       );
       rolls.push({ sideId, roll: result.total });
     }
@@ -371,14 +372,18 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
   const postCard = params.postCard ?? (() => undefined);
 
   if (order.activeSideId() !== attacker.sideId) {
+    const expected = order.activeSideId() ?? tr("errors.noOne", "no one");
     throw new IllegalActivationError(
-      `it is not ${attacker.sideId}'s turn to activate (expected ${order.activeSideId() ?? "no one"})`
+      tr("errors.notYourTurn", `it is not ${attacker.sideId}'s turn to activate (expected ${expected})`, {
+        side: attacker.sideId,
+        expected
+      })
     );
   }
   // Ask the order BEFORE the attack: `activate` below would refuse an activated or
   // wiped unit, but only after its attack had rolled and its damage was saved.
   if (order.eligible && !order.eligible(attacker.sideId).includes(attacker.id)) {
-    throw new IllegalActivationError(`${label(attacker)} cannot activate now`);
+    throw new IllegalActivationError(tr("errors.cannotActivate", `${label(attacker)} cannot activate now`, { unit: label(attacker) }));
   }
 
   let attack: AttackFlowResult | undefined;
@@ -833,17 +838,6 @@ interface AdvanceApiLike {
   toggleReady?: () => Promise<void>;
   isReady?: (userId?: string) => boolean;
   status?: () => { ready: string[]; participants: string[]; allReady: boolean };
-}
-
-/**
- * Foundry's translation of `battleframe-incountry.<suffix>`, with the English
- * fallback (already filled in) for when no translation is loaded.
- */
-function tr(suffix: string, fallback: string, data?: Record<string, unknown>): string {
-  const i18n = globalScope().game?.i18n;
-  const key = `${MODULE_ID}.${suffix}`;
-  if (data && i18n?.format) return i18n.format(key, data);
-  return i18n?.localize?.(key) ?? fallback;
 }
 
 function localize(suffix: string): string {
