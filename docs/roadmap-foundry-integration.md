@@ -60,6 +60,10 @@ listed with the reason they were not fixed here.
 - ✅ The defeated status was only ever set. Restoring a unit's models on the sheet left the skull on.
   The unit data model's `_onUpdate` now re-syncs it when `models` changes, on the changing client only.
 
+**Stargrunt II and GREATHELM, fixed:** ✅ 2026-11-21 the same actor-id unit keying; units and knights
+are keyed by token id now (`packages/battleframe/tests/unit-keying.test.ts`, which covers all four
+token-keyed rulesets). A GREATHELM or Stargrunt round saved before this will not resume; start a new one.
+
 **Engine, fixed** (`packages/battleframe/tests/`):
 - ✅ GM-less play through socketlib could not work for plain players. `system.json` had no
   `"socket": true`, which socketlib needs before it registers a system, and the ready toggle was

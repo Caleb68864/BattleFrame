@@ -391,7 +391,9 @@ function unitFromToken(placeable: unknown): CanvasUnit | null {
   if (!p || !actor || actor.type !== UNIT_TYPE) {
     return null;
   }
-  const id = actor.id ?? p.document?.id ?? p.id;
+  // The token, not the actor: unlinked tokens of one actor share the actor's id,
+  // and would collapse into a single unit in the round.
+  const id = p.document?.id ?? p.id ?? actor.id;
   if (!id) {
     return null;
   }

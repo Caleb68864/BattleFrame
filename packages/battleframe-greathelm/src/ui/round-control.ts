@@ -940,7 +940,9 @@ export function gatherKnightsFromCanvas(): RoundKnight[] {
       return [];
     }
 
-    const id = actor.id ?? placeable.document?.id ?? placeable.id;
+    // The token, not the actor: unlinked tokens of one actor share the actor's id,
+    // and would collapse into a single knight in the round.
+    const id = placeable.document?.id ?? placeable.id ?? actor.id;
 
     if (!id) {
       return [];

@@ -4516,3 +4516,12 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Tests: `neutral-token-sides.test.ts` drives each ruleset's real gather function; the default-
   behaviour cases and the setting registration fail on the old code, the "friendly" cases guard
   the restored behaviour. Commit: this commit.
+
+## 2026-11-21 — Stargrunt II and GREATHELM key units by token
+- Both gather functions used `actor.id ?? token id`, the defect fixed in Simple Skirmish and
+  InCountry earlier today: two unlinked tokens of one actor share the actor's id and became one
+  unit (one knight). Both now key by token id.
+- A round saved under actor ids (GREATHELM's resumable dice-pool session, Stargrunt's order) will
+  not restore across this change; start a new round.
+- Tests: `unit-keying.test.ts` runs the four token-keyed gatherers; the Stargrunt II and GREATHELM
+  cases fail on the old code, the other two guard the earlier fix. Commit: this commit.
