@@ -81,12 +81,6 @@ export const RECOVERED_THIS_TURN_FLAG = "recoveredThisTurn";
 /** Actor flag: how many fighter groups a carrier currently has deployed (vs its bays). */
 export const LAUNCHED_GROUPS_FLAG = "launchedGroups";
 
-/**
- * Actor flag on a fighter group: the uuid of the carrier actor that launched it, so a
- * group lost to endurance can hand its bay back (`releaseLaunchingBay`).
- */
-export const LAUNCHED_BY_FLAG = "launchedBy";
-
 // --- Vocabulary -------------------------------------------------------------
 
 /**

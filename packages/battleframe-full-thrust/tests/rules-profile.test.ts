@@ -206,7 +206,6 @@ describe("the constants file carries no rules numbers", () => {
         "HELD_FLAG",
         "WAVE_GUN_CHARGE_FLAG",
         "LAUNCHED_GROUPS_FLAG",
-        "LAUNCHED_BY_FLAG",
         "FIGHTER_EXHAUSTED_TURNS_FLAG",
         "THRUSTED_THIS_TURN_FLAG",
         "RECOVERED_THIS_TURN_FLAG",

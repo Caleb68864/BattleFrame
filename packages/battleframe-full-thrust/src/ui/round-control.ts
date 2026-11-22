@@ -19,17 +19,11 @@ import {
   HELD_FLAG,
   ACTIVE_MISSILES_FLAG,
   WAVE_GUN_CHARGE_FLAG,
-  LAUNCHED_BY_FLAG,
   LAUNCHED_GROUPS_FLAG,
   RECOVERED_THIS_TURN_FLAG,
   THRUSTED_THIS_TURN_FLAG
 } from "../constants";
-import {
-  sweepFighterEndurance,
-  type CarrierActor,
-  type EnduranceGroupActor,
-  type EnduranceSweepResult
-} from "../combat/fighter-endurance";
+import { sweepFighterEndurance, type EnduranceGroupActor, type EnduranceSweepResult } from "../combat/fighter-endurance";
 import type { AftFireOption } from "../combat/aft-fire";
 import { tr } from "../localize";
 import {
@@ -1298,9 +1292,7 @@ export async function launchFightersAction(): Promise<void> {
   const group = await g().Actor?.create?.({
     name: `${carrier.name ?? "Carrier"} Wing ${deployed + 1}`,
     type: `${MODULE_ID}.${FIGHTER_GROUP_ACTOR_TYPE}`,
-    system: { size: requireRules().fighterGroupMax },
-    // Which carrier's bay this group came from, so a group lost to endurance frees it.
-    flags: { [MODULE_ID]: { [LAUNCHED_BY_FLAG]: carrier.actor.uuid } }
+    system: { size: requireRules().fighterGroupMax }
   });
   if (!group?.getTokenDocument) {
     notify("error", "fighterCreateFailed", `could not create the fighter group`);
@@ -1934,12 +1926,8 @@ async function sweepFighterEndurancePhase(tokens: readonly any[]): Promise<void>
   if (groups.length === 0) {
     return;
   }
-  const carriers = tokens
-    .map((token) => token?.actor)
-    .filter((actor) => typeof actor?.type === "string" && actor.type.endsWith(SHIP_ACTOR_TYPE)) as CarrierActor[];
   const results = await sweepFighterEndurance(groups, {
-    lossRule: !!(g().game as any)?.settings?.get?.(MODULE_ID, "fighterLossRule"),
-    carriers
+    lossRule: !!(g().game as any)?.settings?.get?.(MODULE_ID, "fighterLossRule")
   });
   if (results.length > 0) {
     await postReportCard({ content: buildEnduranceReportHtml(results) });

@@ -4220,3 +4220,21 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   one, so a group landing on a different carrier leaves the bookkeeping off.
 - Tests: `lost-group-frees-bay` (6; 5 fail on the old code). Not checked in a running Foundry.
   Commit: this commit.
+
+## 2026-11-21 — Reverted: a lost group does NOT free its carrier's bay
+- The entry above was wrong. `LAUNCHED_GROUPS_FLAG` counts the carrier's EMPTY bays:
+  `launchFightersAction` refuses at `deployed >= bays` and `recoverFightersAction` treats
+  `bays - deployed` as the groups aboard. Lowering the count on a loss made the bay look
+  full, so a one-bay carrier whose only group was lost could launch a fresh group from
+  nothing. Reverted `0f36829` in full (`LAUNCHED_BY_FLAG`, `releaseLaunchingBay`, the
+  `carriers` sweep option, the launch-time flag).
+- The same reasoning rules out the follow-up to "free the launching carrier's bay" on
+  Recover Fighters: the group physically lands in the recovering carrier's empty bay, which
+  is what the tool already counts. Moving the decrement to the launching carrier would put
+  one carrier's count up by one and the other's down by one.
+- Whether a group may land on another carrier at all, and whether lost fighters can be
+  replaced, are not in the repo; recorded as owner questions in the roadmap.
+- Fixed the sweep's header comment, which called the old behaviour a bug.
+- Tests: `lost-group-bay-stays-empty` (1): launch, lose the group, launch again must be
+  refused. It fails on `0f36829` (count went 1 -> 0) and passes after the revert.
+  Commit: this commit.

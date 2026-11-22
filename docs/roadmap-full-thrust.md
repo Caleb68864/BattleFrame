@@ -81,12 +81,13 @@ by unit tests only. No Foundry world was available to that session.
     fighter card; the end-of-turn endurance sweep (`combat/fighter-endurance.ts`) that orders exhausted
     groups home, counts dry turns on a flag and, behind the world setting "More Thrust: exhausted
     fighters are lost", removes a group after the profile's grace. Recovery now uses the group's own
-    move rather than its attack range, and honours the per-turn limit. **Done 2026-11-21 (unverified
-    live):** a lost group frees its bay. Launch Fighters records the carrier's uuid on the group
-    (`LAUNCHED_BY_FLAG`), and the sweep's `releaseLaunchingBay` lowers that carrier's launch count when
-    the group is lost (`tests/lost-group-frees-bay.test.ts`). A group launched before this frees
-    nothing; the GM still corrects those. Remaining: Recover Fighters frees the recovering carrier's
-    bay, not the launching one. **⏸ Owner:** the launch limit needs to know
+    move rather than its attack range, and honours the per-turn limit. **Corrected 2026-11-21:** the
+    remaining item "a lost group's bay stays occupied" was a misreading. The carrier's launch count
+    is its number of EMPTY bays, so a lost group's bay correctly stays empty and cannot launch a
+    replacement (`tests/lost-group-bay-stays-empty.test.ts`). Recovery onto a carrier other than the
+    launching one fills the recovering carrier's bay, which is also correct for that model. **⏸ Owner:**
+    whether a group may land on a carrier other than its own, and whether a carrier can replace lost
+    fighters, are rules the repo does not contain. **⏸ Owner:** the launch limit needs to know
     whether a ship is an "actual carrier", and nothing in the ship model says so (a `bays` count is
     not the same claim).
 15. ~~**[build] Independent (More Thrust) missiles.**~~ ✅ **DONE.** The missile phase landed 2026-07-22.
