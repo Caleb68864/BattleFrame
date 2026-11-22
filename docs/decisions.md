@@ -4399,3 +4399,16 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   English as the fallback, so the existing English-pinning tests still hold without i18n.
 - Not changed: thrown engine error messages that reach toasts, and the unit sheet template.
 - Tests: `localized-round` (4), all failing on the old code. Commit: this commit.
+
+## 2026-11-21 — Simple Skirmish: the round's cards and toasts go through the translation
+- Same change as InCountry's: the combat card, the round-over card, the activation and round-over
+  toasts and the ready toast's state word name `battleframe-simple-skirmish.report.*`/`.notify.*`
+  keys through a local `tr`, English as the fallback.
+- The card title and the attack toast now show the attack type's display name
+  (`attackTypes.*`, which existed but was unused) instead of the raw id ("melee").
+- A refused attack showed the core's code to the player ("Unit: no-melee-attack"); it now reads
+  `notify.noAttack` ("Unit has no Melee attack."). An unrecognised code still shows, through
+  `notify.refused`.
+- The glue test's i18n stub now echoes `format` data, as Foundry's interpolation would, so its
+  "the toast names both units" check still means something with keyed strings.
+- Tests: `localized-round` (4), all failing on the old code. Commit: this commit.

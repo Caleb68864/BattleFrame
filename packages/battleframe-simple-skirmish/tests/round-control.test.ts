@@ -87,7 +87,8 @@ function stubFoundry(options: {
   vi.stubGlobal("game", {
     user: { isGM: options.isGM ?? true, targets: new Set(options.targets ?? []) },
     battleframe: { dice: options.dice ?? scriptedDice([6, 1, 6, 1, 6, 1]), measure },
-    i18n: { localize: (k: string) => k, format: (k: string) => k },
+    // format echoes its data, as Foundry's interpolation would put it in the string.
+    i18n: { localize: (k: string) => k, format: (k: string, d?: Record<string, unknown>) => [k, ...Object.values(d ?? {})].join(" ") },
     combat,
     combats: { active: combat, contents: [combat] }
   });
