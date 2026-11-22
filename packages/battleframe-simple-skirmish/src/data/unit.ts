@@ -1,4 +1,5 @@
 import { MODULE_ID, UNIT_ACTOR_TYPE, MOVE_STANDARD_INCHES } from "../constants";
+import { syncDefeatedStatus, type UnitActorLike } from "./unit-state";
 
 export class MissingTypeDataModelBaseError extends Error {
   constructor() {
@@ -111,6 +112,21 @@ export function createUnitDataClass(
       const self = this as unknown as { models?: number; startingModels?: number; modelsBar?: unknown };
       const value = self.models ?? 0;
       self.modelsBar = { value, max: Math.max(self.startingModels ?? 0, value) };
+    }
+
+    /**
+     * The defeated status follows the model count both ways: casualties set it
+     * (`applyCasualties`), and restoring models on the sheet clears it. Only the
+     * client that made the change writes, so other clients do not repeat it.
+     */
+    async _onUpdate(changed: Record<string, any>, options: unknown, userId: string): Promise<void> {
+      await super._onUpdate?.(changed, options, userId);
+      const me = (globalThis as unknown as { game?: { user?: { id?: string } } }).game?.user?.id;
+      if (userId !== me) return;
+      const models = changed.system?.models ?? changed["system.models"];
+      if (typeof models !== "number") return;
+      const parent = (this as unknown as { parent?: UnitActorLike }).parent;
+      if (parent) await syncDefeatedStatus(parent);
     }
 
     /** A unit created with more models than its starting count starts with them all. */

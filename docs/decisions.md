@@ -4272,3 +4272,143 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Tests: `hull-grade-sheet` (7), all failing on the old code. Not checked in a running Foundry:
   that the select renders and saves, and that `_preUpdate` receives the changes in the shape
   assumed (expanded or flat, both handled). Commit: this commit.
+
+## 2026-11-21 — Engine: capsule area (a circle swept along a segment)
+- Roadmap Full Thrust P2 #20 asked whether the repo had the geometry for a swept template. It
+  did not: `areas` had circles and rectangles, and the 2026-07-17 entry left lines unbuilt.
+- `areas.capsule(from, to, radius)`: every point within `radius` of the segment. `contains`
+  measures the token centre to the nearest point of the segment and compares with
+  `radius + baseRadius`, the same exact, base-aware rule as the circle (radii summed before
+  comparing). `centre` mode ignores the base. Equal end points behave as the circle.
+- `toRegionShapes` draws it as two end circles plus the body as a `polygon` (a new
+  `RegionShapeData` type with flat `points`). Drawing only, as before.
+- Ruleset-neutral: no weapon vocabulary. Tests in `tests/areas.test.ts` (6 new, plus the API
+  surface lists in `areas.test.ts` and `battleframe.test.ts`), all failing on the old code.
+  Commit: this commit.
+
+## 2026-11-21 — Full Thrust: spinal weapons only hit a ship under their template
+- Symptom: `fireNovaCannonAction` rolled the Nova's first-turn dice against the targeted ship at
+  any range or bearing; `fireWaveGunAction` checked range only (`waveGunDiceAtRange`), so a ship
+  astern inside 36mu took full damage. Both weapons fire straight ahead along the centreline.
+- Fix: `combat/spinal-template.ts` turns the profile into centreline segments (the Nova's sweep
+  for a turn of its life; one Wave Gun segment per range band, that band's diameter) and lays
+  them along the attacker's facing as engine `capsule` areas. `spinalContext` now returns the
+  tokens; each tool tests the target and, on a miss, posts "Not under the template."
+  (`report.notInTemplate`). A Wave Gun miss spends the charge, as an out-of-range shot already did.
+- Centre containment, not base overlap: Full Thrust scenes are in `mu`, and `radiusPx` converts
+  through millimetres, so any base-aware call throws `UnknownGridUnitError` on them. This is
+  also why the module measures centre-to-centre everywhere. The test scene uses `mu` so a
+  switch to base overlap fails loudly.
+- Without `areas` or `facing.facingOf` on the services the check is skipped, as before.
+- Assumptions and the open rules (fixed-in-space plasma, per-ship rolls, friendly fire, bow vs
+  centre, inches vs mu) are in the roadmap's owner list. Later Nova turns and canvas drawing
+  are not built.
+- Tests: `spinal-template` (6; the 3 behaviour tests fail on the old round-control). Not
+  checked in a running Foundry. Commit: this commit.
+
+## 2026-11-21 — InCountry: round-flow defects from the bug hunt
+- `resolveActivation` checked only the active side before resolving the attack; the engine's
+  `activate` (which refuses an activated or resolved unit) ran after the damage was saved. It
+  now calls `order.eligible(sideId)` first and throws before rolling. `eligible` is optional on
+  the module's order interface, so a fake order without it keeps the old check only.
+- `unitFromToken` keyed units by `actor.id`; an unlinked token's synthetic actor shares its base
+  actor's id, so two squads from one actor collapsed into one. Keyed by token id now. An
+  in-progress round saved under actor ids will not restore across this change.
+- `beginRound` rolled initiative for every side present, wiped ones included. Living sides only.
+- `advanceRoundCore` opened new rounds after `checkVictoryInx` had a winner or a draw. It now
+  warns `controls.round.battleOver` and stops. This follows the module's own baseline victory
+  read ("last side standing"); a scenario with other victory rules would need its own read.
+- Tests: `round-defects` (5), all failing on the old code. Not checked in a running Foundry.
+  Commit: this commit.
+
+## 2026-11-21 — Simple Skirmish: activation defects and the defeated status
+- `resolveActivation` checked only the active player before `performAttack`; the round's
+  `activate` (which refuses a repeat or destroyed unit) ran after the casualties were written.
+  It now checks `round.unactivated(playerId).includes(id)` first and throws before rolling.
+- `unitFromToken` keyed units by `actor.id`, so two unlinked tokens of one actor were one unit
+  (activating one marked both). Keyed by token id now; a round saved before this under actor
+  ids will not restore.
+- `syncDefeatedStatus` ran only from `applyCasualties`, which skips zero casualties, so nothing
+  ever cleared the skull. `UnitData._onUpdate` re-syncs when `system.models` changes, only when
+  `userId` is this client's, so the write is not repeated by every connected client. The same
+  Foundry hook family the model already uses (`_preCreate`/`_preUpdate`).
+- Tests: `activation-defects` (5), all failing on the old code. Not checked in a running Foundry.
+  Commit: this commit.
+
+## 2026-11-21 — Engine: socketlib actually carries GM-less play
+- `docs/gm-less-play.md` promises plain players can drive the turn with socketlib and a GM
+  online. Two things prevented it. `system.json` lacked `"socket": true`; socketlib's
+  `registerSystem` refuses a package without it (socketlib's own documented requirement, not
+  checked live here), so `socket` stayed undefined and every advance ran locally. And
+  `toggleReady` always wrote the ready flag directly to the GM-owned document, which a plain
+  player may not do, so even a registered socket could not help.
+- `toggleReady` now delegates to a GM (`executeAsGM("setReady", next)`) when the ready document
+  reports `isOwner === false`, socketlib is registered and a GM is connected; otherwise it writes
+  directly as before. The GM handler takes the user from socketlib's `this.socketdata.userId`,
+  not from an argument, so a client can only set its own flag. The write itself is the shared
+  `writeReady` (set to ready; delete the key to un-ready).
+- Tests: three in `ready-advance.test.ts`; the delegation and manifest tests fail on the old
+  code. Not checked in a running Foundry with socketlib. Commit: this commit.
+
+## 2026-11-21 — Engine: the orphan check reads invalid actors by id
+- `collectAllActors` took `game.actors.invalidDocumentIds.values()` as documents. In Foundry that
+  collection is a Set of ids, and an actor whose module is disabled fails validation, so it is in
+  neither `contents` nor anywhere else the check looked. `findOrphanedActors` therefore always got
+  nothing from a live world: no warning, no conversion offer.
+- Now each id goes through `game.actors.getInvalid(id)`; an id Foundry no longer holds is skipped.
+  The Set-of-ids shape and `getInvalid` are from knowledge of Foundry's source, not a live check;
+  neither is whether `update` on an invalid document converts it as `convertOrphanToGeneric` expects.
+- Tests: one in `orphan-check.test.ts`, failing on the old code. Commit: this commit.
+
+## 2026-11-21 — Document sheets keep a per-document id
+- Every actor sheet set `DEFAULT_OPTIONS.id` to a constant (`<module>-unit-sheet` and so on),
+  replacing DocumentSheetV2's `{id}` default. Two open sheets of one type then share one id in
+  `foundry.applications.instances` and in the DOM. Each id now ends in `-{id}`, which Foundry fills
+  per document. The setup wizard keeps a fixed id: it is one window, not a sheet per document.
+- Applied across the monorepo: engine generic sheet; Full Thrust ship and fighter; Simple
+  Skirmish, InCountry, Stargrunt II unit; Dirtside II unit, vehicle, infantry; GREATHELM knight.
+  No stylesheet targets these ids.
+- The `{id}` substitution is from knowledge of Foundry's ApplicationV2/DocumentSheetV2 source,
+  not a live check.
+- Tests: `document-sheet-ids` (scans every package's sheet sources), failing on the old code.
+  Commit: this commit.
+
+## 2026-11-21 — Engine: the combat tracker calls the base class
+- `BattleframeCombatTracker._prepareTrackerContext` set `context.combatants` and returned without
+  calling `super`. Core's tracker template iterates `context.turns`, which the base builds, so the
+  sidebar would list nobody however the order flag read. (From knowledge of v13+ core's tracker
+  template; the fake base in the old tests never built `turns`, so they could not see it.)
+- It now calls the base, keeps `combatants` as the ordered list, and reorders `turns` by the order
+  flag, dropping combatants the flag does not name: the tracker's documented contract that an empty
+  order renders an empty list, not some other ordering.
+- Tests: two in `combat.test.ts` with a base that builds `turns`, failing on the old code. Not
+  checked in a running Foundry. Commit: this commit.
+
+## 2026-11-21 — Engine: the setup wizard reports a refused primary selection
+- `onSelectPrimary` re-rendered on success and did nothing on failure, discarding
+  `activatePrimarySelection`'s `errors`. Each is now a warning toast. The messages themselves are
+  still English (listed under the roadmap's open i18n item).
+- Not changed: why a second primary is refused in the same session, and that the active ruleset
+  is not restored at startup. Both are recorded for the owner in the roadmap's bug-hunt section.
+- Tests: one in `settings.test.ts`, failing on the old code. Commit: this commit.
+
+## 2026-11-21 — InCountry: the round's cards and toasts go through the translation
+- The attack card, the round-over card, the activation and round-over toasts, the no-weapon
+  warning and the ready toast's "READY"/"not ready" were raw English. Each now names a
+  `battleframe-incountry.report.*` or `.notify.*` key through a local `tr`, with the filled-in
+  English as the fallback, so the existing English-pinning tests still hold without i18n.
+- Not changed: thrown engine error messages that reach toasts, and the unit sheet template.
+- Tests: `localized-round` (4), all failing on the old code. Commit: this commit.
+
+## 2026-11-21 — Simple Skirmish: the round's cards and toasts go through the translation
+- Same change as InCountry's: the combat card, the round-over card, the activation and round-over
+  toasts and the ready toast's state word name `battleframe-simple-skirmish.report.*`/`.notify.*`
+  keys through a local `tr`, English as the fallback.
+- The card title and the attack toast now show the attack type's display name
+  (`attackTypes.*`, which existed but was unused) instead of the raw id ("melee").
+- A refused attack showed the core's code to the player ("Unit: no-melee-attack"); it now reads
+  `notify.noAttack` ("Unit has no Melee attack."). An unrecognised code still shows, through
+  `notify.refused`.
+- The glue test's i18n stub now echoes `format` data, as Foundry's interpolation would, so its
+  "the toast names both units" check still means something with keyed strings.
+- Tests: `localized-round` (4), all failing on the old code. Commit: this commit.

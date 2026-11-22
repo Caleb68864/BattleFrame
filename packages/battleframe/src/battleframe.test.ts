@@ -260,7 +260,7 @@ describe("battleframe entry point", () => {
       api: ["registerRuleset", "activateRuleset", "getActiveRuleset", "getRuleset", "listRulesets"],
       measure: ["between"],
       dice: ["roll"],
-      areas: ["circle", "rectangle", "contains", "tokensInside", "toRegionShapes"],
+      areas: ["circle", "rectangle", "capsule", "contains", "tokensInside", "toRegionShapes"],
     };
 
     for (const [service, methods] of Object.entries(surface)) {

@@ -50,6 +50,26 @@
       "melee": "Melee",
       "ranged": "Ranged",
       "magic": "Magic"
+    },
+    "report": {
+      "title": "{attacker} {type} &rarr; {defender}",
+      "hits": "<strong>{hits}</strong> hit(s), <strong>{removed}</strong> model(s) removed.",
+      "destroyed": "{defender} destroyed.",
+      "roundOver": "Round over",
+      "winner": "<strong>{side} wins</strong> &mdash; no enemy models remain.",
+      "draw": "A draw &mdash; no models remain on either side.",
+      "continue": "Both sides still hold the field. Start a new round."
+    },
+    "notify": {
+      "attack": "{attacker} {type} vs {target}: {hits} hit(s), {removed} model(s) removed",
+      "destroyed": " -- destroyed",
+      "noAttack": "{unit} has no {type} attack.",
+      "refused": "{unit}: {reason}",
+      "roundWinner": "Round over: {side} wins -- no enemy models remain.",
+      "roundDraw": "Round over: no models remain on either side.",
+      "roundContinue": "Round over: both sides still hold the field. Start a new round.",
+      "ready": "READY",
+      "notReady": "not ready"
     }
   }
 }

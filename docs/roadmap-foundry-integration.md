@@ -38,6 +38,70 @@ throws and each catch takes its default: the initiative winner is never asked, N
 the GM is never offered conversion. Mocks do not read `this`, so the suite could not see it. Fixed
 2026-11-02. The claim about Foundry's statics is from knowledge of its source, not a live check.
 
+## Bug hunt, 2026-11-21 (unit tests only; no Foundry world)
+
+An audit of Simple Skirmish, InCountry and the engine. Fixed items cite their test; open items are
+listed with the reason they were not fixed here.
+
+**InCountry, fixed** (`packages/battleframe-incountry/tests/round-defects.test.ts`):
+- ✅ An attack resolved, and its damage was saved, before the order checked the attacker could
+  activate, so an already-activated or wiped unit on the active side could fire. It now asks
+  `order.eligible` first.
+- ✅ Units were keyed by actor id, so two unlinked tokens of one actor were a single unit. They are
+  keyed by token id now. A round saved before this keyed by actor id will not restore; start a new one.
+- ✅ A side with no models still rolled initiative, and Run Round kept opening rounds after one side
+  held the field. Initiative is rolled by living sides only, and Run Round refuses once the
+  module's own victory read is not "continue" (`controls.round.battleOver`).
+
+**Simple Skirmish, fixed** (`packages/battleframe-simple-skirmish/tests/activation-defects.test.ts`):
+- ✅ The same attack-before-check defect: an already-activated or destroyed unit could attack and
+  its casualties were saved before the round refused it. It now checks `round.unactivated` first.
+- ✅ The same actor-id keying: unlinked tokens of one actor were one unit. Keyed by token id now.
+- ✅ The defeated status was only ever set. Restoring a unit's models on the sheet left the skull on.
+  The unit data model's `_onUpdate` now re-syncs it when `models` changes, on the changing client only.
+
+**Engine, fixed** (`packages/battleframe/tests/`):
+- ✅ GM-less play through socketlib could not work for plain players. `system.json` had no
+  `"socket": true`, which socketlib needs before it registers a system, and the ready toggle was
+  always written straight to the GM-owned Combat/Scene. A player who does not own it now asks a
+  connected GM to write it (`setReady`, keyed to socketlib's record of the caller). (`ready-advance.test.ts`)
+- ✅ The orphan check never found an orphan. An actor whose module is disabled fails validation and
+  is only in `invalidDocumentIds`, which holds ids; the check read them as documents. It now resolves
+  each through `getInvalid`. (`orphan-check.test.ts`)
+- ✅ Every document sheet in the monorepo (engine generic sheet and ten module sheets) had a fixed
+  `id`, so two open sheets of one type shared an application and DOM id. Each now ends in Foundry's
+  `{id}` placeholder. (`document-sheet-ids.test.ts`)
+- ✅ The combat tracker override skipped the base class's `_prepareTrackerContext`, so `turns` (what
+  core's tracker template renders) was never built. It now calls the base and reorders `turns` by the
+  battleframe order. (`combat.test.ts`)
+- ✅ The setup wizard dropped a refused primary selection's reasons, so "Make Primary" could fail with
+  nothing on screen. It now warns with them. (`settings.test.ts`)
+
+**Open, needs the owner:**
+- **Switching the primary ruleset.** Once primary A is active in a session, activating primary B is
+  refused (`registry.activateRuleset`), although the wizard says the choice can be changed later.
+  Separately, nothing restores the active ruleset from the `activeRulesetId` setting at startup, so
+  `game.battleframe.api.getActiveRuleset()` is `null` after every reload (no module reads it today).
+  Restoring it would make the refusal permanent, so both need one decision: should a new primary
+  replace the old one?
+- **InCountry suppression never clears.** Nothing sets `system.suppressed` back to false, and the
+  sheet checkbox and the token's status icon can disagree. When suppression ends is a rule.
+- **InCountry `armorType` → `armorModifier`/`armorDice`.** Existing actors are not migrated and load
+  with no armour. May be deliberate under `rules-content-audit.md`.
+- **Simple Skirmish neutral/secret tokens.** A neutral token fights as friendly and a secret one as
+  hostile (`sideFromDisposition`). Which units take part is a rules/table call.
+
+**Open, not fixed here (no owner decision needed):**
+- **Raw English** in InCountry's whole unit sheet template, the engine's orphan warning, ready-advance
+  toasts and countdown setting, engine error messages shown as toasts, dice-roll flavors, and both
+  modules' registration-failure toasts. The existing i18n tests only check that referenced keys exist.
+  (Both modules' round cards and toasts: ✅ 2026-11-21, each package's `tests/localized-round.test.ts`.)
+- **A delegated advance runs on the GM's canvas.** `advanceRoundCore` reads `canvas.tokens` on the GM
+  who receives the socket call, which may be another scene; the players who readied see no toast.
+- **InCountry creates its Combat inactive** (`Combat.create` without `active: true`), so the engine's
+  ready flags (on `combats.active`) may sit on another combat. Unverified live.
+- **Simple Skirmish's scene control** sets `activeTool` to a GM-only button tool.
+
 ## Executive summary
 
 The concern — "are we recreating Foundry instead of building on it?" — is **valid but

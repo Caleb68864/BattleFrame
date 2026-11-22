@@ -124,13 +124,18 @@ function combatReportSpec(result: AttackApplied, names: CombatReportNames): Card
   const attacker = escapeHtml(names.attacker);
   const defender = escapeHtml(names.defender);
   const lines = [
-    `<p><strong>${result.hits}</strong> hit(s), <strong>${result.modelsRemoved}</strong> model(s) removed.</p>`
+    `<p>${tr(
+      "report.hits",
+      `<strong>${result.hits}</strong> hit(s), <strong>${result.modelsRemoved}</strong> model(s) removed.`,
+      { hits: result.hits, removed: result.modelsRemoved }
+    )}</p>`
   ];
   if (result.destroyed) {
-    lines.push(`<p class="ss-destroyed"><strong>${defender} destroyed.</strong></p>`);
+    lines.push(`<p class="ss-destroyed"><strong>${tr("report.destroyed", `${defender} destroyed.`, { defender })}</strong></p>`);
   }
+  const type = attackTypeLabel(names.type);
   return {
-    title: `${attacker} ${names.type} &rarr; ${defender}`,
+    title: tr("report.title", `${attacker} ${type} &rarr; ${defender}`, { attacker, type, defender }),
     lines,
     cssClass: "ss-combat-report"
   };
@@ -140,13 +145,14 @@ function combatReportSpec(result: AttackApplied, names: CombatReportNames): Card
 function victorySpec(victory: VictoryOutcome): CardSpec {
   let line: string;
   if (victory.result === "winner") {
-    line = `<p><strong>${escapeHtml(victory.playerId)} wins</strong> &mdash; no enemy models remain.</p>`;
+    const side = escapeHtml(victory.playerId);
+    line = `<p>${tr("report.winner", `<strong>${side} wins</strong> &mdash; no enemy models remain.`, { side })}</p>`;
   } else if (victory.result === "draw") {
-    line = `<p>A draw &mdash; no models remain on either side.</p>`;
+    line = `<p>${tr("report.draw", "A draw &mdash; no models remain on either side.")}</p>`;
   } else {
-    line = `<p>Both sides still hold the field. Start a new round.</p>`;
+    line = `<p>${tr("report.continue", "Both sides still hold the field. Start a new round.")}</p>`;
   }
-  return { title: "Round over", lines: [line], cssClass: "ss-victory" };
+  return { title: tr("report.roundOver", "Round over"), lines: [line], cssClass: "ss-victory" };
 }
 
 /** Builds the persistent combat-outcome card HTML (attacker vs defender, hits, kills). */
@@ -325,6 +331,11 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
       `it is not ${attacker.playerId}'s turn to activate (expected ${round.activePlayerId() ?? "no one"})`
     );
   }
+  // Ask the round BEFORE the attack: `activate` below refuses an activated or
+  // destroyed unit, but only after its attack had rolled and its casualties were saved.
+  if (!round.unactivated(attacker.playerId).includes(attacker.id)) {
+    throw new IllegalActivationError(`${label(attacker)} cannot activate now`);
+  }
 
   let attack: AttackOutcome | undefined;
 
@@ -332,11 +343,28 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
     attack = await performAttack({ attacker, defender: target, type, dice });
 
     if ("refused" in attack) {
-      notify(`${label(attacker)}: ${attack.refused}`, "warn");
-    } else {
+      // The core refuses with a code (`no-<type>-attack`); the player reads a sentence.
+      const missing = /^no-(\w+)-attack$/.exec(attack.refused)?.[1];
       notify(
-        `${label(attacker)} ${type} vs ${label(target)}: ${attack.hits} hit(s), ` +
-          `${attack.modelsRemoved} model(s) removed${attack.destroyed ? " -- destroyed" : ""}`
+        missing
+          ? tr("notify.noAttack", `${label(attacker)} has no ${missing} attack.`, {
+              unit: label(attacker),
+              type: attackTypeLabel(missing)
+            })
+          : tr("notify.refused", `${label(attacker)}: ${attack.refused}`, { unit: label(attacker), reason: attack.refused }),
+        "warn"
+      );
+    } else {
+      const data = {
+        attacker: label(attacker),
+        type: attackTypeLabel(type),
+        target: label(target),
+        hits: attack.hits,
+        removed: attack.modelsRemoved
+      };
+      notify(
+        tr("notify.attack", `${data.attacker} ${type} vs ${data.target}: ${data.hits} hit(s), ${data.removed} model(s) removed`, data) +
+          (attack.destroyed ? tr("notify.destroyed", " -- destroyed") : "")
       );
       // The persistent record of the exchange: a combat-outcome chat card.
       await postCard(combatReportSpec(attack, { attacker: label(attacker), defender: label(target), type }));
@@ -355,11 +383,11 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
   );
 
   if (victory.result === "winner") {
-    notify(`Round over: ${victory.playerId} wins -- no enemy models remain.`);
+    notify(tr("notify.roundWinner", `Round over: ${victory.playerId} wins -- no enemy models remain.`, { side: victory.playerId }));
   } else if (victory.result === "draw") {
-    notify("Round over: no models remain on either side.", "warn");
+    notify(tr("notify.roundDraw", "Round over: no models remain on either side."), "warn");
   } else {
-    notify("Round over: both sides still hold the field. Start a new round.");
+    notify(tr("notify.roundContinue", "Round over: both sides still hold the field. Start a new round."));
   }
   // The persistent record of how the round ended: a round-over / victory card.
   await postCard(victorySpec(victory));
@@ -442,7 +470,9 @@ function unitFromToken(placeable: CanvasTokenLike): CanvasUnit | null {
     return null;
   }
 
-  const id = actor.id ?? placeable.document?.id ?? placeable.id;
+  // The token, not the actor: unlinked tokens of one actor share the actor's id,
+  // and would collapse into a single unit in the round.
+  const id = placeable.document?.id ?? placeable.id ?? actor.id;
   if (!id) {
     return null;
   }
@@ -740,6 +770,24 @@ export async function activateSelectedControl(): Promise<void> {
   }
 }
 
+/**
+ * Foundry's translation of `battleframe-simple-skirmish.<suffix>`, with the English
+ * fallback (already filled in) for when no translation is loaded.
+ */
+function tr(suffix: string, fallback: string, data?: Record<string, string | number>): string {
+  const i18n = (globalThis as unknown as {
+    game?: { i18n?: { localize?: (k: string) => string; format?: (k: string, d: Record<string, string | number>) => string } };
+  }).game?.i18n;
+  const key = `${MODULE_ID}.${suffix}`;
+  if (data && i18n?.format) return i18n.format(key, data);
+  return i18n?.localize?.(key) ?? fallback;
+}
+
+/** An attack type's display name (`attackTypes.*`), the raw type as the fallback. */
+function attackTypeLabel(type: string): string {
+  return tr(`attackTypes.${type}`, type);
+}
+
 function localize(suffix: string): string {
   const g = globalThis as unknown as { game?: { i18n?: { localize?: (k: string) => string } } };
   const key = `${MODULE_ID}.${suffix}`;
@@ -770,7 +818,7 @@ export async function readyAction(): Promise<void> {
   const status = advance.status?.();
   notifyUser(
     format("controls.ready.status", {
-      state: advance.isReady?.() ? "READY" : "not ready",
+      state: advance.isReady?.() ? tr("notify.ready", "READY") : tr("notify.notReady", "not ready"),
       ready: status?.ready?.length ?? 0,
       total: status?.participants?.length ?? 0
     })

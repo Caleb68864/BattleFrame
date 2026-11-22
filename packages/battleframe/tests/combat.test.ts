@@ -249,3 +249,41 @@ describe("registerBattleframeCombatTracker", () => {
     }
   });
 });
+
+describe("the tracker builds on Foundry's own tracker context", () => {
+  // Core's tracker template renders `context.turns`, which the base class's
+  // `_prepareTrackerContext` builds. The override never called it, so a real
+  // tracker listed nobody. It now calls the base, then puts `turns` in the
+  // battleframe order.
+  class CoreTracker {
+    viewed?: CombatLike;
+    async _prepareTrackerContext(context: Record<string, unknown>, _options: unknown) {
+      context.turns = (this.viewed?.combatants ?? []).map((c) => ({ id: c.id, name: c.id }));
+      return context;
+    }
+  }
+
+  it("keeps the base class's turns, in the battleframe order", async () => {
+    const Tracker = createBattleframeCombatTrackerClass(CoreTracker as any);
+    const tracker = new (Tracker as any)();
+    tracker.viewed = {
+      combatants: [makeCombatant("a"), makeCombatant("b"), makeCombatant("c")],
+      flags: { battleframe: { order: ["c", "a", "b"] } },
+    };
+
+    const context = await tracker._prepareTrackerContext({}, {});
+
+    expect(context.turns.map((t: { id: string }) => t.id)).toEqual(["c", "a", "b"]);
+    expect(context.combatants.map((c: CombatantLike) => c.id)).toEqual(["c", "a", "b"]);
+  });
+
+  it("with no order flag, renders nobody, as the tracker's own contract says", async () => {
+    const Tracker = createBattleframeCombatTrackerClass(CoreTracker as any);
+    const tracker = new (Tracker as any)();
+    tracker.viewed = { combatants: [makeCombatant("a"), makeCombatant("b")] };
+
+    const context = await tracker._prepareTrackerContext({}, {});
+
+    expect(context.turns).toEqual([]);
+  });
+});

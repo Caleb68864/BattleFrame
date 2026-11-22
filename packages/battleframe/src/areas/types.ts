@@ -31,7 +31,21 @@ export interface RectangleArea {
   height: number;
 }
 
-export type Area = CircleArea | RectangleArea;
+/**
+ * A circle swept along a segment: every point within `radius` of the segment
+ * from `from` to `to` (a stadium). The shape of a template that travels or
+ * sweeps along a line. `from`/`to` are in scene pixel space; `radius` is in
+ * scene **distance units**, as with `CircleArea.radius`. Equal end points make
+ * it a circle.
+ */
+export interface CapsuleArea {
+  kind: "capsule";
+  from: Point;
+  to: Point;
+  radius: number;
+}
+
+export type Area = CircleArea | RectangleArea | CapsuleArea;
 
 /**
  * How a ruleset decides whether a model is "in" an area.
@@ -52,18 +66,25 @@ export type ContainmentMode = "base-overlap" | "centre";
  * by `toRegionShapes` for callers that want a *visible* marker; containment
  * never goes through this (see `areas/area.ts` for why).
  */
-export interface RegionShapeData {
-  type: "circle" | "rectangle";
-  x: number;
-  y: number;
-  radius?: number;
-  width?: number;
-  height?: number;
-}
+export type RegionShapeData =
+  | {
+      type: "circle" | "rectangle";
+      x: number;
+      y: number;
+      radius?: number;
+      width?: number;
+      height?: number;
+    }
+  | {
+      type: "polygon";
+      /** Polygon vertices as a flat `[x0, y0, x1, y1, ...]` list, in pixels. */
+      points: number[];
+    };
 
 export interface AreaApi {
   circle(centre: Point, radius: number): CircleArea;
   rectangle(x: number, y: number, width: number, height: number): RectangleArea;
+  capsule(from: Point, to: Point, radius: number): CapsuleArea;
   contains(area: Area, token: MeasurableToken, mode?: ContainmentMode): boolean;
   tokensInside(
     area: Area,

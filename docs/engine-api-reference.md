@@ -99,6 +99,7 @@ Use `rollPool` whenever you read individual faces (hits, saves, kills) off a poo
 ```ts
 areas.circle(centre, radius): CircleArea          // radius in distance units
 areas.rectangle(x, y, width, height): RectangleArea
+areas.capsule(from, to, radius): CapsuleArea      // a circle swept along a segment (travelling/swept template)
 areas.contains(area, token, mode?: "base-overlap" | "centre"): boolean
 areas.tokensInside(area, tokens, mode?): MeasurableToken[]
 areas.toRegionShapes(area, scene): RegionShapeData[]   // for DRAWING only

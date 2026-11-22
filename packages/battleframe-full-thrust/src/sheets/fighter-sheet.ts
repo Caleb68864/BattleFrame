@@ -17,7 +17,7 @@ export function createFighterSheetClass(): ActorSheetV2BaseConstructor {
 
   class FighterSheet extends Base {
     static DEFAULT_OPTIONS = {
-      id: `${MODULE_ID}-fighter-sheet`,
+      id: `${MODULE_ID}-fighter-sheet-{id}`,
       classes: [MODULE_ID, "sheet", "actor", FIGHTER_GROUP_ACTOR_TYPE],
       position: { width: 380, height: 260 },
       form: { submitOnChange: true }

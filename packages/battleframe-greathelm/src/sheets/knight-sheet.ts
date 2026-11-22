@@ -84,7 +84,7 @@ export function createKnightSheetClass(
 
   class KnightSheet extends (MixedBase as new (...args: any[]) => any) {
     static DEFAULT_OPTIONS = {
-      id: `${MODULE_ID}-knight-sheet`,
+      id: `${MODULE_ID}-knight-sheet-{id}`,
       classes: [MODULE_ID, "sheet", "actor", KNIGHT_ACTOR_TYPE],
       position: { width: 420, height: 360 },
       // Save edits immediately (v14 DocumentSheetV2 defaults this to false, which

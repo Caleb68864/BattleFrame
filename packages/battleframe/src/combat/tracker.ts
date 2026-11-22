@@ -66,9 +66,21 @@ export function createBattleframeCombatTrackerClass(
       context: TrackerRenderContext,
       _options: unknown
     ): Promise<TrackerRenderContext> {
+      // The base class builds `turns`, which core's tracker template renders; skip it
+      // and a real tracker lists nobody. Then put the turns in the battleframe order.
+      const prepared: TrackerRenderContext =
+        (await super._prepareTrackerContext?.(context, _options)) ?? context;
       const combat = (this as unknown as { viewed?: CombatLike }).viewed;
-      context.combatants = combat ? orderedCombatants(combat) : [];
-      return context;
+      const ordered = combat ? orderedCombatants(combat) : [];
+      prepared.combatants = ordered;
+      const turns = (prepared as { turns?: { id?: string }[] }).turns;
+      if (Array.isArray(turns)) {
+        const byId = new Map(turns.map((turn) => [turn.id, turn]));
+        (prepared as { turns?: unknown[] }).turns = ordered
+          .map((combatant) => byId.get(combatant.id))
+          .filter((turn) => turn !== undefined);
+      }
+      return prepared;
     }
   }
 

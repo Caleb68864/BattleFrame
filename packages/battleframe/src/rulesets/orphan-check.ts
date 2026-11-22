@@ -345,7 +345,10 @@ function collectAllActors(): ActorLike[] {
     game?: {
       actors?: {
         contents?: ActorLike[];
-        invalidDocumentIds?: { values?: () => IterableIterator<ActorLike> };
+        /** Foundry: the ids (not documents) of actors that failed validation. */
+        invalidDocumentIds?: Iterable<string>;
+        /** Foundry: the invalid document for one of those ids. */
+        getInvalid?: (id: string) => ActorLike | undefined;
       } & Iterable<ActorLike>;
       modules?: Iterable<ModuleLike>;
     };
@@ -361,9 +364,19 @@ function collectAllActors(): ActorLike[] {
     actorsCollection.contents ?? Array.from(actorsCollection as Iterable<ActorLike>)
   );
 
-  const invalid = actorsCollection.invalidDocumentIds?.values
-    ? Array.from(actorsCollection.invalidDocumentIds.values())
-    : [];
+  // An actor whose module is disabled fails validation, so it is only here: an id
+  // in `invalidDocumentIds`, resolved to its document through `getInvalid`.
+  const invalid: ActorLike[] = [];
+  for (const id of actorsCollection.invalidDocumentIds ?? []) {
+    try {
+      const doc = actorsCollection.getInvalid?.(id);
+      if (doc) {
+        invalid.push(doc);
+      }
+    } catch {
+      /* Foundry throws for an id it no longer holds; skip it */
+    }
+  }
 
   return [...known, ...invalid];
 }

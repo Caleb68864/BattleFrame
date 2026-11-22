@@ -277,6 +277,13 @@ export function createSetupWizardClass(
       const result = await activatePrimarySelection(id);
       if (result.ok) {
         this.rerender();
+        return;
+      }
+      // A refusal carries its reasons; without this the click did nothing visible.
+      const warn = (globalThis as { ui?: { notifications?: { warn?: (message: string) => void } } }).ui
+        ?.notifications?.warn;
+      for (const error of result.errors ?? []) {
+        warn?.(`${SYSTEM_ID} | ${error}`);
       }
     }
 

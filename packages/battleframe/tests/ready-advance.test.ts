@@ -6,6 +6,8 @@
  * all ready, which client performs the advance, and the ready-map transition.
  */
 
+import { readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   participantsOf,
@@ -14,7 +16,8 @@ import {
   toggledReady,
   gmConnected,
   advanceStrategy,
-  createReadyAdvanceApi
+  createReadyAdvanceApi,
+  registerReadyAdvance
 } from "../src/rounds/ready-advance";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -124,5 +127,74 @@ describe("advanceStrategy", () => {
 
   it("runs locally when no GM is connected to receive the delegation", () => {
     expect(advanceStrategy({ socketlibReady: true, gmConnected: false })).toBe("local");
+  });
+});
+
+describe("socketlib carries a plain player's ready toggle to the GM", () => {
+  // GM-less play with socketlib: the docs promise plain players drive it as long as
+  // a GM is online. The advance was delegated, but the ready toggle itself was
+  // always written directly to the GM-owned Combat/Scene, which a plain player may
+  // not write; and the manifest lacked `"socket": true`, without which socketlib
+  // refuses to register the system at all.
+  function socketWorld(isOwner: boolean) {
+    const handlers: Record<string, (...args: any[]) => unknown> = {};
+    const executeAsGM = vi.fn(async (name: string, ...args: any[]) =>
+      handlers[name].call({ socketdata: { userId: "p1" } }, ...args)
+    );
+    const reg = { register: (name: string, fn: (...args: any[]) => unknown) => (handlers[name] = fn), executeAsGM };
+    let once: (() => void) | undefined;
+    const flags: Record<string, boolean> = {};
+    const doc = {
+      isOwner,
+      getFlag: () => ({ ...flags }),
+      setFlag: vi.fn(async (_s: string, _k: string, value: Record<string, boolean>) => Object.assign(flags, value)),
+      update: vi.fn(async (data: Record<string, unknown>) => {
+        for (const key of Object.keys(data)) delete flags[key.split(".-=")[1]];
+      }),
+      unsetFlag: vi.fn()
+    };
+    vi.stubGlobal("game", {
+      user: { id: "p1" },
+      users: [
+        { id: "gm", active: true, isGM: true },
+        { id: "p1", active: true, isGM: false }
+      ],
+      combats: { active: doc },
+      settings: { register: vi.fn(), get: () => 5 }
+    });
+    vi.stubGlobal("Hooks", { on: vi.fn(), once: (_e: string, cb: () => void) => (once = cb) });
+    vi.stubGlobal("socketlib", { registerSystem: () => reg });
+    vi.stubGlobal("ui", { notifications: { warn: vi.fn(), info: vi.fn() } });
+    registerReadyAdvance();
+    once?.();
+    return { doc, executeAsGM, flags };
+  }
+
+  it("a player who cannot write the document asks the GM to write it", async () => {
+    const { doc, executeAsGM, flags } = socketWorld(false);
+    const api = createReadyAdvanceApi();
+
+    await api.toggleReady();
+    expect(executeAsGM).toHaveBeenCalledWith("setReady", true);
+    expect(flags).toEqual({ p1: true });
+
+    await api.toggleReady();
+    expect(executeAsGM).toHaveBeenLastCalledWith("setReady", false);
+    expect(flags).toEqual({});
+    expect(doc.setFlag).toHaveBeenCalledTimes(1); // only the GM-side write
+  });
+
+  it("an owner writes directly, as before", async () => {
+    const { executeAsGM, flags } = socketWorld(true);
+
+    await createReadyAdvanceApi().toggleReady();
+
+    expect(executeAsGM).not.toHaveBeenCalled();
+    expect(flags).toEqual({ p1: true });
+  });
+
+  it("the system manifest declares a socket, which socketlib requires", () => {
+    const manifest = JSON.parse(readFileSync(resolve(__dirname, "../system.json"), "utf8"));
+    expect(manifest.socket).toBe(true);
   });
 });

@@ -84,7 +84,7 @@ export function createGenericActorSheetClass(
 
   class GenericActorSheet extends (MixedBase as new (...args: any[]) => any) {
     static DEFAULT_OPTIONS = {
-      id: `${SYSTEM_ID}-generic-actor-sheet`,
+      id: `${SYSTEM_ID}-generic-actor-sheet-{id}`,
       classes: [SYSTEM_ID, "sheet", "actor", GENERIC_ACTOR_TYPE],
       position: { width: 480, height: 520 },
       // Save edits immediately (v14 DocumentSheetV2 defaults this false, which

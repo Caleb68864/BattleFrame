@@ -44,5 +44,6 @@
   ],
   "url": "",
   "manifest": "",
-  "download": ""
+  "download": "",
+  "socket": true
 }

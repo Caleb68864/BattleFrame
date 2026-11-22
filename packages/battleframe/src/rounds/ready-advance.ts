@@ -100,6 +100,8 @@ interface FlagDoc {
   setFlag?: (scope: string, key: string, value: unknown) => Promise<unknown>;
   unsetFlag?: (scope: string, key: string) => Promise<unknown>;
   update?: (data: Record<string, unknown>) => Promise<unknown>;
+  /** Foundry's ownership answer for this client; `false` means a direct write is refused. */
+  isOwner?: boolean;
 }
 
 /** The slice of socketlib we use: register a system handler, run it on a GM. */
@@ -161,6 +163,24 @@ function timerSeconds(): number {
 
 /** The socketlib handler name for the privileged advance (system-scoped). */
 const SOCKET_ADVANCE = "performAdvance";
+/** The socketlib handler name for a player's ready toggle, written by a GM. */
+const SOCKET_READY = "setReady";
+
+/**
+ * Writes one user's ready flag onto the ready document. Un-ready DELETES the key:
+ * setFlag deep-merges, so it cannot remove one; `-=` is Foundry's key deletion.
+ */
+async function writeReady(userId: string, ready: boolean): Promise<void> {
+  const doc = readyDoc();
+  if (!doc) {
+    return;
+  }
+  if (ready) {
+    await doc.setFlag?.(SYSTEM_ID, READY_FLAG, { [userId]: true });
+  } else {
+    await doc.update?.({ [`flags.${SYSTEM_ID}.${READY_FLAG}.-=${userId}`]: null });
+  }
+}
 
 /** The ruleset's "advance the round" behaviour, registered at init. */
 let advanceCallback: (() => void | Promise<void>) | undefined;
@@ -249,6 +269,12 @@ function registerAdvanceSocket(): void {
     return;
   }
   reg.register?.(SOCKET_ADVANCE, () => privilegedAdvance());
+  // Runs on the GM. The user is socketlib's record of the caller, so a client can
+  // only set its own flag.
+  reg.register?.(SOCKET_READY, function (this: { socketdata?: { userId?: string } } | undefined, ready: unknown) {
+    const userId = this?.socketdata?.userId;
+    return userId ? writeReady(userId, ready === true) : undefined;
+  });
   socket = reg;
 }
 
@@ -275,13 +301,13 @@ export function createReadyAdvanceApi(): ReadyAdvanceApi {
         return;
       }
       try {
-        if (readyMap()[me]) {
-          // Un-ready: DELETE my key. setFlag deep-merges, so it cannot remove a key;
-          // the `-=` update prefix is Foundry's key-deletion syntax.
-          await doc.update?.({ [`flags.${SYSTEM_ID}.${READY_FLAG}.-=${me}`]: null });
+        const next = !readyMap()[me];
+        // A plain player cannot write the GM-owned Combat/Scene. With socketlib and a
+        // GM online, the GM writes it, the same way the advance itself is delegated.
+        if (doc.isOwner === false && socket?.executeAsGM && gmConnected(usersList())) {
+          await socket.executeAsGM(SOCKET_READY, next);
         } else {
-          // Ready: setFlag merges my key into the existing map.
-          await doc.setFlag?.(SYSTEM_ID, READY_FLAG, { [me]: true });
+          await writeReady(me, next);
         }
       } catch (error) {
         // A plain PLAYER in GM-less play may not have permission to write the
