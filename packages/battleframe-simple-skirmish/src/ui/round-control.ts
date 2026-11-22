@@ -325,6 +325,11 @@ export async function resolveActivation(params: ResolveActivationParams): Promis
       `it is not ${attacker.playerId}'s turn to activate (expected ${round.activePlayerId() ?? "no one"})`
     );
   }
+  // Ask the round BEFORE the attack: `activate` below refuses an activated or
+  // destroyed unit, but only after its attack had rolled and its casualties were saved.
+  if (!round.unactivated(attacker.playerId).includes(attacker.id)) {
+    throw new IllegalActivationError(`${label(attacker)} cannot activate now`);
+  }
 
   let attack: AttackOutcome | undefined;
 
@@ -442,7 +447,9 @@ function unitFromToken(placeable: CanvasTokenLike): CanvasUnit | null {
     return null;
   }
 
-  const id = actor.id ?? placeable.document?.id ?? placeable.id;
+  // The token, not the actor: unlinked tokens of one actor share the actor's id,
+  // and would collapse into a single unit in the round.
+  const id = placeable.document?.id ?? placeable.id ?? actor.id;
   if (!id) {
     return null;
   }

@@ -53,6 +53,13 @@ listed with the reason they were not fixed here.
   held the field. Initiative is rolled by living sides only, and Run Round refuses once the
   module's own victory read is not "continue" (`controls.round.battleOver`).
 
+**Simple Skirmish, fixed** (`packages/battleframe-simple-skirmish/tests/activation-defects.test.ts`):
+- ✅ The same attack-before-check defect: an already-activated or destroyed unit could attack and
+  its casualties were saved before the round refused it. It now checks `round.unactivated` first.
+- ✅ The same actor-id keying: unlinked tokens of one actor were one unit. Keyed by token id now.
+- ✅ The defeated status was only ever set. Restoring a unit's models on the sheet left the skull on.
+  The unit data model's `_onUpdate` now re-syncs it when `models` changes, on the changing client only.
+
 ## Executive summary
 
 The concern — "are we recreating Foundry instead of building on it?" — is **valid but

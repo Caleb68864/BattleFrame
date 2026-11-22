@@ -4320,3 +4320,17 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   read ("last side standing"); a scenario with other victory rules would need its own read.
 - Tests: `round-defects` (5), all failing on the old code. Not checked in a running Foundry.
   Commit: this commit.
+
+## 2026-11-21 — Simple Skirmish: activation defects and the defeated status
+- `resolveActivation` checked only the active player before `performAttack`; the round's
+  `activate` (which refuses a repeat or destroyed unit) ran after the casualties were written.
+  It now checks `round.unactivated(playerId).includes(id)` first and throws before rolling.
+- `unitFromToken` keyed units by `actor.id`, so two unlinked tokens of one actor were one unit
+  (activating one marked both). Keyed by token id now; a round saved before this under actor
+  ids will not restore.
+- `syncDefeatedStatus` ran only from `applyCasualties`, which skips zero casualties, so nothing
+  ever cleared the skull. `UnitData._onUpdate` re-syncs when `system.models` changes, only when
+  `userId` is this client's, so the write is not repeated by every connected client. The same
+  Foundry hook family the model already uses (`_preCreate`/`_preUpdate`).
+- Tests: `activation-defects` (5), all failing on the old code. Not checked in a running Foundry.
+  Commit: this commit.
