@@ -1438,7 +1438,9 @@ export function addRoundSceneControl(controls: unknown): void {
     // their own `visible: isGM()`, so a player sees only the Ready toggle here.
     visible: true,
     order: 0,
-    activeTool: tool.name,
+    // The Ready toggle, which every player can see. The GM-only Run Round button
+    // would be hidden from players, and acting on selection it could start a round.
+    activeTool: readyTool.name,
     tools: {} as Record<string, unknown> | unknown[],
   };
 

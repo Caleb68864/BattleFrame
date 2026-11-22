@@ -4538,3 +4538,14 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   failures collected and returned. In-round messages still toast where the round runs, and the
   dice-pool panel still opens there; recorded in the roadmap as open.
 - Tests: `advance-outcomes.test.ts` (4), all failing on the old code. Commit: this commit.
+
+## 2026-11-21 — Scene controls open on a tool every player can see
+- Simple Skirmish's and GREATHELM's controls set `activeTool` to their Run Round button: `visible`
+  only for the GM, and wired with `onChange`, which Foundry can fire when a tool becomes the
+  active one, so opening the control could run a round. Both now open on their Ready toggle,
+  as InCountry, Stargrunt II and Dirtside II already did. Simple Skirmish's Ready and Run Round
+  also shared `order: 0`; Run Round and Activate move to 1 and 2.
+- Full Thrust opens on Plot, a button, on purpose (its own test pins it); Plot is visible to all
+  and has no `onChange`, so the check allows a button only when it does not act on change.
+- Tests: `scene-control-active-tool.test.ts` runs all six rulesets' controls as a player; the
+  Simple Skirmish and GREATHELM cases fail on the old code. Commit: this commit.

@@ -127,7 +127,10 @@ token-keyed rulesets). A GREATHELM or Stargrunt round saved before this will not
   Dirtside II and Stargrunt II now call `combat.activate()` on the combat they create, as Foundry's
   own "create encounter" does. Reversible; existing combats are untouched. (`module-combat-active.test.ts`
   and the two modules' round tests.)
-- **Simple Skirmish's scene control** sets `activeTool` to a GM-only button tool.
+- ✅ 2026-11-21 **Simple Skirmish's and GREATHELM's scene controls** opened on the GM-only Run Round
+  button (hidden from players; its `onChange` runs a round). Both open on the Ready toggle now, like
+  InCountry, Stargrunt II and Dirtside II; Full Thrust keeps its deliberate Plot default (visible,
+  `onClick` only). (`scene-control-active-tool.test.ts`)
 
 ## Executive summary
 

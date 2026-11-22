@@ -882,7 +882,7 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-flag",
     button: true,
     visible: gm,
-    order: 0,
+    order: 1,
     onClick: () => void runRoundControl(),
     onChange: () => void runRoundControl()
   };
@@ -892,7 +892,7 @@ export function addSceneControl(controls: unknown): void {
     icon: "fas fa-hand-fist",
     button: true,
     visible: gm,
-    order: 1,
+    order: 2,
     onClick: () => void activateSelectedControl(),
     onChange: () => void activateSelectedControl()
   };
@@ -906,7 +906,9 @@ export function addSceneControl(controls: unknown): void {
     // the GM-only Run/Activate tools stay individually gated (`visible: gm`).
     visible: true,
     order: 0,
-    activeTool: runTool.name,
+    // The Ready toggle, which every player can see. The GM-only Run Round button
+    // would be hidden from players, and its onChange runs a round when selected.
+    activeTool: readyTool.name,
     tools: {} as Record<string, unknown> | unknown[]
   };
 
