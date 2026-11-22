@@ -10,6 +10,7 @@ import {
   resolveActivation,
   rollInitiative,
   runRoundControl,
+  advanceRoundCore,
   selectAttackTarget,
   sideFromDisposition,
   _resetActiveRoundForTests,
@@ -116,6 +117,15 @@ describe("the round-control glue against a stubbed Foundry", () => {
     const { notes } = stubFoundry({ isGM: false, placeables: [fakeToken("a1", "Blue", 1, {})] });
     await runRoundControl();
     expect(notes.some((n) => n.startsWith("warn"))).toBe(true);
+  });
+
+  it("the ready-driven advance reports its outcome instead of toasting it", async () => {
+    // Delegated to a GM, a toast would reach only that GM; the engine shows the
+    // returned outcome to every player.
+    const { notes } = stubFoundry({ placeables: [] });
+    const outcome = await advanceRoundCore();
+    expect(outcome).toEqual({ message: "battleframe-simple-skirmish.controls.round.noUnits", level: "warn" });
+    expect(notes).toEqual([]);
   });
 
   it("runRoundControl warns when the canvas holds no units", async () => {

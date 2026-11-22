@@ -661,13 +661,23 @@ async function applyStateToActor(
   await actor.toggleStatusEffect?.(defeated, { active: state.modelsRemaining <= 0 });
 }
 
+/**
+ * What a round advance reports (the engine's `AdvanceOutcome` shape). Returned rather
+ * than toasted, so a ready-driven advance delegated to a GM reaches every player.
+ */
+export interface AdvanceOutcome {
+  message: string;
+  level: "info" | "warn" | "error";
+}
+
 /** "Run Round" (GM manual): gate, then run the ungated round-advance. */
 export async function runRoundControl(): Promise<void> {
   if (!isGM()) {
     notifyUser(localize("controls.round.gmOnly"), "warn");
     return;
   }
-  await advanceRoundCore();
+  const outcome = await advanceRoundCore();
+  notifyUser(outcome.message, outcome.level);
 }
 
 /**
@@ -678,12 +688,11 @@ export async function runRoundControl(): Promise<void> {
  * Registered as the engine's advance callback via
  * `game.battleframe.advance.registerAdvance` (see main.ts).
  */
-export async function advanceRoundCore(): Promise<void> {
+export async function advanceRoundCore(): Promise<AdvanceOutcome> {
   const dice = globalScope().game?.battleframe?.dice;
   const roundsApi = globalScope().game?.battleframe?.rounds;
   if (!dice || !roundsApi) {
-    notifyUser(localize("controls.round.noApi"), "error");
-    return;
+    return { message: localize("controls.round.noApi"), level: "error" };
   }
 
   // "In progress" is read off the Combat document, so it survives a reload.
@@ -696,29 +705,25 @@ export async function advanceRoundCore(): Promise<void> {
       state: existingState
     });
     if (!round.isComplete()) {
-      notifyUser(localize("controls.round.inProgress"), "warn");
-      return;
+      return { message: localize("controls.round.inProgress"), level: "warn" };
     }
   }
 
   const units = gatherUnitsFromCanvas();
   if (units.length === 0) {
-    notifyUser(localize("controls.round.noUnits"), "warn");
-    return;
+    return { message: localize("controls.round.noUnits"), level: "warn" };
   }
   // The module's victory read: once one side (or neither) holds the field, a new
   // round has nothing to play.
   if (checkVictoryInx(units).result !== "continue") {
-    notifyUser(localize("controls.round.battleOver"), "warn");
-    return;
+    return { message: localize("controls.round.battleOver"), level: "warn" };
   }
 
   try {
     const { order, firstSideId } = await beginRound({ units, dice, roundsApi });
     const combat = existing ?? (await getOrCreateCombat());
     if (!combat) {
-      notifyUser(localize("controls.round.noApi"), "error");
-      return;
+      return { message: localize("controls.round.noApi"), level: "error" };
     }
     await ensureCombatants(combat, units);
     await combat.setFlag(FLAG_SCOPE, ORDER_FLAG, orderFlag(combat, units));
@@ -730,9 +735,9 @@ export async function advanceRoundCore(): Promise<void> {
         /* already started -- fine */
       }
     }
-    notifyUser(format("controls.round.started", { side: firstSideId }));
+    return { message: format("controls.round.started", { side: firstSideId }), level: "info" };
   } catch (error) {
-    notifyUser(error instanceof Error ? error.message : String(error), "error");
+    return { message: error instanceof Error ? error.message : String(error), level: "error" };
   }
 }
 

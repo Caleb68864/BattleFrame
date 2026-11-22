@@ -198,3 +198,74 @@ describe("socketlib carries a plain player's ready toggle to the GM", () => {
     expect(manifest.socket).toBe(true);
   });
 });
+
+describe("a delegated advance runs on a GM viewing the players' scene", () => {
+  // The advance was handed to any GM (`executeAsGM`). The ruleset's callback reads
+  // the canvas, so a GM looking at another scene advanced that scene, or found no
+  // units. And its toasts appeared only on that GM's screen.
+  function world(opts: { gmScene: string; hostScene?: string; outcome?: unknown; hostIsGM?: boolean }) {
+    const handlers: Record<string, (...args: any[]) => unknown> = {};
+    const executeAsUser = vi.fn(async (name: string, _userId: string, ...args: any[]) => handlers[name](...args));
+    const executeAsGM = vi.fn(async (name: string, ...args: any[]) => handlers[name](...args));
+    const executeForEveryone = vi.fn(async (name: string, ...args: any[]) => handlers[name](...args));
+    const reg = {
+      register: (name: string, fn: (...args: any[]) => unknown) => (handlers[name] = fn),
+      executeAsUser,
+      executeAsGM,
+      executeForEveryone
+    };
+    let once: (() => void) | undefined;
+    const hooks: Record<string, () => void> = {};
+    const info = vi.fn();
+    const warn = vi.fn();
+    const doc = { getFlag: () => ({ p1: true }), unsetFlag: vi.fn(async () => undefined), setFlag: vi.fn(), update: vi.fn() };
+    vi.stubGlobal("game", {
+      user: { id: "p1", isGM: opts.hostIsGM ?? false },
+      users: [
+        { id: "gm", active: true, isGM: true, viewedScene: opts.gmScene },
+        { id: "p1", active: true, isGM: false, viewedScene: opts.hostScene ?? "s1" }
+      ],
+      combats: { active: doc },
+      settings: { register: vi.fn(), get: () => 0 }
+    });
+    vi.stubGlobal("canvas", { scene: { id: opts.hostScene ?? "s1" } });
+    vi.stubGlobal("Hooks", { on: (e: string, cb: () => void) => (hooks[e] = cb), once: (_e: string, cb: () => void) => (once = cb) });
+    vi.stubGlobal("socketlib", { registerSystem: () => reg });
+    vi.stubGlobal("ui", { notifications: { info, warn, error: vi.fn() } });
+    const api = createReadyAdvanceApi();
+    const advance = vi.fn(async () => opts.outcome);
+    api.registerAdvance(advance as never);
+    registerReadyAdvance();
+    once?.();
+    return { hooks, advance, executeAsUser, executeAsGM, executeForEveryone, info, warn };
+  }
+
+  async function runCountdown(hooks: Record<string, () => void>) {
+    vi.useFakeTimers();
+    hooks.updateCombat();
+    await vi.runAllTimersAsync();
+    vi.useRealTimers();
+  }
+
+  it("delegates to the GM on the same scene", async () => {
+    const w = world({ gmScene: "s1" });
+    await runCountdown(w.hooks);
+    expect(w.executeAsUser).toHaveBeenCalledWith("performAdvance", "gm");
+    expect(w.advance).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not advance through a GM looking at another scene, and says why", async () => {
+    const w = world({ gmScene: "elsewhere" });
+    await runCountdown(w.hooks);
+    expect(w.advance).not.toHaveBeenCalled();
+    expect(w.executeAsGM).not.toHaveBeenCalled();
+    expect(w.warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("shows the advance's outcome to everyone, not just the GM", async () => {
+    const w = world({ gmScene: "s1", outcome: { message: "New round", level: "info" } });
+    await runCountdown(w.hooks);
+    expect(w.executeForEveryone).toHaveBeenCalledWith("notify", "New round", "info");
+    expect(w.info).toHaveBeenCalledWith("New round");
+  });
+});

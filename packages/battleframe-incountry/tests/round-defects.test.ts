@@ -158,9 +158,11 @@ describe("a wiped side is out of the battle", () => {
       }
     });
 
-    await advanceRoundCore();
+    const outcome = await advanceRoundCore();
 
     expect(create).not.toHaveBeenCalled();
-    expect(warn).toHaveBeenCalledWith("[battleframe-incountry.controls.round.battleOver]");
+    expect(outcome).toEqual({ message: "[battleframe-incountry.controls.round.battleOver]", level: "warn" });
+    // The advance reports its outcome; the engine shows it to every player.
+    expect(warn).not.toHaveBeenCalled();
   });
 });

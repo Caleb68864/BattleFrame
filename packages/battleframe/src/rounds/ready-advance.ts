@@ -28,6 +28,10 @@ export interface UserLike {
   id: string;
   active?: boolean;
   isGM?: boolean;
+  /** Foundry: the id of the scene this user is viewing. */
+  viewedScene?: string | null;
+  /** Foundry: the user's role (4 = full Gamemaster). */
+  role?: number;
 }
 
 /**
@@ -78,6 +82,19 @@ export function advanceStrategy(opts: {
   return opts.socketlibReady && opts.gmConnected ? "delegate" : "local";
 }
 
+/**
+ * The GM a delegated advance should run on: a connected GM viewing `sceneId`. The
+ * ruleset's advance reads that GM's canvas, so a GM looking at another scene would
+ * advance the wrong one. A full GM is preferred over an assistant when both are there.
+ */
+export function delegateTarget(users: readonly UserLike[], sceneId: string | undefined): UserLike | undefined {
+  if (!sceneId) {
+    return undefined;
+  }
+  const onScene = users.filter((u) => u.active && u.isGM && u.viewedScene === sceneId);
+  return onScene.find((u) => u.role === 4) ?? onScene[0];
+}
+
 /** Flips a user's ready flag in the ready map (returns a new map). */
 export function toggledReady(map: Record<string, boolean>, userId: string): Record<string, boolean> {
   const next = { ...map };
@@ -109,11 +126,13 @@ interface FlagDoc {
 interface SocketReg {
   register?: (name: string, fn: (...args: any[]) => unknown) => void;
   executeAsGM?: (name: string, ...args: any[]) => Promise<unknown>;
+  executeAsUser?: (name: string, userId: string, ...args: any[]) => Promise<unknown>;
+  executeForEveryone?: (name: string, ...args: any[]) => Promise<unknown>;
 }
 
 interface Glob {
   game?: {
-    user?: { id?: string };
+    user?: { id?: string; isGM?: boolean };
     users?: UserLike[] | { filter?: (fn: (u: UserLike) => boolean) => UserLike[]; [Symbol.iterator]?: unknown };
     combats?: { active?: FlagDoc };
     modules?: { get?: (id: string) => { active?: boolean } | undefined };
@@ -122,7 +141,7 @@ interface Glob {
       register?: (scope: string, key: string, data: Record<string, unknown>) => void;
     };
   };
-  canvas?: { scene?: FlagDoc };
+  canvas?: { scene?: FlagDoc & { id?: string } };
   Hooks?: {
     on?: (event: string, cb: (...args: any[]) => void) => void;
     once?: (event: string, cb: (...args: any[]) => void) => void;
@@ -166,6 +185,18 @@ function timerSeconds(): number {
 const SOCKET_ADVANCE = "performAdvance";
 /** The socketlib handler name for a player's ready toggle, written by a GM. */
 const SOCKET_READY = "setReady";
+/** The socketlib handler name for an advance's outcome toast, run on every client. */
+const SOCKET_NOTIFY = "notify";
+
+/**
+ * What an advance may report back. A ruleset's callback returns it instead of
+ * toasting, so the engine can show it to every player, not only to the GM the
+ * advance was delegated to. Returning nothing is still allowed.
+ */
+export interface AdvanceOutcome {
+  message: string;
+  level?: "info" | "warn" | "error";
+}
 
 /**
  * Writes one user's ready flag onto the ready document. Un-ready DELETES the key:
@@ -184,7 +215,7 @@ async function writeReady(userId: string, ready: boolean): Promise<void> {
 }
 
 /** The ruleset's "advance the round" behaviour, registered at init. */
-let advanceCallback: (() => void | Promise<void>) | undefined;
+let advanceCallback: (() => unknown) | undefined;
 let countdownTimer: ReturnType<typeof setTimeout> | undefined;
 /** socketlib registration, set once socketlib fires `socketlib.ready` (undefined if absent). */
 let socket: SocketReg | undefined;
@@ -236,9 +267,20 @@ async function evaluate(): Promise<void> {
  * unsetFlag REMOVES the whole flag -- `setFlag(..., {})` would deep-MERGE and
  * leave every existing key, so it must not be used to clear a flag map.
  */
-async function privilegedAdvance(): Promise<void> {
+async function privilegedAdvance(): Promise<AdvanceOutcome | undefined> {
   await readyDoc()?.unsetFlag?.(SYSTEM_ID, READY_FLAG);
-  await advanceCallback?.();
+  const outcome = await advanceCallback?.();
+  return isOutcome(outcome) ? outcome : undefined;
+}
+
+function isOutcome(value: unknown): value is AdvanceOutcome {
+  return !!value && typeof (value as AdvanceOutcome).message === "string";
+}
+
+/** Shows a toast on this client. */
+function notifyHere(message: string, level: AdvanceOutcome["level"] = "info"): void {
+  const notifications = glob().ui?.notifications as Record<string, ((m: string) => void) | undefined> | undefined;
+  notifications?.[level ?? "info"]?.(message);
 }
 
 async function performAdvance(): Promise<void> {
@@ -252,10 +294,36 @@ async function performAdvance(): Promise<void> {
       socketlibReady: !!socket,
       gmConnected: gmConnected(usersList())
     });
+    let outcome: unknown;
     if (strategy === "delegate") {
-      await socket?.executeAsGM?.(SOCKET_ADVANCE);
+      // Only a GM on this scene: the ruleset's advance reads the canvas it runs on.
+      const sceneId = glob().canvas?.scene?.id;
+      const target = delegateTarget(usersList(), sceneId);
+      if (target?.id && socket?.executeAsUser) {
+        outcome = await socket.executeAsUser(SOCKET_ADVANCE, target.id);
+      } else if (glob().game?.user?.isGM) {
+        outcome = await privilegedAdvance();
+      } else {
+        notifyHere(
+          `${SYSTEM_ID} | ` +
+            createI18nApi().localize(
+              "battleframe.advance.noGmOnScene",
+              "no GM is viewing this scene, so the round cannot advance -- ask the GM to view it, then ready again"
+            ),
+          "warn"
+        );
+        return;
+      }
     } else {
-      await privilegedAdvance();
+      outcome = await privilegedAdvance();
+    }
+    // The advance ran on one client (often the GM's); its outcome is for the table.
+    if (isOutcome(outcome)) {
+      if (socket?.executeForEveryone) {
+        await socket.executeForEveryone(SOCKET_NOTIFY, outcome.message, outcome.level ?? "info");
+      } else {
+        notifyHere(outcome.message, outcome.level);
+      }
     }
   } catch {
     /* an advance failure must not wedge the ready state */
@@ -273,6 +341,11 @@ function registerAdvanceSocket(): void {
     return;
   }
   reg.register?.(SOCKET_ADVANCE, () => privilegedAdvance());
+  reg.register?.(SOCKET_NOTIFY, (message: unknown, level: unknown) => {
+    if (typeof message === "string") {
+      notifyHere(message, level === "warn" || level === "error" ? level : "info");
+    }
+  });
   // Runs on the GM. The user is socketlib's record of the caller, so a client can
   // only set its own flag.
   reg.register?.(SOCKET_READY, function (this: { socketdata?: { userId?: string } } | undefined, ready: unknown) {
@@ -284,7 +357,7 @@ function registerAdvanceSocket(): void {
 
 export interface ReadyAdvanceApi {
   /** Register the ruleset's "advance the round" behaviour (called once, at init). */
-  registerAdvance(fn: () => void | Promise<void>): void;
+  registerAdvance(fn: () => void | AdvanceOutcome | Promise<void | AdvanceOutcome>): void;
   /** Toggle the current user's ready flag. */
   toggleReady(): Promise<void>;
   /** Whether the current user (or `userId`) is ready. */

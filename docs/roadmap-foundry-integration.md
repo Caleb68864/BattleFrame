@@ -101,8 +101,12 @@ listed with the reason they were not fixed here.
 - **Raw English** left: the engine's own activation-order errors (`rounds/activation.ts`), which a
   module's pre-check now stops before they are thrown in play. The existing i18n tests only check that referenced keys exist.
   (Both modules' round cards and toasts: ✅ 2026-11-21, each package's `tests/localized-round.test.ts`.)
-- **A delegated advance runs on the GM's canvas.** `advanceRoundCore` reads `canvas.tokens` on the GM
-  who receives the socket call, which may be another scene; the players who readied see no toast.
+- ✅ 2026-11-21 **A delegated advance ran on the GM's canvas.** The engine now delegates only to a
+  connected GM viewing the host's scene (`delegateTarget`, socketlib `executeAsUser`), and warns
+  instead of advancing when none is. An advance callback may return `{ message, level }`, which the
+  engine shows on every client (`executeForEveryone`); Simple Skirmish and InCountry return theirs.
+  Full Thrust, Dirtside II, Stargrunt II and GREATHELM still toast on the client that runs the
+  advance. (`ready-advance.test.ts`, the two modules' round tests.)
 - **InCountry creates its Combat inactive** (`Combat.create` without `active: true`), so the engine's
   ready flags (on `combats.active`) may sit on another combat. Unverified live.
 - **Simple Skirmish's scene control** sets `activeTool` to a GM-only button tool.

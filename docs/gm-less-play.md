@@ -52,9 +52,12 @@ Install the free **[socketlib](https://foundryvtt.com/packages/socketlib)** modu
 (BattleFrame recommends it in its manifest, so Foundry offers to install it
 alongside the system). When socketlib is active **and at least one GM is
 connected**, the host player hands the privileged write to that GM over a socket
-(`executeAsGM`) — so the players can be plain **Player**-role accounts and still
-run the whole game. The GM only has to be *logged in*; they never touch the
-controls. This is the recommended setup for a table where a GM is around but not
+— so the players can be plain **Player**-role accounts and still run the whole
+game. The GM only has to be *logged in* and **viewing the players' scene**; they
+never touch the controls. The advance runs on the GM's client and reads that
+client's canvas, so the engine only delegates to a GM on the same scene; if none
+is, players are told so and nothing advances. The advance's outcome ("New round:
+… takes initiative") is shown to every player, not just the GM. This is the recommended setup for a table where a GM is around but not
 running the game.
 
 ### Fallback: Assistant-GM players (no GM needs to be present at all)
@@ -115,6 +118,9 @@ To wire a module (see any of the four shipped rulesets for the pattern):
    "next round" action (no `isGM()` gate, since the host running it is a trusted
    player in GM-less play):
    `game.battleframe.advance.registerAdvance(() => advanceRoundCore())`.
+   The callback may return `{ message, level }` instead of toasting; the engine then
+   shows it on every client (the advance may have run on a GM's). Returning nothing
+   still works.
 2. Add a player-visible **"Ready"** toggle scene tool whose `onChange` calls
    `game.battleframe.advance.toggleReady()` and whose `active` reflects
    `isReady()`. Make sure the tool is reachable by players (its scene-control group

@@ -4450,3 +4450,23 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   `init`), and the engine's activation-order errors.
 - Tests: `i18n-errors-dice` in each package (4 + 3 behaviour tests, all failing on the old code;
   plus a scan that every literal `tr()` key exists in `lang/en.json`). Commit: this commit.
+
+## 2026-11-21 — Engine: delegate an advance to a GM on the players' scene; show its outcome to all
+- `performAdvance` delegated with `executeAsGM`, which picks any GM. Every ruleset's advance reads
+  the canvas of the client it runs on, so a GM viewing another scene advanced that scene (or found
+  no units), and the advance's toasts appeared only on that GM's screen.
+- Delegation now goes to `delegateTarget(users, canvas.scene.id)`: an active GM whose
+  `User#viewedScene` is the host's scene (a full GM preferred), through socketlib's
+  `executeAsUser`. With no such GM, a host that is itself a GM runs it locally; a plain player is
+  told no GM is on the scene (`battleframe.advance.noGmOnScene`) and nothing advances. Moving a
+  ruleset's advance onto a scene it is not viewing would mean rewriting six modules' canvas reads;
+  choosing the right GM fixes it for all of them.
+- `registerAdvance` callbacks may return `{ message, level }` (`AdvanceOutcome`). The engine shows
+  it on every client through a new socket handler `notify` (`executeForEveryone`), or locally
+  without socketlib. Simple Skirmish and InCountry now return their outcome from
+  `advanceRoundCore` instead of toasting; their GM Run Round tool toasts the returned outcome. The
+  other four rulesets return nothing and behave as before.
+- `User#viewedScene` and `executeAsUser`/`executeForEveryone` are from knowledge of Foundry and
+  socketlib, not a live check.
+- Tests: three in `ready-advance.test.ts`, one in each module's round tests; all failing on the old
+  code. Commit: this commit.
