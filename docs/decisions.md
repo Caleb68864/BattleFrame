@@ -4372,3 +4372,14 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   not a live check.
 - Tests: `document-sheet-ids` (scans every package's sheet sources), failing on the old code.
   Commit: this commit.
+
+## 2026-11-21 — Engine: the combat tracker calls the base class
+- `BattleframeCombatTracker._prepareTrackerContext` set `context.combatants` and returned without
+  calling `super`. Core's tracker template iterates `context.turns`, which the base builds, so the
+  sidebar would list nobody however the order flag read. (From knowledge of v13+ core's tracker
+  template; the fake base in the old tests never built `turns`, so they could not see it.)
+- It now calls the base, keeps `combatants` as the ordered list, and reorders `turns` by the order
+  flag, dropping combatants the flag does not name: the tracker's documented contract that an empty
+  order renders an empty list, not some other ordering.
+- Tests: two in `combat.test.ts` with a base that builds `turns`, failing on the old code. Not
+  checked in a running Foundry. Commit: this commit.

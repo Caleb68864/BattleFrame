@@ -71,6 +71,9 @@ listed with the reason they were not fixed here.
 - ✅ Every document sheet in the monorepo (engine generic sheet and ten module sheets) had a fixed
   `id`, so two open sheets of one type shared an application and DOM id. Each now ends in Foundry's
   `{id}` placeholder. (`document-sheet-ids.test.ts`)
+- ✅ The combat tracker override skipped the base class's `_prepareTrackerContext`, so `turns` (what
+  core's tracker template renders) was never built. It now calls the base and reorders `turns` by the
+  battleframe order. (`combat.test.ts`)
 
 ## Executive summary
 
