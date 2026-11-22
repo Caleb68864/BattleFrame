@@ -81,7 +81,7 @@ export function createUnitSheetClass(
 
   class UnitSheet extends (MixedBase as new (...args: any[]) => any) {
     static DEFAULT_OPTIONS = {
-      id: `${MODULE_ID}-unit-sheet`,
+      id: `${MODULE_ID}-unit-sheet-{id}`,
       classes: [MODULE_ID, "sheet", "actor", UNIT_ACTOR_TYPE],
       position: { width: 460, height: 380 },
       // Save edits immediately (v14 DocumentSheetV2 defaults this to false, which

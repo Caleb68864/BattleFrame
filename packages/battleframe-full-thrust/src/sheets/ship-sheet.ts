@@ -272,7 +272,7 @@ export function createShipSheetClass(
 
   class ShipSheet extends (MixedBase as new (...args: any[]) => any) {
     static DEFAULT_OPTIONS = {
-      id: `${MODULE_ID}-ship-sheet`,
+      id: `${MODULE_ID}-ship-sheet-{id}`,
       classes: [MODULE_ID, "sheet", "actor", SHIP_ACTOR_TYPE],
       position: { width: 560, height: 620 },
       form: { submitOnChange: true },

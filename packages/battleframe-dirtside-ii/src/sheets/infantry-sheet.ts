@@ -47,7 +47,7 @@ export function createInfantrySheetClass(
 
   class InfantrySheet extends (MixedBase as new (...args: any[]) => any) {
     static DEFAULT_OPTIONS = {
-      id: `${MODULE_ID}-infantry-sheet`,
+      id: `${MODULE_ID}-infantry-sheet-{id}`,
       classes: [MODULE_ID, "sheet", "actor", INFANTRY_ACTOR_TYPE],
       position: { width: 460, height: 520 },
       form: { submitOnChange: true },

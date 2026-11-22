@@ -68,6 +68,9 @@ listed with the reason they were not fixed here.
 - ✅ The orphan check never found an orphan. An actor whose module is disabled fails validation and
   is only in `invalidDocumentIds`, which holds ids; the check read them as documents. It now resolves
   each through `getInvalid`. (`orphan-check.test.ts`)
+- ✅ Every document sheet in the monorepo (engine generic sheet and ten module sheets) had a fixed
+  `id`, so two open sheets of one type shared an application and DOM id. Each now ends in Foundry's
+  `{id}` placeholder. (`document-sheet-ids.test.ts`)
 
 ## Executive summary
 

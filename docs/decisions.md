@@ -4359,3 +4359,16 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   The Set-of-ids shape and `getInvalid` are from knowledge of Foundry's source, not a live check;
   neither is whether `update` on an invalid document converts it as `convertOrphanToGeneric` expects.
 - Tests: one in `orphan-check.test.ts`, failing on the old code. Commit: this commit.
+
+## 2026-11-21 — Document sheets keep a per-document id
+- Every actor sheet set `DEFAULT_OPTIONS.id` to a constant (`<module>-unit-sheet` and so on),
+  replacing DocumentSheetV2's `{id}` default. Two open sheets of one type then share one id in
+  `foundry.applications.instances` and in the DOM. Each id now ends in `-{id}`, which Foundry fills
+  per document. The setup wizard keeps a fixed id: it is one window, not a sheet per document.
+- Applied across the monorepo: engine generic sheet; Full Thrust ship and fighter; Simple
+  Skirmish, InCountry, Stargrunt II unit; Dirtside II unit, vehicle, infantry; GREATHELM knight.
+  No stylesheet targets these ids.
+- The `{id}` substitution is from knowledge of Foundry's ApplicationV2/DocumentSheetV2 source,
+  not a live check.
+- Tests: `document-sheet-ids` (scans every package's sheet sources), failing on the old code.
+  Commit: this commit.

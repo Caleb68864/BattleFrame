@@ -60,7 +60,7 @@ export function createVehicleSheetClass(
 
   class VehicleSheet extends (MixedBase as new (...args: any[]) => any) {
     static DEFAULT_OPTIONS = {
-      id: `${MODULE_ID}-vehicle-sheet`,
+      id: `${MODULE_ID}-vehicle-sheet-{id}`,
       classes: [MODULE_ID, "sheet", "actor", VEHICLE_ACTOR_TYPE],
       position: { width: 520, height: 640 },
       form: { submitOnChange: true },
