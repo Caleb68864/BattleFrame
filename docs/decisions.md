@@ -4516,3 +4516,36 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Tests: `neutral-token-sides.test.ts` drives each ruleset's real gather function; the default-
   behaviour cases and the setting registration fail on the old code, the "friendly" cases guard
   the restored behaviour. Commit: this commit.
+
+## 2026-11-21 — Stargrunt II and GREATHELM key units by token
+- Both gather functions used `actor.id ?? token id`, the defect fixed in Simple Skirmish and
+  InCountry earlier today: two unlinked tokens of one actor share the actor's id and became one
+  unit (one knight). Both now key by token id.
+- A round saved under actor ids (GREATHELM's resumable dice-pool session, Stargrunt's order) will
+  not restore across this change; start a new round.
+- Tests: `unit-keying.test.ts` runs the four token-keyed gatherers; the Stargrunt II and GREATHELM
+  cases fail on the old code, the other two guard the earlier fix. Commit: this commit.
+
+## 2026-11-21 — Every ruleset's ready-driven advance returns its outcome
+- Follow-up to the engine's `AdvanceOutcome` (shown to every client). Dirtside II's
+  `advanceRoundCore`/`advanceTurnCore` and Stargrunt II's `advanceTurnCore` now return
+  `{ message, level }` instead of toasting; their GM tools toast the returned outcome
+  (Dirtside's new `runTurnControl`). Dirtside's initiative tie and round start become one message.
+- Full Thrust's `advancePhaseCore` returns the phase it moved to (`notify.phaseFire`,
+  `notify.phaseNewTurn`); the manoeuvre and fire results are already chat cards.
+- GREATHELM's registered callback was `() => { void advanceRoundCore(); }`, which the engine could
+  not await. It is now `advanceRoundForReady()`, which runs the same advance with its refusals and
+  failures collected and returned. In-round messages still toast where the round runs, and the
+  dice-pool panel still opens there; recorded in the roadmap as open.
+- Tests: `advance-outcomes.test.ts` (4), all failing on the old code. Commit: this commit.
+
+## 2026-11-21 — Scene controls open on a tool every player can see
+- Simple Skirmish's and GREATHELM's controls set `activeTool` to their Run Round button: `visible`
+  only for the GM, and wired with `onChange`, which Foundry can fire when a tool becomes the
+  active one, so opening the control could run a round. Both now open on their Ready toggle,
+  as InCountry, Stargrunt II and Dirtside II already did. Simple Skirmish's Ready and Run Round
+  also shared `order: 0`; Run Round and Activate move to 1 and 2.
+- Full Thrust opens on Plot, a button, on purpose (its own test pins it); Plot is visible to all
+  and has no `onChange`, so the check allows a button only when it does not act on change.
+- Tests: `scene-control-active-tool.test.ts` runs all six rulesets' controls as a player; the
+  Simple Skirmish and GREATHELM cases fail on the old code. Commit: this commit.

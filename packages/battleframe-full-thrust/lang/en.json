@@ -181,6 +181,8 @@
   "battleframe-full-thrust.notify.noShipsImported": "no ships imported",
   "battleframe-full-thrust.notify.noActorCreate": "cannot create actors in this context",
   "battleframe-full-thrust.notify.imported": "imported {n} ship(s)",
+  "battleframe-full-thrust.notify.phaseFire": "Ships have moved: the fire phase begins.",
+  "battleframe-full-thrust.notify.phaseNewTurn": "The turn is over: plot the next turn's orders.",
   "battleframe-full-thrust.dialog.needleTitle": "Full Thrust: Needle Beam -- target system",
   "battleframe-full-thrust.dialog.needleSystem": "System to snipe:",
   "battleframe-full-thrust.dialog.needleOk": "Fire",

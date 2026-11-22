@@ -391,7 +391,9 @@ function unitFromToken(placeable: unknown): CanvasUnit | null {
   if (!p || !actor || actor.type !== UNIT_TYPE) {
     return null;
   }
-  const id = actor.id ?? p.document?.id ?? p.id;
+  // The token, not the actor: unlinked tokens of one actor share the actor's id,
+  // and would collapse into a single unit in the round.
+  const id = p.document?.id ?? p.id ?? actor.id;
   if (!id) {
     return null;
   }
@@ -503,23 +505,29 @@ async function chooseFirstActivator(units: readonly CanvasUnit[], dice: DiceApiL
  * turn → clear every unit's `activated`, bump the turn track, pick a fresh first
  * activator. A turn still in progress → refuse.
  */
-export async function advanceTurnCore(): Promise<void> {
+/**
+ * What a round advance reports (the engine's `AdvanceOutcome` shape). Returned rather
+ * than toasted, so a ready-driven advance delegated to a GM reaches every player.
+ */
+export interface AdvanceOutcome {
+  message: string;
+  level: "info" | "warn" | "error";
+}
+
+export async function advanceTurnCore(): Promise<AdvanceOutcome> {
   const dice = globalScope().game?.battleframe?.dice;
   if (!dice) {
-    notifyUser(localize("controls.round.noApi"), "error");
-    return;
+    return { message: localize("controls.round.noApi"), level: "error" };
   }
 
   const units = gatherUnitsFromCanvas();
   if (units.length === 0) {
-    notifyUser(localize("controls.round.noUnits"), "warn");
-    return;
+    return { message: localize("controls.round.noUnits"), level: "warn" };
   }
 
   const combat = activeRoundCombat() ?? (await getOrCreateCombat());
   if (!combat) {
-    notifyUser(localize("controls.round.noCombat"), "warn");
-    return;
+    return { message: localize("controls.round.noCombat"), level: "warn" };
   }
 
   const sessionUnits = toSessionUnits(units);
@@ -537,14 +545,12 @@ export async function advanceTurnCore(): Promise<void> {
           /* already started */
         }
       }
-      notifyUser(format("controls.round.started", { side: firstSide, turn: 1 }));
-      return;
+      return { message: format("controls.round.started", { side: firstSide, turn: 1 }), level: "info" };
     }
 
     const round = restoreStargruntRound(sessionUnits, state);
     if (!round.isTurnComplete()) {
-      notifyUser(localize("controls.round.inProgress"), "warn");
-      return;
+      return { message: localize("controls.round.inProgress"), level: "warn" };
     }
 
     const firstSide = await chooseFirstActivator(units, dice);
@@ -553,9 +559,9 @@ export async function advanceTurnCore(): Promise<void> {
       await u.actor.update?.({ "system.activated": false });
     }
     await combat.setFlag(FLAG_SCOPE, ROUND_FLAG, next);
-    notifyUser(format("controls.round.nextTurn", { side: firstSide, turn: next.turn }));
+    return { message: format("controls.round.nextTurn", { side: firstSide, turn: next.turn }), level: "info" };
   } catch (error) {
-    notifyUser(error instanceof Error ? error.message : String(error), "error");
+    return { message: error instanceof Error ? error.message : String(error), level: "error" };
   }
 }
 
@@ -565,7 +571,8 @@ export async function runRoundControl(): Promise<void> {
     notifyUser(localize("controls.round.gmOnly"), "warn");
     return;
   }
-  await advanceTurnCore();
+  const outcome = await advanceTurnCore();
+  notifyUser(outcome.message, outcome.level);
 }
 
 /** "Activate Unit": marks the selected unit activated this turn and advances the slot. */

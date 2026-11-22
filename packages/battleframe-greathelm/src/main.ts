@@ -9,7 +9,7 @@ import {
 import { registerKnightDataModel } from "./data/knight";
 import { registerKnightSheet } from "./sheets/knight-sheet";
 import { registerGreathelmTokenDefaults } from "./token-defaults";
-import { advanceRoundCore, registerRoundControl } from "./ui/round-control";
+import { advanceRoundForReady, registerRoundControl } from "./ui/round-control";
 
 interface FoundrySettingsApi {
   register: (namespace: string, key: string, data: Record<string, unknown>) => void;
@@ -94,10 +94,10 @@ export function registerGreathelmHoverFields(): void {
  * (same shape as resolveBattleframeApi): built on `globalThis.battleframe` at
  * the system's module top level, bound onto `game.battleframe` at its init.
  */
-function advanceService(): { registerAdvance?: (fn: () => void | Promise<void>) => void } | undefined {
+function advanceService(): { registerAdvance?: (fn: () => unknown) => void } | undefined {
   const g = globalThis as {
-    battleframe?: { advance?: { registerAdvance?: (fn: () => void | Promise<void>) => void } };
-    game?: { battleframe?: { advance?: { registerAdvance?: (fn: () => void | Promise<void>) => void } } };
+    battleframe?: { advance?: { registerAdvance?: (fn: () => unknown) => void } };
+    game?: { battleframe?: { advance?: { registerAdvance?: (fn: () => unknown) => void } } };
   };
   return g.battleframe?.advance ?? g.game?.battleframe?.advance;
 }
@@ -112,9 +112,9 @@ function advanceService(): { registerAdvance?: (fn: () => void | Promise<void>) 
  * packages/battleframe/src/rounds/ready-advance.ts.
  */
 export function registerGreathelmAdvance(): void {
-  advanceService()?.registerAdvance?.(() => {
-    void advanceRoundCore();
-  });
+  // Returned, not discarded: the engine awaits the advance and shows its outcome
+  // (a refusal or failure) to every player.
+  advanceService()?.registerAdvance?.(() => advanceRoundForReady());
 }
 
 /**

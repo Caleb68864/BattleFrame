@@ -60,6 +60,10 @@ listed with the reason they were not fixed here.
 - ✅ The defeated status was only ever set. Restoring a unit's models on the sheet left the skull on.
   The unit data model's `_onUpdate` now re-syncs it when `models` changes, on the changing client only.
 
+**Stargrunt II and GREATHELM, fixed:** ✅ 2026-11-21 the same actor-id unit keying; units and knights
+are keyed by token id now (`packages/battleframe/tests/unit-keying.test.ts`, which covers all four
+token-keyed rulesets). A GREATHELM or Stargrunt round saved before this will not resume; start a new one.
+
 **Engine, fixed** (`packages/battleframe/tests/`):
 - ✅ GM-less play through socketlib could not work for plain players. `system.json` had no
   `"socket": true`, which socketlib needs before it registers a system, and the ready toggle was
@@ -108,9 +112,14 @@ listed with the reason they were not fixed here.
 - ✅ 2026-11-21 **A delegated advance ran on the GM's canvas.** The engine now delegates only to a
   connected GM viewing the host's scene (`delegateTarget`, socketlib `executeAsUser`), and warns
   instead of advancing when none is. An advance callback may return `{ message, level }`, which the
-  engine shows on every client (`executeForEveryone`); Simple Skirmish and InCountry return theirs.
-  Full Thrust, Dirtside II, Stargrunt II and GREATHELM still toast on the client that runs the
-  advance. (`ready-advance.test.ts`, the two modules' round tests.)
+  engine shows on every client (`executeForEveryone`); all six rulesets now return theirs (Dirtside II,
+  Stargrunt II, Full Thrust and GREATHELM ✅ 2026-11-21, `advance-outcomes.test.ts`). Full Thrust
+  returns the phase it moved to; its results are chat cards already. GREATHELM returns refusals and
+  failures; messages from inside its round still toast where the round runs.
+  (`ready-advance.test.ts`, the modules' round tests.)
+- **GREATHELM's dice-pool panel opens on the client that runs the advance.** A ready-driven advance
+  delegated to a GM puts the panel on the GM's screen, not the players'. Not fixed: the panel is the
+  round's UI and would have to be opened per player from the session on the Combat document.
 - ✅ 2026-11-21 **Modules created their Combat inactive.** Decided by agent 2026-11-21 (owner may
   revisit): treated as a bug, not a design choice. An inactive combat is neither `game.combat` nor
   `combats.active`, so every module's `getOrCreateCombat` missed it and created another each round,
@@ -118,7 +127,10 @@ listed with the reason they were not fixed here.
   Dirtside II and Stargrunt II now call `combat.activate()` on the combat they create, as Foundry's
   own "create encounter" does. Reversible; existing combats are untouched. (`module-combat-active.test.ts`
   and the two modules' round tests.)
-- **Simple Skirmish's scene control** sets `activeTool` to a GM-only button tool.
+- ✅ 2026-11-21 **Simple Skirmish's and GREATHELM's scene controls** opened on the GM-only Run Round
+  button (hidden from players; its `onChange` runs a round). Both open on the Ready toggle now, like
+  InCountry, Stargrunt II and Dirtside II; Full Thrust keeps its deliberate Plot default (visible,
+  `onClick` only). (`scene-control-active-tool.test.ts`)
 
 ## Executive summary
 
