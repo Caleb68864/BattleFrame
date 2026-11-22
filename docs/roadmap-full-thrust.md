@@ -70,8 +70,11 @@ by unit tests only. No Foundry world was available to that session.
     also now carries a speaker (`postReportCard`). **Toasts localized 2026-11-16:** every `notify` in
     `ui/round-control.ts` names a `notify.*` key in `lang/en.json`, with the English as fallback;
     `tests/localized-toasts.test.ts` fails on a raw-text toast, a missing key or an unsupplied
-    placeholder. Not covered: the ownership warning's toast fallback (`ui/ownership-warning.ts`) and
-    the dialog titles/labels, which are still English. Unverified live.
+    placeholder. **Dialogs localized 2026-11-21:** every dialog title, button, prompt, form label and
+    dropdown option in `ui/round-control.ts`, the ready guard's action names (`round/turn-phase.ts`)
+    and the plotting-secrecy warning with its toast fallback (`ui/ownership-warning.ts`) name a
+    `dialog.*` key; `tests/localized-dialogs.test.ts` fails on a literal title, label or option, a
+    missing key or an unsupplied placeholder. Unverified live.
 13. ~~**[qol] Friendlier plot entry.**~~ ✅ **DONE 2026-07-22.**
 
 ## P2 — Advanced rules (need new math)
@@ -81,8 +84,13 @@ by unit tests only. No Foundry world was available to that session.
     fighter card; the end-of-turn endurance sweep (`combat/fighter-endurance.ts`) that orders exhausted
     groups home, counts dry turns on a flag and, behind the world setting "More Thrust: exhausted
     fighters are lost", removes a group after the profile's grace. Recovery now uses the group's own
-    move rather than its attack range, and honours the per-turn limit. Remaining: a lost group's bay
-    stays occupied (a group does not record its carrier). **⏸ Owner:** the launch limit needs to know
+    move rather than its attack range, and honours the per-turn limit. **Corrected 2026-11-21:** the
+    remaining item "a lost group's bay stays occupied" was a misreading. The carrier's launch count
+    is its number of EMPTY bays, so a lost group's bay correctly stays empty and cannot launch a
+    replacement (`tests/lost-group-bay-stays-empty.test.ts`). Recovery onto a carrier other than the
+    launching one fills the recovering carrier's bay, which is also correct for that model. **⏸ Owner:**
+    whether a group may land on a carrier other than its own, and whether a carrier can replace lost
+    fighters, are rules the repo does not contain. **⏸ Owner:** the launch limit needs to know
     whether a ship is an "actual carrier", and nothing in the ship model says so (a `bays` count is
     not the same claim).
 15. ~~**[build] Independent (More Thrust) missiles.**~~ ✅ **DONE.** The missile phase landed 2026-07-22.
@@ -101,8 +109,11 @@ by unit tests only. No Foundry world was available to that session.
     - Penetrating damage now reaches the hull while armour remains. It was wired as ordinary damage,
       which spent armour first, contrary to what `ship/fleet-book.ts` itself describes.
 
-    - **Variable hull** is wired through import, not through a design UI: a fleet ship's `hullGrade`
-      sizes its track and prices its hull (`FLEET-FORMAT.md`). No sheet control yet.
+    - **Variable hull** is wired through import: a fleet ship's `hullGrade` sizes its track and prices
+      its hull (`FLEET-FORMAT.md`). **Sheet control done 2026-11-21 (unverified live):** a "Hull grade"
+      dropdown on the ship sheet; choosing or clearing a grade, or changing a graded ship's mass, resizes
+      the hull track through `ShipData._preUpdate`, using the same `hullTrackForGrade` as import. A box
+      count typed in the same edit wins (`tests/hull-grade-sheet.test.ts`).
 
     Remaining:
     - **⏸ Owner, rules not in the repo:** Core Systems threshold bonus, Needle-Beam core immunity,

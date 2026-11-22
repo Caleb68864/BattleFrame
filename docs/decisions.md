@@ -4204,3 +4204,71 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   runs `doneFiringAction` against that ship, which re-checks everything.
 - Placement: right after Fire (matching the scene tool), else before Hold.
 - Tests: `done-firing-hud` (15). Not checked in a running Foundry. Commit: this commit.
+
+## 2026-11-21 — A fighter group lost to endurance frees its carrier's bay
+- Roadmap P2 #14 remainder: the More Thrust loss rule zeroed a group but its carrier's
+  `LAUNCHED_GROUPS_FLAG` kept counting it, because a group did not record its carrier.
+- `launchFightersAction` now creates the group with `flags[MODULE_ID][LAUNCHED_BY_FLAG]` set to
+  the carrier actor's uuid. A uuid rather than an id, so an unlinked carrier token's synthetic
+  actor (whose flags live on the token) is the one matched, not the base actor.
+- `sweepFighterEndurance` takes `carriers` and, on a loss, calls `releaseLaunchingBay`: it finds
+  the carrier by uuid, lowers its count by one (floored at zero) and clears the group's flag so
+  the bay is released once. A carrier this client cannot write is skipped, as groups are.
+- `sweepFighterEndurancePhase` passes the scene's ship actors. A carrier not on the scene, or a
+  group launched before this change, frees nothing; the GM corrects those by hand as before.
+- Not changed: Recover Fighters still frees the recovering carrier's bay, not the launching
+  one, so a group landing on a different carrier leaves the bookkeeping off.
+- Tests: `lost-group-frees-bay` (6; 5 fail on the old code). Not checked in a running Foundry.
+  Commit: this commit.
+
+## 2026-11-21 — Reverted: a lost group does NOT free its carrier's bay
+- The entry above was wrong. `LAUNCHED_GROUPS_FLAG` counts the carrier's EMPTY bays:
+  `launchFightersAction` refuses at `deployed >= bays` and `recoverFightersAction` treats
+  `bays - deployed` as the groups aboard. Lowering the count on a loss made the bay look
+  full, so a one-bay carrier whose only group was lost could launch a fresh group from
+  nothing. Reverted `0f36829` in full (`LAUNCHED_BY_FLAG`, `releaseLaunchingBay`, the
+  `carriers` sweep option, the launch-time flag).
+- The same reasoning rules out the follow-up to "free the launching carrier's bay" on
+  Recover Fighters: the group physically lands in the recovering carrier's empty bay, which
+  is what the tool already counts. Moving the decrement to the launching carrier would put
+  one carrier's count up by one and the other's down by one.
+- Whether a group may land on another carrier at all, and whether lost fighters can be
+  replaced, are not in the repo; recorded as owner questions in the roadmap.
+- Fixed the sweep's header comment, which called the old behaviour a bug.
+- Tests: `lost-group-bay-stays-empty` (1): launch, lose the group, launch again must be
+  refused. It fails on `0f36829` (count went 1 -> 0) and passes after the revert.
+  Commit: this commit.
+
+## 2026-11-21 — Full Thrust dialogs and the ownership warning go through the translation
+- Roadmap P1 #12 remainder. Needle system, missile warhead, vector move, plot, ready guard,
+  New Battle and Import dialogs: titles, buttons, prompts, `<label>`s, the plot button's
+  illegal-order tooltip and the dropdown options now go through `tr` under a new
+  `battleframe-full-thrust.dialog.*` prefix (`DIALOG` constant), English as the fallback.
+- The ready guard's per-ship action names (`pendingActionLabels`) and its "not plotted" /
+  "not fired" reasons too. The ownership warning's title, button and message, which is also
+  the toast fallback, take `{name}`.
+- Visible change: the dropdowns now show display names ("Fire control", "EMP") instead of
+  the raw values; the submitted values are unchanged.
+- Not localized: the movement-order codes in the plot buttons (P2, S1...), which are notation
+  the player types.
+- Tests: `localized-dialogs` (7), all failing on the old code. Not checked in a running
+  Foundry. Commit: this commit.
+
+## 2026-11-21 — Hull grade on the ship sheet
+- Roadmap P2 #19: the Fleet Book variable hull was reachable through fleet import only.
+- `templates/ship-sheet.hbs` has a `system.hullGrade` select in the hull section, fed by
+  `prepareHullGradeOptions` (blank = the fixed track, then `HULL_GRADES`), labels localized
+  under `hullGrade.*`.
+- The resize is in `ShipData._preUpdate` (the data model, the same hook Simple Skirmish uses
+  for `startingModels`), so any edit path keeps the track consistent, not just the sheet.
+  It fires when the grade changes, or when the mass changes on a graded ship; a fixed-track
+  ship's mass edit leaves the hull alone, as before. It compares against current values,
+  because the sheet's submit sends unchanged fields. A box count typed in the same edit wins.
+  Damage is clamped to the new track.
+- `hullTrackForGrade` (in `ship/variable-hull.ts`) is now the one derivation; fleet import
+  uses it instead of its inline copy.
+- No rules decision needed: the grade's track is the existing import rule. The schema field
+  is still a plain `StringField` (no `choices`); an unknown grade counts as none.
+- Tests: `hull-grade-sheet` (7), all failing on the old code. Not checked in a running Foundry:
+  that the select renders and saves, and that `_preUpdate` receives the changes in the shape
+  assumed (expanded or flat, both handled). Commit: this commit.

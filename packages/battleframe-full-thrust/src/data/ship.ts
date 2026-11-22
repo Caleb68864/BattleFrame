@@ -11,6 +11,7 @@
 
 import { SHIP_ACTOR_TYPE, FIRE_ARCS, WEAPON_KINDS } from "../constants";
 import { shipPointsFromSystem } from "../ship/design";
+import { hullTrackForGrade } from "../ship/variable-hull";
 import {
   type TypeDataModelBaseConstructor,
   resolveTypeDataModelBase,
@@ -127,6 +128,44 @@ export function createShipDataClass(
       // Points value derived from the ship's systems (FT2 Mass/Points estimate).
       // A world with no profile has no points to derive; the sheet must still open.
       self.pointsValue = isRulesComplete() ? shipPointsFromSystem(self) : 0;
+    }
+
+    /**
+     * Choosing a Fleet Book hull grade (or clearing it) resizes the hull track the
+     * way fleet import derives it; so does a mass change on a graded ship. A box
+     * count typed in the same update wins, and damage is kept within the track.
+     * Every value compares against the current one, because the sheet's form
+     * submit sends unchanged fields too.
+     */
+    async _preUpdate(changes: Record<string, any>, options: unknown, user: unknown): Promise<boolean | void> {
+      const allowed = await super._preUpdate?.(changes, options, user);
+      if (allowed === false) return false;
+      const self = this as unknown as { mass?: number; hullGrade?: string; hull?: { boxes?: number; damage?: number } };
+      // Foundry normally hands this an expanded diff; flattened keys are handled too.
+      const read = (path: string): unknown => {
+        const flat = changes[`system.${path}`];
+        if (flat !== undefined) return flat;
+        return path.split(".").reduce<any>((node, key) => node?.[key], changes.system);
+      };
+      const grade = read("hullGrade");
+      const mass = read("mass");
+      const gradeChanged = typeof grade === "string" && grade !== (self.hullGrade ?? "");
+      const massChanged = typeof mass === "number" && mass !== self.mass;
+      const effectiveGrade = typeof grade === "string" ? grade : self.hullGrade ?? "";
+      if (!gradeChanged && !(massChanged && effectiveGrade)) return;
+      const typedBoxes = read("hull.boxes");
+      if (typeof typedBoxes === "number" && typedBoxes !== self.hull?.boxes) return;
+
+      const track = hullTrackForGrade(typeof mass === "number" ? mass : self.mass ?? 0, effectiveGrade);
+      const damage = Math.min(Number(read("hull.damage") ?? self.hull?.damage ?? 0), track.boxes);
+      if (Object.keys(changes).some((key) => key.startsWith("system."))) {
+        changes["system.hull.boxes"] = track.boxes;
+        changes["system.hull.rows"] = track.rows;
+        changes["system.hull.damage"] = damage;
+      } else {
+        changes.system ??= {};
+        changes.system.hull = { ...(changes.system.hull ?? {}), ...track, damage };
+      }
     }
   }
 

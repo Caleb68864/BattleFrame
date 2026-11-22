@@ -9,9 +9,10 @@
  * until it is recovered. A lost group goes to size zero and takes Foundry's native
  * defeated status, the same threshold pattern the ships use.
  *
- * The orchestrator has no way to return a group's bay to its carrier: the launch
- * flag lives on the carrier and a group does not record which carrier launched it.
- * A lost group's bay therefore stays occupied until the GM corrects it.
+ * A loss leaves the carrier's launch count alone, on purpose. That count is the
+ * number of the carrier's bays that are empty (launching empties one, recovering
+ * fills one), and a lost group never comes back, so its bay stays empty: free to
+ * take another returning group, but nothing to launch from it.
  */
 
 import { FIGHTER_EXHAUSTED_TURNS_FLAG, MODULE_ID } from "../constants";

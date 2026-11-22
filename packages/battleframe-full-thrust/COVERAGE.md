@@ -100,7 +100,7 @@ deferred. Nothing is silently missing.
 | Specialised types: Fast / Torpedo (one-shot run, spent-mode dogfight) | 🟡 | `combat/fighter-types.ts` (pure + tested) |
 | Pilot quality: Ace / Turkey / average (attack, morale, dogfight, initiative) | ✅ | `combat/pilot.ts`, wired into `fire-fighters.ts` and `dogfight.ts`; named on the fighter card (2026-11-02) |
 | Fighter movement (flat move any direction, close to strike) | ✅ | `movement/fighter-move.ts` + "Move Fighters" tool |
-| Carrier launch/recover + endurance return-to-carrier | 🟡 | Launch/Recover tools; `combat/fighter-endurance.ts` end-of-turn sweep (2026-11-02, unverified live). The tools do not enforce per-turn limits. |
+| Carrier launch/recover + endurance return-to-carrier | 🟡 | Launch/Recover tools; `combat/fighter-endurance.ts` end-of-turn sweep (2026-11-02, unverified live); a group lost there leaves its bay empty, so its carrier cannot launch a replacement. Recovery enforces its per-turn limit; launch does not (owner: what makes an "actual carrier"). |
 
 ## Ship Design
 | Rule | Status | Where |

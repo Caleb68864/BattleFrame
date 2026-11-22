@@ -9,6 +9,10 @@
  */
 
 import { MODULE_ID, SHIP_ACTOR_TYPE } from "../constants";
+import { tr } from "../localize";
+
+/** Prefix of every dialog string's `lang/en.json` key. */
+const DIALOG = `${MODULE_ID}.dialog`;
 
 /** Foundry ownership level at/above which a user reads the full document (flags). */
 const OBSERVER = 2;
@@ -69,18 +73,21 @@ function allUsers(): UserLike[] {
 
 /** Shows the secrecy warning as a dialog, falling back to a notification. */
 function warnSecrecy(actorName: string): void {
-  const message =
+  const message = tr(
+    `${DIALOG}.secrecyMessage`,
     `${actorName}: two or more players can now see this ship. Full Thrust plotting is ` +
-    `hidden only while each player owns just their own ships -- an opponent who can observe ` +
-    `this ship can read its secretly-plotted movement order. Give the opponent no permission ` +
-    `on ships they do not command.`;
+      `hidden only while each player owns just their own ships -- an opponent who can observe ` +
+      `this ship can read its secretly-plotted movement order. Give the opponent no permission ` +
+      `on ships they do not command.`,
+    { name: actorName }
+  );
 
   const dialog = g().foundry?.applications?.api?.DialogV2;
   if (dialog?.prompt) {
     void dialog.prompt({
-      window: { title: "Full Thrust: plotting secrecy warning" },
+      window: { title: tr(`${DIALOG}.secrecyTitle`, "Full Thrust: plotting secrecy warning") },
       content: `<p>${message}</p>`,
-      ok: { label: "Understood" }
+      ok: { label: tr(`${DIALOG}.secrecyOk`, "Understood") }
     });
     return;
   }
