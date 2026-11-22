@@ -45,7 +45,12 @@ export class RulesetRegistry {
     }
   }
 
-  activateRuleset(id: string): ActivateResult {
+  /**
+   * Activates a ruleset. A second primary is refused while one is active, unless
+   * `replacePrimary` is set: the GM's explicit choice in the setup wizard, which
+   * replaces the current primary rather than running two.
+   */
+  activateRuleset(id: string, options: { replacePrimary?: boolean } = {}): ActivateResult {
     const def = this.rulesets.get(id);
 
     if (!def) {
@@ -55,7 +60,7 @@ export class RulesetRegistry {
       };
     }
 
-    if (def.primary && this.activeId && this.activeId !== id) {
+    if (def.primary && this.activeId && this.activeId !== id && !options.replacePrimary) {
       const activeDef = this.rulesets.get(this.activeId);
 
       if (activeDef?.primary) {

@@ -21,6 +21,7 @@ import {
   createSetupWizardClass,
   evaluateWizardState,
   isPrimaryClaimSetAside,
+  restoreActiveRuleset,
   restorePrimaryClaim,
   setAsidePrimaryClaim,
   shouldAutoOpenWizard,
@@ -217,7 +218,8 @@ describe("activatePrimarySelection ordering", () => {
     const result = await activatePrimarySelection("core-ruleset");
 
     expect(result.ok).toBe(true);
-    expect(activateSpy).toHaveBeenCalledWith("core-ruleset");
+    // The wizard's choice replaces a current primary (see "the GM can change the primary").
+    expect(activateSpy).toHaveBeenCalledWith("core-ruleset", { replacePrimary: true });
 
     const activateOrder = activateSpy.mock.invocationCallOrder[0];
     const setOrder = setSpy.mock.invocationCallOrder[0];
@@ -335,5 +337,62 @@ describe("the wizard shows why a primary selection was refused", () => {
 
     expect(warn).toHaveBeenCalledWith(expect.stringContaining("nonexistent-ruleset"));
     expect(wizard.rerender).not.toHaveBeenCalled();
+  });
+});
+
+describe("the GM can change the primary ruleset, and it survives a reload", () => {
+  // Decided by agent 2026-11-21 (owner may revisit): the wizard says the primary
+  // "can be changed later", but once one was active in a session, choosing another
+  // was always refused; and nothing restored the choice after a reload, so
+  // getActiveRuleset() was null on every client.
+  let fakeSettings: ReturnType<typeof makeFakeSettings>;
+
+  beforeEach(() => {
+    fakeSettings = makeFakeSettings();
+    (globalThis as unknown as { game?: unknown }).game = { settings: fakeSettings };
+    registerBattleframeSettings();
+    rulesetRegistry.registerRuleset(makeDefinition({ id: "alpha", primary: true }));
+    rulesetRegistry.registerRuleset(makeDefinition({ id: "beta", primary: true }));
+  });
+
+  afterEach(() => {
+    delete (globalThis as unknown as { game?: unknown }).game;
+    clearSetAsidePrimaryClaims();
+    (rulesetRegistry as unknown as { rulesets: Map<string, unknown> }).rulesets.clear();
+    (rulesetRegistry as unknown as { activeId: string | null }).activeId = null;
+  });
+
+  it("choosing a different primary in the wizard replaces the current one", async () => {
+    setAsidePrimaryClaim("beta");
+    expect((await activatePrimarySelection("alpha")).ok).toBe(true);
+
+    restorePrimaryClaim("beta");
+    setAsidePrimaryClaim("alpha");
+    const result = await activatePrimarySelection("beta");
+
+    expect(result.ok).toBe(true);
+    expect(rulesetRegistry.getActiveRuleset()?.id).toBe("beta");
+    expect(getActiveRulesetId()).toBe("beta");
+  });
+
+  it("other callers of the API are still refused a second primary", () => {
+    expect(rulesetRegistry.activateRuleset("alpha").ok).toBe(true);
+    expect(rulesetRegistry.activateRuleset("beta").ok).toBe(false);
+  });
+
+  it("the saved choice is restored at startup", async () => {
+    await fakeSettings.set("battleframe", "activeRulesetId", "beta");
+
+    restoreActiveRuleset();
+
+    expect(rulesetRegistry.getActiveRuleset()?.id).toBe("beta");
+  });
+
+  it("a saved choice whose module is gone restores nothing", async () => {
+    await fakeSettings.set("battleframe", "activeRulesetId", "uninstalled");
+
+    restoreActiveRuleset();
+
+    expect(rulesetRegistry.getActiveRuleset()).toBeNull();
   });
 });

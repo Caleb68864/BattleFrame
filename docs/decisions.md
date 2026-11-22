@@ -4486,3 +4486,17 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   check. GREATHELM and Full Thrust create no combat of their own.
 - Tests: a behaviour test in Simple Skirmish's and InCountry's round tests, and a scan of every
   module's sources (`module-combat-active.test.ts`); all failing on the old code. Commit: this commit.
+
+## 2026-11-21 — The wizard can change the primary ruleset; the choice is restored at ready
+- Decided by agent under the owner's standing rule for design choices (owner may revisit).
+- The wizard says the primary "can be changed later from Settings", but `activateRuleset` refused
+  any primary while another was active, so in a session the choice could not change. It now takes
+  `{ replacePrimary }`; `activatePrimarySelection` (the wizard's only path) passes it. A direct API
+  caller still gets the refusal, so nothing switches primaries silently.
+- The registry's active id lived only in memory and nothing restored it, so after any reload, on
+  every client, `game.battleframe.api.getActiveRuleset()` was `null` though the world setting held
+  the choice. `restoreActiveRuleset()` re-activates the saved id at `ready` when that ruleset is
+  registered; otherwise it does nothing, and the wizard shows the world as it is.
+- Set-aside primary claims are still per session (in memory); not changed here.
+- Tests: four in `settings.test.ts` (three failing on the old code; the API-refusal one guards the
+  unchanged behaviour). The existing ordering test now expects the option. Commit: this commit.

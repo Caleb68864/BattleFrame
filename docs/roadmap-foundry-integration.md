@@ -78,12 +78,12 @@ listed with the reason they were not fixed here.
   nothing on screen. It now warns with them. (`settings.test.ts`)
 
 **Open, needs the owner:**
-- **Switching the primary ruleset.** Once primary A is active in a session, activating primary B is
-  refused (`registry.activateRuleset`), although the wizard says the choice can be changed later.
-  Separately, nothing restores the active ruleset from the `activeRulesetId` setting at startup, so
-  `game.battleframe.api.getActiveRuleset()` is `null` after every reload (no module reads it today).
-  Restoring it would make the refusal permanent, so both need one decision: should a new primary
-  replace the old one?
+- ✅ **Switching the primary ruleset.** Decided by agent 2026-11-21 (owner may revisit): the GM's
+  choice in the setup wizard replaces the current primary (`activateRuleset(id, { replacePrimary: true })`),
+  as the wizard's own text promises; any other caller of the API is still refused a second primary.
+  The saved choice (`activeRulesetId`) is re-activated at `ready` on every client
+  (`restoreActiveRuleset`), so `getActiveRuleset()` no longer reads `null` after a reload; a saved
+  id whose module is gone restores nothing. No data is changed. (`settings.test.ts`)
 - **InCountry suppression never clears.** Nothing sets `system.suppressed` back to false, and the
   sheet checkbox and the token's status icon can disagree. When suppression ends is a rule.
 - **InCountry `armorType` → `armorModifier`/`armorDice`.** Existing actors are not migrated and load

@@ -171,7 +171,9 @@ export async function activatePrimarySelection(id: string): Promise<ActivateSele
     };
   }
 
-  const result = rulesetRegistry.activateRuleset(id);
+  // The GM's choice here replaces the current primary (the wizard says it can be
+  // changed later). Decided by agent 2026-11-21; owner may revisit.
+  const result = rulesetRegistry.activateRuleset(id, { replacePrimary: true });
 
   if (!result.ok) {
     return { ok: false, errors: result.errors };
@@ -348,8 +350,22 @@ export function openWizardIfNeeded(): void {
   wizard.render(true);
 }
 
+/**
+ * Re-activates the world's saved ruleset choice. The registry is in memory, so
+ * without this every client started each session with no active ruleset even
+ * though the GM had chosen one. A saved id whose module is no longer registered
+ * restores nothing (the wizard then shows the world as it is).
+ */
+export function restoreActiveRuleset(): void {
+  const id = getActiveRulesetId();
+  if (id && rulesetRegistry.getRuleset(id)) {
+    rulesetRegistry.activateRuleset(id);
+  }
+}
+
 if (hooksAvailable()) {
   Hooks.once("ready", () => {
+    restoreActiveRuleset();
     openWizardIfNeeded();
   });
 }
