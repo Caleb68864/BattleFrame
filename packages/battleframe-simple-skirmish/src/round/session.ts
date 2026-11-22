@@ -1,3 +1,4 @@
+import { tr } from "../i18n";
 import { MODULE_ID } from "../constants";
 
 export interface SkirmishUnit {
@@ -121,22 +122,30 @@ export function createSkirmishRound(
       const unit = unitById.get(unitId);
 
       if (!unit) {
-        throw new IllegalActivationError(`unknown unit: ${unitId}`);
+        throw new IllegalActivationError(tr("errors.unknownUnit", `unknown unit: ${unitId}`, { unit: unitId }));
       }
 
       if (activated.has(unitId)) {
-        throw new IllegalActivationError(`unit ${unitId} is already activated this round`);
+        throw new IllegalActivationError(
+          tr("errors.alreadyActivated", `unit ${unitId} is already activated this round`, { unit: unitId })
+        );
       }
 
       if (isDestroyed(unit)) {
-        throw new IllegalActivationError(`unit ${unitId} is destroyed and cannot be activated`);
+        throw new IllegalActivationError(
+          tr("errors.destroyed", `unit ${unitId} is destroyed and cannot be activated`, { unit: unitId })
+        );
       }
 
       const expected = activePlayerId();
 
       if (unit.playerId !== expected) {
+        const shown = expected ?? tr("errors.noOne", "no one");
         throw new IllegalActivationError(
-          `it is not ${unit.playerId}'s turn to activate (expected ${expected ?? "no one"})`
+          tr("errors.notYourTurn", `it is not ${unit.playerId}'s turn to activate (expected ${shown})`, {
+            side: unit.playerId,
+            expected: shown
+          })
         );
       }
 

@@ -1,3 +1,4 @@
+import { tr } from "../i18n";
 import { BASIC_DIE_SIZE, MODULE_ID, type AttackType } from "../constants";
 
 export interface DiceRollResult {
@@ -71,7 +72,7 @@ export async function resolveAttack(params: ResolveAttackParams): Promise<Attack
   const dieSize = params.dieSize ?? BASIC_DIE_SIZE;
   const prefix = params.flavorPrefix ? `${params.flavorPrefix} ` : "";
 
-  const attackerRolls = await rollDice(dice, Math.max(0, models), dieSize, `${prefix}${type} attack`);
+  const attackerRolls = await rollDice(dice, Math.max(0, models), dieSize, tr("dice.attack", `${prefix}${type} attack`, { prefix, type: tr(`attackTypes.${type}`, type) }));
   const hits = countHits(attackerRolls, attackTarget);
 
   // No save means the roll is skipped entirely and every hit lands (QSR:
@@ -81,7 +82,7 @@ export async function resolveAttack(params: ResolveAttackParams): Promise<Attack
     return { attackerRolls, hits, defenderRolls: [], casualties: saveTarget === null ? hits : 0 };
   }
 
-  const defenderRolls = await rollDice(dice, hits, dieSize, `${prefix}${type} save`);
+  const defenderRolls = await rollDice(dice, hits, dieSize, tr("dice.save", `${prefix}${type} save`, { prefix, type: tr(`attackTypes.${type}`, type) }));
   const casualties = countUnsaved(defenderRolls, saveTarget);
 
   return { attackerRolls, hits, defenderRolls, casualties };

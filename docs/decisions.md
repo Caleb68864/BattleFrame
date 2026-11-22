@@ -4412,3 +4412,41 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - The glue test's i18n stub now echoes `format` data, as Foundry's interpolation would, so its
   "the toast names both units" check still means something with keyed strings.
 - Tests: `localized-round` (4), all failing on the old code. Commit: this commit.
+
+## 2026-11-21 — InCountry: the unit sheet goes through the translation
+- Every heading, label, column head, tooltip and the empty-weapons line in
+  `templates/unit-sheet.hbs` is a `{{localize "battleframe-incountry.sheet.*"}}` call. The two
+  strings that carry an HTML entity (`Move&Prime;`, `Attack &amp; Armor`) use triple braces so the
+  entity renders rather than being escaped a second time.
+- The attack-dice tooltip said "(d10)"; the die size is the world's setting, not the module's, so
+  under `rules-content-audit.md` the tooltip now names the mechanic only ("Attack dice").
+- Tests: `unit-sheet-i18n` (2), failing on the old template: no letters may remain once tags,
+  Handlebars and entities are stripped, and every `title` must be a localize call.
+  Commit: this commit.
+
+## 2026-11-21 — Engine: orphan, ready-advance and activation text goes through the translation
+- The orphan warning and conversion prompt, the "advancing in Ns" and "could not mark ready"
+  toasts, the countdown setting's name and hint, and the two activation refusals in the registry
+  and two in `activatePrimarySelection` were literal English. They use the engine's own
+  `createI18nApi` with the English as the fallback, so the existing tests without `game.i18n`
+  read the same text. The setting passes keys, which Foundry localizes itself.
+- New flat keys in `lang/en.json` (the file's existing style): `battleframe.orphans.*`,
+  `.advance.*`, `.rulesets.*`, `.settings.advanceTimer.*`, `.setupWizard.errors.*`.
+- Ruleset-registration validation errors (`validate.ts`) stay English: they are for a module
+  author reading the console, not for a player.
+- Tests: `engine-i18n` (5), all failing on the old code. Commit: this commit.
+
+## 2026-11-21 — Simple Skirmish and InCountry: dice labels and error toasts localized
+- Each module gets `src/i18n.ts` with one `tr(suffix, fallback, data)` (the copies in
+  round-control are gone). It falls back to the English when Foundry hands back the bare key,
+  which it does for an untranslated string and before the language files load; a registration
+  failure fires at `init`, when that can happen.
+- Localized: dice flavors (initiative, attack, save, armor, suppression; Simple Skirmish's attack
+  type through `attackTypes.*`), the activation errors the round controls toast (out of turn,
+  cannot activate, and Simple Skirmish's session errors), the initiative-unresolved error,
+  InCountry's die-size error, and both registration-failure toasts. English text unchanged, so
+  tests matching it still hold.
+- Not localized: the ruleset `title` passed to `registerRuleset` (a proper name, registered at
+  `init`), and the engine's activation-order errors.
+- Tests: `i18n-errors-dice` in each package (4 + 3 behaviour tests, all failing on the old code;
+  plus a scan that every literal `tr()` key exists in `lang/en.json`). Commit: this commit.

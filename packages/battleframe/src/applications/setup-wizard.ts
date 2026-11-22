@@ -1,3 +1,4 @@
+import { createI18nApi } from "../ui/i18n";
 import { SYSTEM_ID } from "../constants";
 import { rulesetRegistry } from "../rulesets/registry";
 import type { RulesetDefinition } from "../rulesets/types";
@@ -146,9 +147,13 @@ export async function activatePrimarySelection(id: string): Promise<ActivateSele
     return {
       ok: false,
       errors: [
-        `Cannot activate "${id}": rulesets ${wizardState.conflictingIds
-          .map((conflictId) => `"${conflictId}"`)
-          .join(" and ")} both claim primary. Resolve the conflict first.`,
+        createI18nApi().format(
+          "battleframe.setupWizard.errors.conflict",
+          { id, rulesets: wizardState.conflictingIds.map((conflictId) => `"${conflictId}"`).join(", ") },
+          `Cannot activate "${id}": rulesets ${wizardState.conflictingIds
+            .map((conflictId) => `"${conflictId}"`)
+            .join(" and ")} both claim primary. Resolve the conflict first.`
+        ),
       ],
     };
   }
@@ -156,7 +161,13 @@ export async function activatePrimarySelection(id: string): Promise<ActivateSele
   if (isPrimaryClaimSetAside(id)) {
     return {
       ok: false,
-      errors: [`Cannot activate "${id}": its primary claim has been set aside.`],
+      errors: [
+        createI18nApi().format(
+          "battleframe.setupWizard.errors.setAside",
+          { id },
+          `Cannot activate "${id}": its primary claim has been set aside.`
+        ),
+      ],
     };
   }
 

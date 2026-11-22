@@ -36,5 +36,15 @@
 
   "battleframe.sheets.generic-actor": "BattleFrame Generic Actor",
 
-  "battleframe.orphans.convertTitle": "Convert Orphaned Actors"
+  "battleframe.orphans.convertTitle": "Convert Orphaned Actors",
+  "battleframe.orphans.warning": "{count} Actor(s) belong to disabled module \"{module}\" and are now orphaned. Their data is safe but they will not render correctly until you re-enable the module, or convert them to the generic Actor type.",
+  "battleframe.orphans.convertPrompt": "Convert {count} orphaned Actor(s) from disabled module \"{module}\" to the generic type? Their original data is kept under {flag}, so this is reversible.",
+  "battleframe.advance.countdown": "all players ready -- advancing in {seconds}s",
+  "battleframe.advance.readyFailed": "could not mark ready -- you may need Assistant-GM permission or socketlib for GM-less play",
+  "battleframe.settings.advanceTimer.name": "Turn-advance countdown (seconds)",
+  "battleframe.settings.advanceTimer.hint": "When all players mark ready, the round advances after this countdown. A player un-readying cancels it.",
+  "battleframe.rulesets.notRegistered": "Ruleset \"{id}\" is not registered.",
+  "battleframe.rulesets.primaryActive": "Cannot activate primary ruleset \"{id}\": primary ruleset \"{active}\" is already active.",
+  "battleframe.setupWizard.errors.conflict": "Cannot activate \"{id}\": rulesets {rulesets} both claim primary. Resolve the conflict first.",
+  "battleframe.setupWizard.errors.setAside": "Cannot activate \"{id}\": its primary claim has been set aside."
 }

@@ -1,3 +1,4 @@
+import { tr } from "../i18n";
 import { MODULE_ID } from "../constants";
 import { requireDieSize } from "../settings";
 
@@ -96,7 +97,7 @@ export async function resolveAttack(params: ResolveAttackParams): Promise<Attack
   const { dice, attackDice, attackValue, weaponDmg, armorDice, armorModifier } = params;
   const prefix = params.flavorPrefix ? `${params.flavorPrefix} ` : "";
 
-  const attackerFaces = await rollPool(dice, Math.max(0, attackDice), `${prefix}attack`);
+  const attackerFaces = await rollPool(dice, Math.max(0, attackDice), tr("dice.attack", `${prefix}attack`, { prefix }));
   const hits = countHits(attackerFaces, attackValue);
   const total = attackTotal(attackerFaces, attackValue);
   const damage = damageFrom(total, weaponDmg, hits);
@@ -113,7 +114,7 @@ export async function resolveAttack(params: ResolveAttackParams): Promise<Attack
     };
   }
 
-  const armorFaces = await rollPool(dice, Math.max(0, armorDice), `${prefix}armor`);
+  const armorFaces = await rollPool(dice, Math.max(0, armorDice), tr("dice.armor", `${prefix}armor`, { prefix }));
   const armorTotal = armorFaces.reduce((sum, face) => sum + face, 0) + armorModifier;
   const destroyed = !survivesArmor(armorFaces, armorModifier, damage);
 

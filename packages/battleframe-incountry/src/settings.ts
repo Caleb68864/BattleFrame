@@ -1,3 +1,4 @@
+import { tr } from "./i18n";
 import { DIE_SIZE_UNSET, MODULE_ID, SETTING_DIE_SIZE } from "./constants";
 
 /**
@@ -25,8 +26,11 @@ function resolveSettings(): FoundrySettingsApi | undefined {
 export class DieSizeNotSetError extends Error {
   constructor() {
     super(
-      `${MODULE_ID} | no die size set. This module ships no rules numbers: ` +
-        `open the module settings and enter the die your rulebook uses.`
+      `${MODULE_ID} | ` +
+        tr(
+          "errors.dieSizeNotSet",
+          "no die size set. This module ships no rules numbers: open the module settings and enter the die your rulebook uses."
+        )
     );
     this.name = "DieSizeNotSetError";
   }

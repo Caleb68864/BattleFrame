@@ -70,6 +70,21 @@
       "roundContinue": "Round over: both sides still hold the field. Start a new round.",
       "ready": "READY",
       "notReady": "not ready"
+    },
+    "dice": {
+      "initiative": "initiative ({side})",
+      "attack": "{prefix}{type} attack",
+      "save": "{prefix}{type} save"
+    },
+    "errors": {
+      "registrationFailed": "Simple Skirmish did not register: {reason}",
+      "notYourTurn": "it is not {side}'s turn to activate (expected {expected})",
+      "noOne": "no one",
+      "cannotActivate": "{unit} cannot activate now",
+      "unknownUnit": "unknown unit: {unit}",
+      "alreadyActivated": "unit {unit} is already activated this round",
+      "destroyed": "unit {unit} is destroyed and cannot be activated",
+      "initiativeUnresolved": "initiative stayed tied after {rerolls} re-rolls"
     }
   }
 }

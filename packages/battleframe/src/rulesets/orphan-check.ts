@@ -1,5 +1,6 @@
 import { SYSTEM_ID } from "../constants";
 import { GENERIC_ACTOR_TYPE } from "../data/generic-actor";
+import { createI18nApi } from "../ui/i18n";
 // Also registers the `preCreateActor` schema-version stamp at module
 // scope. This module is on the entry point's side-effect import chain;
 // ../documents/actor is not imported anywhere else in production code,
@@ -143,10 +144,15 @@ export function warnAboutOrphans(
 
   for (const [packageId, count] of countByPackage) {
     notifier.warn(
-      `${SYSTEM_ID} | ${count} Actor(s) belong to disabled module "${packageId}" ` +
-        "and are now orphaned. Their data is safe but they will not render " +
-        "correctly until you re-enable the module, or convert them to the " +
-        "generic Actor type."
+      `${SYSTEM_ID} | ` +
+        createI18nApi().format(
+          "battleframe.orphans.warning",
+          { count, module: packageId },
+          `${count} Actor(s) belong to disabled module "${packageId}" ` +
+            "and are now orphaned. Their data is safe but they will not render " +
+            "correctly until you re-enable the module, or convert them to the " +
+            "generic Actor type."
+        )
     );
   }
 }
@@ -310,9 +316,13 @@ export async function offerOrphanConversion(
 
   for (const [packageId, group] of byPackage) {
     const accepted = await prompt.confirm(
-      `Convert ${group.length} orphaned Actor(s) from disabled module ` +
-        `"${packageId}" to the generic type? Their original data is kept ` +
-        `under flags.${SYSTEM_ID}.orphanedFrom, so this is reversible.`
+      createI18nApi().format(
+        "battleframe.orphans.convertPrompt",
+        { count: group.length, module: packageId, flag: `flags.${SYSTEM_ID}.orphanedFrom` },
+        `Convert ${group.length} orphaned Actor(s) from disabled module ` +
+          `"${packageId}" to the generic type? Their original data is kept ` +
+          `under flags.${SYSTEM_ID}.orphanedFrom, so this is reversible.`
+      )
     );
 
     if (!accepted) {
