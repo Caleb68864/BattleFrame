@@ -88,8 +88,12 @@ listed with the reason they were not fixed here.
   sheet checkbox and the token's status icon can disagree. When suppression ends is a rule.
 - **InCountry `armorType` → `armorModifier`/`armorDice`.** Existing actors are not migrated and load
   with no armour. May be deliberate under `rules-content-audit.md`.
-- **Simple Skirmish neutral/secret tokens.** A neutral token fights as friendly and a secret one as
-  hostile (`sideFromDisposition`). Which units take part is a rules/table call.
+- ✅ **Neutral and secret tokens.** Decided by agent 2026-11-21 (owner may revisit): a Neutral token is
+  on no side and by default takes no part in a round, in all five rulesets that read sides from
+  disposition (Simple Skirmish, InCountry, Stargrunt II, GREATHELM, Dirtside II). The world setting
+  "Neutral tokens" (`battleframe.neutralTokens`) set to "Fight as friendly" restores the old
+  behaviour. Secret tokens still fight as hostile, unchanged. No data is touched.
+  (`packages/battleframe/tests/neutral-token-sides.test.ts`)
 
 **Open, not fixed here (no owner decision needed):**
 - ✅ 2026-11-21 InCountry's unit sheet template (`tests/unit-sheet-i18n.test.ts`).

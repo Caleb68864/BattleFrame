@@ -496,8 +496,28 @@ function notifyUser(message: string, level: "info" | "warn" | "error" = "info"):
 }
 
 /** Which side a unit fights for, from its token disposition. */
-export function sideFromDisposition(disposition: number | undefined): string {
+/**
+ * The side a token fights on, from its disposition: hostile and secret tokens are
+ * "hostile", friendly ones "friendly". A NEUTRAL token is on neither and takes no
+ * part (undefined) unless the world setting `battleframe.neutralTokens` is
+ * "friendly", the behaviour before 2026-11-21. Decided by agent; owner may revisit.
+ */
+export function sideFromDisposition(disposition: number | undefined): string | undefined {
+  if (disposition === 0 && neutralTokensExcluded()) {
+    return undefined;
+  }
   return (disposition ?? 0) < 0 ? "hostile" : "friendly";
+}
+
+/** The engine's world setting; unreadable (tests, before init) means the default. */
+function neutralTokensExcluded(): boolean {
+  try {
+    const settings = (globalThis as unknown as { game?: { settings?: { get?: (ns: string, key: string) => unknown } } })
+      .game?.settings;
+    return settings?.get?.("battleframe", "neutralTokens") !== "friendly";
+  } catch {
+    return true;
+  }
 }
 
 interface CanvasTokenLike {
@@ -526,11 +546,15 @@ function unitFromToken(placeable: CanvasTokenLike): CanvasUnit | null {
   if (!id) {
     return null;
   }
+  const sideId = sideFromDisposition(placeable.document?.disposition);
+  if (!sideId) {
+    return null;
+  }
   const scene = placeable.scene ?? (globalScope().canvas as { scene?: { id?: string } })?.scene;
   return {
     id,
     name: actor.name ?? id,
-    sideId: sideFromDisposition(placeable.document?.disposition),
+    sideId,
     actor,
     tokenId: placeable.document?.id ?? placeable.id,
     sceneId: scene?.id

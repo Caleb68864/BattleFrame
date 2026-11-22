@@ -4500,3 +4500,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
 - Set-aside primary claims are still per session (in memory); not changed here.
 - Tests: four in `settings.test.ts` (three failing on the old code; the API-refusal one guards the
   unchanged behaviour). The existing ordering test now expects the option. Commit: this commit.
+
+## 2026-11-21 — Neutral tokens take no part in a round by default (setting to restore)
+- Decided by agent under the owner's standing rule for design choices (owner may revisit).
+- Five rulesets mapped a token's disposition with `disposition < 0 ? "hostile" : "friendly"`, so a
+  NEUTRAL token (a bystander or objective marker) joined the friendly side, rolled initiative and
+  counted toward victory. Each `sideFromDisposition` now returns `undefined` for a neutral token,
+  and its gather function leaves that token out.
+- Reversible: the engine registers a world setting `battleframe.neutralTokens` ("exclude" by
+  default, "friendly" for the old behaviour), visible in the settings menu. The modules read it
+  through `game.settings`; an unreadable setting means the default.
+- SECRET tokens (-2) still fight as hostile: a secret disposition hides allegiance from players
+  and is how hidden enemies are usually placed, and keeping it changes nothing for existing tables.
+  A token with no disposition at all (test doubles) is still friendly.
+- Tests: `neutral-token-sides.test.ts` drives each ruleset's real gather function; the default-
+  behaviour cases and the setting registration fail on the old code, the "friendly" cases guard
+  the restored behaviour. Commit: this commit.
