@@ -107,8 +107,13 @@ listed with the reason they were not fixed here.
   engine shows on every client (`executeForEveryone`); Simple Skirmish and InCountry return theirs.
   Full Thrust, Dirtside II, Stargrunt II and GREATHELM still toast on the client that runs the
   advance. (`ready-advance.test.ts`, the two modules' round tests.)
-- **InCountry creates its Combat inactive** (`Combat.create` without `active: true`), so the engine's
-  ready flags (on `combats.active`) may sit on another combat. Unverified live.
+- ✅ 2026-11-21 **Modules created their Combat inactive.** Decided by agent 2026-11-21 (owner may
+  revisit): treated as a bug, not a design choice. An inactive combat is neither `game.combat` nor
+  `combats.active`, so every module's `getOrCreateCombat` missed it and created another each round,
+  and the engine's ready flags (on `combats.active`) sat elsewhere. Simple Skirmish, InCountry,
+  Dirtside II and Stargrunt II now call `combat.activate()` on the combat they create, as Foundry's
+  own "create encounter" does. Reversible; existing combats are untouched. (`module-combat-active.test.ts`
+  and the two modules' round tests.)
 - **Simple Skirmish's scene control** sets `activeTool` to a GM-only button tool.
 
 ## Executive summary

@@ -571,7 +571,12 @@ async function getOrCreateCombat(): Promise<CombatLike | undefined> {
   if (existing) {
     return existing;
   }
-  return scope.Combat?.create ? scope.Combat.create({ scene: scope.canvas?.scene?.id }) : undefined;
+  // Activate it, as Foundry's own "create encounter" does: only an active combat is
+  // game.combat / combats.active, which is where this finds it next round and where
+  // the engine keeps the ready flags. Activating also deactivates any other.
+  const created = await (scope.Combat?.create ? scope.Combat.create({ scene: scope.canvas?.scene?.id }) : undefined);
+  await (created as { activate?: () => Promise<unknown> } | undefined)?.activate?.();
+  return created;
 }
 
 /** Seats each unit token as a Combatant (skipping tokens already in the combat). */

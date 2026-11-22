@@ -133,7 +133,12 @@ async function getOrCreateCombat(): Promise<any | undefined> {
   const g = glob();
   const existing = g.game?.combat ?? g.game?.combats?.active;
   if (existing) return existing;
-  return g.Combat?.create ? g.Combat.create({ scene: g.canvas?.scene?.id }) : undefined;
+  // Activate it, as Foundry's own "create encounter" does: only an active combat is
+  // game.combat / combats.active, which is where this finds it next round and where
+  // the engine keeps the ready flags. Activating also deactivates any other.
+  const created = await (g.Combat?.create ? g.Combat.create({ scene: g.canvas?.scene?.id }) : undefined);
+  await (created as { activate?: () => Promise<unknown> } | undefined)?.activate?.();
+  return created;
 }
 
 /** "End Turn / New Round": resets markers then opens a fresh round (the advance callback, G4). */

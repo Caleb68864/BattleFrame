@@ -166,3 +166,42 @@ describe("a wiped side is out of the battle", () => {
     expect(warn).not.toHaveBeenCalled();
   });
 });
+
+describe("the combat a round creates", () => {
+  it("is made active, so the next round finds it", async () => {
+    const flags: Record<string, unknown> = {};
+    const created = {
+      activate: vi.fn(async () => undefined),
+      getFlag: (_s: string, k: string) => flags[k],
+      setFlag: vi.fn(async (_s: string, k: string, v: unknown) => (flags[k] = v)),
+      unsetFlag: vi.fn(),
+      createEmbeddedDocuments: vi.fn(async () => []),
+      combatants: [],
+      startCombat: vi.fn(async () => undefined)
+    };
+    const create = vi.fn(async () => created);
+    const g = (globalThis as any).game;
+    g.battleframe = { dice: recordingDice([3, 4]), rounds: roundsApi };
+    g.combats = { contents: [] };
+    g.i18n = { localize: (k: string) => k, format: (k: string) => k };
+    vi.stubGlobal("Combat", { create });
+    vi.stubGlobal("ui", { notifications: { info: vi.fn(), warn: vi.fn(), error: vi.fn() } });
+    const a = { id: "a", name: "A", type: "battleframe-incountry.unit", system: system() };
+    const b = { id: "b", name: "B", type: "battleframe-incountry.unit", system: system() };
+    vi.stubGlobal("canvas", {
+      scene: { id: "s" },
+      tokens: {
+        placeables: [
+          { id: "t1", document: { id: "t1", disposition: 1 }, actor: a },
+          { id: "t2", document: { id: "t2", disposition: -1 }, actor: b }
+        ]
+      }
+    });
+
+    const outcome = await advanceRoundCore();
+
+    expect(outcome.level).toBe("info");
+    expect(create).toHaveBeenCalledTimes(1);
+    expect(created.activate).toHaveBeenCalledTimes(1);
+  });
+});

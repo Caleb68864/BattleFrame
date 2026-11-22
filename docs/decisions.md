@@ -4470,3 +4470,19 @@ Related: `vault/foundry-systems/token-tinting-is-mesh-tint-and-it-survives-refre
   socketlib, not a live check.
 - Tests: three in `ready-advance.test.ts`, one in each module's round tests; all failing on the old
   code. Commit: this commit.
+
+## 2026-11-21 — Modules activate the Combat they create
+- Simple Skirmish, InCountry, Dirtside II and Stargrunt II created their round's Combat with
+  `Combat.create({ scene })`, which Foundry leaves inactive. Each module's `getOrCreateCombat`
+  looks only at `game.combat` / `game.combats.active`, neither of which returns an inactive
+  combat, so once a round finished (and its round flag was cleared) the next advance created
+  another combat. The engine's ready flags live on `combats.active`, so they were not on the
+  module's combat either.
+- Each now calls `activate()` on the combat it creates: Foundry's own method, which also
+  deactivates any other combat, and the state Foundry's tracker button produces. Existing combats
+  are not touched. Recorded in the roadmap as decided by agent: the coordinator asked for this
+  only "if it is clearly a bug"; the pile-up makes it one.
+- `Combat#activate` and how `combats.active` resolves are from knowledge of Foundry, not a live
+  check. GREATHELM and Full Thrust create no combat of their own.
+- Tests: a behaviour test in Simple Skirmish's and InCountry's round tests, and a scan of every
+  module's sources (`module-combat-active.test.ts`); all failing on the old code. Commit: this commit.
